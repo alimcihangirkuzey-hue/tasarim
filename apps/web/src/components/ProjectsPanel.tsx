@@ -284,7 +284,20 @@ function PasteBox({ client, showToast }: { client: ClientDTO; showToast: (m: str
         style={{ minHeight: 120, fontFamily: "ui-monospace, monospace", fontSize: 13 }}
       />
       <div className="row">
-        <button className="ghost" onClick={() => setParsed(parseOrderText(text))} disabled={!text.trim()}>
+        <button
+          className="ghost"
+          onClick={() => {
+            /* FAZ4 §10: çekirdek ∪ DB sözlüğü — çözümlemeden hemen önce çekilir (aynı oturumda etki) */
+            void api
+              .parseSynonyms()
+              .catch(() => [] as Array<{ word: string; product_type: ProductType }>)
+              .then((syn) => {
+                const extraDict = Object.fromEntries(syn.map((s) => [s.word, s.product_type]));
+                setParsed(parseOrderText(text, { extraDict }));
+              });
+          }}
+          disabled={!text.trim()}
+        >
           {t("orders.parse_btn")}
         </button>
         <button className="ghost" onClick={copyTemplate}>{t("orders.copy_template")}</button>

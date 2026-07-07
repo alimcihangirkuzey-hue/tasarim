@@ -11,6 +11,7 @@ import { MockupPage } from "./pages/MockupPage";
 import { PresentPage } from "./pages/PresentPage";
 import { PrintPage } from "./pages/PrintPage";
 import { ThemesPage } from "./pages/ThemesPage";
+import { ParseDictPage } from "./pages/ParseDictPage";
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -40,7 +41,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </Link>
         <span className="sub">{t("app.subtitle")}</span>
         <span style={{ flex: 1 }} />
-        <Link className="ghost-link" to="/settings/themes">{t("app.themes")}</Link>
+        <Link className="ghost-link" to="/settings/themes">{t("app.settings")}</Link>
         {/* FAZ4 §6: data/ zip yedeği tarayıcıdan iner (M7) */}
         <a className="ghost-link" href="/api/backup" title={t("app.backup_hint")}>
           {t("app.backup")}
@@ -71,6 +72,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
                     <Route path="/editor/:id" element={<EditorPage />} />
                     <Route path="/settings/themes" element={<ThemesPage />} />
+                    <Route path="/settings/parse" element={<ParseDictPage />} />
                   </Routes>
                 </Layout>
               }

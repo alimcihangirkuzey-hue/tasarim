@@ -4,7 +4,8 @@
     "subtitle": "Atölye otomasyonu · Faz 3",
     "backup": "Yedek al",
     "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)",
-    "themes": "Temalar"
+    "themes": "Temalar",
+    "settings": "Ayarlar"
   },
   "nav": {
     "clients": "Müşteriler"
@@ -316,5 +317,12 @@
   "suggest": {
     "chip": "Öneri — bağla",
     "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"
+  },
+  "parsedict": {
+    "title": "Parse Sözlüğü",
+    "hint": "Yapıştır-çözümle motoruna eş anlamlı ekle: pazarlamacının kullandığı kelime hangi ürün tipine düşsün? Kayıtlar kod içi çekirdek sözlükle birleşir; ekleme aynı oturumda etkilidir.",
+    "word_placeholder": "kelime (ör. cephe)",
+    "add": "Ekle",
+    "empty": "Henüz özel kayıt yok — çekirdek sözlük çalışmaya devam eder."
   }
 }

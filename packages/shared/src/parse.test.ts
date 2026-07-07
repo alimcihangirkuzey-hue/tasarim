@@ -108,6 +108,22 @@ describe("ürün eş anlamlı sözlüğü (§2.4)", () => {
   for (const [input, expected] of cases) {
     it(`${input} → ${expected}`, () => expect(matchProductType(input)).toBe(expected));
   }
+
+  it("FAZ4 §10: DB eş-anlamlıları (extraDict) çekirdekle birleşir ve önce denenir", () => {
+    /* kabul 9: 'cephe → tabela' eklenince parse tanır */
+    expect(matchProductType("cephe kaplama")).toBe("diger");
+    expect(matchProductType("cephe kaplama", { cephe: "tabela" })).toBe("tabela");
+    /* uzun (özgül) kullanıcı kaydı çekirdek kelimeyi ezer */
+    expect(matchProductType("cam kumlama", { "cam kumlama": "tabela" })).toBe("tabela");
+    /* çekirdek davranış bozulmaz */
+    expect(matchProductType("cam giydirme", { cephe: "tabela" })).toBe("vitrophanie");
+
+    const order = parseOrderText(
+      ["işletme: Test", "---", "ürün: cephe panosu", "ölçü: 200x50"].join("\n"),
+      { extraDict: { cephe: "tabela" } }
+    );
+    expect(order.items[0].product_type).toBe("tabela");
+  });
 });
 
 describe("ölçü biçimleri", () => {

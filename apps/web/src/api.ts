@@ -157,6 +157,16 @@ export const api = {
       body: "{}",
     }),
 
+  /* Parse sözlüğü — Faz 4 §10 */
+  parseSynonyms: () =>
+    http<Array<{ word: string; product_type: import("@tezgah/shared").ProductType }>>(`/api/parse-synonyms`),
+  addParseSynonym: (word: string, product_type: string) =>
+    http<{ word: string; product_type: string }>(`/api/parse-synonyms`, {
+      method: "POST", body: JSON.stringify({ word, product_type }),
+    }),
+  deleteParseSynonym: (word: string) =>
+    http<{ ok: true }>(`/api/parse-synonyms/${encodeURIComponent(word)}`, { method: "DELETE" }),
+
   /* Varlık etiketleri — Faz 4 §9 */
   updateAssetTags: (id: string, tags: string) =>
     http<AssetDTO>(`/api/assets/${id}`, { method: "PATCH", body: JSON.stringify({ tags }) }),

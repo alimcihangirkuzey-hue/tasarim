@@ -74,8 +74,20 @@ const PRODUCT_DICT: Array<[ProductType, string[]]> = [
   ["fidelite", ["sadakat", "fidelite", "kart"]],
 ];
 
-export function matchProductType(raw: string): ProductType {
+/** FAZ4 §10: DB eş-anlamlıları (parse_synonyms) çekirdek sözlükle birleşir;
+    kullanıcı kaydı daha özgül sayılır ve ÖNCE denenir (uzun kelime önce). */
+export function matchProductType(
+  raw: string,
+  extraDict: Record<string, ProductType> = {}
+): ProductType {
   const f = foldTr(raw);
+  const extra = Object.entries(extraDict)
+    .map(([w, t]) => [foldTr(w).trim(), t] as const)
+    .filter(([w]) => w.length > 0)
+    .sort((a, b) => b[0].length - a[0].length);
+  for (const [w, t] of extra) {
+    if (f.includes(w)) return t;
+  }
   for (const [type, words] of PRODUCT_DICT) {
     if (words.some((w) => f.includes(w))) return type;
   }
@@ -160,7 +172,7 @@ function splitSegments(line: string): string[] {
 
 export function parseOrderText(
   text: string,
-  opts: { today?: string } = {}
+  opts: { today?: string; extraDict?: Record<string, ProductType> } = {}
 ): ParsedOrder {
   const today = opts.today ?? new Date().toISOString().slice(0, 10);
   const order: ParsedOrder = {
@@ -208,7 +220,7 @@ export function parseOrderText(
           break;
         case "urun":
           if (!current) { current = newItem(); order.items.push(current); }
-          current.product_type = matchProductType(value);
+          current.product_type = matchProductType(value, opts.extraDict ?? {});
           if (current.product_type === "diger") appendNote(current, `Ürün: ${value}`);
           break;
         case "olcu": {

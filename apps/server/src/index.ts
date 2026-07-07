@@ -18,6 +18,7 @@ import { garmentRoutes } from "./routes/garment.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { backupRoutes } from "./routes/backup.js";
 import { themeRoutes } from "./routes/themes.js";
+import { synonymRoutes } from "./routes/synonyms.js";
 
 migrate();
 
@@ -54,6 +55,7 @@ garmentRoutes(app);
 catalogRoutes(app);
 backupRoutes(app);
 themeRoutes(app);
+synonymRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

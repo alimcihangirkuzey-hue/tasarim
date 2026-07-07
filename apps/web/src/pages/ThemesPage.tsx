@@ -26,6 +26,7 @@ import {
 } from "@tezgah/templates";
 import { api } from "../api";
 import { t } from "../i18n";
+import { SettingsTabs } from "./ParseDictPage";
 
 /* ---- önizleme için sabit demo verisi (müşteri verisine dokunulmaz) ---- */
 function demoClient(): ClientDTO {
@@ -143,6 +144,7 @@ export function ThemesPage() {
 
   return (
     <div>
+      <SettingsTabs active="themes" />
       <h2>{t("themes.title")}</h2>
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 18, alignItems: "start" }}>
         {/* SOL: liste */}
