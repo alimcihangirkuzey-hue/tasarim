@@ -9,11 +9,22 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ## Faz 4'e inceleme notu
 - [ ] **PDF sayfa ölçümünde +0.2–0.4 mm sapma:** pdfjs okumaları 216.2×303.4 gibi değerler veriyor (hedef 216×303). Kök neden büyük olasılıkla mm→pt→mm çevrim yuvarlaması (Chromium `page.pdf` mm girdiyi pt'ye çevirir, pdfjs geri çevirir); baskı açısından zararsız. Faz 4'te (CMYK/Ghostscript işleri sırasında) kesin kökeni incele.
 
-## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulama YOK, yalnızca not)
-- [ ] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; **küçük alan + broderie kombinasyonunda ince-detay uyarısı** (ARAS logosu gibi çizimler küçük nakışta kaybolur).
-- [ ] **Mockup motoru:** quad-warp; pazarlamacının keşif fotoğrafları sahne olur.
-- [ ] **Vitrophanie/tabela belge tipleri:** cm bazlı; découpe'ta text→path.
-- [ ] **Tişört mockup renk seti:** mavi dahil.
+## Faz 4'e kayıt (FAZ3-GOREV §9 — uygulama YOK, yalnızca not)
+- [ ] **SVG import + slot işaretleme:** hazır SVG tasarımı içe al, slotları elle işaretle.
+- [ ] **Tema kütüphanesi ekranı:** temaları görsel galeriden seç/önizle.
+- [ ] **Toplu fiyat güncelleme:** katalogda yüzde/mutlak artış aracı.
+- [ ] **CMYK dönüşümü (Ghostscript):** matbaa PDF'i için; mevcut +0.2–0.4 mm pt→mm sapma notuyla birlikte incelenecek (yukarıdaki Faz 4 inceleme notu).
+- [ ] **Snapshot'tan geri yükleme:** export_records.snapshot_json → belgeyi o ana döndür.
+- [ ] **Zip yedek:** data/ klasörünü tek tıkla arşivle (M7).
+- [ ] **Parse sözlüğü yönetim arayüzü:** PRODUCT_DICT / KEY_ALIASES'ı UI'dan genişlet.
+- [ ] **MİMARA — ince-detay eşiği vs kabul 6 metni:** kural "broderie + alan kısa kenarı < 15 cm" (FAZ3-GOREV §6); kabul 6'daki *bavette göğüs (24×20 cm)* örneğinde uyarı bu kurala göre ÇIKMAZ (kol 8×8'de çıkıyor, testli). Eşik mi genişleyecek (ör. logo çizim yoğunluğuna göre), kabul metni mi düzelecek — karar mimarın.
+- [ ] **MİMARA — TextLines letterSpacing birimi:** şablonlar `letterSpacing` mm sanıyor ama CSS'e `"Nmm"` yazılınca tarayıcı SVG kullanıcı birimine 3.78× büyüterek çözüyor (CSS mm ≠ viewBox mm). Görünüm her yerde tutarlı (önizleme=PDF=découpe; text→path artık hesaplanmış değeri okuyor) ama yazarın niyetinden geniş — ör. bandeau saat satırında 8 yerine 30.2 birim aralık, uzun metinde logo alanına taşma. Düzeltmek Faz 1-2'de onaylanmış görselleri değiştirir → mimar kararı ister.
+
+## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulandı ✓)
+- [x] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; küçük alan + broderie'de ince-detay uyarısı.
+- [x] **Mockup motoru:** quad-warp; keşif fotoğrafları sahne oldu (mockup_scenes, müşteri|ortak).
+- [x] **Vitrophanie/tabela belge tipleri:** cm bazlı; découpe'ta text→path (fontkit, mimar #7).
+- [x] **Tişört mockup renk seti:** mavi dahil (fabric_color seti).
 - [ ] Sunum PDF'inde kampanya slotunun katalogdan canlı binding'i (Faz 2'de serbest metin + override; en basit çözüm §0.6).
 - [ ] Sipariş kalemi ↔ belge durum senkronu otomasyonu düşünülebilir (Faz 2'de bilinçli olarak elle — FAZ2-GOREV §2.5).
 

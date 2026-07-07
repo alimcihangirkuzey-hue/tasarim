@@ -108,7 +108,7 @@ function ItemRow({ item, client, showToast }: {
     mutationFn: async () => {
       let templateId = DESIGNABLE[item.product_type];
       if (templateId === undefined) {
-        showToast(t("orders.phase3_warn"));
+        showToast(t("orders.no_template_warn"));
         return null;
       }
       if (templateId === "") {

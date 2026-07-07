@@ -1,5 +1,5 @@
 {
-  "app": { "title": "TEZGÂH", "subtitle": "Atölye otomasyonu · Faz 2" },
+  "app": { "title": "TEZGÂH", "subtitle": "Atölye otomasyonu · Faz 3" },
   "nav": { "clients": "Müşteriler" },
   "clients": {
     "new_placeholder": "Yeni müşteri adı (ör. Antalya Kebab — Lyon)",
@@ -170,7 +170,7 @@
     "created": "Proje oluşturuldu ✓",
     "add_item": "+ Kalem",
     "start_design": "Tasarıma başla",
-    "phase3_warn": "Bu tip için şablon Faz 3'te gelecek — kalem takibi çalışıyor",
+    "no_template_warn": "Bu tip için hazır şablon yok (diğer) — kalem takibi çalışıyor",
     "menu_template_q": "Menü şablonu seç: Tamam = Resimli Izgara, İptal = Premium Liste",
     "missing_prefix": "eksik",
     "miroir": "⚠ içten uygulama → miroir",
