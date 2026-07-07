@@ -93,6 +93,55 @@ describe("analyzeGrid", () => {
     expect(joined).toContain("menu 10,00 €");
   });
 
+  it("multipage akışı (FAZ4 §8): 80 ürün uyarısız N sayfaya dağılır; her ürün tam bir kez", () => {
+    const client = makeClient();
+    client.catalog.categories = [1, 2, 3].map((c) => ({
+      id: `cat${c}`,
+      name_fr: `Catégorie ${c}`,
+      note_fr: undefined,
+      order: c,
+      items: Array.from({ length: c === 3 ? 28 : 26 }, (_, i) => ({
+        id: `c${c}i${i}`,
+        name_fr: `Produit ${c}-${i}`,
+        desc_fr: "",
+        photo: null,
+        prices: [{ label: "seul", value: 6 }],
+        tags: [],
+        visible: true,
+        order: i,
+      })),
+    })); // toplam 80 ürün
+    const doc = DocumentStateSchema.parse({
+      template_id: "menu-grid-cells",
+      params: { flow: "multipage" },
+    });
+
+    const p0 = analyzeGrid(client, doc, 0);
+    expect(p0.pages).toBeGreaterThan(1);
+    expect(p0.warnings.some((w) => w.type === "overflow-items")).toBe(false);
+    expect(p0.contBand).toBeNull();
+
+    /* tüm sayfalardaki hücreler: 80 ürün, tam bir kez */
+    const seen: string[] = [];
+    for (let i = 0; i < p0.pages; i++) {
+      const pi = analyzeGrid(client, doc, i);
+      for (const pl of pi.layout.placed) if (pl.kind === "cell") seen.push(pl.item.id);
+      if (i > 0) {
+        expect(pi.contBand).not.toBeNull();
+        expect(pi.contBand!.pageLabel).toBe(`Page ${i + 1}/${p0.pages}`);
+        /* devam sayfası içerik alanı daha yüksek (ince bant) */
+        expect(pi.geo.content.h).toBeGreaterThan(p0.geo.content.h);
+      }
+    }
+    expect(seen).toHaveLength(80);
+    expect(new Set(seen).size).toBe(80);
+
+    /* aynı seçim single modda uyarı verir (davranış korunur) */
+    const single = analyzeGrid(client, DocumentStateSchema.parse({ template_id: "menu-grid-cells" }));
+    expect(single.pages).toBe(1);
+    expect(single.warnings.some((w) => w.type === "overflow-items")).toBe(true);
+  });
+
   it("format param geçerliyse uygulanır, geçersizse varsayılana düşer", () => {
     const doc = DocumentStateSchema.parse({
       template_id: "menu-grid-cells",

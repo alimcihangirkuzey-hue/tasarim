@@ -12,6 +12,7 @@ import {
 import {
   checkDpi,
   layoutGrid,
+  layoutGridPaged,
   solveFontScale,
   wrapText,
   type GridLayout,
@@ -47,6 +48,16 @@ export interface CellLayout {
   dpi: ReturnType<typeof checkDpi> | null;
 }
 
+/** Devam sayfası ince bandı — FAZ4-GOREV §8 (logo + başlık + sayfa no) */
+export interface ContBand {
+  y: number;
+  h: number;
+  title: string;
+  logoUrl: string | null;
+  /** Çıktı FR (M9): "Page 2/4" */
+  pageLabel: string;
+}
+
 export interface GridAnalysis {
   theme: Theme;
   geo: PageGeometry;
@@ -61,19 +72,26 @@ export interface GridAnalysis {
   priceStyle: "arrow" | "plain";
   flow: FlowEntry[];
   scope: BindScope;
-  pages: 1;
+  /** multipage'de gerçek sayfa sayısı; single'da hep 1 */
+  pages: number;
+  pageIndex: number;
+  flowMode: "single" | "multipage";
+  /** yalnız devam sayfalarında dolu (pageIndex > 0) */
+  contBand: ContBand | null;
   qr: QrRender | null;
 }
 
 const CELL_PAD = 4;
 const PRICE_ROW_H = 6;
+const CONT_BAND_H = 14;
 
-export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis {
+export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0): GridAnalysis {
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const format = currentFormat(manifest, doc);
   const formatDef = (manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[format];
   const geo = pageGeometry(formatDef.w_mm, formatDef.h_mm);
+  const flowMode = String(paramValue(manifest, doc, "flow")) as "single" | "multipage";
 
   const cols = Number(paramValue(manifest, doc, "cols"));
   const showDesc = paramValue(manifest, doc, "showDesc") === true;
@@ -81,7 +99,8 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
 
   const warnings: LayoutWarning[] = [];
 
-  /* Opsiyonel QR (mimar kararı #2): alt bilgi bölgesinde kart; içerik alanı daraltılır */
+  /* Opsiyonel QR (mimar kararı #2): alt bilgi bölgesinde kart; içerik alanı daraltılır.
+     Multipage'de QR yalnız İLK sayfadadır (deterministik). */
   let qr: QrRender | null = null;
   if (paramValue(manifest, doc, "showQr") === true) {
     const source = String(paramValue(manifest, doc, "qrSource")) as QrSource;
@@ -104,15 +123,54 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
     catH_mm: CAT_STRIP_H,
   };
 
+  /* Devam sayfası: ince bant → içerik alanı daha yüksek (FAZ4 §8) */
+  const contentYCont = geo.margin + CONT_BAND_H + 4;
+  const contGeo: PageGeometry = {
+    ...geo,
+    content: { ...geo.content, y: contentYCont, h: geo.footnoteBaseline - 4 - contentYCont },
+  };
+  const contSpec: GridSpec = { ...spec, availH_mm: contGeo.content.h };
+
   const selected = resolveSelection(client.catalog, doc.selection);
   const flow = selectionFlow(selected);
-  const layout = layoutGrid(flow, spec);
-  if (layout.overflow.length > 0) {
-    warnings.push({ type: "overflow-items", count: layout.overflow.length });
+
+  let layout: GridLayout;
+  let pages = 1;
+  if (flowMode === "multipage") {
+    const paged = layoutGridPaged(flow, spec, contSpec);
+    pages = paged.length;
+    const pi = Math.min(Math.max(0, pageIndex), pages - 1);
+    layout = paged[pi];
+    pageIndex = pi;
+    /* taşma uyarısı yok: sayfa eklendi (M8) — 30 sayfa tavanı aşılırsa yine uyar */
+    if (paged[pages - 1].overflow.length > 0) {
+      warnings.push({ type: "overflow-items", count: paged[pages - 1].overflow.length });
+    }
+  } else {
+    pageIndex = 0;
+    layout = layoutGrid(flow, spec);
+    if (layout.overflow.length > 0) {
+      warnings.push({ type: "overflow-items", count: layout.overflow.length });
+    }
   }
   if (!assetById(client, chromeSlotValue("logo", doc, scope).value)) {
     warnings.push({ type: "empty-required", slotId: "logo" });
   }
+
+  /* Devam bandı içeriği (yalnız pageIndex > 0) */
+  let contBand: ContBand | null = null;
+  if (flowMode === "multipage" && pageIndex > 0) {
+    const titleVal = chromeSlotValue("title", doc, scope).value;
+    const logoAsset = assetById(client, chromeSlotValue("logo", doc, scope).value);
+    contBand = {
+      y: geo.margin,
+      h: CONT_BAND_H,
+      title: typeof titleVal === "string" && titleVal ? titleVal : client.name,
+      logoUrl: logoAsset ? logoAsset.urls.master : null,
+      pageLabel: `Page ${pageIndex + 1}/${pages}`,
+    };
+  }
+  const activeGeo = contBand ? contGeo : geo;
 
   /* Hücre içi metin/foto yerleşimi */
   const cells = new Map<string, CellLayout>();
@@ -256,9 +314,10 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
   }
 
   return {
-    theme, geo, spec, layout, cells, warnings,
+    theme, geo: activeGeo, spec, layout, cells, warnings,
     format, formatDef, cols, showDesc, priceStyle, flow, scope,
-    pages: 1,
-    qr,
+    pages, pageIndex, flowMode, contBand,
+    /* QR yalnız ilk sayfada çizilir (multipage) */
+    qr: pageIndex === 0 ? qr : null,
   };
 }

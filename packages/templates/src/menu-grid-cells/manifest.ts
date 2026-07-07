@@ -36,6 +36,14 @@ export const manifest = {
       label_tr: "Kolon sayısı",
     },
     { id: "showDesc", type: "toggle", default: true, label_tr: "Açıklamaları göster" },
+    /* FAZ4-GOREV §8: multipage → taşma uyarısı yerine sayfa eklenir (M8) */
+    {
+      id: "flow",
+      type: "choice",
+      options: ["single", "multipage"],
+      default: "single",
+      label_tr: "Sayfa akışı",
+    },
     {
       id: "priceStyle",
       type: "choice",
