@@ -37,6 +37,12 @@ function warnText(w: LayoutWarning): string {
       return `${t("editor.warn_mixed")}: ${w.categoryId}`;
     case "qr-contrast":
       return t("editor.warn_qr_contrast");
+    case "contrast":
+      return tf("editor.warn_contrast", { ratio: w.ratio });
+    case "mono-suggest":
+      return t("editor.warn_mono_suggest");
+    case "fine-detail":
+      return t("editor.warn_fine_detail");
   }
 }
 
@@ -352,6 +358,36 @@ export function EditorPage() {
 
         {entry.manifest.params.map((p) => {
           const val = paramValue(entry.manifest, doc, p.id);
+          if (p.type === "number") {
+            return (
+              <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label className="kbd-hint">{p.label_tr}</label>
+                <input
+                  type="number"
+                  value={Number(doc.params[p.id] ?? p.default)}
+                  min={p.min}
+                  max={p.max}
+                  step={p.step}
+                  style={{ width: 78, padding: "5px 6px" }}
+                  onChange={(e) =>
+                    patch({ params: { ...doc.params, [p.id]: Number(e.target.value) } })
+                  }
+                />
+              </span>
+            );
+          }
+          if (p.type === "color") {
+            return (
+              <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label className="kbd-hint">{p.label_tr}</label>
+                <input
+                  type="color"
+                  value={String(doc.params[p.id] ?? p.default)}
+                  onChange={(e) => patch({ params: { ...doc.params, [p.id]: e.target.value } })}
+                />
+              </span>
+            );
+          }
           if (p.type === "toggle") {
             return (
               <label key={p.id} className="kbd-hint" style={{ display: "flex", alignItems: "center", gap: 4 }}>

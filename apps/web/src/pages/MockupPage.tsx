@@ -36,12 +36,17 @@ export function MockupPage() {
   const entry = doc ? TEMPLATES[doc.template_id] : undefined;
 
   const geom = useMemo(() => {
-    if (!doc || !entry || !scene?.photo_px) return null;
-    const fmtId = currentFormat(entry.manifest, doc);
-    const fmt = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
-    const B = entry.manifest.bleed_mm;
-    const designW = Math.round(fmt.w_mm * MM_PX);
-    const designH = Math.round(fmt.h_mm * MM_PX);
+    if (!doc || !entry || !scene?.photo_px || !client) return null;
+    const size = entry.pageSizeMM
+      ? entry.pageSizeMM(client, doc)
+      : (() => {
+          const fmtId = currentFormat(entry.manifest, doc);
+          const fmt = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
+          return { w_mm: fmt.w_mm, h_mm: fmt.h_mm, bleed_mm: entry.manifest.bleed_mm };
+        })();
+    const B = size.bleed_mm;
+    const designW = Math.round(size.w_mm * MM_PX);
+    const designH = Math.round(size.h_mm * MM_PX);
     const pw = scene.photo_px.w || 1600;
     const ph = scene.photo_px.h || 1200;
     const dispW = Math.min(TARGET_W, pw);
@@ -52,8 +57,8 @@ export function MockupPage() {
     } catch {
       css = null;
     }
-    return { fmt, B, designW, designH, pw, ph, dispW, dispH: Math.round(ph * scale), scale, css };
-  }, [doc, entry, scene]);
+    return { B, designW, designH, pw, ph, dispW, dispH: Math.round(ph * scale), scale, css };
+  }, [doc, entry, scene, client]);
 
   useEffect(() => {
     if (!doc || !client || !scene || !geom?.css) return;

@@ -1,11 +1,13 @@
 /* Şablon-bağımsız analiz erişimi: uyarılar + sayfa sayısı (editör paneli için) */
 
 import {
+  analyzeEnseigne,
   analyzeFidelite,
   analyzeFlyer,
   analyzeGrid,
   analyzeList,
   analyzeTrifold,
+  analyzeVitro,
   type LayoutWarning,
 } from "@tezgah/templates";
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
@@ -32,6 +34,16 @@ export function analyzeDoc(client: ClientDTO, doc: DocumentState): DocAnalysis {
     case "carte-fidelite": {
       const a = analyzeFidelite(client, doc);
       return { warnings: a.warnings, pages: 2 };
+    }
+    case "vitro-bandeau":
+    case "vitro-centre":
+    case "vitro-colonne": {
+      const a = analyzeVitro(client, doc);
+      return { warnings: a.warnings, pages: 1 };
+    }
+    case "enseigne-panneau": {
+      const a = analyzeEnseigne(client, doc);
+      return { warnings: a.warnings, pages: 1 };
     }
     default: {
       const a = analyzeGrid(client, doc);

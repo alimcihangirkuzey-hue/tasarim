@@ -20,9 +20,15 @@ function DocCard({ doc, client, boxW, boxH }: {
 }) {
   const entry = TEMPLATES[doc.template_id];
   if (!entry) return null;
-  const fmtId = currentFormat(entry.manifest, doc);
-  const fmt = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
-  const B = entry.manifest.bleed_mm;
+  const size = entry.pageSizeMM
+    ? entry.pageSizeMM(client, doc)
+    : (() => {
+        const fmtId = currentFormat(entry.manifest, doc);
+        const f = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
+        return { w_mm: f.w_mm, h_mm: f.h_mm, bleed_mm: entry.manifest.bleed_mm };
+      })();
+  const fmt = size;
+  const B = size.bleed_mm;
   const scale = Math.min(boxW / fmt.w_mm, boxH / fmt.h_mm);
   return (
     <div

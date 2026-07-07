@@ -35,15 +35,22 @@ export function PrintPage() {
 
   useEffect(() => {
     if (!doc || !client || !entry) return;
-    const bleed = entry.manifest.bleed_mm;
-    const fmtId =
-      typeof doc.params["format"] === "string" && entry.manifest.formats[doc.params["format"] as string]
-        ? (doc.params["format"] as string)
-        : entry.manifest.defaultFormat;
-    const fmt = entry.manifest.formats[fmtId];
+    /* cm-bazlı tipler (vitro/tabela/garment) gerçek ölçüyü pageSizeMM'den verir */
+    const size = entry.pageSizeMM
+      ? entry.pageSizeMM(client, doc)
+      : (() => {
+          const fmtId =
+            typeof doc.params["format"] === "string" &&
+            entry.manifest.formats[doc.params["format"] as string]
+              ? (doc.params["format"] as string)
+              : entry.manifest.defaultFormat;
+          const fmt = entry.manifest.formats[fmtId];
+          return { w_mm: fmt.w_mm, h_mm: fmt.h_mm, bleed_mm: entry.manifest.bleed_mm };
+        })();
+    const bleed = size.bleed_mm;
     const pages = entry.pageCount ? entry.pageCount(client, doc) : 1;
-    const w = variant === "print" ? fmt.w_mm + 2 * bleed : fmt.w_mm;
-    const h = variant === "print" ? fmt.h_mm + 2 * bleed : fmt.h_mm;
+    const w = variant === "print" ? size.w_mm + 2 * bleed : size.w_mm;
+    const h = variant === "print" ? size.h_mm + 2 * bleed : size.h_mm;
 
     void document.fonts.ready.then(() => {
       window.__PAGE_SIZE__ = { w, h, pages };
@@ -56,7 +63,9 @@ export function PrintPage() {
   }
   if (!doc || !client || !entry) return null;
 
-  const bleed = entry.manifest.bleed_mm;
+  const bleed = entry.pageSizeMM
+    ? entry.pageSizeMM(client, doc).bleed_mm
+    : entry.manifest.bleed_mm;
   const pages = entry.pageCount ? entry.pageCount(client, doc) : 1;
 
   return (
