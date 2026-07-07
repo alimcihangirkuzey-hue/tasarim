@@ -8,6 +8,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 ### Pilot saha kayıtları (UYGULAMA YOK — kayıt biçimi: `- [YYYY-AA-GG] tek satırlık not / fikir / sürtünme`)
 - [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi.
+- [2026-07-08] Sunucular PC kapanınca duruyor; günlük başlatma sürtünmesi yaşandı — start-tezgah.bat eklendi (mimar onaylı). Kalıcı çözüm (tepsi uygulaması / otomatik başlatma) Faz 5/S adayı.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
