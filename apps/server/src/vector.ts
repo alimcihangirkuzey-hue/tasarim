@@ -1,6 +1,10 @@
 /* text→path dönüştürücü — mimar kararı #7: fontkit (woff2 doğrudan).
-   Sayfadan çıkarılan metin koşuları (tspan bazında, CTM'li) glif path'lerine
-   çevrilir; çıktı SVG'de hiçbir <text> kalmaz (découpe + broderie şartı). */
+   Sayfadan çıkarılan metin koşuları (tspan bazında) glif path'lerine çevrilir;
+   çıktı SVG'de hiçbir <text> kalmaz (découpe + broderie şartı).
+   Koşunun matrisi YEREL matristir (parentCTM⁻¹ × ownCTM): grup, metnin DOM
+   konumuna geri konduğu için ata dönüşümleri (miroir kökü, viewBox ölçeği)
+   zaten bir kez uygulanır — mutlak CTM gömmek onları ikinci kez uygular ve
+   px uzayını mm viewBox'ına taşırdı (kabul koşusunda yakalanan hata). */
 
 import path from "node:path";
 import { readFileSync } from "node:fs";
@@ -61,10 +65,11 @@ export interface TextRun {
   anchor: "start" | "middle" | "end";
   fill: string;
   letterSpacing: number; // mm
+  /** metnin KENDİ yerel dönüşümü (ata dönüşümleri hariç); çoğunlukla birim matris */
   ctm: [number, number, number, number, number, number];
 }
 
-/** Koşuyu tek <path> elemanına çevirir (baseline yerel (0,0); transform CTM+translate) */
+/** Koşuyu path grubuna çevirir (baseline yerel (0,0); transform yerelMatris+translate) */
 export function runToPath(run: TextRun): string {
   const font = pickFont(run.family, run.weight);
   const scale = run.size / font.unitsPerEm;
@@ -109,9 +114,20 @@ export const EXTRACT_TEXT_RUNS = `
     const family = cs.fontFamily;
     const weight = parseInt(cs.fontWeight) || 400;
     const fill = rgbToHex(cs.fill);
-    const ls = parseFloat((t.style.letterSpacing || "0").replace("mm", "")) || 0;
-    const ctmM = t.getCTM();
-    const ctm = [ctmM.a, ctmM.b, ctmM.c, ctmM.d, ctmM.e, ctmM.f];
+    /* letter-spacing HESAPLANMIŞ değerden: CSS "mm"/"em" tarayıcıda px'e
+       (= SVG kullanıcı birimi) çözülür; ham stil dizesini parse etmek
+       3.78× dar aralık üretiyordu (kabul koşusunda yakalandı) */
+    const ls = cs.letterSpacing === "normal" ? 0 : parseFloat(cs.letterSpacing) || 0;
+    /* YEREL matris: parentCTM⁻¹ × ownCTM — ata dönüşümlerini (miroir, viewBox
+       ölçeği) DIŞARIDA bırakır; onlar DOM konumu sayesinde zaten uygulanır */
+    const r6 = (n) => Math.round(n * 1e6) / 1e6;
+    let ctm = [1, 0, 0, 1, 0, 0];
+    const own = t.getCTM();
+    const par = t.parentNode && t.parentNode.getCTM ? t.parentNode.getCTM() : null;
+    if (own && par) {
+      const loc = par.inverse().multiply(own);
+      ctm = [r6(loc.a), r6(loc.b), r6(loc.c), r6(loc.d), r6(loc.e), r6(loc.f)];
+    }
     const baseX = parseFloat(t.getAttribute("x") || "0");
     const baseY = parseFloat(t.getAttribute("y") || "0");
     const tspans = Array.from(t.querySelectorAll("tspan"));
