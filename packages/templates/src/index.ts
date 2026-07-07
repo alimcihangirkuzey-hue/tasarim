@@ -4,6 +4,7 @@
 import type { TemplateEntry } from "./types.js";
 
 export * from "./types.js";
+export * from "./themes.js";
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   /* menu-grid-cells ve menu-liste-premium bu fazda buraya kaydolur */
