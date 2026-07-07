@@ -5,7 +5,7 @@ import {
   defaultBrandKit,
   type ClientDTO,
 } from "@tezgah/shared";
-import { analyzeVitro } from "./index.js";
+import { analyzeVitro, vitroBandeau } from "./index.js";
 import { analyzeEnseigne } from "../enseigne/index.js";
 
 function makeClient(withMono = false): ClientDTO {
@@ -68,6 +68,18 @@ describe("analyzeVitro (FAZ3-GOREV §4)", () => {
 
   it("miroir parametresi analize taşınır", () => {
     expect(analyzeVitro(makeClient(), doc({ miroir: true })).params.miroir).toBe(true);
+  });
+
+  it("pageSizeMM fiziksel sayfaya 1:10 kuralını uygular (PDF sayfa boyutu)", () => {
+    const c = makeClient();
+    /* 1:1 — 200×80 cm, bleed 3: sayfa 2000×800 mm */
+    expect(vitroBandeau.pageSizeMM!(c, doc({ w_cm: 200, h_cm: 80, bleed_mm: 3 }))).toEqual({
+      w_mm: 2000, h_mm: 800, bleed_mm: 3,
+    });
+    /* 1:10 — 600×80 cm: sayfa 600×80 mm, bleed de /10 */
+    expect(vitroBandeau.pageSizeMM!(c, doc({ w_cm: 600, h_cm: 80, bleed_mm: 5 }))).toEqual({
+      w_mm: 600, h_mm: 80, bleed_mm: 0.5,
+    });
   });
 });
 

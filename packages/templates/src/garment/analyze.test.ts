@@ -6,7 +6,7 @@ import {
   defaultCatalog,
   type ClientDTO,
 } from "@tezgah/shared";
-import { analyzeGarment } from "./index.js";
+import { analyzeGarment, garment } from "./index.js";
 
 function makeClient(withMono = true): ClientDTO {
   const kit = defaultBrandKit();
@@ -90,5 +90,15 @@ describe("analyzeGarment (FAZ3-GOREV §6)", () => {
   it("cmToPx300: 30cm → 3543 px (kabul §8/5 hedefi)", () => {
     expect(cmToPx300(30)).toBe(3543);
     expect(cmToPx300(40)).toBe(4724);
+  });
+
+  it("entry: alan başına sayfa boyutu (pageSizeMMAt) + şeffaf zemin sözleşmesi", () => {
+    const c = makeClient();
+    const d = doc({ garment_kind: "tshirt", areas: ["chest_left", "back_full"] });
+    expect(garment.pageCount!(c, d)).toBe(2);
+    /* 300 dpi PNG hedefleri bu mm'lerden türer: 10×10 cm ve 30×40 cm */
+    expect(garment.pageSizeMMAt!(c, d, 0)).toEqual({ w_mm: 100, h_mm: 100, bleed_mm: 0 });
+    expect(garment.pageSizeMMAt!(c, d, 1)).toEqual({ w_mm: 300, h_mm: 400, bleed_mm: 0 });
+    expect(garment.transparentBg).toBe(true);
   });
 });
