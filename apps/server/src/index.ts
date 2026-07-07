@@ -3,10 +3,11 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { ZodError } from "zod";
 import { migrate } from "./db.js";
-import { ASSETS_DIR } from "./paths.js";
+import { ASSETS_DIR, EXPORTS_DIR } from "./paths.js";
 import { clientRoutes } from "./routes/clients.js";
 import { assetRoutes } from "./routes/assets.js";
 import { documentRoutes } from "./routes/documents.js";
+import { exportRoutes } from "./routes/exports.js";
 
 migrate();
 
@@ -21,11 +22,18 @@ await app.register(fastifyStatic, {
   prefix: "/assets/",
 });
 
+await app.register(fastifyStatic, {
+  root: EXPORTS_DIR,
+  prefix: "/exports/",
+  decorateReply: false,
+});
+
 app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 0 }));
 
 clientRoutes(app);
 assetRoutes(app);
 documentRoutes(app);
+exportRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

@@ -87,4 +87,6 @@ export interface TemplateProps {
 export interface TemplateEntry {
   manifest: TemplateManifest;
   Component: ComponentType<TemplateProps>;
+  /** Akışlı şablonlarda toplam sayfa sayısı (yoksa 1 kabul edilir) */
+  pageCount?: (client: ClientDTO, doc: DocumentState) => number;
 }

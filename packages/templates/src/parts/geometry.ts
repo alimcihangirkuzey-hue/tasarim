@@ -46,9 +46,11 @@ export function pageGeometry(w: number, h: number): PageGeometry {
   };
 }
 
-/** Hücre satır yüksekliği: hücre genişliğinden türetilir (deterministik, ~kare hücre) */
+/** Hücre satır yüksekliği: genişlikten türetilir ama 62 mm'yi aşmaz —
+    yoksa a4-landscape 4 kolonda tek satır kalır (görsel QA bulgusu) */
 export function gridRowHeight(cellW: number): number {
-  return Math.round(cellW * 1.02 * 2) / 2; // 0.5 mm ızgarasına yuvarla
+  const ideal = Math.round(cellW * 1.02 * 2) / 2; // 0.5 mm ızgarası
+  return Math.min(62, Math.max(48, ideal));
 }
 
 export const GRID_GAP = 4;

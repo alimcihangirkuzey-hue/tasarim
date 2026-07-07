@@ -1,6 +1,7 @@
 /* menu-grid-cells bileşeni — tek render kaynağı (M3): editör "edit", PDF "print" */
 
 import type { ReactNode } from "react";
+import { estimateWidth } from "../engine/layout.js";
 import { themeStyle } from "../themes.js";
 import type { TemplateProps } from "../types.js";
 import { CropMarks, Guides, Slot, TextLines } from "../parts/svg.js";
@@ -16,12 +17,13 @@ function Cell(props: {
   h: number;
   priceStyle: "arrow" | "plain";
   weights: { heading: number; item: number };
+  priceRatio: number;
   mode: "edit" | "print";
   selectedSlot?: string | null;
   onSlotClick?: (id: string) => void;
   photoWaiting: string;
 }): ReactNode {
-  const { cell, w, h, priceStyle, weights, mode, selectedSlot, onSlotClick, photoWaiting } = props;
+  const { cell, w, h, priceStyle, weights, priceRatio, mode, selectedSlot, onSlotClick, photoWaiting } = props;
   const { item } = cell;
   const innerW = w - 2 * PAD;
 
@@ -153,11 +155,12 @@ function Cell(props: {
       {/* fiyat bloğu — alt sağ */}
       {cell.prices.map((pl, i) => {
         const y = firstPriceY + i * priceLineH;
+        const textW = estimateWidth(pl.text, priceSize, priceRatio);
         return (
           <g key={i}>
             {priceStyle === "arrow" && i === cell.prices.length - 1 && (
               <path
-                d={`M ${w - PAD - estimatePriceW(pl.text, priceSize)} ${y - priceSize * 0.62} l ${priceSize * 0.55} ${priceSize * 0.38} l ${-priceSize * 0.55} ${priceSize * 0.38} z`}
+                d={`M ${w - PAD - textW - priceSize * 0.75 - 1.2} ${y - priceSize * 0.62} l ${priceSize * 0.55} ${priceSize * 0.38} l ${-priceSize * 0.55} ${priceSize * 0.38} z`}
                 fill="var(--c-accent)"
               />
             )}
@@ -176,11 +179,6 @@ function Cell(props: {
       })}
     </Slot>
   );
-}
-
-/* fiyat metni genişliği (ok konumu için kaba, deterministik tahmin) */
-function estimatePriceW(text: string, size: number): number {
-  return text.length * size * 0.52 + 1.6;
 }
 
 export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
@@ -304,6 +302,7 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
                   h={p.h}
                   priceStyle={a.priceStyle}
                   weights={a.theme.weights}
+                  priceRatio={a.theme.ratios.item}
                   mode={mode}
                   selectedSlot={selectedSlot}
                   onSlotClick={onSlotClick}

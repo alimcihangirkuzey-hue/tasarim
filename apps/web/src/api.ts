@@ -1,4 +1,12 @@
-import type { AssetDTO, ClientDTO, ClientSummaryDTO } from "@tezgah/shared";
+import type {
+  AssetDTO,
+  ClientDTO,
+  ClientSummaryDTO,
+  DocumentDTO,
+  DocumentState,
+  DocumentSummaryDTO,
+  ExportRecordDTO,
+} from "@tezgah/shared";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -33,4 +41,25 @@ export const api = {
     fd.append("file", file);
     return http<AssetDTO>(`/api/clients/${clientId}/assets`, { method: "POST", body: fd });
   },
+
+  /* Belgeler — Faz 1 */
+  documents: (clientId: string) =>
+    http<DocumentSummaryDTO[]>(`/api/clients/${clientId}/documents`),
+  createDocument: (clientId: string, template_id: string) =>
+    http<DocumentDTO>(`/api/clients/${clientId}/documents`, {
+      method: "POST",
+      body: JSON.stringify({ template_id }),
+    }),
+  document: (id: string) => http<DocumentDTO>(`/api/documents/${id}`),
+  updateDocument: (id: string, patch: Partial<DocumentState>) =>
+    http<DocumentDTO>(`/api/documents/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
+  deleteDocument: (id: string) =>
+    http<{ ok: true }>(`/api/documents/${id}`, { method: "DELETE" }),
+  exportDocument: (id: string, warnings: unknown[] = []) =>
+    http<ExportRecordDTO[]>(`/api/documents/${id}/export`, {
+      method: "POST",
+      body: JSON.stringify({ warnings }),
+    }),
+  documentExports: (id: string) =>
+    http<ExportRecordDTO[]>(`/api/documents/${id}/exports`),
 };

@@ -63,8 +63,13 @@ export function PageChrome(props: {
 
   const interact = { mode, onSlotClick } as const;
 
-  /* Başlık: tek satır, 14→8 mm shrink; sağa yaslı */
-  const titleMaxW = w - margin - (geo.header.logo.x + geo.header.logo.w + 8);
+  const halalCx = w - margin - 7;
+  const halalCy = geo.header.y + 7;
+
+  /* Başlık: tek satır, 14→8 mm shrink; sağa yaslı.
+     Halal rozeti açıksa başlığın sağ kenarı rozetin soluna çekilir (çakışma QA bulgusu) */
+  const titleRightX = halalOn ? halalCx - 10 : w - margin;
+  const titleMaxW = titleRightX - (geo.header.logo.x + geo.header.logo.w + 8);
   const titleText = theme.uppercaseHeading ? title.str.toLocaleUpperCase("fr-FR") : title.str;
   const titleFit = solveFontScale({
     min: 8,
@@ -72,9 +77,6 @@ export function PageChrome(props: {
     fits: (f) => estimateWidth(titleText, f, theme.ratios.heading) <= titleMaxW,
   });
   const titleBaseline = geo.header.y + geo.header.h - 7;
-
-  const halalCx = w - margin - 7;
-  const halalCy = geo.header.y + 7;
 
   return (
     <g>
@@ -133,7 +135,7 @@ export function PageChrome(props: {
           >
             <TextLines
               lines={titleText ? [titleText] : []}
-              x={w - margin}
+              x={titleRightX}
               y={titleBaseline}
               lineH={titleFit.font_mm * 1.1}
               font="var(--f-heading)"
@@ -192,7 +194,7 @@ export function PageChrome(props: {
               size={4}
               fill="var(--c-heading)"
               weight={theme.weights.item}
-              letterSpacing={0.25}
+              letterSpacing={0.12}
             />
           )}
           {client.brandkit.slogan_fr && (
