@@ -9,3 +9,4 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] Vitest birim testleri, binding motoruyla birlikte gelecek → Faz 1 (§12)
 - [ ] Müşteri silme geri alınamaz; şimdilik confirm() ile korunuyor, ileride "arşivle" düşünülebilir
 - [ ] Asset silme endpoint'i yok (yalnızca müşteriyle birlikte silinir) → Faz 1
+- [ ] npm audit: 3 zafiyet (2 orta, 1 yüksek) — @fastify/static 8.x (path traversal, GHSA-pr96-94w5-mx2h) ve vite 5/esbuild (dev server, GHSA-67mh-4wv8-2f99). Düzeltme major sürüm ister (@fastify/static 9, vite 8); sunucu yalnız 127.0.0.1 dinlediği için risk lokal-düşük → faz arasında sürüm yükseltme işi olarak ele al
