@@ -60,6 +60,8 @@ const MIGRATIONS: string[] = [
     created_at    TEXT NOT NULL
   );
   `,
+  // v2 — Faz 1: müşteri bazında para birimi (FAZ1-GOREV §2.1)
+  `ALTER TABLE clients ADD COLUMN currency TEXT NOT NULL DEFAULT 'EUR';`,
 ];
 
 export function migrate(): void {

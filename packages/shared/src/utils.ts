@@ -1,13 +1,16 @@
 /* Tekil yardımcılar — CONSTITUTION §10 */
 
+import type { Currency } from "./schemas.js";
+
 const fmt = new Intl.NumberFormat("fr-FR", {
   style: "currency",
   currency: "EUR",
   minimumFractionDigits: 2,
 });
 
-/** 7.5 -> "7,50 €" (FR yereli, M9) */
-export function formatPrice(value: number): string {
+/** EUR: 7.5 -> "7,50 €" (fr-FR, M9) · CHF: 22 -> "22.00" (nokta ondalık, sembolsüz — FAZ1-GOREV §2.2) */
+export function formatPrice(value: number, currency: Currency = "EUR"): string {
+  if (currency === "CHF") return value.toFixed(2);
   return fmt.format(value).replace(/\u00a0/g, " ");
 }
 

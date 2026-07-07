@@ -34,9 +34,9 @@ app.setErrorHandler((err, _req, reply) => {
     });
   }
   app.log.error(err);
-  return reply
-    .code(err.statusCode ?? 500)
-    .send({ error: "internal", message: err.message });
+  const e = err instanceof Error ? err : new Error(String(err));
+  const status = (e as { statusCode?: number }).statusCode ?? 500;
+  return reply.code(status).send({ error: "internal", message: e.message });
 });
 
 const PORT = Number(process.env.PORT ?? 3001);

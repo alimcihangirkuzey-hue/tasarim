@@ -8,6 +8,10 @@ export const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir hex renk olmalı (#RRGGBB)");
 
+/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri) */
+export const CurrencySchema = z.enum(["EUR", "CHF"]);
+export type Currency = z.infer<typeof CurrencySchema>;
+
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
   value: z.number().nonnegative(),
@@ -29,6 +33,7 @@ export type Item = z.infer<typeof ItemSchema>;
 export const CategorySchema = z.object({
   id: z.string(),
   name_fr: z.string().min(1),
+  note_fr: z.string().optional(), // başlık altı küçük not — FAZ1-GOREV §2.3
   order: z.number().int().default(0),
   items: z.array(ItemSchema).default([]),
 });
@@ -135,6 +140,7 @@ export interface ClientDTO {
   name: string;
   slug: string;
   notes: string;
+  currency: Currency;
   brandkit: BrandKit;
   catalog: Catalog;
   assets: AssetDTO[];
@@ -150,6 +156,7 @@ export const ClientCreateSchema = z.object({
 export const ClientUpdateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   notes: z.string().max(4000).optional(),
+  currency: CurrencySchema.optional(),
   brandkit: BrandKitSchema.optional(),
   catalog: CatalogSchema.optional(),
 });
