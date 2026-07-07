@@ -9,10 +9,11 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **QR online sipariş:** mevcut `delivery[]` şemasından beslenir (CONSTITUTION §10 ile birlikte).
 
 ## Faz 1 sırasında düşülen notlar
-- [ ] **QR slotları Faz 2'ye bırakıldı (çelişki çözümü):** FAZ1-GOREV §4/§5 sabit slot listesinde "opsiyonel QR" geçiyor, ancak CONSTITUTION §13 "QR slotları"nı Faz 2 kapsamına koyuyor. FAZ1-GOREV §0.6 "çelişkide CONSTITUTION kazanır" dediği için QR bu fazda uygulanmadı → Faz 2'de `qrcode` ile SVG üretimi (CONSTITUTION §10). Mimar farklı isterse bildirsin.
-- [ ] Proje yönetimi arayüzü yok; ilk belgede müşteri başına "Genel" projesi otomatik açılıyor (en basit çözüm, §0.6) → Faz 2 ("açılış paketi tek projede")
-- [ ] Liste şablonu dekor foto slotları (deco1-3) "kategori bloklarının yanına" yerine deterministik **alt bant** olarak yerleştirildi (tek sütunda yan boşluk yok; en basit çözüm §0.6) → mimar onayına sunulacak
-- [ ] Belgelerde ad kolonu yok (şablon adı + tarih gösteriliyor); istenirse Faz 2'de `documents.name` migration'ı
+- [x] **QR slotları — MİMAR KARARI (Faz 1 kabulünde):** QR Faz 2'de kalır; Faz 2'de `qrcode`→SVG altyapısıyla birlikte **menü şablonlarına da opsiyonel slot olarak eklenir** (FAZ2-GOREV §5, mimar kararı #2). Çelişki kapandı.
+- [ ] Proje yönetimi arayüzü yok; ilk belgede müşteri başına "Genel" projesi otomatik açılıyor (en basit çözüm, §0.6) → Faz 2 Sipariş Defteri bunu üstleniyor
+- [x] **Dekor foto alt bandı — MİMAR KARARI (Faz 1 kabulünde):** liste şablonundaki deterministik alt bant yerleşimi **kabul edildi**; yeniden konumlama yok.
+- [ ] Belgelerde ad kolonu yok (şablon adı + tarih gösteriliyor); istenirse ileride `documents.name` migration'ı
+- [x] **Test müşterileri — KULLANICI KARARI:** "ARAS Grill Lyon" ve "Basel Kebap Haus" demo/test verisi olarak `data/`'da KALIR; silinmeyecek.
 
 ## Faz 0 sonrası bilinen sınırlar
 - [ ] Ortak fotoğraf havuzu (assets.client_id = NULL) şemada hazır, arayüzü yok → Faz 1/2 (CONSTITUTION §15/S3)
