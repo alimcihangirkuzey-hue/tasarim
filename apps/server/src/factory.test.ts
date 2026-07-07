@@ -93,6 +93,19 @@ describe("şablon fabrikası kod üreticisi", () => {
     ).toMatch(/script/);
   });
 
+  it("yön=column: hücreler sütun sütun akar (rowsPerCol mantığı)", () => {
+    const input = makeInput();
+    input.proto!.yon = "column";
+    const t = generateTemplateTsx(input);
+    expect(t).toContain("Math.floor(i / rowsPerCol)");
+    expect(t).toContain("i % rowsPerCol");
+    expect(t).toContain("sütun sütun");
+    /* row yönünde ise tersi */
+    const r = generateTemplateTsx(makeInput());
+    expect(r).toContain("i % PROTO.cols");
+    expect(r).toContain("satır satır");
+  });
+
   it("barrel deterministik ve sıralı", () => {
     const b = generateBarrel(["z-son", "a-ilk"]);
     expect(b.indexOf(`"a-ilk"`)).toBeLessThan(b.indexOf(`"z-son"`));

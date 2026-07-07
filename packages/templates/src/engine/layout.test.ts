@@ -10,6 +10,7 @@ import {
   wrapText,
   type FlowBlock,
   type GridSpec,
+  layoutGridPaged,
 } from "./layout.js";
 
 /* ---- yardımcı test verisi ---- */
@@ -153,6 +154,33 @@ describe("layoutGrid — shrink-then-warn geometrisi (M8, kabul §7/6)", () => {
     const layout = layoutGrid(flowOf(["cat", 0], ["items", 0, 3]), tight);
     expect(layout.placed).toHaveLength(0);
     expect(layout.overflow).toHaveLength(3);
+  });
+
+  it("layoutGridPaged (FAZ4 §8): bölünen kategorinin şeridi devam sayfasında yeniden konur; toplam korunur", () => {
+    /* sayfa başına 2 satır × 3 kolon = 6 hücre: 10 ürün → s1: şerit+6, s2: şerit+4 */
+    const twoRows: GridSpec = { ...spec, availH_mm: 150 }; /* 12+4+60+4+60=140 ≤ 150 */
+    const pages = layoutGridPaged(flowOf(["cat", 0], ["items", 0, 10]), twoRows, twoRows);
+    expect(pages).toHaveLength(2);
+    expect(pages[0].placed.filter((p) => p.kind === "cell")).toHaveLength(6);
+    /* devam sayfası: şerit YENİDEN konur (asılı ürün yok) */
+    expect(pages[1].placed.filter((p) => p.kind === "category")).toHaveLength(1);
+    expect(pages[1].placed.filter((p) => p.kind === "cell")).toHaveLength(4);
+    const all = pages.flatMap((pg) => pg.placed.filter((p) => p.kind === "cell"));
+    expect(all).toHaveLength(10);
+    expect(pages[1].overflow).toHaveLength(0);
+  });
+
+  it("layoutGridPaged: ilk/devam spec farkı sayfa kapasitesini değiştirir; determinizm", () => {
+    const first: GridSpec = { ...spec, availH_mm: 80 };  /* 1 satır: şerit+3 */
+    const cont: GridSpec = { ...spec, availH_mm: 150 };  /* 2 satır */
+    const flow = flowOf(["cat", 0], ["items", 0, 12]);
+    const a = layoutGridPaged(flow, first, cont);
+    const b = layoutGridPaged(flow, first, cont);
+    expect(a.map((pg) => pg.placed.length)).toEqual(b.map((pg) => pg.placed.length));
+    expect(a[0].placed.filter((p) => p.kind === "cell")).toHaveLength(3);
+    expect(a[1].placed.filter((p) => p.kind === "cell")).toHaveLength(6);
+    expect(a[2].placed.filter((p) => p.kind === "cell")).toHaveLength(3);
+    expect(a).toHaveLength(3);
   });
 });
 

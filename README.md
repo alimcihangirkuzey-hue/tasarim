@@ -4,11 +4,13 @@ Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sis
 Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
 detayları: **FAZ1-GOREV.md**.
 
-**Mevcut durum: Faz 3 — Mockup Motoru + Büyük Format** (Faz 2 üzerine:
-quad-warp mockup motoru + sahne editörü (müşteri|ortak), vitrophanie 3 varyant +
-miroir + découpe SVG'de text→path (fontkit), tabela + kontrast bekçisi, tişört/önlük
-belge tipi (300 dpi alfa PNG / broderie SVG + Fiş PDF'i), 1:10 büyük format kuralı,
-sunumda "Mise en situation" mockup sayfaları). Faz 3 tasarım detayları: **FAZ3-GOREV.md**.
+**Mevcut durum: Faz 4 — Şablon Fabrikası + Verimlilik** (Faz 2 üzerine:
+Faz 3 üzerine:
+şablon fabrikası (SVG import + slot işaretleme → src/generated kod üretimi),
+tema kütüphanesi (özel temalar + canlı önizleme), toplu fiyat + katalog geçmişi,
+snapshot geri yükleme, zip yedek, grid çok-sayfa akışı, foto önerisi + etiketler,
+parse sözlüğü yönetimi, asset silme + Açılış Takımı preseti, CMYK opsiyonu,
+letterSpacing motor düzeltmesi (mimar #10). Faz 4 detayları: **FAZ4-GOREV.md**.
 
 ## Gereksinimler
 
@@ -27,6 +29,31 @@ API sağlık kontrolü: http://localhost:3001/api/health
 
 Veriler `data/` klasöründe yaşar (SQLite + görseller). **Yedek = bu klasörü kopyalamak.**
 `data/` git'e girmez.
+
+## Faz 4 el testi (kabul senaryosu — FAZ4-GOREV §14)
+
+1. Üst barda **Ayarlar** → Temalar: yeni tema türet (renk/font), canlı önizleme gerçek
+   grid şablonu; kaydet → editör tema listesinde ★ ile görünür; yerleşikler silinemez.
+2. Katalog → **Toplu güncelle**: "%5 + X,90" önizleme tablosu (eski→yeni) → Uygula;
+   Geçmiş sekmesinden geri yükle → fiyatlar birebir döner.
+3. Editör Geçmiş → **⤺ Bu versiyona dön**: belge eski duruma döner; dönüş öncesi
+   "güvenlik kaydı (dönüş öncesi)" satırı düşer.
+4. Üst barda **Yedek al** → tezgah-yedek-*.zip iner (app.db + assets + exports).
+5. Grid belgede **Sayfa akışı: multipage** + büyük katalog → sayfa sekmeleri; devam
+   sayfaları ince bantlı ("Page N/M"); PDF sayfa sayısı editörle aynı; taşma uyarısı yok.
+6. Görseller sekmesinde fotoğrafa **etiket** yaz (ör. "adana") → fotosuz "Assiette
+   Adana" ürününde editör eksik-foto panelinde **Öneri — bağla** çipi → tek tık bağlar.
+7. Ayarlar → Parse Sözlüğü: "cephe → tabela" ekle → Sipariş yapıştır'da "ürün: cephe
+   panosu" artık Tabela çözülür (aynı oturumda).
+8. Görselde ✕: kullanılan foto silinemez (nerede kullanıldığı listelenir); kullanılmayan
+   silinir (orig/master/thumb üçü de).
+9. Müşteri genel sekmesinde **📦 Açılış Takımı oluştur** → proje + 4 kalem
+   (vitrophanie ölçü bekliyor).
+10. Ayarlar → **Şablon Fabrikası**: `packages/templates/test-assets/factory-sample.svg`
+    yükle → başlık/logo/halal/tel/saat/dipnot slotlarını işaretle → proto hücrede
+    name/price/photo eşle → Üret → yeni şablonla belge aç, katalog verisi dolar (≤10 dk).
+11. Editörde **Print (CMYK)**: Ghostscript kuruluysa aktif (son print PDF'ten
+    _print-cmyk.pdf); değilse pasif + kurulum ipucu.
 
 ## Faz 3 el testi (kabul senaryosu — FAZ3-GOREV §8)
 

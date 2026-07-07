@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, dueLevel, missingFields, needsMiroirWarning } from "./orders.js";
+import {
+  OPENING_KIT, canTransition, dueLevel, missingFields, needsMiroirWarning } from "./orders.js";
 import type { OrderItemLike } from "./orders.js";
 
 const base = (p: Partial<OrderItemLike>): OrderItemLike => ({
@@ -93,5 +94,18 @@ describe("dueLevel (termin vurgusu §2.3)", () => {
     expect(dueLevel("2026-07-09", today)).toBe("yellow");
     expect(dueLevel("2026-07-20", today)).toBe("none");
     expect(dueLevel(null, today)).toBe("none");
+  });
+});
+
+describe("OPENING_KIT preseti (FAZ4 §11)", () => {
+  it("4 kalem: menü a3 + flyer 21x21 + fidelite + ölçüsüz vitrophanie", () => {
+    expect(OPENING_KIT.name_tr).toBe("Açılış Takımı");
+    expect(OPENING_KIT.items.map((i) => i.product_type)).toEqual([
+      "menu", "flyer", "fidelite", "vitrophanie",
+    ]);
+    expect(OPENING_KIT.items[0].details).toEqual({ format: "a3" });
+    expect(OPENING_KIT.items[1].details).toEqual({ format: "21x21" });
+    /* vitrophanie ölçüsüz gelir → olcu_bekliyor kırmızı rozet akışı */
+    expect(OPENING_KIT.items[3].details).toBeUndefined();
   });
 });

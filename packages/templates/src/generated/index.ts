@@ -4,5 +4,8 @@
    ezilir. Üretilen şablon klasörleri (generated/<id>/) elle rafine EDİLEBİLİR. */
 
 import type { TemplateEntry } from "../types.js";
+import { entry as g0 } from "./kabul-fabrika/index.js";
 
-export const GENERATED: Record<string, TemplateEntry> = {};
+export const GENERATED: Record<string, TemplateEntry> = {
+  "kabul-fabrika": g0,
+};
