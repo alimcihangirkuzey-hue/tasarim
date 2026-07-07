@@ -15,6 +15,7 @@ import { sceneRoutes } from "./routes/scenes.js";
 import { mockupRoutes } from "./routes/mockup.js";
 import { vectorRoutes } from "./routes/vector.js";
 import { garmentRoutes } from "./routes/garment.js";
+import { catalogRoutes } from "./routes/catalog.js";
 
 migrate();
 
@@ -48,6 +49,7 @@ sceneRoutes(app);
 mockupRoutes(app);
 vectorRoutes(app);
 garmentRoutes(app);
+catalogRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

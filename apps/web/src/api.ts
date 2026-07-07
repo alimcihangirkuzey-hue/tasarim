@@ -157,6 +157,22 @@ export const api = {
       body: "{}",
     }),
 
+  /* Toplu fiyat + katalog geçmişi — Faz 4 §4 */
+  bulkPrice: (clientId: string, op: import("@tezgah/shared").BulkPriceOp) =>
+    http<{ applied: number; changes: import("@tezgah/shared").PriceChange[] }>(
+      `/api/clients/${clientId}/catalog/bulk-price`,
+      { method: "POST", body: JSON.stringify(op) }
+    ),
+  catalogHistory: (clientId: string) =>
+    http<Array<{ id: string; reason: string; created_at: string; size: number }>>(
+      `/api/clients/${clientId}/catalog/history`
+    ),
+  catalogRestore: (clientId: string, historyId: string) =>
+    http<{ ok: true; restored_from: string }>(
+      `/api/clients/${clientId}/catalog/restore/${historyId}`,
+      { method: "POST", body: "{}" }
+    ),
+
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>
     http<{ id: string; cloned_documents: number }>(`/api/clients/${id}/clone`, {

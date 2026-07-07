@@ -1,6 +1,11 @@
 {
-  "app": { "title": "TEZGÂH", "subtitle": "Atölye otomasyonu · Faz 3" },
-  "nav": { "clients": "Müşteriler" },
+  "app": {
+    "title": "TEZGÂH",
+    "subtitle": "Atölye otomasyonu · Faz 3"
+  },
+  "nav": {
+    "clients": "Müşteriler"
+  },
   "clients": {
     "new_placeholder": "Yeni müşteri adı (ör. Antalya Kebab — Lyon)",
     "add": "Ekle",
@@ -262,5 +267,31 @@
     "up": "↑",
     "down": "↓",
     "close": "Kapat"
+  },
+  "bulk": {
+    "open": "Toplu güncelle",
+    "title": "Toplu fiyat güncelleme",
+    "tab_update": "Güncelle",
+    "tab_history": "Geçmiş",
+    "scope": "Kapsam",
+    "scope_all": "Tüm katalog",
+    "op": "İşlem",
+    "op_percent": "+% artış",
+    "op_add": "+ sabit tutar",
+    "op_set": "değer ata",
+    "rounding": "Yuvarlama",
+    "round_none": "Yok",
+    "no_changes": "Bu ayarlarla değişecek fiyat yok.",
+    "col_item": "Ürün",
+    "col_variant": "Varyant",
+    "col_before": "Eski",
+    "col_after": "Yeni",
+    "count": "{n} fiyat değişecek",
+    "apply": "Uygula",
+    "save_first": "Önce taslağı kaydet (Ctrl+S)",
+    "history_empty": "Henüz geçmiş kaydı yok.",
+    "history_manual": "kayıt",
+    "restore": "Geri yükle",
+    "restore_confirm": "Katalog bu kayda dönecek; mevcut durum da geçmişe yazılacak. Devam?"
   }
 }

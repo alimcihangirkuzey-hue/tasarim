@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { newId, type Catalog, type Category, type ClientDTO, type Item } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
+import { BulkPriceModal } from "./BulkPriceModal";
 
 function moveIn<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
@@ -95,9 +96,12 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
   const assetThumb = (id: string | null) =>
     id ? client.assets.find((a) => a.id === id)?.urls.thumb ?? null : null;
 
+  const [showBulk, setShowBulk] = useState(false);
+
   return (
     <>
       <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
+      {showBulk && <BulkPriceModal client={client} onClose={() => setShowBulk(false)} />}
 
       <div className="row" style={{ marginTop: 14 }}>
         <button
@@ -113,6 +117,14 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
           }
         >
           + {t("catalog.add_category")}
+        </button>
+        <button
+          className="ghost"
+          disabled={dirty}
+          title={dirty ? t("bulk.save_first") : undefined}
+          onClick={() => setShowBulk(true)}
+        >
+          {t("bulk.open")}
         </button>
         <span className="spacer" style={{ flex: 1 }} />
         {dirty && <span className="pill warn">{t("catalog.unsaved")}</span>}
