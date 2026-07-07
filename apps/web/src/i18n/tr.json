@@ -1,0 +1,31 @@
+{
+  "app": { "title": "TEZGÂH", "subtitle": "Atölye otomasyonu · Faz 0" },
+  "nav": { "clients": "Müşteriler" },
+  "clients": {
+    "new_placeholder": "Yeni müşteri adı (ör. Antalya Kebab — Lyon)",
+    "add": "Ekle",
+    "empty": "Henüz müşteri yok. Yukarıdan ilk müşterini ekle.",
+    "count": "müşteri"
+  },
+  "client": {
+    "name": "İşletme adı",
+    "notes": "Notlar",
+    "notes_placeholder": "Sipariş notları, tercih edilen matbaa, teslim bilgisi...",
+    "save": "Kaydet",
+    "saved": "Kaydedildi",
+    "logo": "Logo",
+    "no_logo": "Henüz logo yüklenmedi",
+    "upload_logo": "Logo yükle",
+    "upload_photo": "Fotoğraf yükle",
+    "assets": "Görseller",
+    "no_assets": "Henüz görsel yok.",
+    "delete": "Müşteriyi sil",
+    "delete_confirm": "Bu müşteri, tüm görselleri ve gelecekte belgeleriyle birlikte kalıcı olarak silinecek. Emin misin?",
+    "back": "← Müşteriler"
+  },
+  "common": {
+    "loading": "Yükleniyor...",
+    "error": "Bir şeyler ters gitti",
+    "uploading": "Yükleniyor..."
+  }
+}
