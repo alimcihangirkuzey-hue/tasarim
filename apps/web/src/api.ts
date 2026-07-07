@@ -43,9 +43,15 @@ export const api = {
   ) => http<ClientDTO>(`/api/clients/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
   deleteClient: (id: string) =>
     http<{ ok: true }>(`/api/clients/${id}`, { method: "DELETE" }),
-  uploadAsset: (clientId: string, file: File, kind: "logo" | "photo") => {
+  uploadAsset: (
+    clientId: string,
+    file: File,
+    kind: "logo" | "photo",
+    scope: "client" | "common" = "client"
+  ) => {
     const fd = new FormData();
     fd.append("kind", kind); // ÖNEMLİ: alanlar dosyadan ÖNCE eklenmeli (multipart akış sırası)
+    fd.append("scope", scope);
     fd.append("file", file);
     return http<AssetDTO>(`/api/clients/${clientId}/assets`, { method: "POST", body: fd });
   },

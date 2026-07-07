@@ -135,6 +135,12 @@
     "on": "Açık",
     "off": "Kapalı"
   },
+  "assets": {
+    "tab_client": "Müşteri",
+    "tab_common": "Ortak havuz",
+    "scope_client": "Bu müşteriye",
+    "scope_common": "Ortak havuza"
+  },
   "missing": {
     "title": "Eksik fotoğraflar ({n})",
     "copy": "Talep metnini kopyala",

@@ -43,8 +43,9 @@ export function ClientDetailPage() {
     onSuccess: invalidate,
   });
 
+  const [scope, setScope] = useState<"client" | "common">("client");
   const upload = useMutation({
-    mutationFn: (file: File) => api.uploadAsset(id, file, "photo"),
+    mutationFn: (file: File) => api.uploadAsset(id, file, "photo", scope),
     onSuccess: invalidate,
   });
 
@@ -135,6 +136,10 @@ export function ClientDetailPage() {
         <div className="panel">
           <h2>{t("client.assets")}</h2>
           <div className="row">
+            <select value={scope} onChange={(e) => setScope(e.target.value as "client" | "common")}>
+              <option value="client">{t("assets.scope_client")}</option>
+              <option value="common">{t("assets.scope_common")}</option>
+            </select>
             <button className="ghost" onClick={() => photoInput.current?.click()} disabled={upload.isPending}>
               {upload.isPending ? t("common.uploading") : t("client.upload_photo")}
             </button>
@@ -147,15 +152,32 @@ export function ClientDetailPage() {
             />
             {upload.isError && <span className="error">{(upload.error as Error).message}</span>}
           </div>
-          {data.assets.length === 0 ? (
-            <p className="muted">{t("client.no_assets")}</p>
-          ) : (
-            <div className="thumbs">
-              {data.assets.map((a) => (
-                <img key={a.id} src={a.urls.thumb} alt={a.kind} title={`${a.width_px}×${a.height_px}px · ${a.kind}`} />
-              ))}
-            </div>
-          )}
+          {(["client", "common"] as const).map((sc) => {
+            const list = data.assets.filter((a) =>
+              sc === "client" ? a.client_id !== null : a.client_id === null
+            );
+            return (
+              <div key={sc}>
+                <h2 style={{ marginTop: 10 }}>
+                  {sc === "client" ? t("assets.tab_client") : t("assets.tab_common")}
+                </h2>
+                {list.length === 0 ? (
+                  <p className="muted">{t("client.no_assets")}</p>
+                ) : (
+                  <div className="thumbs">
+                    {list.map((a) => (
+                      <img
+                        key={a.id}
+                        src={a.urls.thumb}
+                        alt={a.kind}
+                        title={`${a.width_px}×${a.height_px}px · ${a.kind}${a.client_id === null ? " · ortak" : ""}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </>

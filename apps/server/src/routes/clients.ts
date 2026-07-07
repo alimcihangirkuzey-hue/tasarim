@@ -65,8 +65,12 @@ function uniqueSlug(name: string): string {
 }
 
 function clientAssets(clientId: string): AssetDTO[] {
+  /* Ortak havuz (client_id NULL) her müşterinin seçicilerinde görünür (FAZ2-GOREV §4);
+     binding assetById de böylece ortak fotoğrafları çözer */
   const rows = db
-    .prepare("SELECT * FROM assets WHERE client_id = ? ORDER BY created_at DESC")
+    .prepare(
+      "SELECT * FROM assets WHERE client_id = ? OR client_id IS NULL ORDER BY created_at DESC"
+    )
     .all(clientId) as AssetRow[];
   return rows.map(assetToDTO);
 }
