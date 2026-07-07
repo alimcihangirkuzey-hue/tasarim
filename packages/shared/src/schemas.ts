@@ -115,6 +115,8 @@ export type DocumentState = z.infer<typeof DocumentStateSchema>;
 
 export const DocumentCreateSchema = z.object({
   template_id: z.string().min(1),
+  /** Belge bu projeye açılır (Tasarıma başla — FAZ2-GOREV §2.5); yoksa varsayılan proje */
+  project_id: z.string().optional(),
 });
 
 /** Kısmi güncelleme: editör otomatik kaydı (2 sn debounce) bu şemayla doğrulanır */

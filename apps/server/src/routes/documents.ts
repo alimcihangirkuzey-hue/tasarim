@@ -102,11 +102,21 @@ export function documentRoutes(app: FastifyInstance): void {
     if (!client) return reply.code(404).send({ error: "client_not_found" });
 
     const body = DocumentCreateSchema.parse(req.body ?? {});
+    let projectId: string;
+    if (body.project_id) {
+      const proj = db
+        .prepare("SELECT id FROM projects WHERE id = ? AND client_id = ?")
+        .get(body.project_id, client.id);
+      if (!proj) return reply.code(404).send({ error: "project_not_found" });
+      projectId = body.project_id;
+    } else {
+      projectId = ensureDefaultProject(client.id);
+    }
     const state = DocumentStateSchema.parse({ template_id: body.template_id });
     const now = nowISO();
     const row: DocumentRow = {
       id: newId("doc"),
-      project_id: ensureDefaultProject(client.id),
+      project_id: projectId,
       template_id: state.template_id,
       params_json: JSON.stringify(state.params),
       theme_id: state.theme_id,
