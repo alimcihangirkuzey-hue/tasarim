@@ -5,6 +5,15 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
+- [ ] **Faz S ön koşulu: güvenlik yükseltme turu (mimar kararı #11):** npm audit'in major yükseltmeleri (vite 8, @fastify/static 9 vb.) SaaS'a çıkmadan ZORUNLU; v1'de yapılmama gerekçesi local-first + yalnız 127.0.0.1 dinleme.
+
+## Faz 5'e kayıt (FAZ4-GOREV §15 — uygulama YOK, yalnızca not)
+- [ ] QR dijital menü statik HTML export'u.
+- [ ] Çoklu-yüzey sahne (tek fotoda N quad kolajı).
+- [ ] Arka plan silme entegrasyonu (lokal rembg veya dış API — ADR-7).
+- [ ] FR açıklama önerileri (Claude API, opsiyonel/internetli).
+- [ ] AI destekli foto eşleme.
+- [ ] Preset yönetim arayüzü (Faz S).
 
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
@@ -26,7 +35,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Zip yedek:** data/ klasörünü tek tıkla arşivle (M7).
 - [ ] **Parse sözlüğü yönetim arayüzü:** PRODUCT_DICT / KEY_ALIASES'ı UI'dan genişlet.
 - [ ] **İki kademeli broderie uyarısı (mimar kararı #8):** kural doğru ("broderie + kısa kenar < 15 cm" güçlü uyarı; bavette'te çıkmaz — kabul 6 örneği mimar hatasıydı, davranış değişmedi). Faz 4'te değerlendirilecek: her broderie belgesinde hafif bilgi notu + <15 cm alanda mevcut güçlü uyarı.
-- [ ] **TextLines letterSpacing birim düzeltmesi (mimar kararı #9):** tarayıcı CSS `"Nmm"`'yi SVG kullanıcı birimine 3,78× büyüterek çözüyor (CSS mm ≠ viewBox mm). Reçete: motorda birim yorumu düzeltilir **VE** mevcut şablonlardaki tüm yazar değerleri 3,78'e bölünerek görünüm birebir korunur; **önce/sonra ekran karşılaştırma kanıtı zorunlu** (Faz 1-2 onaylı görseller değişmemeli). Faz 3 kapanışında yalnız vitro-bandeau saat satırının yazar değeri küçültüldü (fs() min-8 kıskacı kaldırılıp oransal 0.006×min değerine dönüldü; motora dokunulmadı).
+- [ ] **TextLines letterSpacing birim düzeltmesi (mimar #9, yönü #10 ile düzeltildi — Faz 4/F4-2'de uygulanıyor):** motor letterSpacing'i birimsiz kullanıcı birimi (1 birim = 1 mm) yazar; mevcut mm-tabanlı yazar değerleri **3,7795 ile çarpılır** (em-tabanlılar dönüşüm dışı — #10 uygulama notu); katsayı/yön canlı ölçümle teyit, önce/sonra piksel kanıtı zorunlu.
 
 ## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulandı ✓)
 - [x] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; küçük alan + broderie'de ince-detay uyarısı.
@@ -54,4 +63,4 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] Vitest birim testleri, binding motoruyla birlikte gelecek → Faz 1 (§12)
 - [ ] Müşteri silme geri alınamaz; şimdilik confirm() ile korunuyor, ileride "arşivle" düşünülebilir
 - [ ] Asset silme endpoint'i yok (yalnızca müşteriyle birlikte silinir) → Faz 1
-- [ ] npm audit: 3 zafiyet (2 orta, 1 yüksek) — @fastify/static 8.x (path traversal, GHSA-pr96-94w5-mx2h) ve vite 5/esbuild (dev server, GHSA-67mh-4wv8-2f99). Düzeltme major sürüm ister (@fastify/static 9, vite 8); sunucu yalnız 127.0.0.1 dinlediği için risk lokal-düşük → faz arasında sürüm yükseltme işi olarak ele al
+- [ ] npm audit: 3 zafiyet (2 orta, 1 yüksek) — @fastify/static 8.x (path traversal, GHSA-pr96-94w5-mx2h) ve vite 5/esbuild (dev server, GHSA-67mh-4wv8-2f99). Düzeltme major sürüm ister (@fastify/static 9, vite 8); sunucu yalnız 127.0.0.1 dinlediği için risk lokal-düşük → **mimar kararı #11:** fazlarda yapılmaz, "Faz S ön koşulu: güvenlik yükseltme turu" kaydına bağlandı
