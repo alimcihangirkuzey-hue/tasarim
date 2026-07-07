@@ -130,6 +130,21 @@ export const api = {
   reveal: (filepath: string) =>
     http<{ ok: true }>("/api/reveal", { method: "POST", body: JSON.stringify({ filepath }) }),
 
+  /* Mockup sahneleri — Faz 3 */
+  clientScenes: (clientId: string) =>
+    http<import("@tezgah/shared").MockupSceneDTO[]>(`/api/clients/${clientId}/scenes`),
+  createScene: (clientId: string, body: unknown) =>
+    http<import("@tezgah/shared").MockupSceneDTO>(`/api/clients/${clientId}/scenes`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateScene: (id: string, body: unknown) =>
+    http<import("@tezgah/shared").MockupSceneDTO>(`/api/scenes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  deleteScene: (id: string) => http<{ ok: true }>(`/api/scenes/${id}`, { method: "DELETE" }),
+
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>
     http<{ id: string; cloned_documents: number }>(`/api/clients/${id}/clone`, {

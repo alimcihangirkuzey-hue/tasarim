@@ -8,8 +8,9 @@ import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
 import { ProjectsPanel } from "../components/ProjectsPanel";
+import { ScenesPanel } from "../components/ScenesPanel";
 
-type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "assets";
+type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "scenes" | "assets";
 
 export function ClientDetailPage() {
   const { id = "" } = useParams();
@@ -72,6 +73,7 @@ export function ClientDetailPage() {
     ["brandkit", t("client.tab_brandkit")],
     ["catalog", t("client.tab_catalog")],
     ["documents", t("client.tab_documents")],
+    ["scenes", t("scenes.tab")],
     ["assets", t("client.tab_assets")],
   ];
 
@@ -149,6 +151,7 @@ export function ClientDetailPage() {
       {tab === "brandkit" && <BrandKitPanel client={data} />}
       {tab === "catalog" && <CatalogPanel client={data} />}
       {tab === "documents" && <DocumentsPanel client={data} />}
+      {tab === "scenes" && <ScenesPanel client={data} />}
 
       {tab === "assets" && (
         <div className="panel">
