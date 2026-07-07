@@ -134,7 +134,14 @@
     "dropped_overrides": "Şablon değişti; uyumsuz override'lar düştü: {list}",
     "value": "Değer",
     "on": "Açık",
-    "off": "Kapalı"
+    "off": "Kapalı",
+    "mockup": "Mockup",
+    "mockup_pick": "Sahne seç",
+    "mockup_none_title": "Önce sahne kur",
+    "mockup_none_body": "Bu müşteride uygun sahne yok. Müşteri sayfasındaki \"Sahneler\" sekmesinden vitrin/cephe/tişört fotoğrafı yükleyip 4 köşeyi işaretle.",
+    "mockup_go_scenes": "Sahneler sekmesine git",
+    "mockup_done": "Mockup hazır — v{n}",
+    "mockup_generating": "Mockup üretiliyor…"
   },
   "orders": {
     "tab": "Projeler",

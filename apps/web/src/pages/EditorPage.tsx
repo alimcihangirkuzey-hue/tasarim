@@ -226,6 +226,24 @@ export function EditorPage() {
     if (dropped.length > 0) showToast(tf("editor.dropped_overrides", { list: dropped.join(", ") }));
   };
 
+  /* ---- mockup (Faz 3) ---- */
+  const [showMockupModal, setShowMockupModal] = useState(false);
+  const scenesQ = useQuery({
+    queryKey: ["scenes", clientId],
+    queryFn: () => api.clientScenes(clientId!),
+    enabled: !!clientId,
+  });
+  const doMockup = useMutation({
+    mutationFn: (sceneId: string) => api.mockupDocument(id, sceneId),
+    onSuccess: (rec) => {
+      setShowMockupModal(false);
+      showToast(tf("editor.mockup_done", { n: rec.version }));
+      window.open("/" + rec.filepath.replace(/^data\//, ""), "_blank");
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+    onError: (e) => showToast((e as Error).message),
+  });
+
   /* ---- export ---- */
   const [showExportModal, setShowExportModal] = useState(false);
   const exportsQ = useQuery({
@@ -390,6 +408,9 @@ export function EditorPage() {
           {saveState === "error" && <span className="error">{t("editor.save_error")}</span>}
         </span>
 
+        <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>
+          {doMockup.isPending ? t("editor.mockup_generating") : t("editor.mockup")}
+        </button>
         <button
           onClick={() => (warnings.length > 0 ? setShowExportModal(true) : doExport.mutate([]))}
           disabled={doExport.isPending}
@@ -573,6 +594,74 @@ export function EditorPage() {
                 {t("editor.export_anyway")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOCKUP SAHNE SEÇİMİ (Faz 3, mimar #5/#6) */}
+      {showMockupModal && (
+        <div className="modal-back" onClick={() => setShowMockupModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            {(() => {
+              const all = scenesQ.data ?? [];
+              const isGarment = doc.template_id === "garment";
+              const fabric = String(doc.params["fabric_color"] ?? "");
+              const sorted = [...all].sort((a, b) => {
+                const score = (s: (typeof all)[number]) => {
+                  if (isGarment) {
+                    return (
+                      (s.kind === "garment" ? 2 : 0) +
+                      (s.settings.fabric_color && s.settings.fabric_color === fabric ? 1 : 0)
+                    );
+                  }
+                  return s.kind === "vitrine" || s.kind === "facade" ? 1 : 0;
+                };
+                return score(b) - score(a);
+              });
+              if (sorted.length === 0) {
+                return (
+                  <>
+                    <h3 style={{ margin: 0 }}>{t("editor.mockup_none_title")}</h3>
+                    <p className="muted">{t("editor.mockup_none_body")}</p>
+                    <div className="row" style={{ justifyContent: "flex-end" }}>
+                      <button className="ghost" onClick={() => setShowMockupModal(false)}>
+                        {t("editor.cancel")}
+                      </button>
+                      <button onClick={() => (window.location.href = `/clients/${client.id}?tab=scenes`)}>
+                        {t("editor.mockup_go_scenes")}
+                      </button>
+                    </div>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <h3 style={{ margin: 0 }}>{t("editor.mockup_pick")}</h3>
+                  <div className="asset-pick" style={{ maxHeight: 280 }}>
+                    {sorted.map((s) => (
+                      <div key={s.id} style={{ textAlign: "center", width: 96 }}>
+                        <img
+                          src={s.photo_urls?.thumb ?? ""}
+                          style={{ width: 92, height: 68, objectFit: "cover" }}
+                          className=""
+                          onClick={() => doMockup.mutate(s.id)}
+                          alt={s.name}
+                          title={`${s.name} · ${s.kind}`}
+                        />
+                        <div style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="row" style={{ justifyContent: "flex-end" }}>
+                    <button className="ghost" onClick={() => setShowMockupModal(false)}>
+                      {t("editor.cancel")}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Currency } from "@tezgah/shared";
 import { api } from "../api";
@@ -16,7 +16,9 @@ export function ClientDetailPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("general");
+  const [sp] = useSearchParams();
+  const initialTab = (sp.get("tab") as Tab) || "general";
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const client = useQuery({
     queryKey: ["client", id],

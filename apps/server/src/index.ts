@@ -12,6 +12,7 @@ import { orderRoutes } from "./routes/orders.js";
 import { cloneRoutes } from "./routes/clone.js";
 import { presentRoutes } from "./routes/present.js";
 import { sceneRoutes } from "./routes/scenes.js";
+import { mockupRoutes } from "./routes/mockup.js";
 
 migrate();
 
@@ -42,6 +43,7 @@ orderRoutes(app);
 cloneRoutes(app);
 presentRoutes(app);
 sceneRoutes(app);
+mockupRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

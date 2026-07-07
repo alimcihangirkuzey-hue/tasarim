@@ -144,6 +144,11 @@ export const api = {
       body: JSON.stringify(body),
     }),
   deleteScene: (id: string) => http<{ ok: true }>(`/api/scenes/${id}`, { method: "DELETE" }),
+  mockupDocument: (id: string, scene_id: string) =>
+    http<ExportRecordDTO>(`/api/documents/${id}/mockup`, {
+      method: "POST",
+      body: JSON.stringify({ scene_id }),
+    }),
 
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>

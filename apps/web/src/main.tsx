@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClientListPage } from "./pages/ClientListPage";
 import { ClientDetailPage } from "./pages/ClientDetailPage";
 import { EditorPage } from "./pages/EditorPage";
+import { MockupPage } from "./pages/MockupPage";
 import { PresentPage } from "./pages/PresentPage";
 import { PrintPage } from "./pages/PrintPage";
 import { t } from "./i18n";
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           {/* Print/present rotaları Layout DIŞINDA: üst bar PDF'e basılmaz (M3/§9.1) */}
           <Route path="/print/:id" element={<PrintPage />} />
           <Route path="/present/:id" element={<PresentPage />} />
+          <Route path="/mockup/:id" element={<MockupPage />} />
           <Route
             path="*"
             element={
