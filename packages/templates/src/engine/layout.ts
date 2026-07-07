@@ -287,4 +287,5 @@ export type LayoutWarning =
   | { type: "text-truncated"; slotId: string; itemId?: string }
   | { type: "low-dpi"; slotId: string; itemId?: string; effectiveDpi: number; level: "yellow" | "red" }
   | { type: "empty-required"; slotId: string }
-  | { type: "mixed-variants"; categoryId: string };
+  | { type: "mixed-variants"; categoryId: string }
+  | { type: "qr-contrast"; slotId: string };

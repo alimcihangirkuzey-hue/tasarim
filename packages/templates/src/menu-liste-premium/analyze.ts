@@ -25,6 +25,7 @@ import {
   type LayoutWarning,
 } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
+import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
 import { pageGeometry, type PageGeometry } from "../parts/geometry.js";
 import { columnLabels, hasMixedVariants } from "../parts/price.js";
@@ -77,6 +78,7 @@ export interface ListAnalysis {
   decor: Array<{ slotId: string; url: string; detached: boolean }>;
   decorBandH: number;
   nameFont: number;
+  qr: QrRender | null;
 }
 
 const COL_GAP = 8;
@@ -88,7 +90,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const format = currentFormat(manifest, doc);
-  const formatDef = manifest.formats[format];
+  const formatDef = (manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[format];
   const geo = pageGeometry(formatDef.w_mm, formatDef.h_mm);
 
   const columns = Number(paramValue(manifest, doc, "columns"));
@@ -110,8 +112,21 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   }
   const decorBandH = decor.length > 0 ? 26 : 0;
 
+  /* Opsiyonel QR (mimar kararı #2) */
+  let qr: QrRender | null = null;
+  if (paramValue(manifest, doc, "showQr") === true) {
+    const source = String(paramValue(manifest, doc, "qrSource")) as QrSource;
+    const url = qrSourceUrl(source, client.brandkit);
+    if (!url) warnings.push({ type: "empty-required", slotId: "qr" });
+    else {
+      qr = buildQr(url, 16, theme.vars["--c-item"]); // rol setimizde metin rengi --c-item'dır
+      if (qr.contrastFallback) warnings.push({ type: "qr-contrast", slotId: "qr" });
+    }
+  }
+  const qrReserve = qr ? 20 : 0;
+
   const colW = (geo.content.w - (columns - 1) * COL_GAP) / columns;
-  const colH = geo.content.h - decorBandH;
+  const colH = geo.content.h - decorBandH - qrReserve;
 
   const selected = resolveSelection(client.catalog, doc.selection);
   const flow = selectionFlow(selected);
@@ -260,6 +275,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     theme, geo, format, formatDef, columns, colW, colGap: COL_GAP,
     showDesc, priceLayout, pages, warnings, scope, decor, decorBandH,
     nameFont: fit.font_mm,
+    qr,
   };
 }
 

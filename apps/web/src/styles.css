@@ -166,3 +166,28 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .asset-pick img { width: 64px; height: 64px; object-fit: contain; background:#fff; border: 2px solid var(--c-line); border-radius: 8px; cursor: pointer; }
 .asset-pick img.on { border-color: var(--c-primary); }
 .kbd-hint { font-size: 11px; color: var(--c-muted); }
+
+/* ---------- Faz 2: sipariş defteri ---------- */
+.pill.red { background: #FEE2E2; border-color: #DC2626; color: #7F1D1D; }
+.pill.ok { background: #DCFCE7; border-color: #16A34A; color: #14532D; }
+.item-card {
+  border: 1px dashed var(--c-line); border-radius: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px; background: var(--c-bg);
+}
+.parse-preview {
+  border: 1px solid var(--c-line); border-radius: 10px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px; background: var(--c-bg);
+}
+.field-missing { outline: 2px solid #DC2626; border-radius: 8px; }
+.upcoming-strip {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  padding: 10px 12px; margin-bottom: 10px;
+  background: var(--c-card); border: 1px solid var(--c-line); border-radius: var(--radius);
+}
+.upcoming-chip {
+  display: inline-flex; gap: 6px; align-items: center;
+  padding: 5px 10px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--c-line); background: var(--c-bg);
+}
+.upcoming-chip.yellow { border-color: #F59E0B; background: #FEF3C7; }
+.upcoming-chip.red { border-color: #DC2626; background: #FEE2E2; }

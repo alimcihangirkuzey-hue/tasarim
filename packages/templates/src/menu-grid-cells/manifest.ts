@@ -3,7 +3,7 @@
 import type { TemplateManifest } from "../types.js";
 import { CHROME_SLOTS } from "../parts/PageChrome.js";
 
-export const manifest: TemplateManifest = {
+export const manifest = {
   id: "menu-grid-cells",
   type: "menu",
   name_tr: "Resimli Izgara Menü",
@@ -43,8 +43,17 @@ export const manifest: TemplateManifest = {
       default: "arrow",
       label_tr: "Fiyat stili",
     },
+    /* Mimar kararı #2 (FAZ2-GOREV §5): opsiyonel QR, default kapalı */
+    { id: "showQr", type: "toggle", default: false, label_tr: "QR göster" },
+    {
+      id: "qrSource",
+      type: "choice",
+      options: ["review", "tel", "delivery", "instagram"],
+      default: "review",
+      label_tr: "QR kaynağı",
+    },
   ],
-  slots: CHROME_SLOTS,
+  slots: [...CHROME_SLOTS, { id: "qr", kind: "qr", bind: null, optional: true }],
   repeater: {
     id: "items",
     bind: "selection.items",
@@ -57,4 +66,4 @@ export const manifest: TemplateManifest = {
     ],
   },
   themes: ["or-noir", "aras-orange", "velours-rouge"],
-};
+} satisfies TemplateManifest;

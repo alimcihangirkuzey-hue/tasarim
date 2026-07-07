@@ -35,6 +35,20 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
   });
 
+  const allClients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
+  const [cloneTarget, setCloneTarget] = useState(client.id);
+  const clone = useMutation({
+    mutationFn: (docId: string) =>
+      api.cloneDocument(docId, cloneTarget === client.id ? {} : { target_client_id: cloneTarget }),
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: ["documents", client.id] });
+      if (res.dropped_overrides.length > 0) {
+        window.alert(res.dropped_overrides.join(", "));
+      }
+      if (cloneTarget !== client.id) navigate(`/clients/${cloneTarget}`);
+    },
+  });
+
   return (
     <div className="panel">
       <h2>{t("client.tab_documents")}</h2>
@@ -63,6 +77,14 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
           <span style={{ flex: 1 }} />
           <button className="small" onClick={() => navigate(`/editor/${d.id}`)}>
             {t("documents.open")}
+          </button>
+          <select value={cloneTarget} onChange={(e) => setCloneTarget(e.target.value)} title={t("clone.target")} style={{ padding: "4px 6px", fontSize: 12, maxWidth: 130 }}>
+            {allClients.data?.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button className="ghost small" onClick={() => clone.mutate(d.id)} disabled={clone.isPending}>
+            {t("clone.doc_btn")}
           </button>
           <button
             className="icon"

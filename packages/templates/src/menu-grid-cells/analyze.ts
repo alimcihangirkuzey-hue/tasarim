@@ -20,6 +20,7 @@ import {
   type WrapResult,
 } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
+import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
 import { CAT_STRIP_H, GRID_GAP, gridRowHeight, pageGeometry, type PageGeometry } from "../parts/geometry.js";
 import { priceLines, type PriceLine } from "../parts/price.js";
@@ -61,6 +62,7 @@ export interface GridAnalysis {
   flow: FlowEntry[];
   scope: BindScope;
   pages: 1;
+  qr: QrRender | null;
 }
 
 const CELL_PAD = 4;
@@ -70,18 +72,33 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const format = currentFormat(manifest, doc);
-  const formatDef = manifest.formats[format];
+  const formatDef = (manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[format];
   const geo = pageGeometry(formatDef.w_mm, formatDef.h_mm);
 
   const cols = Number(paramValue(manifest, doc, "cols"));
   const showDesc = paramValue(manifest, doc, "showDesc") === true;
   const priceStyle = String(paramValue(manifest, doc, "priceStyle")) as "arrow" | "plain";
 
+  const warnings: LayoutWarning[] = [];
+
+  /* Opsiyonel QR (mimar kararı #2): alt bilgi bölgesinde kart; içerik alanı daraltılır */
+  let qr: QrRender | null = null;
+  if (paramValue(manifest, doc, "showQr") === true) {
+    const source = String(paramValue(manifest, doc, "qrSource")) as QrSource;
+    const url = qrSourceUrl(source, client.brandkit);
+    if (!url) warnings.push({ type: "empty-required", slotId: "qr" });
+    else {
+      qr = buildQr(url, 16, theme.vars["--c-item"]); // rol setimizde metin rengi --c-item'dır
+      if (qr.contrastFallback) warnings.push({ type: "qr-contrast", slotId: "qr" });
+    }
+  }
+  const qrReserve = qr ? 20 : 0;
+
   const cellW = (geo.content.w - (cols - 1) * GRID_GAP) / cols;
   const spec: GridSpec = {
     cols,
     availW_mm: geo.content.w,
-    availH_mm: geo.content.h,
+    availH_mm: geo.content.h - qrReserve,
     gap_mm: GRID_GAP,
     rowH_mm: gridRowHeight(cellW),
     catH_mm: CAT_STRIP_H,
@@ -90,8 +107,6 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
   const selected = resolveSelection(client.catalog, doc.selection);
   const flow = selectionFlow(selected);
   const layout = layoutGrid(flow, spec);
-
-  const warnings: LayoutWarning[] = [];
   if (layout.overflow.length > 0) {
     warnings.push({ type: "overflow-items", count: layout.overflow.length });
   }
@@ -244,5 +259,6 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
     theme, geo, spec, layout, cells, warnings,
     format, formatDef, cols, showDesc, priceStyle, flow, scope,
     pages: 1,
+    qr,
   };
 }

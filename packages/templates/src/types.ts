@@ -62,7 +62,8 @@ export interface TemplateManifest {
   defaultFormat: string;
   params: ParamDef[];
   slots: SlotDef[];
-  repeater: RepeaterDef;
+  /** Katalog akışı kullanmayan şablonlarda (ör. carte-fidelite) yoktur */
+  repeater?: RepeaterDef;
   /** Önerilen hazır temalar (brand her zaman ilk seçenek) */
   themes: string[];
 }

@@ -565,3 +565,7 @@ Her faz ayrı git branch'i (`phase-1-mvp` gibi); faz sonunda kullanıcı kabul s
 ## Değişiklik Günlüğü
 
 - Faz 1 / FAZ1-GOREV.md: currency (EUR|CHF), formatPrice(currency), Category.note_fr
+- Faz 2 / FAZ2-GOREV.md — mimar kararı #1: §13'teki "jenerik mockup sayfalı sunum PDF'i" bu fazda "sunum kartı" sahnelemesiyle uygulanır (koyu zemin, gölgeli çerçeve); foto-gerçekçi mockup Faz 3'te (quad-warp).
+- Faz 2 / FAZ2-GOREV.md — mimar kararı #2: Faz 1'de ertelenen opsiyonel QR slotu `menu-grid-cells` ve `menu-liste-premium` manifestlerine eklendi (alt bilgi bölgesi, default kapalı); trifold arka kapağında QR standarttır.
+- Faz 2 / FAZ2-GOREV.md — mimar kararı #3: `export_records` yeniden kuruldu — `document_id` NULL olabilir, `project_id` kolonu eklendi, `CHECK (document_id IS NOT NULL OR project_id IS NOT NULL)`; sunum PDF'leri proje bazlı kayıt açar, versiyon sayacı proje+tür bazında; belge geçmişi davranışı değişmedi (migration testiyle kanıtlı).
+- Faz 2 / FAZ2-GOREV.md: `BrandKit.contact.delivery_hours` (opsiyonel; flyer çift saat bloğu, boşsa gizlenir).

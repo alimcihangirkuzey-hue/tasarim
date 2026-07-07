@@ -4,9 +4,10 @@ Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sis
 Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
 detayları: **FAZ1-GOREV.md**.
 
-**Mevcut durum: Faz 1 — MVP Menü Hattı** (marka kiti + katalog editörü + binding
-motoru + `menu-grid-cells` & `menu-liste-premium` şablonları + kısıtlı editör +
-Puppeteer PDF export + eksik görsel akışı)
+**Mevcut durum: Faz 2 — Sipariş Defteri + Ürün Genişlemesi** (Faz 1 üzerine:
+yapıştır-parse'lı Sipariş Defteri, trifold + flyer + carte-fidelite şablonları,
+QR slotları, müşteri/belge klonlama (M6), ortak fotoğraf havuzu, BAT'lı sunum
+PDF'i, export geçmişi ekranı). Faz 2 tasarım detayları: **FAZ2-GOREV.md**.
 
 ## Gereksinimler
 
@@ -25,6 +26,21 @@ API sağlık kontrolü: http://localhost:3001/api/health
 
 Veriler `data/` klasöründe yaşar (SQLite + görseller). **Yedek = bu klasörü kopyalamak.**
 `data/` git'e girmez.
+
+## Faz 2 el testi (kabul senaryosu — FAZ2-GOREV §9)
+
+1. Müşteri → **Projeler** sekmesi → "Sipariş yapıştır"a pazarlamacı metnini yapıştır →
+   Çözümle → eşleşme/yeni müşteri onayı → proje + kalemler açılır (ham metin saklanır).
+2. Ölçüsüz tabela kalemi kırmızı "eksik" rozetli; durumunu değiştiremezsin — ölçü gir, geçer.
+3. Kalemde **Tasarıma başla** → şablon önerisi → belge projeye açılır, kalem "Tasarımda".
+4. Belge/müşteri **Klonla** → benzer dönerciden yeni dönerci + ilk PDF dakikalar içinde.
+5. Trifold/Flyer/Sadakat kartı belgeleri: 2 sayfalı editör, katlama kılavuzları yalnız
+   print PDF'te; flyer arkasında çift saat + teslimat bloğu (boşsa gizli); QR "QR göster"
+   parametresiyle menülere de eklenebilir.
+6. Projeden **Sunum PDF'i oluştur** → kapak + sunum kartları + BAT (imza) sayfası.
+7. Editör sağ panelinde **Geçmiş**: tüm exportlar v numarasıyla; 📂 klasörde gösterir.
+8. Ortak havuz: Görseller sekmesinde "Ortak havuza" yükle → tüm müşterilerin
+   seçicilerinde "Ortak" sekmesinde görünür.
 
 ## Faz 1 el testi (kabul senaryosu — FAZ1-GOREV §7)
 

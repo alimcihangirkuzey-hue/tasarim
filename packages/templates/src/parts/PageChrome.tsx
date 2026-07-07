@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
 import { assetById, resolveSlotValue, type BindScope } from "../engine/binding.js";
 import { estimateWidth, solveFontScale } from "../engine/layout.js";
+import type { QrRender } from "../engine/qr.js";
 import type { Theme } from "../themes.js";
 import type { SlotDef } from "../types.js";
 import type { PageGeometry } from "./geometry.js";
@@ -43,8 +44,10 @@ export function PageChrome(props: {
   onSlotClick?: (id: string) => void;
   /** Devam sayfalarında yalnız dipnot + telefon şeridi çizilir */
   compact?: boolean;
+  /** Opsiyonel QR kartı (mimar kararı #2) — beyaz sessiz bölge + vektör path */
+  qr?: QrRender | null;
 }): ReactNode {
-  const { geo, theme, client, doc, scope, mode, selectedSlot, onSlotClick, compact } = props;
+  const { geo, theme, client, doc, scope, mode, selectedSlot, onSlotClick, compact, qr } = props;
   const { w, margin } = geo;
 
   const sv = (id: string) => chromeSlotValue(id, doc, scope);
@@ -255,6 +258,23 @@ export function PageChrome(props: {
             ) : <g />}
           </Slot>
         </>
+      )}
+
+      {/* QR kartı — alt bilgi bölgesi, sağ (FAZ2-GOREV §5) */}
+      {!compact && qr && (
+        <Slot
+          id="qr"
+          {...interact}
+          selected={selectedSlot === "qr"}
+          box={{ x: w - margin - 19, y: geo.footnoteBaseline - 24.5, w: 19, h: 19 }}
+        >
+          <g transform={`translate(${w - margin - 19}, ${geo.footnoteBaseline - 24.5})`}>
+            <rect width={19} height={19} rx={1.5} fill="#ffffff" stroke="var(--c-line)" strokeWidth={0.3} />
+            <g transform="translate(1.5, 1.5)">
+              <path d={qr.d} fill={qr.fill} />
+            </g>
+          </g>
+        </Slot>
       )}
 
       {/* DİPNOT — allerjen (yasal, her sayfada) */}

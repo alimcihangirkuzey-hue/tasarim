@@ -224,6 +224,7 @@ export function MenuListePremiumTemplate(props: TemplateProps): ReactNode {
           selectedSlot={selectedSlot}
           onSlotClick={onSlotClick}
           compact={!isFirst}
+          qr={isFirst ? a.qr : null}
         />
 
         <g transform={`translate(${a.geo.content.x}, ${a.geo.content.y})`}>

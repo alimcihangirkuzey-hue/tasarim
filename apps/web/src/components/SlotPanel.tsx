@@ -9,6 +9,7 @@ import type { ClientDTO, DocumentState, Item } from "@tezgah/shared";
 import { resolveSlotValue, type TemplateEntry } from "@tezgah/templates";
 import { api } from "../api";
 import { t } from "../i18n";
+import { AssetPicker } from "./AssetPicker";
 
 interface Props {
   client: ClientDTO;
@@ -143,18 +144,13 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
           </button>
           <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
         </div>
-        <div className="asset-pick" style={{ marginTop: 6 }}>
-          {client.assets
-            .filter((a) => a.kind !== "logo")
-            .map((a) => (
-              <img
-                key={a.id}
-                src={a.urls.thumb}
-                className={item.photo === a.id ? "on" : ""}
-                onClick={() => save.mutate({ photo: item.photo === a.id ? null : a.id })}
-                alt=""
-              />
-            ))}
+        <div style={{ marginTop: 6 }}>
+          <AssetPicker
+            client={client}
+            value={item.photo}
+            onPick={(id) => save.mutate({ photo: id })}
+            excludeLogos
+          />
         </div>
 
         <div className="field" style={{ marginTop: 8 }}>
@@ -301,19 +297,13 @@ export function SlotPanel(props: Props & { selectedSlot: string | null }) {
         <h3>
           {t("editor.slot")}: {slot.id}
         </h3>
-        <div className="asset-pick">
-          {client.assets.map((a) => (
-            <img
-              key={a.id}
-              src={a.urls.thumb}
-              className={current === a.id ? "on" : ""}
-              onClick={() =>
-                patch(current === a.id ? clearOverride(doc, slot.id) : setOverride(doc, slot.id, a.id))
-              }
-              alt=""
-            />
-          ))}
-        </div>
+        <AssetPicker
+          client={client}
+          value={current}
+          onPick={(id) =>
+            patch(id === null ? clearOverride(doc, slot.id) : setOverride(doc, slot.id, id))
+          }
+        />
         {detached && (
           <div className="row" style={{ marginTop: 6 }}>
             <span className="pill warn">{t("editor.detached")}</span>

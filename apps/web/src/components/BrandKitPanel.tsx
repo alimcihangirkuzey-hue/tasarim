@@ -7,30 +7,9 @@ import type { BrandKit, ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
 
-const COLOR_KEYS = ["primary", "secondary", "accent", "background", "text"] as const;
+import { AssetPicker } from "./AssetPicker";
 
-function AssetPicker(props: {
-  client: ClientDTO;
-  value: string | null;
-  onPick: (id: string | null) => void;
-}) {
-  const { client, value, onPick } = props;
-  if (client.assets.length === 0) return <p className="muted">{t("client.no_assets")}</p>;
-  return (
-    <div className="asset-pick">
-      {client.assets.map((a) => (
-        <img
-          key={a.id}
-          src={a.urls.thumb}
-          className={value === a.id ? "on" : ""}
-          onClick={() => onPick(value === a.id ? null : a.id)}
-          alt={a.kind}
-          title={`${a.width_px}×${a.height_px}px`}
-        />
-      ))}
-    </div>
-  );
-}
+const COLOR_KEYS = ["primary", "secondary", "accent", "background", "text"] as const;
 
 export function BrandKitPanel({ client }: { client: ClientDTO }) {
   const qc = useQueryClient();

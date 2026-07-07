@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { dueLevel } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
 
@@ -18,6 +19,8 @@ export function ClientListPage() {
   const [name, setName] = useState("");
 
   const clients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
+  const upcoming = useQuery({ queryKey: ["upcoming"], queryFn: api.upcoming });
+  const today = new Date().toISOString().slice(0, 10);
 
   const create = useMutation({
     mutationFn: api.createClient,
@@ -30,6 +33,27 @@ export function ClientListPage() {
 
   return (
     <>
+      {(upcoming.data?.length ?? 0) > 0 && (
+        <div className="upcoming-strip">
+          <strong style={{ fontSize: 13 }}>{t("orders.upcoming")}:</strong>
+          {upcoming.data!.map((u) => {
+            const lvl = dueLevel(u.due_date, today);
+            return (
+              <span
+                key={u.id}
+                className={`upcoming-chip ${lvl === "red" ? "red" : lvl === "yellow" ? "yellow" : ""}`}
+                onClick={() => navigate(`/clients/${u.client_id}`)}
+                title={u.name}
+              >
+                <strong>{u.client_name}</strong>
+                <span className="muted">{u.due_date}</span>
+                <span className="pill">{u.open_items}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       <div className="pagehead">
         <h1>{t("nav.clients")}</h1>
         {clients.data && (

@@ -17,6 +17,14 @@ const ALLOWED: Record<string, string> = {
 };
 
 export function assetRoutes(app: FastifyInstance): void {
+  /* Ortak havuz listesi (§4) */
+  app.get("/api/assets/common", async () => {
+    const rows = db
+      .prepare("SELECT * FROM assets WHERE client_id IS NULL ORDER BY created_at DESC")
+      .all() as Parameters<typeof assetToDTO>[0][];
+    return rows.map(assetToDTO);
+  });
+
   app.post<{ Params: { id: string } }>(
     "/api/clients/:id/assets",
     async (req, reply) => {
@@ -35,14 +43,16 @@ export function assetRoutes(app: FastifyInstance): void {
           .send({ error: "unsupported_type", detail: mp.mimetype });
       }
 
-      const kindField = mp.fields["kind"] as unknown as
-        | { value?: unknown }
-        | Array<{ value?: unknown }>
-        | undefined;
-      const rawKind = Array.isArray(kindField)
-        ? kindField[0]?.value
-        : kindField?.value;
-      const kind = AssetKindSchema.catch("other").parse(rawKind ?? "other");
+      const fieldValue = (name: string): unknown => {
+        const f = mp.fields[name] as unknown as
+          | { value?: unknown }
+          | Array<{ value?: unknown }>
+          | undefined;
+        return Array.isArray(f) ? f[0]?.value : f?.value;
+      };
+      const kind = AssetKindSchema.catch("other").parse(fieldValue("kind") ?? "other");
+      /* FAZ2-GOREV §4: scope=common → ortak havuz (client_id NULL), tüm müşterilere açık */
+      const scope = fieldValue("scope") === "common" ? "common" : "client";
 
       const buf = await mp.toBuffer();
       const id = newId("ast");
@@ -79,7 +89,7 @@ export function assetRoutes(app: FastifyInstance): void {
 
       const row = {
         id,
-        client_id: client.id,
+        client_id: scope === "common" ? null : client.id,
         kind,
         filename,
         width_px: width,
@@ -91,8 +101,8 @@ export function assetRoutes(app: FastifyInstance): void {
          VALUES (@id, @client_id, @kind, @filename, @width_px, @height_px, @created_at)`
       ).run(row);
 
-      /* kind=logo ise marka kitine otomatik bağlanır (M5: kit tek doğruluk kaynağı) */
-      if (kind === "logo") {
+      /* kind=logo (müşteri kapsamlı) ise marka kitine otomatik bağlanır (M5) */
+      if (kind === "logo" && scope === "client") {
         const kit = BrandKitSchema.parse(JSON.parse(client.brandkit_json));
         kit.logo_primary = id;
         db.prepare(
