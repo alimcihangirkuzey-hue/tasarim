@@ -167,14 +167,14 @@ export function clientRoutes(app: FastifyInstance): void {
       .all(req.params.id) as AssetRow[];
     const res = db.prepare("DELETE FROM clients WHERE id = ?").run(req.params.id);
     if (res.changes === 0) return reply.code(404).send({ error: "not_found" });
+    const stillUsed = db.prepare("SELECT 1 FROM assets WHERE filename = ? LIMIT 1");
     for (const a of assets) {
-      for (const p of [
-        path.join(ASSETS_DIR, "orig", a.filename),
-        path.join(ASSETS_DIR, "master", a.filename),
-        path.join(ASSETS_DIR, "thumb", `${a.id}.jpg`),
-      ]) {
-        fs.rmSync(p, { force: true });
+      /* Klon dosya paylaşır (M6): aynı filename'i kullanan başka satır varsa dosya kalır */
+      if (!stillUsed.get(a.filename)) {
+        fs.rmSync(path.join(ASSETS_DIR, "orig", a.filename), { force: true });
+        fs.rmSync(path.join(ASSETS_DIR, "master", a.filename), { force: true });
       }
+      fs.rmSync(path.join(ASSETS_DIR, "thumb", `${a.id}.jpg`), { force: true });
     }
     return { ok: true };
   });

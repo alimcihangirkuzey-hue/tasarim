@@ -9,6 +9,7 @@ import { assetRoutes } from "./routes/assets.js";
 import { documentRoutes } from "./routes/documents.js";
 import { exportRoutes } from "./routes/exports.js";
 import { orderRoutes } from "./routes/orders.js";
+import { cloneRoutes } from "./routes/clone.js";
 
 migrate();
 
@@ -36,6 +37,7 @@ assetRoutes(app);
 documentRoutes(app);
 exportRoutes(app);
 orderRoutes(app);
+cloneRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

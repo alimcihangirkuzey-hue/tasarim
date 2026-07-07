@@ -57,7 +57,7 @@ export function documentWithClient(docId: string): { row: DocumentRow; clientId:
   return { row, clientId: row.client_id };
 }
 
-function ensureDefaultProject(clientId: string): string {
+export function ensureDefaultProject(clientId: string): string {
   const existing = db
     .prepare("SELECT id FROM projects WHERE client_id = ? ORDER BY created_at ASC LIMIT 1")
     .get(clientId) as { id: string } | undefined;
