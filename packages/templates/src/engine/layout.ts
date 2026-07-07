@@ -196,6 +196,35 @@ export function layoutGrid(flow: FlowEntry[], spec: GridSpec): GridLayout {
   return { placed, overflow, cellW_mm: cellW, usedH_mm: y > 0 ? y - gap_mm : 0 };
 }
 
+/**
+ * Çok sayfalı grid akışı — FAZ4-GOREV §8 (M8: taşma uyarısı yerine sayfa eklenir).
+ * İlk sayfa tam başlıklı spec'le, devam sayfaları ince bant spec'iyle dizilir.
+ * Sayfa ortasında bölünen kategorinin şeridi devam sayfasında yeniden konur
+ * (asılı ürün bırakılmaz); ilerleme olmayan turda döngü kırılır (determinizm).
+ */
+export function layoutGridPaged(
+  flow: FlowEntry[],
+  firstSpec: GridSpec,
+  contSpec: GridSpec,
+  maxPages = 30
+): GridLayout[] {
+  const pages: GridLayout[] = [];
+  let remaining = flow;
+  while (remaining.length > 0 && pages.length < maxPages) {
+    const spec = pages.length === 0 ? firstSpec : contSpec;
+    let f = remaining;
+    if (pages.length > 0 && f[0]?.kind === "item") {
+      f = [{ kind: "category", category: f[0].category }, ...f];
+    }
+    const l = layoutGrid(f, spec);
+    pages.push(l);
+    if (l.placed.length === 0) break; /* hiçbir şey sığmadı → sonsuz döngü koruması */
+    remaining = l.overflow.map((o) => ({ kind: "item" as const, item: o.item, category: o.category }));
+  }
+  if (pages.length === 0) pages.push(layoutGrid(flow, firstSpec));
+  return pages;
+}
+
 /* ------------------------------------------------------------------ */
 /* Sütun/sayfa akışı — shrink-then-flow (menu-liste-premium)           */
 /* ------------------------------------------------------------------ */
@@ -291,4 +320,6 @@ export type LayoutWarning =
   | { type: "qr-contrast"; slotId: string }
   | { type: "contrast"; ratio: number }
   | { type: "mono-suggest"; slotId: string }
-  | { type: "fine-detail"; areaId: string };
+  | { type: "fine-detail"; areaId: string }
+  /* FAZ4 §3 (mimar #8 devamı): her broderie belgesinde silik bilgi notu */
+  | { type: "broderie-info" };

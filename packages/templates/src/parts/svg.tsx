@@ -2,6 +2,13 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
+/** letterSpacing yardımcısı — mimar kararı #10.
+    Girdi mm, çıktı birimsiz kullanıcı birimi (viewBox mm olduğundan sayısal 1:1;
+    CSS'e px yazılır çünkü SVG'de 1 px = 1 kullanıcı birimidir). fs() tarzı
+    min-font kıskacı letterSpacing'e BİLEREK uygulanmaz. Eski "CSS mm" çağının
+    yazar değerleri 3,7795 ile çarpılarak taşındı — görünüm birebir. */
+export const ls = (mm: number): number => mm;
+
 /** Sarılmış satırları <text>/<tspan> olarak çizer (SVG otomatik kırmaz) */
 export function TextLines(props: {
   lines: string[];
@@ -13,6 +20,7 @@ export function TextLines(props: {
   fill: string; // CSS var
   weight?: number;
   anchor?: "start" | "middle" | "end";
+  /** kullanıcı birimi (= mm); px olarak yazılır (mimar #10) */
   letterSpacing?: number;
   uppercase?: boolean;
   opacity?: number;
@@ -26,7 +34,7 @@ export function TextLines(props: {
     fontFamily: font,
     fontWeight: weight,
     fill,
-    ...(letterSpacing !== undefined ? { letterSpacing: `${letterSpacing}mm` } : {}),
+    ...(letterSpacing !== undefined ? { letterSpacing: `${letterSpacing}px` } : {}),
   };
   return (
     <text x={x} y={y} fontSize={size} textAnchor={anchor} style={style} opacity={opacity}>

@@ -29,7 +29,7 @@ export function CarteFideliteTemplate(props: TemplateProps): ReactNode {
               detached={a.title.detached} box={{ x: 4, y: 3, w: 50, h: 9 }}>
               <TextLines lines={[a.title.text]} x={6} y={9.6} lineH={6}
                 font="var(--f-heading)" size={5.4} fill="var(--c-heading)"
-                weight={a.theme.weights.heading} letterSpacing={0.22}
+                weight={a.theme.weights.heading} letterSpacing={0.8315}
                 uppercase={a.theme.uppercaseHeading} />
             </Slot>
             <Slot id="subtitle" {...interact} selected={selectedSlot === "subtitle"}
@@ -59,7 +59,7 @@ export function CarteFideliteTemplate(props: TemplateProps): ReactNode {
                 <rect x={-B} y={CARD_H - 11.5} width={CARD_W + 2 * B} height={11.5 + B} fill="var(--c-accent)" />
                 <text x={CARD_W / 2} y={CARD_H - 4.6} fontSize={a.rewardFont} textAnchor="middle"
                   fill="var(--c-bg)"
-                  style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.24mm" }}>
+                  style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.9071px" }}>
                   {a.reward.text}
                 </text>
               </g>
@@ -78,7 +78,7 @@ export function CarteFideliteTemplate(props: TemplateProps): ReactNode {
               )}
             </Slot>
             <text x={CARD_W / 2} y={23} fontSize={3.6} textAnchor="middle" fill="var(--c-heading)"
-              style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.35mm" }}>
+              style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "1.3228px" }}>
               {a.title.text}
             </text>
             <Slot id="phone" {...interact} selected={selectedSlot === "phone"} box={{ x: 10, y: 26, w: CARD_W - 20, h: 7 }}>

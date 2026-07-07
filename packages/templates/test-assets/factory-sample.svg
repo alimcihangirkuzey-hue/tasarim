@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 848">
+  <!-- Şablon fabrikası kabul 12 örneği: 6 sabit slot adayı + prototip hücre.
+       "Illustrator export'u" temsilidir: düz SVG, id'li gruplar. -->
+  <rect width="600" height="848" fill="#1D1B1A"/>
+  <rect x="0" y="0" width="600" height="96" fill="#262321"/>
+
+  <!-- 1) logo alanı (image slotu) -->
+  <g id="logo-area">
+    <rect x="24" y="18" width="120" height="60" fill="#3A3531"/>
+    <text x="84" y="54" font-size="12" fill="#8a8378" text-anchor="middle" font-family="Arial">LOGO</text>
+  </g>
+
+  <!-- 2) başlık (text slotu) -->
+  <text id="title" x="300" y="62" font-size="34" fill="#E3A93F" text-anchor="middle" font-family="Arial">NOTRE CARTE</text>
+
+  <!-- 3) halal rozeti (badge slotu) -->
+  <g id="halal-badge">
+    <circle cx="556" cy="48" r="22" fill="#0E7A3B"/>
+    <text x="556" y="53" font-size="11" fill="#fff" text-anchor="middle" font-family="Arial">HALAL</text>
+  </g>
+
+  <!-- 4) telefon şeridi (text slotu) -->
+  <rect x="0" y="96" width="600" height="34" fill="#E3A93F"/>
+  <text id="phone" x="24" y="119" font-size="16" fill="#1D1B1A" font-family="Arial">01 23 45 67 89</text>
+
+  <!-- 5) saatler (text slotu) -->
+  <text id="hours" x="576" y="119" font-size="13" fill="#1D1B1A" text-anchor="end" font-family="Arial">7j/7 — 11h à 23h</text>
+
+  <!-- PROTOTİP HÜCRE: name + price + photo (item-slotlar) -->
+  <g id="proto-cell">
+    <rect x="24" y="160" width="264" height="120" rx="8" fill="none" stroke="#6E675E" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text id="p-name" x="36" y="184" font-size="15" fill="#FFFFFF" font-family="Arial">Döner Kebab</text>
+    <text id="p-price" x="276" y="184" font-size="15" fill="#E3A93F" text-anchor="end" font-family="Arial">7,50 €</text>
+    <rect id="p-photo" x="36" y="196" width="240" height="72" fill="#3A3531"/>
+  </g>
+
+  <!-- 6) dipnot (text slotu) -->
+  <text id="footnote" x="300" y="826" font-size="10" fill="#B7B0A5" text-anchor="middle" font-family="Arial">Prix nets en euros — Liste des allergènes disponible sur demande.</text>
+</svg>

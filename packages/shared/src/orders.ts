@@ -76,3 +76,23 @@ export function dueLevel(due_date: string | null, today: string): "none" | "yell
   if (days <= 3) return "yellow";
   return "none";
 }
+
+/* ------------------------------------------------------------------ */
+/* Paket presetleri — FAZ4-GOREV §11 (kod içi sabit; arayüz Faz S)      */
+/* ------------------------------------------------------------------ */
+
+export interface PresetItem {
+  product_type: ProductType;
+  details?: Record<string, unknown>;
+}
+
+/** "Açılış Takımı": menü A3 + flyer 21x21 + sadakat kartı + vitrophanie (ölçü bekler) */
+export const OPENING_KIT: { name_tr: string; items: PresetItem[] } = {
+  name_tr: "Açılış Takımı",
+  items: [
+    { product_type: "menu", details: { format: "a3" } },
+    { product_type: "flyer", details: { format: "21x21" } },
+    { product_type: "fidelite" },
+    { product_type: "vitrophanie" }, /* ölçüsüz → olcu_bekliyor kırmızı rozet */
+  ],
+};

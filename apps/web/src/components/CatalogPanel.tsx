@@ -3,9 +3,10 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { newId, type Catalog, type Category, type ClientDTO, type Item } from "@tezgah/shared";
+import { newId, suggestPhotosForName, type Catalog, type Category, type ClientDTO, type Item } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
+import { BulkPriceModal } from "./BulkPriceModal";
 
 function moveIn<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
@@ -95,9 +96,12 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
   const assetThumb = (id: string | null) =>
     id ? client.assets.find((a) => a.id === id)?.urls.thumb ?? null : null;
 
+  const [showBulk, setShowBulk] = useState(false);
+
   return (
     <>
       <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
+      {showBulk && <BulkPriceModal client={client} onClose={() => setShowBulk(false)} />}
 
       <div className="row" style={{ marginTop: 14 }}>
         <button
@@ -113,6 +117,14 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
           }
         >
           + {t("catalog.add_category")}
+        </button>
+        <button
+          className="ghost"
+          disabled={dirty}
+          title={dirty ? t("bulk.save_first") : undefined}
+          onClick={() => setShowBulk(true)}
+        >
+          {t("bulk.open")}
         </button>
         <span className="spacer" style={{ flex: 1 }} />
         {dirty && <span className="pill warn">{t("catalog.unsaved")}</span>}
@@ -168,6 +180,22 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
               >
                 {assetThumb(it.photo) ? <img src={assetThumb(it.photo)!} alt="" /> : "📷"}
               </button>
+              {/* FAZ4 §9: fotoğrafsız üründe etiket eşleşmesi → Öneri çipi (taslağa yazar) */}
+              {!it.photo && (() => {
+                const sugId = suggestPhotosForName(it.name_fr, client.assets)[0];
+                const sug = sugId ? client.assets.find((a) => a.id === sugId) : undefined;
+                return sug ? (
+                  <button
+                    className="ghost small"
+                    type="button"
+                    title={`${t("suggest.chip")}: ${sug.tags}`}
+                    onClick={() => editItem(c.id, it.id, { photo: sug.id })}
+                  >
+                    <img src={sug.urls.thumb} alt="" style={{ width: 16, height: 16, objectFit: "cover", borderRadius: 3, verticalAlign: "-3px", marginRight: 3 }} />
+                    {t("suggest.chip")}
+                  </button>
+                ) : null;
+              })()}
               <input
                 type="text"
                 value={it.name_fr}

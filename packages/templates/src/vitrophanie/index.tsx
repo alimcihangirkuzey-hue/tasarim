@@ -15,7 +15,7 @@ import { checkDpi, type LayoutWarning } from "../engine/layout.js";
 import { relToMM, scaleRule, type RelBox } from "../engine/ratio.js";
 import { resolveTheme, themeStyle, type Theme } from "../themes.js";
 import type { TemplateEntry, TemplateManifest, TemplateProps } from "../types.js";
-import { Guides, Slot, TextLines } from "../parts/svg.js";
+import { Guides, Slot, TextLines, ls } from "../parts/svg.js";
 
 type VitroVariant = "bandeau" | "centre" | "colonne";
 
@@ -181,10 +181,8 @@ function VitroTemplate(variant: VitroVariant) {
                 size={fs(0.15)}
                 fill={ink ?? "var(--c-heading)"}
                 weight={a.theme.weights.heading}
-                /* fs() kullanılmaz: min-8 kıskacı harf aralığını 8'e sabitliyor,
-                   CSS mm 3,78× çözülünce satır logo alanına taşıyordu.
-                   Oransal yazar değeri (0.006×min); birim düzeltmesi Faz 4 (mimar #9) */
-                letterSpacing={0.006 * Math.min(a.w_mm, a.h_mm)}
+                /* 0.022677 = 0.006 × 3,7795 (mimar #10 taşıma) — Faz 3 onaylı görünüm */
+                letterSpacing={ls(0.022677 * Math.min(a.w_mm, a.h_mm))}
                 uppercase
               />
             </Slot>
@@ -217,7 +215,9 @@ function VitroTemplate(variant: VitroVariant) {
                 fill={ink ?? "var(--c-item)"}
                 weight={a.theme.weights.item}
                 anchor="middle"
-                letterSpacing={fs(0.004)}
+                /* 0.015118 = 0.004 × 3,7795 (mimar #10); fs() min-8 kıskacı
+                   letterSpacing'den kalktı (FAZ4 §2) — küçük belgede aralık daralır */
+                letterSpacing={ls(0.015118 * Math.min(a.w_mm, a.h_mm))}
               />
             </Slot>
           </>

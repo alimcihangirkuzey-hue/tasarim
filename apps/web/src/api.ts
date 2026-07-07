@@ -157,6 +157,64 @@ export const api = {
       body: "{}",
     }),
 
+  /* CMYK — Faz 4 §13 (ADR-4) */
+  cmykStatus: () => http<{ available: boolean; version: string | null }>(`/api/cmyk/status`),
+  exportCmyk: (id: string) =>
+    http<ExportRecordDTO>(`/api/documents/${id}/export-cmyk`, { method: "POST", body: "{}" }),
+
+  /* Asset silme + preset — Faz 4 §11 */
+  deleteAsset: (id: string) =>
+    http<{ ok: true }>(`/api/assets/${id}`, { method: "DELETE" }),
+  createOpeningKit: (clientId: string) =>
+    http<{ project_id: string; items: number }>(`/api/clients/${clientId}/presets/opening`, {
+      method: "POST", body: "{}",
+    }),
+
+  /* Parse sözlüğü — Faz 4 §10 */
+  parseSynonyms: () =>
+    http<Array<{ word: string; product_type: import("@tezgah/shared").ProductType }>>(`/api/parse-synonyms`),
+  addParseSynonym: (word: string, product_type: string) =>
+    http<{ word: string; product_type: string }>(`/api/parse-synonyms`, {
+      method: "POST", body: JSON.stringify({ word, product_type }),
+    }),
+  deleteParseSynonym: (word: string) =>
+    http<{ ok: true }>(`/api/parse-synonyms/${encodeURIComponent(word)}`, { method: "DELETE" }),
+
+  /* Varlık etiketleri — Faz 4 §9 */
+  updateAssetTags: (id: string, tags: string) =>
+    http<AssetDTO>(`/api/assets/${id}`, { method: "PATCH", body: JSON.stringify({ tags }) }),
+
+  /* Tema kütüphanesi — Faz 4 §7 */
+  themes: () => http<import("@tezgah/shared").ThemeDTO[]>(`/api/themes`),
+  createTheme: (body: { name: string; tokens: import("@tezgah/shared").ThemeTokens }) =>
+    http<import("@tezgah/shared").ThemeDTO>(`/api/themes`, { method: "POST", body: JSON.stringify(body) }),
+  updateTheme: (id: string, body: { name: string; tokens: import("@tezgah/shared").ThemeTokens }) =>
+    http<import("@tezgah/shared").ThemeDTO>(`/api/themes/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteTheme: (id: string) => http<{ ok: true }>(`/api/themes/${id}`, { method: "DELETE" }),
+
+  /* Snapshot geri yükleme — Faz 4 §5 */
+  restoreDocument: (id: string, exportId: string) =>
+    http<{ document: DocumentDTO; safety_record_id: string }>(
+      `/api/documents/${id}/restore/${exportId}`,
+      { method: "POST", body: "{}" }
+    ),
+
+  /* Toplu fiyat + katalog geçmişi — Faz 4 §4 */
+  bulkPrice: (clientId: string, op: import("@tezgah/shared").BulkPriceOp) =>
+    http<{ applied: number; changes: import("@tezgah/shared").PriceChange[] }>(
+      `/api/clients/${clientId}/catalog/bulk-price`,
+      { method: "POST", body: JSON.stringify(op) }
+    ),
+  catalogHistory: (clientId: string) =>
+    http<Array<{ id: string; reason: string; created_at: string; size: number }>>(
+      `/api/clients/${clientId}/catalog/history`
+    ),
+  catalogRestore: (clientId: string, historyId: string) =>
+    http<{ ok: true; restored_from: string }>(
+      `/api/clients/${clientId}/catalog/restore/${historyId}`,
+      { method: "POST", body: "{}" }
+    ),
+
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>
     http<{ id: string; cloned_documents: number }>(`/api/clients/${id}/clone`, {

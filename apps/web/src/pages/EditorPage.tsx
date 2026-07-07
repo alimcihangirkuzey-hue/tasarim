@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PRESET_THEMES,
+  customThemeList,
   TEMPLATES,
   currentFormat,
   missingPhotoItems,
@@ -17,6 +18,7 @@ import {
 import {
   GARMENT_AREAS,
   areasForKind,
+  suggestPhotos,
   type DocumentState,
   type ExportRecordDTO,
   type GarmentKind,
@@ -49,6 +51,8 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_mono_suggest");
     case "fine-detail":
       return t("editor.warn_fine_detail");
+    case "broderie-info":
+      return t("editor.warn_broderie_info");
   }
 }
 
@@ -141,6 +145,21 @@ export function EditorPage() {
     if (f && pendingPhotoItem.current) uploadForItem.mutate({ itemId: pendingPhotoItem.current, file: f });
     e.target.value = "";
   };
+
+  /* FAZ4 §9: öneri çipine tek tık → katalogdaki ürüne foto bağlanır (M1: veri katalogda) */
+  const bindSuggestion = useMutation({
+    mutationFn: async (p: { itemId: string; assetId: string }) => {
+      const catalog = {
+        ...client!.catalog,
+        categories: client!.catalog.categories.map((c) => ({
+          ...c,
+          items: c.items.map((it) => (it.id === p.itemId ? { ...it, photo: p.assetId } : it)),
+        })),
+      };
+      return api.updateClient(client!.id, { catalog });
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["client", clientId] }),
+  });
 
   const onSlotClick = (slotId: string) => {
     if (slotId.endsWith(":photo")) {
@@ -263,6 +282,26 @@ export function EditorPage() {
     queryFn: () => api.documentExports(id),
     enabled: !!id,
   });
+
+  /* FAZ4 §13: CMYK — gs tespiti + son print PDF'ten dönüşüm */
+  const cmykQ = useQuery({ queryKey: ["cmyk-status"], queryFn: api.cmykStatus, staleTime: Infinity });
+  const doCmyk = useMutation({
+    mutationFn: () => api.exportCmyk(id),
+    onSuccess: (r) => {
+      showToast(`CMYK hazır: v${r.version}`);
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+    onError: (e) => showToast((e as Error).message),
+  });
+
+  /* FAZ4 §5: snapshot'a dön — sunucu önce güvenlik kaydı yazar */
+  const restoreDoc = useMutation({
+    mutationFn: (exportId: string) => api.restoreDocument(id, exportId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["document", id] });
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+  });
   const doExport = useMutation({
     /* tip bazlı yönlendirme: garment → PNG/broderie paketi; vitro decoupe → SVG;
        diğerleri → print+preview PDF */
@@ -302,6 +341,11 @@ export function EditorPage() {
 
   const format = currentFormat(entry.manifest, doc);
   const missing = missingPhotoItems(resolveSelection(client.catalog, doc.selection));
+  /* FAZ4 §9: fotoğrafsız ürünler için etiket eşleşmeli öneriler (müşteri + ortak havuz) */
+  const photoSuggestions = suggestPhotos(
+    missing.map((m) => m.item),
+    client.assets
+  );
   const warnings = analysis?.warnings ?? [];
   const pages = analysis?.pages ?? 1;
   const Component = entry.Component;
@@ -369,6 +413,12 @@ export function EditorPage() {
           {entry.manifest.themes.map((th) => (
             <option key={th} value={th}>
               {PRESET_THEMES[th]?.name_tr ?? th}
+            </option>
+          ))}
+          {/* FAZ4 §7: özel temalar tüm şablonlarda seçilebilir */}
+          {customThemeList().map((th) => (
+            <option key={th.id} value={th.id}>
+              {th.name_tr} ★
             </option>
           ))}
         </select>
@@ -463,6 +513,15 @@ export function EditorPage() {
 
         <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>
           {doMockup.isPending ? t("editor.mockup_generating") : t("editor.mockup")}
+        </button>
+        {/* FAZ4 §13: gs varsa aktif; yoksa pasif + kurulum yönlendirmesi (ADR-4) */}
+        <button
+          className="ghost"
+          disabled={!cmykQ.data?.available || doCmyk.isPending}
+          title={cmykQ.data?.available ? `Ghostscript ${cmykQ.data.version}` : t("editor.cmyk_missing")}
+          onClick={() => doCmyk.mutate()}
+        >
+          {t("editor.cmyk")}
         </button>
         <button
           onClick={() => (warnings.length > 0 ? setShowExportModal(true) : doExport.mutate([]))}
@@ -607,7 +666,7 @@ export function EditorPage() {
             <div className="warn-list">
               {warnings.length === 0 && <div className="warn ok">{t("editor.no_warnings")}</div>}
               {warnings.map((w, i) => (
-                <div key={i} className={`warn ${w.type === "overflow-items" || ("level" in w && w.level === "red") ? "red" : ""}`}>
+                <div key={i} className={`warn ${w.type === "broderie-info" ? "info" : w.type === "overflow-items" || ("level" in w && w.level === "red") ? "red" : ""}`}>
                   {warnText(w)}
                 </div>
               ))}
@@ -617,12 +676,32 @@ export function EditorPage() {
           {missing.length > 0 && (
             <div className="epanel">
               <h3>{tf("missing.title", { n: missing.length })}</h3>
-              {missing.map((m) => (
-                <div className="missing-item" key={m.item.id} onClick={() => scrollToItem(m.item.id)}>
-                  <span>{m.item.name_fr}</span>
-                  <span className="muted">{m.category.name_fr}</span>
-                </div>
-              ))}
+              {missing.map((m) => {
+                /* FAZ4 §9: etiket eşleşmesi varsa Öneri çipi — tek tık bağlar, otomatik değil */
+                const sugId = photoSuggestions.get(m.item.id)?.[0];
+                const sug = sugId ? client?.assets.find((a) => a.id === sugId) : undefined;
+                return (
+                  <div className="missing-item" key={m.item.id} onClick={() => scrollToItem(m.item.id)}>
+                    <span>{m.item.name_fr}</span>
+                    {sug ? (
+                      <button
+                        className="ghost small"
+                        title={tf("suggest.bind_title", { tags: sug.tags })}
+                        disabled={bindSuggestion.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          bindSuggestion.mutate({ itemId: m.item.id, assetId: sug.id });
+                        }}
+                      >
+                        <img src={sug.urls.thumb} alt="" style={{ width: 18, height: 18, objectFit: "cover", borderRadius: 3, verticalAlign: "-4px", marginRight: 4 }} />
+                        {t("suggest.chip")}
+                      </button>
+                    ) : (
+                      <span className="muted">{m.category.name_fr}</span>
+                    )}
+                  </div>
+                );
+              })}
               <button className="ghost small" onClick={copyRequest}>
                 {t("missing.copy")}
               </button>
@@ -635,14 +714,31 @@ export function EditorPage() {
               {exportsQ.data!.map((r) => (
                 <div className="row" key={r.id} style={{ fontSize: 13 }}>
                   <span className="pill">v{r.version}</span>
-                  <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-                    {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
-                  </a>
-                  <button
-                    className="icon"
-                    title={t("history.reveal")}
-                    onClick={() => void api.reveal(r.filepath)}
-                  >📂</button>
+                  {r.kind === "snapshot" ? (
+                    <span className="muted">{t("history.snapshot_label")}</span>
+                  ) : (
+                    <>
+                      <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
+                        {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
+                      </a>
+                      <button
+                        className="icon"
+                        title={t("history.reveal")}
+                        onClick={() => void api.reveal(r.filepath)}
+                      >📂</button>
+                    </>
+                  )}
+                  {/* FAZ4 §5: yalnız state taşıyan kayıtlarda görünür; onay şart */}
+                  {["print", "preview", "decoupe", "broderie", "png", "snapshot"].includes(r.kind) && (
+                    <button
+                      className="icon"
+                      title={t("history.restore")}
+                      disabled={restoreDoc.isPending}
+                      onClick={() => {
+                        if (window.confirm(t("history.restore_confirm"))) restoreDoc.mutate(r.id);
+                      }}
+                    >⤺</button>
+                  )}
                   <span className="muted">{new Date(r.created_at).toLocaleTimeString("tr-TR")}</span>
                 </div>
               ))}

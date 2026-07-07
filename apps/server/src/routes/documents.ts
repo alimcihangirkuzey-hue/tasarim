@@ -170,6 +170,78 @@ export function documentRoutes(app: FastifyInstance): void {
     return rowToDocument(next, found.clientId);
   });
 
+  /* Snapshot'tan geri yükleme — FAZ4-GOREV §5 + mimar kararı #13.
+     Dönmeden önce mevcut durum kind:"snapshot" güvenlik kaydı olur
+     (filepath boş dize; versiyon sayacı belge+tür bazında ilerler). */
+  app.post<{ Params: { id: string; exportId: string } }>(
+    "/api/documents/:id/restore/:exportId",
+    async (req, reply) => {
+      const found = documentWithClient(req.params.id);
+      if (!found) return reply.code(404).send({ error: "not_found" });
+
+      const rec = db
+        .prepare("SELECT snapshot_json FROM export_records WHERE id = ? AND document_id = ?")
+        .get(req.params.exportId, req.params.id) as { snapshot_json: string } | undefined;
+      if (!rec) return reply.code(404).send({ error: "export_not_found" });
+
+      let state: Record<string, unknown> | null = null;
+      try {
+        const parsed = JSON.parse(rec.snapshot_json) as { state?: unknown };
+        if (parsed.state && typeof parsed.state === "object") {
+          state = parsed.state as Record<string, unknown>;
+        }
+      } catch {
+        state = null;
+      }
+      if (!state) return reply.code(400).send({ error: "no_state_snapshot" });
+
+      const patch = DocumentUpdateSchema.parse({
+        template_id: state.template_id,
+        params: state.params,
+        theme_id: state.theme_id,
+        selection: state.selection,
+        overrides: state.overrides,
+      });
+
+      const now = nowISO();
+      const current = rowToDocument(found.row, found.clientId);
+      const version =
+        ((db
+          .prepare(
+            "SELECT MAX(version) AS v FROM export_records WHERE document_id = ? AND kind = 'snapshot'"
+          )
+          .get(req.params.id) as { v: number | null }).v ?? 0) + 1;
+
+      const next: DocumentRow = {
+        ...found.row,
+        template_id: patch.template_id ?? found.row.template_id,
+        params_json: patch.params !== undefined ? JSON.stringify(patch.params) : found.row.params_json,
+        theme_id: patch.theme_id ?? found.row.theme_id,
+        selection_json:
+          patch.selection !== undefined ? JSON.stringify(patch.selection) : found.row.selection_json,
+        overrides_json:
+          patch.overrides !== undefined ? JSON.stringify(patch.overrides) : found.row.overrides_json,
+        updated_at: now,
+      };
+
+      const safetyId = newId("exp");
+      const tx = db.transaction(() => {
+        db.prepare(
+          `INSERT INTO export_records (id, document_id, project_id, kind, filepath, snapshot_json, version, created_at)
+           VALUES (?, ?, NULL, 'snapshot', '', ?, ?, ?)`
+        ).run(safetyId, req.params.id, JSON.stringify({ state: current }), version, now);
+        db.prepare(
+          `UPDATE documents SET template_id=@template_id, params_json=@params_json,
+            theme_id=@theme_id, selection_json=@selection_json, overrides_json=@overrides_json,
+            updated_at=@updated_at WHERE id=@id`
+        ).run(next);
+      });
+      tx();
+
+      return { document: rowToDocument(next, found.clientId), safety_record_id: safetyId };
+    }
+  );
+
   /* Sil */
   app.delete<{ Params: { id: string } }>("/api/documents/:id", async (req, reply) => {
     const res = db.prepare("DELETE FROM documents WHERE id = ?").run(req.params.id);

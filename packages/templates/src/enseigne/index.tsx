@@ -14,7 +14,7 @@ import { checkDpi, type LayoutWarning } from "../engine/layout.js";
 import { relToMM, scaleRule } from "../engine/ratio.js";
 import { resolveTheme, themeStyle, type Theme } from "../themes.js";
 import type { TemplateEntry, TemplateManifest, TemplateProps } from "../types.js";
-import { Slot, TextLines } from "../parts/svg.js";
+import { Slot, TextLines, ls } from "../parts/svg.js";
 
 const SLOTS = [
   { id: "logo", kind: "image" as const, bind: "brand.logo_primary" },
@@ -128,7 +128,7 @@ function EnseigneTemplate(props: TemplateProps): ReactNode {
             size={fs * 0.38}
             fill="var(--c-heading)"
             weight={a.theme.weights.heading}
-            letterSpacing={fs * 0.012}
+            letterSpacing={ls(fs * 0.045354)}
             uppercase
           />
         </Slot>
@@ -138,13 +138,13 @@ function EnseigneTemplate(props: TemplateProps): ReactNode {
           box={relToMM({ x: 0.02, y: 0.76, w: 0.6, h: 0.2 }, a.w_mm, a.h_mm)}>
           <TextLines lines={[a.services]} x={a.w_mm * 0.03} y={a.h_mm * 0.92}
             lineH={fs * 0.14} font="var(--f-item)" size={fs * 0.13}
-            fill="var(--c-bg)" weight={a.theme.weights.item} letterSpacing={fs * 0.004} />
+            fill="var(--c-bg)" weight={a.theme.weights.item} letterSpacing={ls(fs * 0.015118)} />
         </Slot>
         <Slot id="phone" {...interact} selected={selectedSlot === "phone"}
           box={relToMM({ x: 0.62, y: 0.76, w: 0.36, h: 0.2 }, a.w_mm, a.h_mm)}>
           <TextLines lines={a.phone ? [a.phone] : []} x={a.w_mm * 0.98} y={a.h_mm * 0.92}
             lineH={fs * 0.14} font="var(--f-item)" size={fs * 0.13}
-            fill="var(--c-bg)" weight={a.theme.weights.item} anchor="end" letterSpacing={fs * 0.006} />
+            fill="var(--c-bg)" weight={a.theme.weights.item} anchor="end" letterSpacing={ls(fs * 0.022677)} />
         </Slot>
       </g>
       {mode === "print" && a.stamp && (

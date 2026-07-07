@@ -66,7 +66,7 @@ function Cell(props: {
         size={cell.name.font_mm}
         fill="var(--c-item)"
         weight={weights.item}
-        letterSpacing={0.08}
+        letterSpacing={0.3024}
       />
 
       {/* açıklama */}
@@ -207,7 +207,7 @@ function Cell(props: {
 
 export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
   const { client, doc, mode, showGuides, cropMarks, selectedSlot, onSlotClick, editLabels } = props;
-  const a = analyzeGrid(client, doc);
+  const a = analyzeGrid(client, doc, props.pageIndex ?? 0);
   const B = manifest.bleed_mm;
   const W = a.formatDef.w_mm + 2 * B;
   const H = a.formatDef.h_mm + 2 * B;
@@ -238,17 +238,70 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
       <rect x={0} y={0} width={W} height={H} fill="url(#mgc-glow)" />
 
       <g transform={`translate(${B}, ${B})`}>
-        <PageChrome
-          geo={a.geo}
-          theme={a.theme}
-          client={client}
-          doc={doc}
-          scope={a.scope}
-          mode={mode}
-          selectedSlot={selectedSlot}
-          onSlotClick={onSlotClick}
-          qr={a.qr}
-        />
+        {a.contBand ? (
+          /* FAZ4 §8: devam sayfası ince bandı — logo + başlık + sayfa no (FR) */
+          <g>
+            {a.contBand.logoUrl && (
+              <image
+                href={a.contBand.logoUrl}
+                x={a.geo.margin}
+                y={a.contBand.y}
+                width={26}
+                height={a.contBand.h}
+                preserveAspectRatio="xMinYMid meet"
+              />
+            )}
+            <text
+              x={a.contBand.logoUrl ? a.geo.margin + 30 : a.geo.margin}
+              y={a.contBand.y + a.contBand.h * 0.68}
+              fontSize={7}
+              fill="var(--c-heading)"
+              style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.7559px" }}
+            >
+              {a.theme.uppercaseHeading ? a.contBand.title.toLocaleUpperCase("fr-FR") : a.contBand.title}
+            </text>
+            <text
+              x={a.formatDef.w_mm - a.geo.margin}
+              y={a.contBand.y + a.contBand.h * 0.68}
+              fontSize={3.4}
+              textAnchor="end"
+              fill="var(--c-desc)"
+              style={{ fontFamily: "var(--f-body)" }}
+            >
+              {a.contBand.pageLabel}
+            </text>
+            <rect
+              x={a.geo.margin}
+              y={a.contBand.y + a.contBand.h + 1}
+              width={a.formatDef.w_mm - 2 * a.geo.margin}
+              height={0.6}
+              fill="var(--c-accent)"
+            />
+            {/* dipnot her sayfada (yasal not) */}
+            <text
+              x={a.formatDef.w_mm / 2}
+              y={a.geo.footnoteBaseline}
+              fontSize={2.6}
+              textAnchor="middle"
+              fill="var(--c-desc)"
+              style={{ fontFamily: "var(--f-body)" }}
+            >
+              {client.catalog.footnote_fr}
+            </text>
+          </g>
+        ) : (
+          <PageChrome
+            geo={a.geo}
+            theme={a.theme}
+            client={client}
+            doc={doc}
+            scope={a.scope}
+            mode={mode}
+            selectedSlot={selectedSlot}
+            onSlotClick={onSlotClick}
+            qr={a.qr}
+          />
+        )}
 
         {/* repeater içerik alanı */}
         <g transform={`translate(${a.geo.content.x}, ${a.geo.content.y})`}>
@@ -294,7 +347,7 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
                     style={{
                       fontFamily: "var(--f-heading)",
                       fontWeight: a.theme.weights.heading,
-                      letterSpacing: "0.35mm",
+                      letterSpacing: "1.3228px",
                     }}
                   >
                     {a.theme.uppercaseHeading

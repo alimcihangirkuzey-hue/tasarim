@@ -153,6 +153,7 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .warn { padding: 6px 8px; border-radius: 8px; background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; }
 .warn.red { background: #FEE2E2; border-color: #DC2626; color: #7F1D1D; }
 .warn.ok { background: #DCFCE7; border-color: #16A34A; color: #14532D; }
+.warn.info { background: var(--c-panel, #F4F1EA); border-color: #D6D0C4; color: #6B6455; }
 .missing-item { display: flex; justify-content: space-between; gap: 6px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
 .missing-item:hover { background: var(--c-bg); }
 .toast {
@@ -191,3 +192,6 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 }
 .upcoming-chip.yellow { border-color: #F59E0B; background: #FEF3C7; }
 .upcoming-chip.red { border-color: #DC2626; background: #FEE2E2; }
+
+.ghost-link { color: #D8D3C8; font-size: 13px; text-decoration: none; border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 4px 10px; }
+.ghost-link:hover { background: rgba(255,255,255,0.08); }

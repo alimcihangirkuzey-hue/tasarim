@@ -94,6 +94,7 @@ export function assetRoutes(app: FastifyInstance): void {
         filename,
         width_px: width,
         height_px: height,
+        tags: "",
         created_at: nowISO(),
       };
       db.prepare(
@@ -111,6 +112,20 @@ export function assetRoutes(app: FastifyInstance): void {
       }
 
       reply.code(201);
+      return assetToDTO(row);
+    }
+  );
+
+  /* Etiket düzenleme — FAZ4-GOREV §9 (virgüllü; öneri motoru normalize eder) */
+  app.patch<{ Params: { id: string }; Body: { tags?: string } }>(
+    "/api/assets/:id",
+    async (req, reply) => {
+      const tags = typeof (req.body as { tags?: unknown })?.tags === "string"
+        ? ((req.body as { tags: string }).tags).slice(0, 500)
+        : "";
+      const res = db.prepare("UPDATE assets SET tags = ? WHERE id = ?").run(tags, req.params.id);
+      if (res.changes === 0) return reply.code(404).send({ error: "not_found" });
+      const row = db.prepare("SELECT * FROM assets WHERE id = ?").get(req.params.id) as Parameters<typeof assetToDTO>[0];
       return assetToDTO(row);
     }
   );

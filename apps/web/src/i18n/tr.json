@@ -1,6 +1,15 @@
 {
-  "app": { "title": "TEZGÂH", "subtitle": "Atölye otomasyonu · Faz 3" },
-  "nav": { "clients": "Müşteriler" },
+  "app": {
+    "title": "TEZGÂH",
+    "subtitle": "Atölye otomasyonu · Faz 4",
+    "backup": "Yedek al",
+    "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)",
+    "themes": "Temalar",
+    "settings": "Ayarlar"
+  },
+  "nav": {
+    "clients": "Müşteriler"
+  },
   "clients": {
     "new_placeholder": "Yeni müşteri adı (ör. Antalya Kebab — Lyon)",
     "add": "Ekle",
@@ -120,6 +129,7 @@
     "warn_contrast": "Zemin-metin kontrastı düşük ({ratio}:1 < 3:1) — uzaktan okunmaz",
     "warn_mono_suggest": "Koyu/renkli kumaş: mono logo önerilir (slot panelinden tek tıkla geç)",
     "warn_fine_detail": "İnce çizgiler nakışta iplik kalınlığında kaybolabilir — nakışçıyla teyitleşin",
+    "warn_broderie_info": "Nakış üretimi iplik kalınlığına tabidir; ince detayları nakışçıyla teyit edin.",
     "slot": "Seçili slot",
     "no_slot": "Canvas'ta bir slota tıkla",
     "reattach": "⛓ Veriye geri bağla",
@@ -148,7 +158,10 @@
     "garment_areas": "Baskı alanları",
     "garment_logo_variant": "Logo sürümü",
     "garment_auto": "otomatik (kumaşa göre)",
-    "garment_line_source": "Metin kaynağı (marka kiti)"
+    "garment_line_source": "Metin kaynağı (marka kiti)",
+    "cmyk": "Print (CMYK)",
+    "cmyk_missing": "Ghostscript kurulu değil — gswin64c/gs PATH'te olmalı (ghostscript.com). RGB PDF matbaaların çoğuna yeter (ADR-4).",
+    "cmyk_need_print": "Önce print PDF al"
   },
   "orders": {
     "tab": "Projeler",
@@ -209,7 +222,10 @@
   },
   "history": {
     "title": "Geçmiş",
-    "reveal": "Klasörde göster"
+    "reveal": "Klasörde göster",
+    "restore": "Bu versiyona dön",
+    "restore_confirm": "Belge bu versiyonun durumuna dönecek; mevcut durum güvenlik kaydı olarak geçmişe yazılacak. Devam?",
+    "snapshot_label": "güvenlik kaydı (dönüş öncesi)"
   },
   "scenes": {
     "tab": "Sahneler",
@@ -242,7 +258,10 @@
     "tab_client": "Müşteri",
     "tab_common": "Ortak havuz",
     "scope_client": "Bu müşteriye",
-    "scope_common": "Ortak havuza"
+    "scope_common": "Ortak havuza",
+    "tags_placeholder": "etiketler (virgüllü)",
+    "delete_confirm": "Görsel silinecek (üç dosya: orig/master/thumb). Devam?",
+    "in_use": "Silinemez — kullanımda:"
   },
   "missing": {
     "title": "Eksik fotoğraflar ({n})",
@@ -261,5 +280,75 @@
     "up": "↑",
     "down": "↓",
     "close": "Kapat"
+  },
+  "bulk": {
+    "open": "Toplu güncelle",
+    "title": "Toplu fiyat güncelleme",
+    "tab_update": "Güncelle",
+    "tab_history": "Geçmiş",
+    "scope": "Kapsam",
+    "scope_all": "Tüm katalog",
+    "op": "İşlem",
+    "op_percent": "+% artış",
+    "op_add": "+ sabit tutar",
+    "op_set": "değer ata",
+    "rounding": "Yuvarlama",
+    "round_none": "Yok",
+    "no_changes": "Bu ayarlarla değişecek fiyat yok.",
+    "col_item": "Ürün",
+    "col_variant": "Varyant",
+    "col_before": "Eski",
+    "col_after": "Yeni",
+    "count": "{n} fiyat değişecek",
+    "apply": "Uygula",
+    "save_first": "Önce taslağı kaydet (Ctrl+S)",
+    "history_empty": "Henüz geçmiş kaydı yok.",
+    "history_manual": "kayıt",
+    "restore": "Geri yükle",
+    "restore_confirm": "Katalog bu kayda dönecek; mevcut durum da geçmişe yazılacak. Devam?"
+  },
+  "themes": {
+    "title": "Tema Kütüphanesi",
+    "builtin": "yerleşik",
+    "derive": "Kopyala-türet",
+    "edit": "Düzenle",
+    "new": "Yeni tema",
+    "base": "Davranış tabanı:",
+    "save": "Kaydet",
+    "create": "Oluştur",
+    "delete_confirm": "Tema silinecek. Bu temayı kullanan belgeler marka temasına döner. Devam?",
+    "pick_hint": "Düzenlemek için soldan bir tema seç ya da yeni tema oluştur; önizleme gerçek grid şablonuyla canlı."
+  },
+  "suggest": {
+    "chip": "Öneri — bağla",
+    "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"
+  },
+  "parsedict": {
+    "title": "Parse Sözlüğü",
+    "hint": "Yapıştır-çözümle motoruna eş anlamlı ekle: pazarlamacının kullandığı kelime hangi ürün tipine düşsün? Kayıtlar kod içi çekirdek sözlükle birleşir; ekleme aynı oturumda etkilidir.",
+    "word_placeholder": "kelime (ör. cephe)",
+    "add": "Ekle",
+    "empty": "Henüz özel kayıt yok — çekirdek sözlük çalışmaya devam eder."
+  },
+  "preset": {
+    "opening": "Açılış Takımı oluştur",
+    "opening_done": "Açılış Takımı açıldı: 4 kalem (vitrophanie ölçü bekliyor)"
+  },
+  "factory": {
+    "title": "Şablon Fabrikası",
+    "intro": "Illustrator'dan SVG export'unu yükle; script/harici referanslar otomatik ayıklanır. Sonra elemanlara tıklayıp slot ata, bir grubu prototip hücre yap ve Üret'e bas — şablon anında kayıt defterine girer, kod elle rafine edilebilir.",
+    "removed": "Ayıklananlar",
+    "size": "Gerçek boyut + kimlik",
+    "tpl_id": "şablon kimliği (küçük-kebap, örn. pizza-menu)",
+    "tpl_name": "şablon adı (TR)",
+    "mark": "İşaretle",
+    "pick_hint": "Tuvalde bir elemana tıkla.",
+    "add_slot": "Slotu ata",
+    "make_proto": "Prototip hücre yap",
+    "proto": "Prototip hücre (repeater)",
+    "proto_hint": "Prototipin İÇİNDEKİ elemanlara tıklayıp name/desc/photo/price eşle; motor hücreyi ürün başına çoğaltır.",
+    "slots": "Slotlar",
+    "generate": "Üret (src/generated)",
+    "done": "Üretildi — şablon kayıt defterinde"
   }
 }

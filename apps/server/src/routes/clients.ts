@@ -35,6 +35,7 @@ type AssetRow = {
   id: string;
   client_id: string | null;
   kind: "logo" | "photo" | "other";
+  tags: string;
   filename: string;
   width_px: number;
   height_px: number;

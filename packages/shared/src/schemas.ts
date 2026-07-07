@@ -144,7 +144,9 @@ export interface ExportRecordDTO {
   /** Mimar kararı #3: sunum kayıtlarında null olabilir */
   document_id: string | null;
   project_id: string | null;
-  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png";
+  /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
+     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar */
+  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk";
   filepath: string;
   version: number;
   created_at: string;
@@ -153,6 +155,37 @@ export interface ExportRecordDTO {
 /* ------------------------------------------------------------------ */
 /* API veri sözleşmeleri                                               */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Tema kütüphanesi — FAZ4-GOREV §7                                    */
+/* ------------------------------------------------------------------ */
+
+/** 6-8 haneli hex (velours paneli gibi alfa kanallı değerler serbest) */
+const ThemeHex = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/);
+/** Repo fontları (packages/templates/fonts) — dışarıdan font yok (M9) */
+export const ThemeFontKeySchema = z.enum(["oswald", "anton", "archivo", "inter", "bitter", "pacifico"]);
+export type ThemeFontKey = z.infer<typeof ThemeFontKeySchema>;
+
+export const ThemeTokensSchema = z.object({
+  /** kategori ayracı/uppercase gibi davranışlar bu yerleşikten kalıtılır */
+  base: z.enum(["or-noir", "aras-orange", "velours-rouge"]).default("or-noir"),
+  colors: z.object({
+    bg: ThemeHex, panel: ThemeHex, heading: ThemeHex, item: ThemeHex,
+    desc: ThemeHex, price: ThemeHex, accent: ThemeHex, line: ThemeHex,
+  }),
+  fonts: z.object({
+    heading: ThemeFontKeySchema, item: ThemeFontKeySchema,
+    body: ThemeFontKeySchema, script: ThemeFontKeySchema,
+  }),
+});
+export type ThemeTokens = z.infer<typeof ThemeTokensSchema>;
+
+export interface ThemeDTO {
+  id: string;
+  name: string;
+  tokens: ThemeTokens;
+  created_at: string;
+}
 
 export const AssetKindSchema = z.enum(["logo", "photo", "other"]);
 export type AssetKind = z.infer<typeof AssetKindSchema>;
@@ -164,6 +197,8 @@ export interface AssetDTO {
   filename: string; // master dosya adı: {id}.{ext}
   width_px: number;
   height_px: number;
+  /** virgüllü etiketler (FAZ4 §9 foto önerisi; normalize ederek ara) */
+  tags: string;
   created_at: string;
   urls: { orig: string; master: string; thumb: string };
 }

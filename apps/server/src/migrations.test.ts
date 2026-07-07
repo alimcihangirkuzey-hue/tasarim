@@ -134,3 +134,66 @@ describe("migration v4 (Faz 3 — mockup_scenes)", () => {
     ).not.toThrow();
   });
 });
+
+describe("migration v5 (Faz 4 — catalog_history, themes, assets.tags, parse_synonyms)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    db.exec(MIGRATIONS[2]);
+    db.exec(MIGRATIONS[3]);
+    db.exec(MIGRATIONS[4]);
+  });
+
+  it("dört ek de yerinde; assets.tags default boş dize", () => {
+    db.prepare(
+      `INSERT INTO catalog_history (id, client_id, catalog_json, reason, created_at)
+       VALUES ('ch1', 'cli1', '{}', 'toplu +%5', 't')`
+    ).run();
+    db.prepare(
+      `INSERT INTO themes (id, name, tokens_json, created_at) VALUES ('th1', 'Özel', '{}', 't')`
+    ).run();
+    db.prepare(
+      `INSERT INTO parse_synonyms (word, product_type) VALUES ('cephe', 'tabela')`
+    ).run();
+    db.prepare(
+      `INSERT INTO assets (id, client_id, kind, filename, created_at)
+       VALUES ('astT', 'cli1', 'photo', 't.jpg', 't')`
+    ).run();
+    const a = db.prepare("SELECT tags FROM assets WHERE id='astT'").get();
+    expect(a).toEqual({ tags: "" });
+    db.prepare("UPDATE assets SET tags = 'adana, brochette' WHERE id='astT'").run();
+    expect(db.prepare("SELECT tags FROM assets WHERE id='astT'").get()).toEqual({
+      tags: "adana, brochette",
+    });
+  });
+
+  it("müşteri silinince katalog geçmişi düşer (CASCADE); tema ve sözlük kalır", () => {
+    db.exec(`
+      INSERT INTO catalog_history (id, client_id, catalog_json, created_at) VALUES ('ch1','cli1','{}','t');
+      INSERT INTO themes (id, name, tokens_json, created_at) VALUES ('th1','Özel','{}','t');
+      INSERT INTO parse_synonyms (word, product_type) VALUES ('cephe','tabela');
+    `);
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM catalog_history").get()).toMatchObject({ c: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS c FROM themes").get()).toMatchObject({ c: 1 });
+    expect(db.prepare("SELECT COUNT(*) AS c FROM parse_synonyms").get()).toMatchObject({ c: 1 });
+  });
+
+  it("parse_synonyms.word PRIMARY KEY: aynı kelime ikinci kez giremez", () => {
+    db.prepare("INSERT INTO parse_synonyms (word, product_type) VALUES ('cephe','tabela')").run();
+    expect(() =>
+      db.prepare("INSERT INTO parse_synonyms (word, product_type) VALUES ('cephe','vitrophanie')").run()
+    ).toThrow(/UNIQUE|PRIMARY/i);
+  });
+
+  it("Faz 1-3 akışları kırılmadı: export_records CHECK + mockup_scenes yerinde", () => {
+    expect(() =>
+      db.prepare("SELECT document_id, project_id FROM export_records LIMIT 1").all()
+    ).not.toThrow();
+    expect(() =>
+      db.prepare("SELECT kind, settings_json FROM mockup_scenes LIMIT 1").all()
+    ).not.toThrow();
+  });
+});

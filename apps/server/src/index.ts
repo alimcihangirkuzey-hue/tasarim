@@ -15,6 +15,13 @@ import { sceneRoutes } from "./routes/scenes.js";
 import { mockupRoutes } from "./routes/mockup.js";
 import { vectorRoutes } from "./routes/vector.js";
 import { garmentRoutes } from "./routes/garment.js";
+import { catalogRoutes } from "./routes/catalog.js";
+import { backupRoutes } from "./routes/backup.js";
+import { themeRoutes } from "./routes/themes.js";
+import { synonymRoutes } from "./routes/synonyms.js";
+import { presetRoutes2 } from "./routes/presets.js";
+import { factoryRoutes } from "./routes/factory.js";
+import { cmykRoutes } from "./routes/cmyk.js";
 
 migrate();
 
@@ -35,7 +42,7 @@ await app.register(fastifyStatic, {
   decorateReply: false,
 });
 
-app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 3 }));
+app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 4 }));
 
 clientRoutes(app);
 assetRoutes(app);
@@ -48,6 +55,13 @@ sceneRoutes(app);
 mockupRoutes(app);
 vectorRoutes(app);
 garmentRoutes(app);
+catalogRoutes(app);
+backupRoutes(app);
+themeRoutes(app);
+synonymRoutes(app);
+presetRoutes2(app);
+factoryRoutes(app);
+cmykRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {
