@@ -91,3 +91,46 @@ describe("migration v3 (mimar kararı #3)", () => {
     expect(db.prepare("SELECT COUNT(*) AS c FROM export_records").get()).toMatchObject({ c: 0 });
   });
 });
+
+describe("migration v4 (Faz 3 — mockup_scenes)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    db.exec(MIGRATIONS[2]);
+    db.exec(MIGRATIONS[3]);
+    db.exec(`INSERT INTO assets (id, client_id, kind, filename, created_at)
+             VALUES ('ast1', 'cli1', 'photo', 'ast1.jpg', 't'),
+                    ('astC', NULL, 'photo', 'astC.jpg', 't')`);
+  });
+
+  it("müşteri sahnesi ve ORTAK sahne (client_id NULL) açılabilir; defaultlar doğru", () => {
+    db.prepare(
+      `INSERT INTO mockup_scenes (id, client_id, name, photo_asset_id, quad_json, created_at)
+       VALUES ('sc1', 'cli1', 'Vitrin', 'ast1', '[]', 't')`
+    ).run();
+    db.prepare(
+      `INSERT INTO mockup_scenes (id, client_id, name, photo_asset_id, quad_json, kind, settings_json, created_at)
+       VALUES ('sc2', NULL, 'Ortak tişört', 'astC', '[]', 'garment', '{"blend":"multiply"}', 't')`
+    ).run();
+    const sc1 = db.prepare("SELECT * FROM mockup_scenes WHERE id='sc1'").get() as Record<string, unknown>;
+    expect(sc1).toMatchObject({ kind: "generic", settings_json: "{}" });
+  });
+
+  it("müşteri silinince sahnesi düşer, ortak sahne kalır; Faz 1-2 tabloları sağlam", () => {
+    db.prepare(
+      `INSERT INTO mockup_scenes (id, client_id, name, photo_asset_id, quad_json, created_at)
+       VALUES ('sc1', 'cli1', 'Vitrin', 'ast1', '[]', 't'),
+              ('sc2', NULL, 'Ortak', 'astC', '[]', 't')`
+    ).run();
+    db.prepare("DELETE FROM clients WHERE id = 'cli1'").run();
+    const kalan = db.prepare("SELECT id FROM mockup_scenes").all() as Array<{ id: string }>;
+    expect(kalan.map((r) => r.id)).toEqual(["sc2"]);
+    /* Faz 2 akışı: order_items + export_records şeması yerinde */
+    expect(db.prepare("SELECT COUNT(*) AS c FROM order_items").get()).toMatchObject({ c: 0 });
+    expect(() =>
+      db.prepare("SELECT document_id, project_id FROM export_records LIMIT 1").all()
+    ).not.toThrow();
+  });
+});

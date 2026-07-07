@@ -92,4 +92,19 @@ export const MIGRATIONS: string[] = [
   DROP TABLE export_records;
   ALTER TABLE export_records_v3 RENAME TO export_records;
   `,
+  /* v4 — Faz 3: mockup sahneleri (FAZ3-GOREV §2). CONSTITUTION §4.2'de "Faz 3"
+     olarak işaretlenen tablo burada İLK KEZ açılır; paketin istediği kind ve
+     settings_json kolonları baştan dahildir. client_id NULL = ortak sahne. */
+  `
+  CREATE TABLE IF NOT EXISTS mockup_scenes (
+    id             TEXT PRIMARY KEY,
+    client_id      TEXT REFERENCES clients(id) ON DELETE CASCADE,
+    name           TEXT NOT NULL,
+    photo_asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    quad_json      TEXT NOT NULL,
+    kind           TEXT NOT NULL DEFAULT 'generic',
+    settings_json  TEXT NOT NULL DEFAULT '{}',
+    created_at     TEXT NOT NULL
+  );
+  `,
 ];

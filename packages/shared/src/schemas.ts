@@ -291,6 +291,119 @@ export const ProjectUpdateSchema = z.object({
   due_date: z.string().nullable().optional(),
 });
 
+/* ------------------------------------------------------------------ */
+/* Faz 3 — Mockup sahneleri ve yeni belge tipleri (FAZ3-GOREV §2)      */
+/* ------------------------------------------------------------------ */
+
+export const SceneKindSchema = z.enum(["vitrine", "facade", "garment", "generic"]);
+export type SceneKind = z.infer<typeof SceneKindSchema>;
+
+/** Foto pikseli cinsinden köşe; sıra SABİT: sol-üst, sağ-üst, sağ-alt, sol-alt */
+export const QuadPointSchema = z.object({ x: z.number(), y: z.number() });
+export const QuadSchema = z.array(QuadPointSchema).length(4);
+export type Quad = z.infer<typeof QuadSchema>;
+
+export const SceneSettingsSchema = z.object({
+  blend: z.enum(["normal", "multiply"]).default("normal"),
+  opacity: z.number().min(0).max(1).default(0.9),
+  fabric_color: z.string().optional(),
+});
+export type SceneSettings = z.infer<typeof SceneSettingsSchema>;
+
+export interface MockupSceneDTO {
+  id: string;
+  client_id: string | null;
+  name: string;
+  kind: SceneKind;
+  photo_asset_id: string;
+  photo_urls: { master: string; thumb: string } | null;
+  photo_px: { w: number; h: number } | null;
+  quad: Quad;
+  settings: SceneSettings;
+  created_at: string;
+}
+
+export const SceneCreateSchema = z.object({
+  name: z.string().min(1).max(120),
+  kind: SceneKindSchema.default("generic"),
+  photo_asset_id: z.string().min(1),
+  quad: QuadSchema,
+  settings: SceneSettingsSchema.default({}),
+  /** true → ortak havuza (client_id NULL) kaydedilir */
+  common: z.boolean().default(false),
+});
+
+export const SceneUpdateSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  kind: SceneKindSchema.optional(),
+  quad: QuadSchema.optional(),
+  settings: SceneSettingsSchema.optional(),
+});
+
+/* --- Vitrophanie / Tabela / Garment belge paramları --- */
+
+export const VitroModeSchema = z.enum(["impression", "decoupe"]);
+
+export const VitroParamsSchema = z.object({
+  w_cm: z.number().positive().max(2000).default(100),
+  h_cm: z.number().positive().max(2000).default(100),
+  mode: VitroModeSchema.default("impression"),
+  miroir: z.boolean().default(false),
+  cut_color: HexColor.default("#1A1A1A"),
+  bleed_mm: z.union([z.literal(0), z.literal(3), z.literal(5)]).default(0),
+});
+export type VitroParams = z.infer<typeof VitroParamsSchema>;
+
+export const TabelaParamsSchema = z.object({
+  w_cm: z.number().positive().max(2000).default(300),
+  h_cm: z.number().positive().max(2000).default(60),
+  bleed_mm: z.union([z.literal(0), z.literal(3), z.literal(5)]).default(0),
+});
+export type TabelaParams = z.infer<typeof TabelaParamsSchema>;
+
+export const GarmentKindSchema = z.enum(["tshirt", "apron_bavette", "apron_taille"]);
+export type GarmentKind = z.infer<typeof GarmentKindSchema>;
+
+export const GarmentTechniqueSchema = z.enum(["impression", "broderie"]);
+export type GarmentTechnique = z.infer<typeof GarmentTechniqueSchema>;
+
+export const GarmentAreaIdSchema = z.enum([
+  "chest_left", "chest_center", "back_full", "sleeve", "chest", "front",
+]);
+export type GarmentAreaId = z.infer<typeof GarmentAreaIdSchema>;
+
+export const GarmentParamsSchema = z.object({
+  garment_kind: GarmentKindSchema.default("tshirt"),
+  fabric_color: z.string().default("white"), // white|black|red|blue|#RRGGBB
+  technique: GarmentTechniqueSchema.default("impression"),
+  areas: z.array(GarmentAreaIdSchema).min(1).default(["chest_center"]),
+});
+export type GarmentParams = z.infer<typeof GarmentParamsSchema>;
+
+/** Alan preset'leri (cm) — FAZ3-GOREV §6 */
+export const GARMENT_AREAS: Record<
+  GarmentAreaId,
+  { w_cm: number; h_cm: number; label_tr: string; kinds: GarmentKind[] }
+> = {
+  chest_left: { w_cm: 10, h_cm: 10, label_tr: "Göğüs sol", kinds: ["tshirt"] },
+  chest_center: { w_cm: 25, h_cm: 30, label_tr: "Göğüs merkez", kinds: ["tshirt"] },
+  back_full: { w_cm: 30, h_cm: 40, label_tr: "Sırt", kinds: ["tshirt"] },
+  sleeve: { w_cm: 8, h_cm: 8, label_tr: "Kol", kinds: ["tshirt"] },
+  chest: { w_cm: 24, h_cm: 20, label_tr: "Göğüs (önlük)", kinds: ["apron_bavette"] },
+  front: { w_cm: 30, h_cm: 20, label_tr: "Ön (bel önlüğü)", kinds: ["apron_taille"] },
+};
+
+export function areasForKind(kind: GarmentKind): GarmentAreaId[] {
+  return (Object.keys(GARMENT_AREAS) as GarmentAreaId[]).filter((a) =>
+    GARMENT_AREAS[a].kinds.includes(kind)
+  );
+}
+
+/** 300 dpi piksel hesabı: cm × 300 / 2.54, yuvarlanır (FAZ3-GOREV §6 export) */
+export function cmToPx300(cm: number): number {
+  return Math.round((cm * 300) / 2.54);
+}
+
 /* Varsayılan üreticiler */
 export const defaultBrandKit = (): BrandKit => BrandKitSchema.parse({});
 export const defaultCatalog = (): Catalog => CatalogSchema.parse({});
