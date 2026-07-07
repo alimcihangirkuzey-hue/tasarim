@@ -256,7 +256,9 @@
     "tab_common": "Ortak havuz",
     "scope_client": "Bu müşteriye",
     "scope_common": "Ortak havuza",
-    "tags_placeholder": "etiketler (virgüllü)"
+    "tags_placeholder": "etiketler (virgüllü)",
+    "delete_confirm": "Görsel silinecek (üç dosya: orig/master/thumb). Devam?",
+    "in_use": "Silinemez — kullanımda:"
   },
   "missing": {
     "title": "Eksik fotoğraflar ({n})",
@@ -324,5 +326,9 @@
     "word_placeholder": "kelime (ör. cephe)",
     "add": "Ekle",
     "empty": "Henüz özel kayıt yok — çekirdek sözlük çalışmaya devam eder."
+  },
+  "preset": {
+    "opening": "Açılış Takımı oluştur",
+    "opening_done": "Açılış Takımı açıldı: 4 kalem (vitrophanie ölçü bekliyor)"
   }
 }

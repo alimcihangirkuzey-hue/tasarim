@@ -157,6 +157,14 @@ export const api = {
       body: "{}",
     }),
 
+  /* Asset silme + preset — Faz 4 §11 */
+  deleteAsset: (id: string) =>
+    http<{ ok: true }>(`/api/assets/${id}`, { method: "DELETE" }),
+  createOpeningKit: (clientId: string) =>
+    http<{ project_id: string; items: number }>(`/api/clients/${clientId}/presets/opening`, {
+      method: "POST", body: "{}",
+    }),
+
   /* Parse sözlüğü — Faz 4 §10 */
   parseSynonyms: () =>
     http<Array<{ word: string; product_type: import("@tezgah/shared").ProductType }>>(`/api/parse-synonyms`),

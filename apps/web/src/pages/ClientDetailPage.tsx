@@ -58,6 +58,30 @@ export function ClientDetailPage() {
     onSuccess: () => navigate("/"),
   });
 
+  /* FAZ4 §11: Açılış Takımı preseti → Projeler sekmesine geç */
+  const openingKit = useMutation({
+    mutationFn: () => api.createOpeningKit(id),
+    onSuccess: () => {
+      invalidate();
+      void qc.invalidateQueries({ queryKey: ["projects", id] });
+      setTab("projects");
+    },
+  });
+
+  /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster */
+  const deleteAsset = async (assetId: string) => {
+    if (!window.confirm(t("assets.delete_confirm"))) return;
+    const res = await fetch(`/api/assets/${assetId}`, { method: "DELETE" });
+    if (res.status === 409) {
+      const j = (await res.json()) as { usages: Array<{ where: string; label: string }> };
+      window.alert(
+        t("assets.in_use") + "\n" + j.usages.map((u) => `• ${u.where}: ${u.label}`).join("\n")
+      );
+    } else if (res.ok) {
+      invalidate();
+    }
+  };
+
   const photoInput = useRef<HTMLInputElement>(null);
   const onPick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,6 +169,15 @@ export function ClientDetailPage() {
             </button>
             {save.isSuccess && <span className="muted">{t("client.saved")}</span>}
             {save.isError && <span className="error">{(save.error as Error).message}</span>}
+            <span style={{ flex: 1 }} />
+            {/* FAZ4 §11: tek tıkla proje + 4 kalem (vitrophanie ölçü bekler) */}
+            <button
+              className="ghost"
+              disabled={openingKit.isPending}
+              onClick={() => openingKit.mutate()}
+            >
+              📦 {t("preset.opening")}
+            </button>
           </div>
         </div>
       )}
@@ -189,12 +222,18 @@ export function ClientDetailPage() {
                 ) : (
                   <div className="thumbs">
                     {list.map((a) => (
-                      <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 3, width: 96 }}>
+                      <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 3, width: 96, position: "relative" }}>
                         <img
                           src={a.urls.thumb}
                           alt={a.kind}
                           title={`${a.width_px}×${a.height_px}px · ${a.kind}${a.client_id === null ? " · ortak" : ""}`}
                         />
+                        <button
+                          className="icon"
+                          title={t("common.delete")}
+                          style={{ position: "absolute", top: 2, right: 2, background: "#fff9", borderRadius: 6 }}
+                          onClick={() => void deleteAsset(a.id)}
+                        >✕</button>
                         {/* FAZ4 §9: satır içi etiket düzenleme (virgüllü; blur'da kaydeder) */}
                         <input
                           type="text"
