@@ -330,5 +330,22 @@
   "preset": {
     "opening": "Açılış Takımı oluştur",
     "opening_done": "Açılış Takımı açıldı: 4 kalem (vitrophanie ölçü bekliyor)"
+  },
+  "factory": {
+    "title": "Şablon Fabrikası",
+    "intro": "Illustrator'dan SVG export'unu yükle; script/harici referanslar otomatik ayıklanır. Sonra elemanlara tıklayıp slot ata, bir grubu prototip hücre yap ve Üret'e bas — şablon anında kayıt defterine girer, kod elle rafine edilebilir.",
+    "removed": "Ayıklananlar",
+    "size": "Gerçek boyut + kimlik",
+    "tpl_id": "şablon kimliği (küçük-kebap, örn. pizza-menu)",
+    "tpl_name": "şablon adı (TR)",
+    "mark": "İşaretle",
+    "pick_hint": "Tuvalde bir elemana tıkla.",
+    "add_slot": "Slotu ata",
+    "make_proto": "Prototip hücre yap",
+    "proto": "Prototip hücre (repeater)",
+    "proto_hint": "Prototipin İÇİNDEKİ elemanlara tıklayıp name/desc/photo/price eşle; motor hücreyi ürün başına çoğaltır.",
+    "slots": "Slotlar",
+    "generate": "Üret (src/generated)",
+    "done": "Üretildi — şablon kayıt defterinde"
   }
 }

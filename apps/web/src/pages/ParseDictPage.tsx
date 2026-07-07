@@ -13,7 +13,7 @@ const TYPES: ProductType[] = [
   "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
 ];
 
-export function SettingsTabs({ active }: { active: "themes" | "parse" }) {
+export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" }) {
   return (
     <div className="tabs" style={{ marginBottom: 14 }}>
       <Link to="/settings/themes">
@@ -21,6 +21,9 @@ export function SettingsTabs({ active }: { active: "themes" | "parse" }) {
       </Link>
       <Link to="/settings/parse">
         <button className={active === "parse" ? "active" : ""}>{t("parsedict.title")}</button>
+      </Link>
+      <Link to="/settings/factory">
+        <button className={active === "factory" ? "active" : ""}>{t("factory.title")}</button>
       </Link>
     </div>
   );

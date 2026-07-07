@@ -12,6 +12,7 @@ import { PresentPage } from "./pages/PresentPage";
 import { PrintPage } from "./pages/PrintPage";
 import { ThemesPage } from "./pages/ThemesPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
+import { FactoryPage } from "./pages/FactoryPage";
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -73,6 +74,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/editor/:id" element={<EditorPage />} />
                     <Route path="/settings/themes" element={<ThemesPage />} />
                     <Route path="/settings/parse" element={<ParseDictPage />} />
+                    <Route path="/settings/factory" element={<FactoryPage />} />
                   </Routes>
                 </Layout>
               }

@@ -10,6 +10,7 @@ import { carteFidelite } from "./carte-fidelite/index.js";
 import { vitroBandeau, vitroCentre, vitroColonne } from "./vitrophanie/index.js";
 import { enseignePanneau } from "./enseigne/index.js";
 import { garment } from "./garment/index.js";
+import { GENERATED } from "./generated/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
@@ -37,7 +38,12 @@ export type { EnseigneAnalysis } from "./enseigne/index.js";
 export { analyzeGarment } from "./garment/index.js";
 export type { GarmentAnalysis, GarmentAreaLayout, LineSource } from "./garment/index.js";
 
+export * from "./factory/sanitize.js";
+
+/* Fabrika üretimi şablonlar (mimar #12) el yazımı kayıtlarla birleşir;
+   çakışmada el yazımı kazanır (yerleşik kimlikler ezilemez). */
 export const TEMPLATES: Record<string, TemplateEntry> = {
+  ...GENERATED,
   [menuGridCells.manifest.id]: menuGridCells,
   [menuListePremium.manifest.id]: menuListePremium,
   [menuTrifold.manifest.id]: menuTrifold,
