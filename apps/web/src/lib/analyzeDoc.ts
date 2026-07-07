@@ -2,6 +2,7 @@
 
 import {
   analyzeEnseigne,
+  analyzeGarment,
   analyzeFidelite,
   analyzeFlyer,
   analyzeGrid,
@@ -44,6 +45,10 @@ export function analyzeDoc(client: ClientDTO, doc: DocumentState): DocAnalysis {
     case "enseigne-panneau": {
       const a = analyzeEnseigne(client, doc);
       return { warnings: a.warnings, pages: 1 };
+    }
+    case "garment": {
+      const a = analyzeGarment(client, doc);
+      return { warnings: a.warnings, pages: a.areas.length };
     }
     default: {
       const a = analyzeGrid(client, doc);

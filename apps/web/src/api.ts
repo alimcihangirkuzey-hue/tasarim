@@ -149,6 +149,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ scene_id }),
     }),
+  exportSvg: (id: string) =>
+    http<ExportRecordDTO>(`/api/documents/${id}/export-svg`, { method: "POST", body: "{}" }),
+  exportGarment: (id: string) =>
+    http<{ record: ExportRecordDTO; files: string[] }>(`/api/documents/${id}/export-garment`, {
+      method: "POST",
+      body: "{}",
+    }),
 
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>

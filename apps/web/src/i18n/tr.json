@@ -144,7 +144,11 @@
     "mockup_none_body": "Bu müşteride uygun sahne yok. Müşteri sayfasındaki \"Sahneler\" sekmesinden vitrin/cephe/tişört fotoğrafı yükleyip 4 köşeyi işaretle.",
     "mockup_go_scenes": "Sahneler sekmesine git",
     "mockup_done": "Mockup hazır — v{n}",
-    "mockup_generating": "Mockup üretiliyor…"
+    "mockup_generating": "Mockup üretiliyor…",
+    "garment_areas": "Baskı alanları",
+    "garment_logo_variant": "Logo sürümü",
+    "garment_auto": "otomatik (kumaşa göre)",
+    "garment_line_source": "Metin kaynağı (marka kiti)"
   },
   "orders": {
     "tab": "Projeler",

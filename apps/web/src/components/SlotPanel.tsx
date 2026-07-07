@@ -225,6 +225,64 @@ export function SlotPanel(props: Props & { selectedSlot: string | null }) {
 
   if (!selectedSlot) return <p className="muted">{t("editor.no_slot")}</p>;
 
+  /* garment alan slotları: area:{id}:logo|line1|line2 */
+  if (selectedSlot.startsWith("area:")) {
+    const [, areaId, part] = selectedSlot.split(":");
+    if (part === "logo") {
+      const key = `area:${areaId}:logo`;
+      const cur = (doc.overrides[key]?.value as string) ?? "";
+      return (
+        <div className="epanel">
+          <h3>{t("editor.slot")}: {selectedSlot}</h3>
+          <label className="field">
+            {t("editor.garment_logo_variant")}
+            <select
+              value={cur || "auto"}
+              onChange={(e) =>
+                patch(
+                  e.target.value === "auto"
+                    ? clearOverride(doc, key)
+                    : setOverride(doc, key, e.target.value)
+                )
+              }
+            >
+              <option value="auto">{t("editor.garment_auto")}</option>
+              <option value="primary">logo (renkli)</option>
+              <option value="mono">logo mono</option>
+            </select>
+          </label>
+        </div>
+      );
+    }
+    const key = `area:${areaId}:${part}`;
+    const cur = (doc.overrides[key]?.value ?? {}) as { source?: string; text?: string };
+    const source = cur.source ?? (part === "line1" ? "phone" : "none");
+    return (
+      <div className="epanel">
+        <h3>{t("editor.slot")}: {selectedSlot}</h3>
+        <label className="field">
+          {t("editor.garment_line_source")}
+          <select
+            value={source}
+            onChange={(e) => patch(setOverride(doc, key, { ...cur, source: e.target.value }))}
+          >
+            {["none", "phone", "address", "instagram", "custom"].map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </label>
+        {source === "custom" && (
+          <input
+            type="text"
+            value={cur.text ?? ""}
+            onChange={(e) => patch(setOverride(doc, key, { source: "custom", text: e.target.value }))}
+            placeholder={t("editor.value")}
+          />
+        )}
+      </div>
+    );
+  }
+
   /* item slotu */
   if (selectedSlot.startsWith("item:")) {
     const itemId = selectedSlot.split(":")[1];

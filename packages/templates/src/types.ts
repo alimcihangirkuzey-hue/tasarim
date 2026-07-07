@@ -99,4 +99,8 @@ export interface TemplateEntry {
    * paramlardan gelir; print/mockup/sunum sayfaları manifest.formats yerine bunu okur.
    */
   pageSizeMM?: (client: ClientDTO, doc: DocumentState) => { w_mm: number; h_mm: number; bleed_mm: number };
+  /** Sayfa başına DEĞİŞKEN boyut (garment alanları); yoksa pageSizeMM/format geçerli */
+  pageSizeMMAt?: (client: ClientDTO, doc: DocumentState, pageIndex: number) => { w_mm: number; h_mm: number; bleed_mm: number };
+  /** true → print sayfası zemini şeffaf (garment alfa PNG exportu) */
+  transparentBg?: boolean;
 }

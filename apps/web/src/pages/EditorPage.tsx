@@ -14,7 +14,13 @@ import {
   resolveSelection,
   type LayoutWarning,
 } from "@tezgah/templates";
-import type { DocumentState, ExportRecordDTO } from "@tezgah/shared";
+import {
+  GARMENT_AREAS,
+  areasForKind,
+  type DocumentState,
+  type ExportRecordDTO,
+  type GarmentKind,
+} from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
@@ -258,7 +264,18 @@ export function EditorPage() {
     enabled: !!id,
   });
   const doExport = useMutation({
-    mutationFn: (warnings: LayoutWarning[]) => api.exportDocument(id, warnings),
+    /* tip bazlı yönlendirme: garment → PNG/broderie paketi; vitro decoupe → SVG;
+       diğerleri → print+preview PDF */
+    mutationFn: async (warnings: LayoutWarning[]) => {
+      if (doc?.template_id === "garment") {
+        const res = await api.exportGarment(id);
+        return [res.record];
+      }
+      if (doc?.template_id.startsWith("vitro-") && doc.params["mode"] === "decoupe") {
+        return [await api.exportSvg(id)];
+      }
+      return api.exportDocument(id, warnings);
+    },
     onSuccess: (records) => {
       showToast(tf("editor.export_done", { n: records[0]?.version ?? "?" }));
       void qc.invalidateQueries({ queryKey: ["exports", id] });
@@ -456,8 +473,35 @@ export function EditorPage() {
       </div>
 
       <div className="editor-body">
-        {/* SOL PANEL — içerik seçimi + sayfalar (§6.1) */}
+        {/* SOL PANEL — içerik seçimi + sayfalar (§6.1); garment'ta ALAN yönetimi */}
         <div className="editor-left">
+          {doc.template_id === "garment" && (
+            <div className="epanel">
+              <h3>{t("editor.garment_areas")}</h3>
+              {(() => {
+                const kind = String(doc.params["garment_kind"] ?? "tshirt") as GarmentKind;
+                const current = Array.isArray(doc.params["areas"])
+                  ? (doc.params["areas"] as string[])
+                  : [];
+                return areasForKind(kind).map((aid) => (
+                  <label key={aid} className="sel-item" style={{ paddingLeft: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={current.includes(aid)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...current, aid]
+                          : current.filter((x) => x !== aid);
+                        patch({ params: { ...doc.params, areas: next } });
+                        setPageIndex(0);
+                      }}
+                    />
+                    {GARMENT_AREAS[aid].label_tr} ({GARMENT_AREAS[aid].w_cm}×{GARMENT_AREAS[aid].h_cm})
+                  </label>
+                ));
+              })()}
+            </div>
+          )}
           <div className="epanel">
             <h3>{t("editor.selection")}</h3>
             {client.catalog.categories.map((c) => {

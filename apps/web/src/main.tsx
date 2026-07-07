@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClientListPage } from "./pages/ClientListPage";
 import { ClientDetailPage } from "./pages/ClientDetailPage";
 import { EditorPage } from "./pages/EditorPage";
+import { FichePage } from "./pages/FichePage";
 import { MockupPage } from "./pages/MockupPage";
 import { PresentPage } from "./pages/PresentPage";
 import { PrintPage } from "./pages/PrintPage";
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/print/:id" element={<PrintPage />} />
           <Route path="/present/:id" element={<PresentPage />} />
           <Route path="/mockup/:id" element={<MockupPage />} />
+          <Route path="/fiche/:id" element={<FichePage />} />
           <Route
             path="*"
             element={
