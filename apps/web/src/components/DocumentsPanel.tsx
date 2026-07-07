@@ -1,0 +1,77 @@
+/* Belge listesi + yeni belge (şablon seçici kayıt defterinden okur, §5.7) */
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TEMPLATES, listTemplates } from "@tezgah/templates";
+import type { ClientDTO } from "@tezgah/shared";
+import { api } from "../api";
+import { t } from "../i18n";
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+export function DocumentsPanel({ client }: { client: ClientDTO }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [templateId, setTemplateId] = useState(listTemplates()[0]?.manifest.id ?? "");
+
+  const docs = useQuery({
+    queryKey: ["documents", client.id],
+    queryFn: () => api.documents(client.id),
+  });
+
+  const create = useMutation({
+    mutationFn: () => api.createDocument(client.id, templateId),
+    onSuccess: (doc) => {
+      void qc.invalidateQueries({ queryKey: ["documents", client.id] });
+      navigate(`/editor/${doc.id}`);
+    },
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => api.deleteDocument(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
+  });
+
+  return (
+    <div className="panel">
+      <h2>{t("client.tab_documents")}</h2>
+      <div className="row">
+        <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          {listTemplates().map((e) => (
+            <option key={e.manifest.id} value={e.manifest.id}>
+              {e.manifest.name_tr}
+            </option>
+          ))}
+        </select>
+        <button onClick={() => create.mutate()} disabled={create.isPending || !templateId}>
+          + {t("documents.new")}
+        </button>
+        {create.isError && <span className="error">{(create.error as Error).message}</span>}
+      </div>
+
+      {docs.data?.length === 0 && <p className="muted">{t("documents.empty")}</p>}
+      {docs.data?.map((d) => (
+        <div className="row" key={d.id} style={{ borderTop: "1px dashed var(--c-line)", paddingTop: 8 }}>
+          <strong>{TEMPLATES[d.template_id]?.manifest.name_tr ?? d.template_id}</strong>
+          {d.format && <span className="pill">{d.format}</span>}
+          <span className="pill">{d.theme_id}</span>
+          <span className="pill">{t(`documents.status_${d.status}`)}</span>
+          <span className="muted">{fmtDate(d.updated_at)}</span>
+          <span style={{ flex: 1 }} />
+          <button className="small" onClick={() => navigate(`/editor/${d.id}`)}>
+            {t("documents.open")}
+          </button>
+          <button
+            className="icon"
+            onClick={() => {
+              if (window.confirm(t("documents.delete_confirm"))) del.mutate(d.id);
+            }}
+          >✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}

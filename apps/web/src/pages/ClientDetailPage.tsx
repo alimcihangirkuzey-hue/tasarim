@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Currency } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
+import { BrandKitPanel } from "../components/BrandKitPanel";
+import { CatalogPanel } from "../components/CatalogPanel";
+import { DocumentsPanel } from "../components/DocumentsPanel";
+
+type Tab = "general" | "brandkit" | "catalog" | "documents" | "assets";
 
 export function ClientDetailPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>("general");
 
   const client = useQuery({
     queryKey: ["client", id],
@@ -17,10 +24,12 @@ export function ClientDetailPage() {
 
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  const [currency, setCurrency] = useState<Currency>("EUR");
   useEffect(() => {
     if (client.data) {
       setName(client.data.name);
       setNotes(client.data.notes);
+      setCurrency(client.data.currency);
     }
   }, [client.data?.id, client.data?.updated_at]);
 
@@ -30,13 +39,12 @@ export function ClientDetailPage() {
   };
 
   const save = useMutation({
-    mutationFn: () => api.updateClient(id, { name, notes }),
+    mutationFn: () => api.updateClient(id, { name, notes, currency }),
     onSuccess: invalidate,
   });
 
   const upload = useMutation({
-    mutationFn: ({ file, kind }: { file: File; kind: "logo" | "photo" }) =>
-      api.uploadAsset(id, file, kind),
+    mutationFn: (file: File) => api.uploadAsset(id, file, "photo"),
     onSuccess: invalidate,
   });
 
@@ -45,23 +53,24 @@ export function ClientDetailPage() {
     onSuccess: () => navigate("/"),
   });
 
-  const logoInput = useRef<HTMLInputElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
-  const onPick =
-    (kind: "logo" | "photo") => (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) upload.mutate({ file, kind });
-      e.target.value = "";
-    };
+  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) upload.mutate(file);
+    e.target.value = "";
+  };
 
   if (client.isLoading) return <p className="muted">{t("common.loading")}</p>;
-  if (client.isError || !client.data)
-    return <p className="error">{t("common.error")}</p>;
-
+  if (client.isError || !client.data) return <p className="error">{t("common.error")}</p>;
   const data = client.data;
-  const logo = data.brandkit.logo_primary
-    ? data.assets.find((a) => a.id === data.brandkit.logo_primary)
-    : undefined;
+
+  const TABS: Array<[Tab, string]> = [
+    ["general", t("client.tab_general")],
+    ["brandkit", t("client.tab_brandkit")],
+    ["catalog", t("client.tab_catalog")],
+    ["documents", t("client.tab_documents")],
+    ["assets", t("client.tab_assets")],
+  ];
 
   return (
     <>
@@ -78,84 +87,77 @@ export function ClientDetailPage() {
           {t("client.delete")}
         </button>
       </div>
-      <h1>{data.name}</h1>
+      <h1>
+        {data.name} <span className="pill">{data.currency}</span>
+      </h1>
 
-      <div className="panel">
-        <h2>{t("client.name")}</h2>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-        <h2>{t("client.notes")}</h2>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={t("client.notes_placeholder")}
-        />
-        <div className="row">
-          <button onClick={() => save.mutate()} disabled={save.isPending}>
-            {t("client.save")}
+      <div className="tabs">
+        {TABS.map(([key, label]) => (
+          <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
+            {label}
           </button>
-          {save.isSuccess && <span className="muted">{t("client.saved")}</span>}
-          {save.isError && <span className="error">{save.error.message}</span>}
-        </div>
+        ))}
       </div>
 
-      <div className="panel">
-        <h2>{t("client.logo")}</h2>
-        <div className="row">
-          <div className="logo-box">
-            {logo ? (
-              <img src={logo.urls.thumb} alt="logo" />
-            ) : (
-              <span className="muted">{t("client.no_logo")}</span>
-            )}
+      {tab === "general" && (
+        <div className="panel">
+          <h2>{t("client.name")}</h2>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <h2>{t("client.currency")}</h2>
+          <div className="row">
+            <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} style={{ width: 120 }}>
+              <option value="EUR">EUR (€)</option>
+              <option value="CHF">CHF</option>
+            </select>
+            <span className="muted">{t("client.currency_hint")}</span>
           </div>
-          <div>
-            <button
-              className="ghost"
-              onClick={() => logoInput.current?.click()}
-              disabled={upload.isPending}
-            >
-              {upload.isPending ? t("common.uploading") : t("client.upload_logo")}
+          <h2>{t("client.notes")}</h2>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t("client.notes_placeholder")}
+          />
+          <div className="row">
+            <button onClick={() => save.mutate()} disabled={save.isPending}>
+              {t("client.save")}
+            </button>
+            {save.isSuccess && <span className="muted">{t("client.saved")}</span>}
+            {save.isError && <span className="error">{(save.error as Error).message}</span>}
+          </div>
+        </div>
+      )}
+
+      {tab === "brandkit" && <BrandKitPanel client={data} />}
+      {tab === "catalog" && <CatalogPanel client={data} />}
+      {tab === "documents" && <DocumentsPanel client={data} />}
+
+      {tab === "assets" && (
+        <div className="panel">
+          <h2>{t("client.assets")}</h2>
+          <div className="row">
+            <button className="ghost" onClick={() => photoInput.current?.click()} disabled={upload.isPending}>
+              {upload.isPending ? t("common.uploading") : t("client.upload_photo")}
             </button>
             <input
-              ref={logoInput}
+              ref={photoInput}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              accept="image/png,image/jpeg,image/webp"
               hidden
-              onChange={onPick("logo")}
+              onChange={onPick}
             />
+            {upload.isError && <span className="error">{(upload.error as Error).message}</span>}
           </div>
+          {data.assets.length === 0 ? (
+            <p className="muted">{t("client.no_assets")}</p>
+          ) : (
+            <div className="thumbs">
+              {data.assets.map((a) => (
+                <img key={a.id} src={a.urls.thumb} alt={a.kind} title={`${a.width_px}×${a.height_px}px · ${a.kind}`} />
+              ))}
+            </div>
+          )}
         </div>
-        {upload.isError && <p className="error">{upload.error.message}</p>}
-      </div>
-
-      <div className="panel">
-        <h2>{t("client.assets")}</h2>
-        <div className="row">
-          <button
-            className="ghost"
-            onClick={() => photoInput.current?.click()}
-            disabled={upload.isPending}
-          >
-            {t("client.upload_photo")}
-          </button>
-          <input
-            ref={photoInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            hidden
-            onChange={onPick("photo")}
-          />
-        </div>
-        {data.assets.length === 0 ? (
-          <p className="muted">{t("client.no_assets")}</p>
-        ) : (
-          <div className="thumbs">
-            {data.assets.map((a) => (
-              <img key={a.id} src={a.urls.thumb} alt={a.kind} title={`${a.width_px}×${a.height_px}px · ${a.kind}`} />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </>
   );
 }

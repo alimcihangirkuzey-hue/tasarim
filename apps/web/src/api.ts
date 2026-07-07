@@ -31,8 +31,16 @@ export const api = {
   client: (id: string) => http<ClientDTO>(`/api/clients/${id}`),
   createClient: (name: string) =>
     http<ClientDTO>("/api/clients", { method: "POST", body: JSON.stringify({ name }) }),
-  updateClient: (id: string, patch: { name?: string; notes?: string }) =>
-    http<ClientDTO>(`/api/clients/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
+  updateClient: (
+    id: string,
+    patch: {
+      name?: string;
+      notes?: string;
+      currency?: ClientDTO["currency"];
+      brandkit?: ClientDTO["brandkit"];
+      catalog?: ClientDTO["catalog"];
+    }
+  ) => http<ClientDTO>(`/api/clients/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
   deleteClient: (id: string) =>
     http<{ ok: true }>(`/api/clients/${id}`, { method: "DELETE" }),
   uploadAsset: (clientId: string, file: File, kind: "logo" | "photo") => {
