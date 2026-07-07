@@ -192,3 +192,6 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 }
 .upcoming-chip.yellow { border-color: #F59E0B; background: #FEF3C7; }
 .upcoming-chip.red { border-color: #DC2626; background: #FEE2E2; }
+
+.ghost-link { color: #D8D3C8; font-size: 13px; text-decoration: none; border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 4px 10px; }
+.ghost-link:hover { background: rgba(255,255,255,0.08); }

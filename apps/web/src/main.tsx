@@ -25,6 +25,11 @@ function Layout({ children }: { children: React.ReactNode }) {
           TEZG<span>Â</span>H
         </Link>
         <span className="sub">{t("app.subtitle")}</span>
+        <span style={{ flex: 1 }} />
+        {/* FAZ4 §6: data/ zip yedeği tarayıcıdan iner (M7) */}
+        <a className="ghost-link" href="/api/backup" title={t("app.backup_hint")}>
+          {t("app.backup")}
+        </a>
       </header>
       <main className="container">{children}</main>
     </>

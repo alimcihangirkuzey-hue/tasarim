@@ -1,7 +1,9 @@
 {
   "app": {
     "title": "TEZGÂH",
-    "subtitle": "Atölye otomasyonu · Faz 3"
+    "subtitle": "Atölye otomasyonu · Faz 3",
+    "backup": "Yedek al",
+    "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)"
   },
   "nav": {
     "clients": "Müşteriler"
