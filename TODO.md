@@ -3,6 +3,12 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
+## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
+- [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
+
+## Faz 4'e inceleme notu
+- [ ] **PDF sayfa ölçümünde +0.2–0.4 mm sapma:** pdfjs okumaları 216.2×303.4 gibi değerler veriyor (hedef 216×303). Kök neden büyük olasılıkla mm→pt→mm çevrim yuvarlaması (Chromium `page.pdf` mm girdiyi pt'ye çevirir, pdfjs geri çevirir); baskı açısından zararsız. Faz 4'te (CMYK/Ghostscript işleri sırasında) kesin kökeni incele.
+
 ## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulama YOK, yalnızca not)
 - [ ] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; **küçük alan + broderie kombinasyonunda ince-detay uyarısı** (ARAS logosu gibi çizimler küçük nakışta kaybolur).
 - [ ] **Mockup motoru:** quad-warp; pazarlamacının keşif fotoğrafları sahne olur.
