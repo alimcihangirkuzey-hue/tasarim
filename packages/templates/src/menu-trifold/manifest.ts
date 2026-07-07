@@ -4,7 +4,7 @@
 
 import type { TemplateManifest } from "../types.js";
 
-export const manifest: TemplateManifest = {
+export const manifest = {
   id: "menu-trifold",
   type: "menu",
   name_tr: "Trifold Menü (roll fold)",
@@ -47,7 +47,7 @@ export const manifest: TemplateManifest = {
     ],
   },
   themes: ["or-noir", "aras-orange", "velours-rouge"],
-};
+} satisfies TemplateManifest;
 
 /* Panel haritası (mm, net sayfa uzayı) — CONSTITUTION §3 roll fold */
 export const OUTER_PANELS = [

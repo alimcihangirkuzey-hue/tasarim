@@ -3,7 +3,7 @@
 import type { TemplateManifest } from "../types.js";
 import { CHROME_SLOTS } from "../parts/PageChrome.js";
 
-export const manifest: TemplateManifest = {
+export const manifest = {
   id: "menu-grid-cells",
   type: "menu",
   name_tr: "Resimli Izgara Menü",
@@ -66,4 +66,4 @@ export const manifest: TemplateManifest = {
     ],
   },
   themes: ["or-noir", "aras-orange", "velours-rouge"],
-};
+} satisfies TemplateManifest;

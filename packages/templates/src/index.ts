@@ -6,6 +6,7 @@ import { menuGridCells } from "./menu-grid-cells/index.js";
 import { menuListePremium } from "./menu-liste-premium/index.js";
 import { menuTrifold } from "./menu-trifold/index.js";
 import { flyer } from "./flyer/index.js";
+import { carteFidelite } from "./carte-fidelite/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
@@ -23,12 +24,15 @@ export { analyzeTrifold } from "./menu-trifold/index.js";
 export type { TrifoldAnalysis } from "./menu-trifold/analyze.js";
 export { analyzeFlyer } from "./flyer/index.js";
 export type { FlyerAnalysis } from "./flyer/analyze.js";
+export { analyzeFidelite } from "./carte-fidelite/index.js";
+export type { FideliteAnalysis } from "./carte-fidelite/analyze.js";
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   [menuGridCells.manifest.id]: menuGridCells,
   [menuListePremium.manifest.id]: menuListePremium,
   [menuTrifold.manifest.id]: menuTrifold,
   [flyer.manifest.id]: flyer,
+  [carteFidelite.manifest.id]: carteFidelite,
 };
 
 export function getTemplate(id: string): TemplateEntry {

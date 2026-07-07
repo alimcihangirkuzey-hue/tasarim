@@ -72,7 +72,7 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const format = currentFormat(manifest, doc);
-  const formatDef = manifest.formats[format];
+  const formatDef = (manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[format];
   const geo = pageGeometry(formatDef.w_mm, formatDef.h_mm);
 
   const cols = Number(paramValue(manifest, doc, "cols"));
