@@ -61,17 +61,29 @@ export function Slot(props: {
       }}
       style={{ cursor: "pointer" }}
     >
-      {children}
+      {/* Hit alanı ÇOCUKLARIN ALTINDA kalmalı: içteki slotlar (ör. foto yer tutucu)
+          kendi tıklamasını alabilsin (SVG boya sırası = tıklama önceliği) */}
       {box && (
         <rect
           x={box.x}
           y={box.y}
           width={box.w}
           height={box.h}
-          fill={selected ? "rgba(59,130,246,0.08)" : "transparent"}
-          stroke={selected ? "#3B82F6" : "transparent"}
-          strokeWidth={0.4}
+          fill="transparent"
           pointerEvents="all"
+        />
+      )}
+      {children}
+      {box && selected && (
+        <rect
+          x={box.x}
+          y={box.y}
+          width={box.w}
+          height={box.h}
+          fill="rgba(59,130,246,0.08)"
+          stroke="#3B82F6"
+          strokeWidth={0.4}
+          pointerEvents="none"
         />
       )}
       {detached && box && (

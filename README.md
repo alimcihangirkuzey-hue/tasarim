@@ -1,9 +1,12 @@
 # TEZGÂH
 
 Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sistemi.
-Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku).
+Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
+detayları: **FAZ1-GOREV.md**.
 
-**Mevcut durum: Faz 0 — İskelet** (müşteri kaydı, marka kiti temeli, görsel yükleme hattı)
+**Mevcut durum: Faz 1 — MVP Menü Hattı** (marka kiti + katalog editörü + binding
+motoru + `menu-grid-cells` & `menu-liste-premium` şablonları + kısıtlı editör +
+Puppeteer PDF export + eksik görsel akışı)
 
 ## Gereksinimler
 
@@ -23,29 +26,46 @@ API sağlık kontrolü: http://localhost:3001/api/health
 Veriler `data/` klasöründe yaşar (SQLite + görseller). **Yedek = bu klasörü kopyalamak.**
 `data/` git'e girmez.
 
-## Faz 0 el testi (kabul kriterleri — CONSTITUTION §13)
+## Faz 1 el testi (kabul senaryosu — FAZ1-GOREV §7)
 
-1. Yeni müşteri ekle (ör. "Antalya Kebab — Lyon") → detay sayfası açılır.
-2. "Logo yükle" ile bir PNG/JPG/SVG logo yükle → logo kutusunda görünür.
-3. Müşteriler sayfasına dön → kartta logo **thumbnail** olarak görünür.
-4. Birkaç fotoğraf yükle → "Görseller" panelinde thumbnail'ler listelenir.
-5. Uygulamayı kapat, `data/` klasörünü başka yere kopyala → tam yedeğin bu.
+1. Müşteri aç → **Katalog** sekmesinde kategori/ürün/varyantlı fiyat gir (Ctrl+S kaydeder).
+2. **Belgeler** sekmesi → "Resimli Izgara Menü" ile yeni belge → editör açılır, menü
+   katalogdan otomatik dolar.
+3. Editörde: hücreye tıkla (sağ panelde ürün düzenle), başlığa çift tıkla (yerinde
+   override — ⛓ işareti + "veriye geri bağla"), tema/format/kolon değiştir, Ctrl+Z geri al.
+4. Üst bardan şablonu "Premium Yazılı Menü"ye çevir → veri ve seçim korunur;
+   `priceLayout: columns` ile SEUL/MENU kolonları hizalanır.
+5. Fotoğrafsız üründe yer tutucuya tıkla → dosya seç → foto anında oturur; sağ panelde
+   "Eksik fotoğraflar" listesi + "Talep metnini kopyala".
+6. **Export** → `data/exports/{musteri}/` altına print (216×303, crop marks) + preview
+   PDF'leri v numarasıyla düşer; kapasite aşarsan kırmızı "N ürün sığmıyor" uyarısı.
 
-Beşi de geçiyorsa Faz 0 tamamdır → Faz 1'e (katalog + menü şablonları + PDF) geçilir.
+## Faz 0 el testi (CONSTITUTION §13 — geçti ✓)
+
+1. Yeni müşteri ekle → detay sayfası açılır.
+2. "Logo yükle" ile PNG/JPG/SVG yükle → logo kutusunda görünür.
+3. Müşteriler listesinde kartta logo **thumbnail** görünür.
+4. Fotoğraflar "Görseller" panelinde listelenir.
+5. `data/` klasörünü kopyala = tam yedek (M7).
 
 ## Yapı
 
 ```
 tezgah/
 ├── CONSTITUTION.md        anayasa + spesifikasyon (tek doğruluk kaynağı)
+├── FAZ1-GOREV.md          Faz 1 görev paketi (mimar tasarım detayı)
 ├── TODO.md                faz dışına düşen notlar
 ├── apps/
-│   ├── server/            Fastify + SQLite + sharp (port 3001)
-│   └── web/               Vite + React arayüz (port 5173, /api ve /assets proxy'li)
+│   ├── server/            Fastify + SQLite + sharp + Puppeteer export (port 3001)
+│   └── web/               Vite + React: yönetim + kısıtlı editör + /print rotası (5173)
 ├── packages/
-│   └── shared/            Zod şemaları, formatPrice, slugify (iki taraf da buradan tip alır)
+│   ├── shared/            Zod şemaları, formatPrice(EUR|CHF), slugify
+│   └── templates/         şablon kayıt defteri + binding/overflow motoru + temalar + fonts/
 └── data/                  (git dışı) app.db, assets/{orig,master,thumb}, exports/
 ```
+
+Testler: `npm test` (binding çözümleyici, overflow motoru, formatPrice, font glif
+kapsamı, şablon analizleri — §12 gereği zorunlu çekirdek testleri).
 
 ## Geliştirme modeli
 

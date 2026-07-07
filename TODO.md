@@ -3,6 +3,11 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
+## Faz 2'ye kayıt (FAZ1-GOREV §9 — uygulama YOK, yalnızca not)
+- [ ] **carte-fidelite şablonu netleşti:** `stampCount=10` (2×5 dizilim), **numaralı** damga kutuları (1.–10.), üst-sağ alt başlık slotu (*"1 menu acheté = 1 tampon"*), alt tam-genişlik ödül bandı (`--c-accent` zemin, ör. *"11ᵉ KEBAB OU PIZZA OFFERT !"*); arka yüz: logo, "CARTE DE FIDÉLITÉ" başlığı, tel, adres, hizmet satırı (*Sur place · à emporter · Livraison*), saat.
+- [ ] **Flyer:** 21×21 cm kare format preseti (katlamalı); teslimat bölgeleri + minimum sipariş serbest-metin slotu; **çift saat bloğu** (açılış ↔ teslimat saatleri ayrı).
+- [ ] **QR online sipariş:** mevcut `delivery[]` şemasından beslenir (CONSTITUTION §10 ile birlikte).
+
 ## Faz 1 sırasında düşülen notlar
 - [ ] **QR slotları Faz 2'ye bırakıldı (çelişki çözümü):** FAZ1-GOREV §4/§5 sabit slot listesinde "opsiyonel QR" geçiyor, ancak CONSTITUTION §13 "QR slotları"nı Faz 2 kapsamına koyuyor. FAZ1-GOREV §0.6 "çelişkide CONSTITUTION kazanır" dediği için QR bu fazda uygulanmadı → Faz 2'de `qrcode` ile SVG üretimi (CONSTITUTION §10). Mimar farklı isterse bildirsin.
 - [ ] Proje yönetimi arayüzü yok; ilk belgede müşteri başına "Genel" projesi otomatik açılıyor (en basit çözüm, §0.6) → Faz 2 ("açılış paketi tek projede")
