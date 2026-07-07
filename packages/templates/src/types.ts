@@ -80,6 +80,8 @@ export interface TemplateProps {
   cropMarks?: boolean;
   selectedSlot?: string | null;
   onSlotClick?: (slotId: string) => void;
+  /** Edit moduna özgü arayüz metinleri — web tr.json'dan geçirir (M9) */
+  editLabels?: { photoWaiting?: string };
 }
 
 export interface TemplateEntry {

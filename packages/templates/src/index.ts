@@ -2,12 +2,19 @@
    Yeni şablon eklemek = klasör ekle + aşağıdaki haritaya yaz; başka dosyaya dokunulmaz. */
 
 import type { TemplateEntry } from "./types.js";
+import { menuGridCells } from "./menu-grid-cells/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
+export * from "./engine/binding.js";
+export * from "./engine/layout.js";
+export * from "./engine/params.js";
+export * from "./parts/price.js";
+export { analyzeGrid } from "./menu-grid-cells/index.js";
+export type { GridAnalysis, CellLayout } from "./menu-grid-cells/analyze.js";
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
-  /* menu-grid-cells ve menu-liste-premium bu fazda buraya kaydolur */
+  [menuGridCells.manifest.id]: menuGridCells,
 };
 
 export function getTemplate(id: string): TemplateEntry {
