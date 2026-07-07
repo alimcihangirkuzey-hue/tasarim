@@ -130,7 +130,7 @@ export function exportRoutes(app: FastifyInstance): void {
     }
   );
 
-  /* Export geçmişi (v numaraları; geçmiş EKRANI Faz 2) */
+  /* Export geçmişi (v numaraları) */
   app.get<{ Params: { id: string } }>("/api/documents/:id/exports", async (req) => {
     const rows = db
       .prepare(
@@ -138,5 +138,25 @@ export function exportRoutes(app: FastifyInstance): void {
       )
       .all(req.params.id) as ExportRow[];
     return rows.map(toDTO);
+  });
+
+  /* Klasörde göster (yalnız data/ altı; local-first araç — FAZ2-GOREV §8) */
+  app.post<{ Body: { filepath?: string } }>("/api/reveal", async (req, reply) => {
+    const rel = (req.body?.filepath ?? "").replace(/\\/g, "/");
+    if (!rel.startsWith("data/")) return reply.code(400).send({ error: "bad_path" });
+    const abs = path.resolve(ROOT_DIR, rel);
+    if (!abs.startsWith(path.resolve(ROOT_DIR, "data"))) {
+      return reply.code(400).send({ error: "bad_path" });
+    }
+    const { spawn } = await import("node:child_process");
+    if (process.platform === "win32") {
+      spawn("explorer.exe", ["/select,", abs], { detached: true, stdio: "ignore" }).unref();
+    } else {
+      spawn(process.platform === "darwin" ? "open" : "xdg-open", [path.dirname(abs)], {
+        detached: true,
+        stdio: "ignore",
+      }).unref();
+    }
+    return { ok: true };
   });
 }

@@ -7,8 +7,9 @@ import { t } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
+import { ProjectsPanel } from "../components/ProjectsPanel";
 
-type Tab = "general" | "brandkit" | "catalog" | "documents" | "assets";
+type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "assets";
 
 export function ClientDetailPage() {
   const { id = "" } = useParams();
@@ -67,11 +68,22 @@ export function ClientDetailPage() {
 
   const TABS: Array<[Tab, string]> = [
     ["general", t("client.tab_general")],
+    ["projects", t("orders.tab")],
     ["brandkit", t("client.tab_brandkit")],
     ["catalog", t("client.tab_catalog")],
     ["documents", t("client.tab_documents")],
     ["assets", t("client.tab_assets")],
   ];
+
+  const cloneClient = async () => {
+    const cname = window.prompt(t("clone.name_prompt"), `${data.name} 2`);
+    if (!cname) return;
+    const withDocs = window.confirm(t("clone.with_docs_confirm"));
+    const docIds = withDocs ? (await api.documents(id)).map((d) => d.id) : [];
+    const res = await api.cloneClient(id, { name: cname, document_ids: docIds });
+    void qc.invalidateQueries({ queryKey: ["clients"] });
+    navigate(`/clients/${res.id}`);
+  };
 
   return (
     <>
@@ -79,14 +91,19 @@ export function ClientDetailPage() {
         <Link to="/" className="muted">
           {t("client.back")}
         </Link>
-        <button
-          className="danger"
-          onClick={() => {
-            if (window.confirm(t("client.delete_confirm"))) del.mutate();
-          }}
-        >
-          {t("client.delete")}
-        </button>
+        <div className="row">
+          <button className="ghost" onClick={() => void cloneClient()}>
+            {t("clone.client_btn")}
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              if (window.confirm(t("client.delete_confirm"))) del.mutate();
+            }}
+          >
+            {t("client.delete")}
+          </button>
+        </div>
       </div>
       <h1>
         {data.name} <span className="pill">{data.currency}</span>
@@ -128,6 +145,7 @@ export function ClientDetailPage() {
         </div>
       )}
 
+      {tab === "projects" && <ProjectsPanel client={data} />}
       {tab === "brandkit" && <BrandKitPanel client={data} />}
       {tab === "catalog" && <CatalogPanel client={data} />}
       {tab === "documents" && <DocumentsPanel client={data} />}

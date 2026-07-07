@@ -530,13 +530,18 @@ export function EditorPage() {
 
           {(exportsQ.data?.length ?? 0) > 0 && (
             <div className="epanel">
-              <h3>{t("editor.export")}</h3>
-              {exportsQ.data!.slice(0, 6).map((r) => (
+              <h3>{t("history.title")}</h3>
+              {exportsQ.data!.map((r) => (
                 <div className="row" key={r.id} style={{ fontSize: 13 }}>
                   <span className="pill">v{r.version}</span>
                   <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
                     {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
                   </a>
+                  <button
+                    className="icon"
+                    title={t("history.reveal")}
+                    onClick={() => void api.reveal(r.filepath)}
+                  >📂</button>
                   <span className="muted">{new Date(r.created_at).toLocaleTimeString("tr-TR")}</span>
                 </div>
               ))}

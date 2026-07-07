@@ -61,10 +61,10 @@ export const api = {
   /* Belgeler — Faz 1 */
   documents: (clientId: string) =>
     http<DocumentSummaryDTO[]>(`/api/clients/${clientId}/documents`),
-  createDocument: (clientId: string, template_id: string) =>
+  createDocument: (clientId: string, template_id: string, project_id?: string) =>
     http<DocumentDTO>(`/api/clients/${clientId}/documents`, {
       method: "POST",
-      body: JSON.stringify({ template_id }),
+      body: JSON.stringify({ template_id, project_id }),
     }),
   document: (id: string) => http<DocumentDTO>(`/api/documents/${id}`),
   updateDocument: (id: string, patch: Partial<DocumentState>) =>
@@ -127,6 +127,8 @@ export const api = {
       body: JSON.stringify(body),
     }),
   projectExports: (id: string) => http<ExportRecordDTO[]>(`/api/projects/${id}/exports`),
+  reveal: (filepath: string) =>
+    http<{ ok: true }>("/api/reveal", { method: "POST", body: JSON.stringify({ filepath }) }),
 
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>
