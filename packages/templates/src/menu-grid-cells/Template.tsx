@@ -82,17 +82,41 @@ function Cell(props: {
         />
       )}
 
-      {/* fotoğraf / yer tutucu (§8.1) */}
+      {/* fotoğraf / yer tutucu (§8.1); cover override'ında odak noktalı kırpma (§5.5) */}
       {cell.photoBox && cell.photoUrl && (
         <>
-          <image
-            href={cell.photoUrl}
-            x={cell.photoBox.x}
-            y={cell.photoBox.y}
-            width={cell.photoBox.w}
-            height={cell.photoBox.h}
-            preserveAspectRatio="xMidYMid meet"
-          />
+          {cell.photoDraw ? (
+            <>
+              <clipPath id={`mgc-clip-${item.id}`}>
+                <rect
+                  x={cell.photoBox.x}
+                  y={cell.photoBox.y}
+                  width={cell.photoBox.w}
+                  height={cell.photoBox.h}
+                  rx={1.5}
+                />
+              </clipPath>
+              <g clipPath={`url(#mgc-clip-${item.id})`}>
+                <image
+                  href={cell.photoUrl}
+                  x={cell.photoDraw.x}
+                  y={cell.photoDraw.y}
+                  width={cell.photoDraw.w}
+                  height={cell.photoDraw.h}
+                  preserveAspectRatio="none"
+                />
+              </g>
+            </>
+          ) : (
+            <image
+              href={cell.photoUrl}
+              x={cell.photoBox.x}
+              y={cell.photoBox.y}
+              width={cell.photoBox.w}
+              height={cell.photoBox.h}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          )}
           {mode === "edit" && cell.dpi && cell.dpi.level !== "ok" && (
             <circle
               cx={cell.photoBox.x + cell.photoBox.w - 2.4}

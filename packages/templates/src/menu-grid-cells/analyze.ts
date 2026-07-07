@@ -41,6 +41,8 @@ export interface CellLayout {
   /** Hücre içi foto kutusu (yoksa null → §8.1 yer tutucu/temiz boşluk) */
   photoBox: { x: number; y: number; w: number; h: number } | null;
   photoUrl: string | null;
+  /** cover modunda kırpılmış çizim dikdörtgeni (odak noktalı, §5.5); contain'de null */
+  photoDraw: { x: number; y: number; w: number; h: number } | null;
   dpi: ReturnType<typeof checkDpi> | null;
 }
 
@@ -206,6 +208,25 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
       }
     }
 
+    /* Belge bazında foto sığdırma override'ı: {fit:"cover", fx, fy} (M5 işaretli override) */
+    let photoDraw: CellLayout["photoDraw"] = null;
+    const photoOv = doc.overrides[`item:${item.id}:photo`]?.value as
+      | { fit?: string; fx?: number; fy?: number }
+      | undefined;
+    if (asset && photoBox && photoOv?.fit === "cover" && asset.width_px > 0 && asset.height_px > 0) {
+      const scale = Math.max(photoBox.w / asset.width_px, photoBox.h / asset.height_px);
+      const dw = asset.width_px * scale;
+      const dh = asset.height_px * scale;
+      const fx = Math.min(1, Math.max(0, photoOv.fx ?? 0.5));
+      const fy = Math.min(1, Math.max(0, photoOv.fy ?? 0.5));
+      photoDraw = {
+        x: photoBox.x - (dw - photoBox.w) * fx,
+        y: photoBox.y - (dh - photoBox.h) * fy,
+        w: dw,
+        h: dh,
+      };
+    }
+
     cells.set(item.id, {
       item,
       name,
@@ -214,6 +235,7 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState): GridAnalysis
       priceFont,
       photoBox,
       photoUrl: asset ? asset.urls.master : null,
+      photoDraw,
       dpi,
     });
   }
