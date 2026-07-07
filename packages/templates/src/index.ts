@@ -3,6 +3,7 @@
 
 import type { TemplateEntry } from "./types.js";
 import { menuGridCells } from "./menu-grid-cells/index.js";
+import { menuListePremium } from "./menu-liste-premium/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
@@ -12,9 +13,12 @@ export * from "./engine/params.js";
 export * from "./parts/price.js";
 export { analyzeGrid } from "./menu-grid-cells/index.js";
 export type { GridAnalysis, CellLayout } from "./menu-grid-cells/analyze.js";
+export { analyzeList } from "./menu-liste-premium/index.js";
+export type { ListAnalysis, ListRow } from "./menu-liste-premium/analyze.js";
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   [menuGridCells.manifest.id]: menuGridCells,
+  [menuListePremium.manifest.id]: menuListePremium,
 };
 
 export function getTemplate(id: string): TemplateEntry {
