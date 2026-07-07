@@ -181,7 +181,10 @@ function VitroTemplate(variant: VitroVariant) {
                 size={fs(0.15)}
                 fill={ink ?? "var(--c-heading)"}
                 weight={a.theme.weights.heading}
-                letterSpacing={fs(0.006)}
+                /* fs() kullanılmaz: min-8 kıskacı harf aralığını 8'e sabitliyor,
+                   CSS mm 3,78× çözülünce satır logo alanına taşıyordu.
+                   Oransal yazar değeri (0.006×min); birim düzeltmesi Faz 4 (mimar #9) */
+                letterSpacing={0.006 * Math.min(a.w_mm, a.h_mm)}
                 uppercase
               />
             </Slot>
