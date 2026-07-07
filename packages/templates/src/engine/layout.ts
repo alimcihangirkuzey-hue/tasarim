@@ -291,4 +291,6 @@ export type LayoutWarning =
   | { type: "qr-contrast"; slotId: string }
   | { type: "contrast"; ratio: number }
   | { type: "mono-suggest"; slotId: string }
-  | { type: "fine-detail"; areaId: string };
+  | { type: "fine-detail"; areaId: string }
+  /* FAZ4 §3 (mimar #8 devamı): her broderie belgesinde silik bilgi notu */
+  | { type: "broderie-info" };

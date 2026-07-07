@@ -120,6 +120,7 @@
     "warn_contrast": "Zemin-metin kontrastı düşük ({ratio}:1 < 3:1) — uzaktan okunmaz",
     "warn_mono_suggest": "Koyu/renkli kumaş: mono logo önerilir (slot panelinden tek tıkla geç)",
     "warn_fine_detail": "İnce çizgiler nakışta iplik kalınlığında kaybolabilir — nakışçıyla teyitleşin",
+    "warn_broderie_info": "Nakış üretimi iplik kalınlığına tabidir; ince detayları nakışçıyla teyit edin.",
     "slot": "Seçili slot",
     "no_slot": "Canvas'ta bir slota tıkla",
     "reattach": "⛓ Veriye geri bağla",

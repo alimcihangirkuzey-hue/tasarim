@@ -49,6 +49,8 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_mono_suggest");
     case "fine-detail":
       return t("editor.warn_fine_detail");
+    case "broderie-info":
+      return t("editor.warn_broderie_info");
   }
 }
 
@@ -607,7 +609,7 @@ export function EditorPage() {
             <div className="warn-list">
               {warnings.length === 0 && <div className="warn ok">{t("editor.no_warnings")}</div>}
               {warnings.map((w, i) => (
-                <div key={i} className={`warn ${w.type === "overflow-items" || ("level" in w && w.level === "red") ? "red" : ""}`}>
+                <div key={i} className={`warn ${w.type === "broderie-info" ? "info" : w.type === "overflow-items" || ("level" in w && w.level === "red") ? "red" : ""}`}>
                   {warnText(w)}
                 </div>
               ))}

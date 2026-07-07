@@ -124,6 +124,12 @@ export function analyzeGarment(client: ClientDTO, doc: DocumentState): GarmentAn
   const fabricDark = relativeLuminance(fabricHex) < 0.5;
   const ink = fabricDark ? "#FFFFFF" : "#1A1A1A";
 
+  /* FAZ4 §3 (mimar #8 devamı): her broderie belgesinde bir kez silik bilgi notu;
+     <15 cm alan uyarısı (fine-detail) aşağıda aynen durur */
+  if (params.technique === "broderie") {
+    warnings.push({ type: "broderie-info" });
+  }
+
   /* kind'e uymayan alanlar elenir; boşsa kind'in ilk alanı */
   const valid = areasForKind(params.garment_kind);
   let areaIds = params.areas.filter((a) => valid.includes(a));

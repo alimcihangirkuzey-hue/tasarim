@@ -79,6 +79,31 @@ describe("analyzeGarment (FAZ3-GOREV §6)", () => {
     expect(big.warnings.some((w) => w.type === "fine-detail")).toBe(false);
   });
 
+  it("iki kademe (FAZ4 §3, mimar #8): her broderie belgesinde bilgi notu; impression'da yok", () => {
+    /* büyük alan: güçlü uyarı YOK ama bilgi notu VAR */
+    const big = analyzeGarment(
+      makeClient(),
+      doc({ garment_kind: "apron_bavette", technique: "broderie", areas: ["chest"] })
+    );
+    expect(big.warnings.filter((w) => w.type === "broderie-info")).toHaveLength(1);
+    expect(big.warnings.some((w) => w.type === "fine-detail")).toBe(false);
+
+    /* küçük alan: ikisi birden */
+    const small = analyzeGarment(
+      makeClient(),
+      doc({ garment_kind: "tshirt", technique: "broderie", areas: ["sleeve"] })
+    );
+    expect(small.warnings.some((w) => w.type === "broderie-info")).toBe(true);
+    expect(small.warnings.some((w) => w.type === "fine-detail")).toBe(true);
+
+    /* impression: not yok */
+    const imp = analyzeGarment(
+      makeClient(),
+      doc({ garment_kind: "tshirt", technique: "impression", areas: ["chest_left"] })
+    );
+    expect(imp.warnings.some((w) => w.type === "broderie-info")).toBe(false);
+  });
+
   it("kind'e uymayan alanlar elenir; boş kalırsa ilk geçerli alan", () => {
     const a = analyzeGarment(
       makeClient(),
