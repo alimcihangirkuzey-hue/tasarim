@@ -66,7 +66,7 @@ function Cell(props: {
         size={cell.name.font_mm}
         fill="var(--c-item)"
         weight={weights.item}
-        letterSpacing={0.08}
+        letterSpacing={0.3024}
       />
 
       {/* açıklama */}
@@ -294,7 +294,7 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
                     style={{
                       fontFamily: "var(--f-heading)",
                       fontWeight: a.theme.weights.heading,
-                      letterSpacing: "0.35mm",
+                      letterSpacing: "1.3228px",
                     }}
                   >
                     {a.theme.uppercaseHeading

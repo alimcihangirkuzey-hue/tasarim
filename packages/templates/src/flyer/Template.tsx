@@ -35,7 +35,7 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
             {rows.map(([label, value], i) => (
               <g key={label} transform={`translate(0, ${i * 14})`}>
                 <text x={0} y={4.4} fontSize={3.6} fill="var(--c-accent)"
-                  style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "0.3mm" }}>
+                  style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "1.1339px" }}>
                   {label}
                 </text>
                 <text x={0} y={9.6} fontSize={3.6} fill="var(--c-item)" style={{ fontFamily: "var(--f-body)" }}>
@@ -57,7 +57,7 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
             <g transform={`translate(${M}, ${y})`}>
               <rect width={PW - 2 * M} height={22} rx={1.6} fill="var(--c-panel)" />
               <text x={4} y={6.4} fontSize={3.4} fill="var(--c-accent)"
-                style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "0.3mm" }}>
+                style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "1.1339px" }}>
                 LIVRAISON — ZONES & MINIMUM
               </text>
               <TextLines
@@ -99,7 +99,7 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
           )}
         </Slot>
         <text x={PW - M} y={10} fontSize={4.4} textAnchor="end" fill="var(--c-heading)"
-          style={{ fontFamily: "var(--f-item)", fontWeight: a.theme.weights.item, letterSpacing: "0.2mm" }}>
+          style={{ fontFamily: "var(--f-item)", fontWeight: a.theme.weights.item, letterSpacing: "0.7559px" }}>
           {a.phone}
         </text>
 
@@ -113,7 +113,7 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
                 detached={a.campaign.title.detached} box={{ x: M + 2, y: 4, w: PW - 2 * M - 4, h: 18 }}>
                 <TextLines lines={[a.campaign.title.text]} x={PW / 2} y={14} lineH={10}
                   font="var(--f-heading)" size={9.5} fill="var(--c-heading)"
-                  weight={a.theme.weights.heading} anchor="middle" letterSpacing={0.3}
+                  weight={a.theme.weights.heading} anchor="middle" letterSpacing={1.1339}
                   uppercase={a.theme.uppercaseHeading} />
               </Slot>
               <Slot id="campaign_price" {...interact} selected={selectedSlot === "campaign_price"}
@@ -157,7 +157,7 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
           <>
             {/* ARKA: iletişim + QR + bloklar */}
             <text x={PW / 2} y={30} fontSize={6.2} textAnchor="middle" fill="var(--c-heading)"
-              style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.3mm" }}>
+              style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "1.1339px" }}>
               {client.name.toLocaleUpperCase("fr-FR")}
             </text>
             <Slot id="address" {...interact} selected={selectedSlot === "address"} box={{ x: M, y: 36, w: PW - 2 * M, h: 12 }}>

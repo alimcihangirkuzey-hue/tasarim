@@ -69,7 +69,7 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
                   lines={[a.flapTitle.text]}
                   x={flap.w / 2} y={28} lineH={7}
                   font="var(--f-heading)" size={6} fill="var(--c-heading)"
-                  weight={a.theme.weights.heading} anchor="middle" letterSpacing={0.25}
+                  weight={a.theme.weights.heading} anchor="middle" letterSpacing={0.9448818898}
                   uppercase={a.theme.uppercaseHeading}
                 />
               </Slot>
@@ -93,7 +93,7 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
             <g transform={`translate(${back.x}, 0)`}>
               <rect x={0} y={0} width={back.w} height={12} fill="url(#tf-band)" />
               <text x={back.w / 2} y={30} fontSize={6} textAnchor="middle" fill="var(--c-heading)"
-                style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.3mm" }}>
+                style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "1.1339px" }}>
                 CONTACT
               </text>
               <rect x={back.w / 2 - 11} y={34} width={22} height={1} fill="var(--c-accent)" />
@@ -139,7 +139,7 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
                   <image href={a.logoUrl} x={20} y={26} width={front.w - 40} height={48} preserveAspectRatio="xMidYMid meet" />
                 ) : (
                   <text x={front.w / 2} y={52} fontSize={11} textAnchor="middle" fill="var(--c-heading)"
-                    style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.5mm" }}>
+                    style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "1.8898px" }}>
                     {client.name.toLocaleUpperCase("fr-FR")}
                   </text>
                 )}
@@ -160,7 +160,7 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
               </Slot>
               <rect x={0} y={PAGE_H - 9} width={front.w} height={9} fill="var(--c-panel)" />
               <text x={front.w / 2} y={PAGE_H - 3.2} fontSize={3.6} textAnchor="middle" fill="var(--c-heading)"
-                style={{ fontFamily: "var(--f-item)", fontWeight: a.theme.weights.item, letterSpacing: "0.3mm" }}>
+                style={{ fontFamily: "var(--f-item)", fontWeight: a.theme.weights.item, letterSpacing: "1.1339px" }}>
                 {a.phone}
               </text>
             </g>
@@ -178,7 +178,7 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
                     {row.kind === "category" ? (
                       <>
                         <text x={0} y={6} fontSize={5.2} fill="var(--c-heading)"
-                          style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.28mm" }}>
+                          style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "1.0583px" }}>
                           {a.theme.uppercaseHeading ? (row.name ?? "").toLocaleUpperCase("fr-FR") : row.name}
                         </text>
                         <rect x={0.2} y={7.8} width={18} height={0.9} fill="var(--c-accent)" />

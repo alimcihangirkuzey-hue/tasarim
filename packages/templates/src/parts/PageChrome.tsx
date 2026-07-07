@@ -146,7 +146,7 @@ export function PageChrome(props: {
               fill="var(--c-heading)"
               weight={theme.weights.heading}
               anchor="end"
-              letterSpacing={0.12}
+              letterSpacing={0.4535}
             />
           </Slot>
 
@@ -167,7 +167,7 @@ export function PageChrome(props: {
                   fontSize={2.9}
                   textAnchor="middle"
                   fill="var(--c-bg)"
-                  style={{ fontFamily: "var(--f-body)", fontWeight: 600, letterSpacing: "0.2mm" }}
+                  style={{ fontFamily: "var(--f-body)", fontWeight: 600, letterSpacing: "0.7559px" }}
                 >
                   HALAL
                 </text>
@@ -197,7 +197,7 @@ export function PageChrome(props: {
               size={4}
               fill="var(--c-heading)"
               weight={theme.weights.item}
-              letterSpacing={0.12}
+              letterSpacing={0.4535}
             />
           )}
           {client.brandkit.slogan_fr && (

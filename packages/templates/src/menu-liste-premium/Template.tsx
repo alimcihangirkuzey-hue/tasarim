@@ -41,7 +41,7 @@ function Row(props: {
               style={{
                 fontFamily: "var(--f-heading)",
                 fontWeight: theme.weights.heading,
-                letterSpacing: "0.32mm",
+                letterSpacing: "1.2094px",
               }}
             >
               {theme.uppercaseHeading ? row.name.toLocaleUpperCase("fr-FR") : row.name}
@@ -71,7 +71,7 @@ function Row(props: {
               fontSize={3}
               textAnchor="end"
               fill="var(--c-accent)"
-              style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "0.25mm" }}
+              style={{ fontFamily: "var(--f-item)", fontWeight: 600, letterSpacing: "0.9449px" }}
             >
               {label.toLocaleUpperCase("fr-FR")}
             </text>
@@ -111,7 +111,7 @@ function Row(props: {
         size={row.nameFont}
         fill="var(--c-item)"
         weight={theme.weights.item}
-        letterSpacing={0.06}
+        letterSpacing={0.2268}
       />
 
       {/* leader dots — yalnız ilk ad satırında */}
