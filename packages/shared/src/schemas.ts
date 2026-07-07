@@ -51,6 +51,8 @@ export const ContactSchema = z.object({
   phone: z.string().default(""),
   address: z.string().default(""),
   hours: z.string().default(""),
+  /** Teslimat saatleri (flyer çift saat bloğu — FAZ2-GOREV §6.2; boşsa blok gizlenir) */
+  delivery_hours: z.string().default(""),
   instagram: z.string().default(""),
   google_review_url: z.string().default(""),
   delivery: z
@@ -194,6 +196,95 @@ export const ClientUpdateSchema = z.object({
   currency: CurrencySchema.optional(),
   brandkit: BrandKitSchema.optional(),
   catalog: CatalogSchema.optional(),
+});
+
+/* ------------------------------------------------------------------ */
+/* Sipariş Defteri — FAZ2-GOREV §2                                     */
+/* ------------------------------------------------------------------ */
+
+export const ProductTypeSchema = z.enum([
+  "menu", "flyer", "trifold", "fidelite",
+  "vitrophanie", "tabela", "tisort", "onluk", "diger",
+]);
+export type ProductType = z.infer<typeof ProductTypeSchema>;
+
+export const OrderStatusSchema = z.enum([
+  "olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal",
+]);
+export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+
+/** Tipe özgü detay alanları — bilinmeyen anahtarlar korunur (veri kaybetmeme ilkesi) */
+export const OrderDetailsSchema = z
+  .object({
+    side: z.enum(["interieur", "exterieur"]).optional(),
+    mode: z.enum(["impression", "decoupe"]).optional(),
+    lumineux: z.boolean().optional(),
+    technique: z.enum(["impression", "broderie"]).optional(),
+    sizes: z.string().optional(),
+    areas: z.string().optional(),
+    format: z.string().optional(),
+    print_qty: z.number().int().positive().optional(),
+  })
+  .passthrough();
+export type OrderDetails = z.infer<typeof OrderDetailsSchema>;
+
+export interface OrderItemDTO {
+  id: string;
+  project_id: string;
+  product_type: ProductType;
+  qty: number;
+  width_cm: number | null;
+  height_cm: number | null;
+  details: OrderDetails;
+  notes: string;
+  status: OrderStatus;
+  document_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectDTO {
+  id: string;
+  client_id: string;
+  name: string;
+  status: string;
+  due_date: string | null;
+  source_text: string | null;
+  items: OrderItemDTO[];
+  created_at: string;
+}
+
+export const OrderItemCreateSchema = z.object({
+  product_type: ProductTypeSchema,
+  qty: z.number().int().positive().default(1),
+  width_cm: z.number().positive().nullable().default(null),
+  height_cm: z.number().positive().nullable().default(null),
+  details: OrderDetailsSchema.default({}),
+  notes: z.string().default(""),
+});
+
+export const OrderItemUpdateSchema = z.object({
+  product_type: ProductTypeSchema.optional(),
+  qty: z.number().int().positive().optional(),
+  width_cm: z.number().positive().nullable().optional(),
+  height_cm: z.number().positive().nullable().optional(),
+  details: OrderDetailsSchema.optional(),
+  notes: z.string().optional(),
+  status: OrderStatusSchema.optional(),
+  document_id: z.string().nullable().optional(),
+});
+
+export const ProjectCreateSchema = z.object({
+  name: z.string().min(1).max(160),
+  due_date: z.string().nullable().default(null),
+  source_text: z.string().nullable().default(null),
+  items: z.array(OrderItemCreateSchema).default([]),
+});
+
+export const ProjectUpdateSchema = z.object({
+  name: z.string().min(1).max(160).optional(),
+  status: z.string().optional(),
+  due_date: z.string().nullable().optional(),
 });
 
 /* Varsayılan üreticiler */
