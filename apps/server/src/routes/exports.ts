@@ -21,7 +21,8 @@ function getBrowser(): Promise<Browser> {
 
 type ExportRow = {
   id: string;
-  document_id: string;
+  document_id: string | null;
+  project_id: string | null;
   kind: string;
   filepath: string;
   snapshot_json: string;
@@ -33,12 +34,15 @@ function toDTO(r: ExportRow): ExportRecordDTO {
   return {
     id: r.id,
     document_id: r.document_id,
+    project_id: r.project_id ?? null,
     kind: r.kind as ExportRecordDTO["kind"],
     filepath: r.filepath,
     version: r.version,
     created_at: r.created_at,
   };
 }
+
+export { getBrowser, toDTO, type ExportRow };
 
 export function exportRoutes(app: FastifyInstance): void {
   app.post<{ Params: { id: string }; Body: { variants?: string[]; warnings?: unknown[] } }>(
@@ -78,8 +82,8 @@ export function exportRoutes(app: FastifyInstance): void {
       const browser = await getBrowser();
       const records: ExportRecordDTO[] = [];
       const insert = db.prepare(
-        `INSERT INTO export_records (id, document_id, kind, filepath, snapshot_json, version, created_at)
-         VALUES (@id, @document_id, @kind, @filepath, @snapshot_json, @version, @created_at)`
+        `INSERT INTO export_records (id, document_id, project_id, kind, filepath, snapshot_json, version, created_at)
+         VALUES (@id, @document_id, @project_id, @kind, @filepath, @snapshot_json, @version, @created_at)`
       );
 
       for (const variant of variants) {
@@ -107,6 +111,7 @@ export function exportRoutes(app: FastifyInstance): void {
           const row: ExportRow = {
             id: newId("exp"),
             document_id: req.params.id,
+            project_id: null,
             kind: variant,
             filepath: path.relative(ROOT_DIR, abs).split(path.sep).join("/"),
             snapshot_json: snapshot,

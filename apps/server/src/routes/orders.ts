@@ -222,6 +222,15 @@ export function orderRoutes(app: FastifyInstance): void {
     return { ok: true };
   });
 
+  /* Tek proje (sunum sayfası + proje ekranı) */
+  app.get<{ Params: { id: string } }>("/api/projects/:id", async (req, reply) => {
+    const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(req.params.id) as
+      | ProjectRow
+      | undefined;
+    if (!row) return reply.code(404).send({ error: "not_found" });
+    return rowToProject(row);
+  });
+
   /* Yaklaşan terminler şeridi (§2.3) — teslim/iptal edilmemiş kalemi olan projeler */
   app.get("/api/projects/upcoming", async () => {
     const rows = db

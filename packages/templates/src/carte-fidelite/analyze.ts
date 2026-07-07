@@ -2,7 +2,7 @@
 
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
 import { assetById, resolveSlotValue, type BindScope } from "../engine/binding.js";
-import type { LayoutWarning } from "../engine/layout.js";
+import { estimateWidth, solveFontScale, type LayoutWarning } from "../engine/layout.js";
 import { paramValue } from "../engine/params.js";
 import { resolveTheme, type Theme } from "../themes.js";
 import { manifest } from "./manifest.js";
@@ -29,6 +29,7 @@ export interface FideliteAnalysis {
   title: { text: string; detached: boolean };
   subtitle: { text: string; detached: boolean };
   reward: { text: string; detached: boolean };
+  rewardFont: number;
   services: { text: string; detached: boolean };
   logoUrl: string | null;
   phone: string;
@@ -65,6 +66,14 @@ export function analyzeFidelite(client: ClientDTO, doc: DocumentState): Fidelite
     h: boxH,
   }));
 
+  /* Ödül bandı metni banda sığana kadar küçülür (geniş script fontlarda taşma QA bulgusu) */
+  const reward = text("reward");
+  const rewardFit = solveFontScale({
+    min: 2.6,
+    max: 4.2,
+    fits: (f) => estimateWidth(reward.text, f, theme.ratios.heading) <= CARD_W - 10,
+  });
+
   return {
     theme,
     scope,
@@ -74,7 +83,8 @@ export function analyzeFidelite(client: ClientDTO, doc: DocumentState): Fidelite
     stamps,
     title: text("title"),
     subtitle: text("subtitle"),
-    reward: text("reward"),
+    reward,
+    rewardFont: rewardFit.font_mm,
     services: text("services"),
     logoUrl: logoAsset?.urls.master ?? null,
     phone: text("phone").text,

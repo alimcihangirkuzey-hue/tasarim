@@ -141,8 +141,10 @@ export interface DocumentSummaryDTO {
 
 export interface ExportRecordDTO {
   id: string;
-  document_id: string;
-  kind: "print" | "preview";
+  /** Mimar kararı #3: sunum kayıtlarında null olabilir */
+  document_id: string | null;
+  project_id: string | null;
+  kind: "print" | "preview" | "presentation";
   filepath: string;
   version: number;
   created_at: string;

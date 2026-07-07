@@ -57,7 +57,7 @@ export function CarteFideliteTemplate(props: TemplateProps): ReactNode {
               detached={a.reward.detached} box={{ x: 0, y: CARD_H - 11.5, w: CARD_W, h: 10 }}>
               <g>
                 <rect x={-B} y={CARD_H - 11.5} width={CARD_W + 2 * B} height={11.5 + B} fill="var(--c-accent)" />
-                <text x={CARD_W / 2} y={CARD_H - 4.6} fontSize={3.8} textAnchor="middle"
+                <text x={CARD_W / 2} y={CARD_H - 4.6} fontSize={a.rewardFont} textAnchor="middle"
                   fill="var(--c-bg)"
                   style={{ fontFamily: "var(--f-heading)", fontWeight: a.theme.weights.heading, letterSpacing: "0.24mm" }}>
                   {a.reward.text}
