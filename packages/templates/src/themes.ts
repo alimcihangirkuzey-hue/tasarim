@@ -30,6 +30,11 @@ export interface Theme {
   weights: { heading: number; item: number };
   /** Başlık/ürün adlarında uppercase kuralı */
   uppercaseHeading: boolean;
+  /**
+   * Deterministik metin ölçümü için ort. glif genişliği / font boyu oranı
+   * (SVG'de otomatik satır kırma yoktur; sarma motoru bu oranla çalışır, M8)
+   */
+  ratios: { heading: number; item: number; body: number; script: number };
 }
 
 const F = {
@@ -48,6 +53,7 @@ const OR_NOIR: Theme = {
   categoryStyle: "underline",
   weights: { heading: 700, item: 600 },
   uppercaseHeading: true,
+  ratios: { heading: 0.42, item: 0.42, body: 0.5, script: 0.56 }, // Oswald kondanse
   vars: {
     "--c-bg": "#1D1B1A",
     "--c-panel": "#262321",
@@ -71,6 +77,7 @@ const ARAS_ORANGE: Theme = {
   categoryStyle: "underline",
   weights: { heading: 400, item: 700 }, // Archivo Black tek ağırlıktır (400 = black çizim)
   uppercaseHeading: true,
+  ratios: { heading: 0.64, item: 0.54, body: 0.5, script: 0.56 },
   vars: {
     "--c-bg": "#141110",
     "--c-panel": "#1E1A17",
@@ -94,6 +101,7 @@ const VELOURS_ROUGE: Theme = {
   categoryStyle: "ribbon",
   weights: { heading: 400, item: 400 }, // Pacifico ve Archivo Black tek ağırlık
   uppercaseHeading: true,
+  ratios: { heading: 0.56, item: 0.64, body: 0.5, script: 0.56 },
   vars: {
     "--c-bg": "#5E0F1D",
     "--c-panel": "#000000cc",
@@ -124,6 +132,8 @@ export function brandTheme(kit: BrandKit): Theme {
     categoryStyle: "underline",
     weights: { heading: 400, item: 400 }, // Anton tek ağırlık; kit fontu değişirse de güvenli
     uppercaseHeading: true,
+    ratios: { heading: 0.5, item: 0.5, body: 0.5, script: 0.56 }, // kit fontu bilinmez → temkinli
+
     vars: {
       "--c-bg": kit.colors.background,
       "--c-panel": kit.colors.secondary,
