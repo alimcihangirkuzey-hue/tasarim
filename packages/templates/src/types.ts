@@ -30,13 +30,17 @@ export type ParamValue = string | number | boolean;
 
 export interface ParamDef {
   id: string;
-  type: "choice" | "toggle";
+  type: "choice" | "toggle" | "number" | "color";
   options?: ParamValue[];
   /** Format'a göre değişen seçenekler (ör. cols: a4-portrait 2|3, a3 4|5|6) */
   optionsByFormat?: Record<string, ParamValue[]>;
   default: ParamValue;
   defaultByFormat?: Record<string, ParamValue>;
   label_tr: string;
+  /** number tipi için */
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 export interface FormatDef {
@@ -90,4 +94,13 @@ export interface TemplateEntry {
   Component: ComponentType<TemplateProps>;
   /** Akışlı şablonlarda toplam sayfa sayısı (yoksa 1 kabul edilir) */
   pageCount?: (client: ClientDTO, doc: DocumentState) => number;
+  /**
+   * cm-bazlı serbest boyutlu tipler (vitro/tabela/garment): gerçek sayfa ölçüsü
+   * paramlardan gelir; print/mockup/sunum sayfaları manifest.formats yerine bunu okur.
+   */
+  pageSizeMM?: (client: ClientDTO, doc: DocumentState) => { w_mm: number; h_mm: number; bleed_mm: number };
+  /** Sayfa başına DEĞİŞKEN boyut (garment alanları); yoksa pageSizeMM/format geçerli */
+  pageSizeMMAt?: (client: ClientDTO, doc: DocumentState, pageIndex: number) => { w_mm: number; h_mm: number; bleed_mm: number };
+  /** true → print sayfası zemini şeffaf (garment alfa PNG exportu) */
+  transparentBg?: boolean;
 }

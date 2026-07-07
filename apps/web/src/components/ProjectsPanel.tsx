@@ -29,12 +29,46 @@ const TYPE_ICON: Record<ProductType, string> = {
   menu: "📋", flyer: "📄", trifold: "🗞", fidelite: "💳",
   vitrophanie: "🪟", tabela: "🪧", tisort: "👕", onluk: "🥽", diger: "📦",
 };
+/* Faz 3: tüm tipler gerçek akış (FAZ3-GOREV §7). "" → grid|liste seçimi sorulur */
 const DESIGNABLE: Partial<Record<ProductType, string>> = {
-  menu: "", // seçim sorulur (grid|liste)
+  menu: "",
   trifold: "menu-trifold",
   flyer: "flyer",
   fidelite: "carte-fidelite",
+  vitrophanie: "vitro-centre",
+  tabela: "enseigne-panneau",
+  tisort: "garment",
+  onluk: "garment",
 };
+
+/** Kalem verileri belge paramlarına akar (ölçü, mode, miroir önerisi, teknik) */
+function paramsFromItem(item: OrderItemDTO): Record<string, unknown> | null {
+  switch (item.product_type) {
+    case "vitrophanie":
+      return {
+        w_cm: item.width_cm ?? 100,
+        h_cm: item.height_cm ?? 100,
+        mode: item.details.mode ?? "impression",
+        miroir: item.details.side === "interieur", // içten uygulama → otomatik öneri
+      };
+    case "tabela":
+      return { w_cm: item.width_cm ?? 300, h_cm: item.height_cm ?? 60 };
+    case "tisort":
+      return {
+        garment_kind: "tshirt",
+        technique: item.details.technique ?? "impression",
+        areas: ["chest_left", "back_full"],
+      };
+    case "onluk":
+      return {
+        garment_kind: "apron_bavette",
+        technique: item.details.technique ?? "impression",
+        areas: ["chest"],
+      };
+    default:
+      return null;
+  }
+}
 
 function itemSummary(it: OrderItemDTO): string {
   const parts: string[] = [];
@@ -74,13 +108,15 @@ function ItemRow({ item, client, showToast }: {
     mutationFn: async () => {
       let templateId = DESIGNABLE[item.product_type];
       if (templateId === undefined) {
-        showToast(t("orders.phase3_warn"));
+        showToast(t("orders.no_template_warn"));
         return null;
       }
       if (templateId === "") {
         templateId = window.confirm(t("orders.menu_template_q")) ? "menu-grid-cells" : "menu-liste-premium";
       }
       const doc = await api.createDocument(client.id, templateId, item.project_id);
+      const params = paramsFromItem(item);
+      if (params) await api.updateDocument(doc.id, { params });
       await api.updateOrderItem(item.id, { document_id: doc.id, status: "tasarimda" });
       return doc.id;
     },

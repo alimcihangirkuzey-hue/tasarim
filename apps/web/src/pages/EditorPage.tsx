@@ -14,7 +14,13 @@ import {
   resolveSelection,
   type LayoutWarning,
 } from "@tezgah/templates";
-import type { DocumentState, ExportRecordDTO } from "@tezgah/shared";
+import {
+  GARMENT_AREAS,
+  areasForKind,
+  type DocumentState,
+  type ExportRecordDTO,
+  type GarmentKind,
+} from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
@@ -37,6 +43,12 @@ function warnText(w: LayoutWarning): string {
       return `${t("editor.warn_mixed")}: ${w.categoryId}`;
     case "qr-contrast":
       return t("editor.warn_qr_contrast");
+    case "contrast":
+      return tf("editor.warn_contrast", { ratio: w.ratio });
+    case "mono-suggest":
+      return t("editor.warn_mono_suggest");
+    case "fine-detail":
+      return t("editor.warn_fine_detail");
   }
 }
 
@@ -226,6 +238,24 @@ export function EditorPage() {
     if (dropped.length > 0) showToast(tf("editor.dropped_overrides", { list: dropped.join(", ") }));
   };
 
+  /* ---- mockup (Faz 3) ---- */
+  const [showMockupModal, setShowMockupModal] = useState(false);
+  const scenesQ = useQuery({
+    queryKey: ["scenes", clientId],
+    queryFn: () => api.clientScenes(clientId!),
+    enabled: !!clientId,
+  });
+  const doMockup = useMutation({
+    mutationFn: (sceneId: string) => api.mockupDocument(id, sceneId),
+    onSuccess: (rec) => {
+      setShowMockupModal(false);
+      showToast(tf("editor.mockup_done", { n: rec.version }));
+      window.open("/" + rec.filepath.replace(/^data\//, ""), "_blank");
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+    onError: (e) => showToast((e as Error).message),
+  });
+
   /* ---- export ---- */
   const [showExportModal, setShowExportModal] = useState(false);
   const exportsQ = useQuery({
@@ -234,7 +264,18 @@ export function EditorPage() {
     enabled: !!id,
   });
   const doExport = useMutation({
-    mutationFn: (warnings: LayoutWarning[]) => api.exportDocument(id, warnings),
+    /* tip bazlı yönlendirme: garment → PNG/broderie paketi; vitro decoupe → SVG;
+       diğerleri → print+preview PDF */
+    mutationFn: async (warnings: LayoutWarning[]) => {
+      if (doc?.template_id === "garment") {
+        const res = await api.exportGarment(id);
+        return [res.record];
+      }
+      if (doc?.template_id.startsWith("vitro-") && doc.params["mode"] === "decoupe") {
+        return [await api.exportSvg(id)];
+      }
+      return api.exportDocument(id, warnings);
+    },
     onSuccess: (records) => {
       showToast(tf("editor.export_done", { n: records[0]?.version ?? "?" }));
       void qc.invalidateQueries({ queryKey: ["exports", id] });
@@ -334,6 +375,36 @@ export function EditorPage() {
 
         {entry.manifest.params.map((p) => {
           const val = paramValue(entry.manifest, doc, p.id);
+          if (p.type === "number") {
+            return (
+              <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label className="kbd-hint">{p.label_tr}</label>
+                <input
+                  type="number"
+                  value={Number(doc.params[p.id] ?? p.default)}
+                  min={p.min}
+                  max={p.max}
+                  step={p.step}
+                  style={{ width: 78, padding: "5px 6px" }}
+                  onChange={(e) =>
+                    patch({ params: { ...doc.params, [p.id]: Number(e.target.value) } })
+                  }
+                />
+              </span>
+            );
+          }
+          if (p.type === "color") {
+            return (
+              <span key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label className="kbd-hint">{p.label_tr}</label>
+                <input
+                  type="color"
+                  value={String(doc.params[p.id] ?? p.default)}
+                  onChange={(e) => patch({ params: { ...doc.params, [p.id]: e.target.value } })}
+                />
+              </span>
+            );
+          }
           if (p.type === "toggle") {
             return (
               <label key={p.id} className="kbd-hint" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -390,6 +461,9 @@ export function EditorPage() {
           {saveState === "error" && <span className="error">{t("editor.save_error")}</span>}
         </span>
 
+        <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>
+          {doMockup.isPending ? t("editor.mockup_generating") : t("editor.mockup")}
+        </button>
         <button
           onClick={() => (warnings.length > 0 ? setShowExportModal(true) : doExport.mutate([]))}
           disabled={doExport.isPending}
@@ -399,8 +473,35 @@ export function EditorPage() {
       </div>
 
       <div className="editor-body">
-        {/* SOL PANEL — içerik seçimi + sayfalar (§6.1) */}
+        {/* SOL PANEL — içerik seçimi + sayfalar (§6.1); garment'ta ALAN yönetimi */}
         <div className="editor-left">
+          {doc.template_id === "garment" && (
+            <div className="epanel">
+              <h3>{t("editor.garment_areas")}</h3>
+              {(() => {
+                const kind = String(doc.params["garment_kind"] ?? "tshirt") as GarmentKind;
+                const current = Array.isArray(doc.params["areas"])
+                  ? (doc.params["areas"] as string[])
+                  : [];
+                return areasForKind(kind).map((aid) => (
+                  <label key={aid} className="sel-item" style={{ paddingLeft: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={current.includes(aid)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...current, aid]
+                          : current.filter((x) => x !== aid);
+                        patch({ params: { ...doc.params, areas: next } });
+                        setPageIndex(0);
+                      }}
+                    />
+                    {GARMENT_AREAS[aid].label_tr} ({GARMENT_AREAS[aid].w_cm}×{GARMENT_AREAS[aid].h_cm})
+                  </label>
+                ));
+              })()}
+            </div>
+          )}
           <div className="epanel">
             <h3>{t("editor.selection")}</h3>
             {client.catalog.categories.map((c) => {
@@ -573,6 +674,74 @@ export function EditorPage() {
                 {t("editor.export_anyway")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOCKUP SAHNE SEÇİMİ (Faz 3, mimar #5/#6) */}
+      {showMockupModal && (
+        <div className="modal-back" onClick={() => setShowMockupModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            {(() => {
+              const all = scenesQ.data ?? [];
+              const isGarment = doc.template_id === "garment";
+              const fabric = String(doc.params["fabric_color"] ?? "");
+              const sorted = [...all].sort((a, b) => {
+                const score = (s: (typeof all)[number]) => {
+                  if (isGarment) {
+                    return (
+                      (s.kind === "garment" ? 2 : 0) +
+                      (s.settings.fabric_color && s.settings.fabric_color === fabric ? 1 : 0)
+                    );
+                  }
+                  return s.kind === "vitrine" || s.kind === "facade" ? 1 : 0;
+                };
+                return score(b) - score(a);
+              });
+              if (sorted.length === 0) {
+                return (
+                  <>
+                    <h3 style={{ margin: 0 }}>{t("editor.mockup_none_title")}</h3>
+                    <p className="muted">{t("editor.mockup_none_body")}</p>
+                    <div className="row" style={{ justifyContent: "flex-end" }}>
+                      <button className="ghost" onClick={() => setShowMockupModal(false)}>
+                        {t("editor.cancel")}
+                      </button>
+                      <button onClick={() => (window.location.href = `/clients/${client.id}?tab=scenes`)}>
+                        {t("editor.mockup_go_scenes")}
+                      </button>
+                    </div>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <h3 style={{ margin: 0 }}>{t("editor.mockup_pick")}</h3>
+                  <div className="asset-pick" style={{ maxHeight: 280 }}>
+                    {sorted.map((s) => (
+                      <div key={s.id} style={{ textAlign: "center", width: 96 }}>
+                        <img
+                          src={s.photo_urls?.thumb ?? ""}
+                          style={{ width: 92, height: 68, objectFit: "cover" }}
+                          className=""
+                          onClick={() => doMockup.mutate(s.id)}
+                          alt={s.name}
+                          title={`${s.name} · ${s.kind}`}
+                        />
+                        <div style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="row" style={{ justifyContent: "flex-end" }}>
+                    <button className="ghost" onClick={() => setShowMockupModal(false)}>
+                      {t("editor.cancel")}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

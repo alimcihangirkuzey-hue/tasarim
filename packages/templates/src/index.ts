@@ -7,6 +7,9 @@ import { menuListePremium } from "./menu-liste-premium/index.js";
 import { menuTrifold } from "./menu-trifold/index.js";
 import { flyer } from "./flyer/index.js";
 import { carteFidelite } from "./carte-fidelite/index.js";
+import { vitroBandeau, vitroCentre, vitroColonne } from "./vitrophanie/index.js";
+import { enseignePanneau } from "./enseigne/index.js";
+import { garment } from "./garment/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
@@ -26,6 +29,13 @@ export { analyzeFlyer } from "./flyer/index.js";
 export type { FlyerAnalysis } from "./flyer/analyze.js";
 export { analyzeFidelite } from "./carte-fidelite/index.js";
 export type { FideliteAnalysis } from "./carte-fidelite/analyze.js";
+export * from "./engine/ratio.js";
+export { analyzeVitro } from "./vitrophanie/index.js";
+export type { VitroAnalysis } from "./vitrophanie/index.js";
+export { analyzeEnseigne } from "./enseigne/index.js";
+export type { EnseigneAnalysis } from "./enseigne/index.js";
+export { analyzeGarment } from "./garment/index.js";
+export type { GarmentAnalysis, GarmentAreaLayout, LineSource } from "./garment/index.js";
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   [menuGridCells.manifest.id]: menuGridCells,
@@ -33,6 +43,11 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   [menuTrifold.manifest.id]: menuTrifold,
   [flyer.manifest.id]: flyer,
   [carteFidelite.manifest.id]: carteFidelite,
+  [vitroBandeau.manifest.id]: vitroBandeau,
+  [vitroCentre.manifest.id]: vitroCentre,
+  [vitroColonne.manifest.id]: vitroColonne,
+  [enseignePanneau.manifest.id]: enseignePanneau,
+  [garment.manifest.id]: garment,
 };
 
 export function getTemplate(id: string): TemplateEntry {

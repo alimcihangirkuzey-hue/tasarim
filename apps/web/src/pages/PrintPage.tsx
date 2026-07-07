@@ -20,6 +20,8 @@ export function PrintPage() {
   const { id = "" } = useParams();
   const [sp] = useSearchParams();
   const variant = sp.get("variant") === "preview" ? "preview" : "print";
+  /* ?page=N → yalnız o sayfa/alan (garment exportları sayfa başına boyut ister) */
+  const onlyPage = sp.get("page") !== null ? Number(sp.get("page")) : null;
 
   const docQ = useQuery({ queryKey: ["document", id], queryFn: () => api.document(id), enabled: !!id });
   const clientId = docQ.data?.client_id;
@@ -35,40 +37,51 @@ export function PrintPage() {
 
   useEffect(() => {
     if (!doc || !client || !entry) return;
-    const bleed = entry.manifest.bleed_mm;
-    const fmtId =
-      typeof doc.params["format"] === "string" && entry.manifest.formats[doc.params["format"] as string]
-        ? (doc.params["format"] as string)
-        : entry.manifest.defaultFormat;
-    const fmt = entry.manifest.formats[fmtId];
-    const pages = entry.pageCount ? entry.pageCount(client, doc) : 1;
-    const w = variant === "print" ? fmt.w_mm + 2 * bleed : fmt.w_mm;
-    const h = variant === "print" ? fmt.h_mm + 2 * bleed : fmt.h_mm;
+    /* cm-bazlı tipler (vitro/tabela/garment) gerçek ölçüyü pageSizeMM'den verir */
+    const size = onlyPage !== null && entry.pageSizeMMAt
+      ? entry.pageSizeMMAt(client, doc, onlyPage)
+      : entry.pageSizeMM
+      ? entry.pageSizeMM(client, doc)
+      : (() => {
+          const fmtId =
+            typeof doc.params["format"] === "string" &&
+            entry.manifest.formats[doc.params["format"] as string]
+              ? (doc.params["format"] as string)
+              : entry.manifest.defaultFormat;
+          const fmt = entry.manifest.formats[fmtId];
+          return { w_mm: fmt.w_mm, h_mm: fmt.h_mm, bleed_mm: entry.manifest.bleed_mm };
+        })();
+    const bleed = size.bleed_mm;
+    const pages = onlyPage !== null ? 1 : entry.pageCount ? entry.pageCount(client, doc) : 1;
+    const w = variant === "print" ? size.w_mm + 2 * bleed : size.w_mm;
+    const h = variant === "print" ? size.h_mm + 2 * bleed : size.h_mm;
 
     void document.fonts.ready.then(() => {
       window.__PAGE_SIZE__ = { w, h, pages };
       window.__PRINT_READY__ = true;
     });
-  }, [doc, client, entry, variant]);
+  }, [doc, client, entry, variant, onlyPage]);
 
   if (docQ.isError || clientQ.isError) {
     return <p style={{ fontFamily: "sans-serif" }}>Belge yüklenemedi.</p>;
   }
   if (!doc || !client || !entry) return null;
 
-  const bleed = entry.manifest.bleed_mm;
+  const bleed = entry.pageSizeMM
+    ? entry.pageSizeMM(client, doc).bleed_mm
+    : entry.manifest.bleed_mm;
   const pages = entry.pageCount ? entry.pageCount(client, doc) : 1;
 
   return (
     <div className={`print-root variant-${variant}`}>
       <style>{`
-        html, body { margin: 0; padding: 0; background: #fff; }
+        html, body { margin: 0; padding: 0; background: ${entry.transparentBg ? "transparent" : "#fff"}; }
         .print-root { margin: 0; }
         .sheet { page-break-after: always; overflow: hidden; position: relative; }
         .variant-preview .sheet svg { margin: -${bleed}mm 0 0 -${bleed}mm; }
         @media print { .sheet { break-after: page; } }
       `}</style>
-      {Array.from({ length: pages }, (_, p) => (
+      {(onlyPage !== null ? [onlyPage] : Array.from({ length: pages }, (_, p) => p)).map((p) => (
         <div className="sheet" key={p}>
           <entry.Component
             client={client}

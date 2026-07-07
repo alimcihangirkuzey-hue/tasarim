@@ -15,6 +15,8 @@ const PRINT_BASE = process.env.PRINT_BASE ?? "http://localhost:5173";
 const PresentSchema = z.object({
   document_ids: z.array(z.string()).default([]),
   note: z.string().max(600).default(""),
+  /** FAZ3-GOREV §3.4: son mockup varsa kart sonrası tam sayfa (default açık) */
+  include_mockups: z.boolean().default(true),
 });
 
 export function presentRoutes(app: FastifyInstance): void {
@@ -57,7 +59,8 @@ export function presentRoutes(app: FastifyInstance): void {
     const url =
       `${PRINT_BASE}/present/${req.params.id}` +
       `?docs=${encodeURIComponent(docIds.join(","))}` +
-      `&note=${encodeURIComponent(body.note)}&date=${day}`;
+      `&note=${encodeURIComponent(body.note)}&date=${day}` +
+      `&mockups=${body.include_mockups ? "1" : "0"}`;
 
     const browser = await getBrowser();
     const page = await browser.newPage();

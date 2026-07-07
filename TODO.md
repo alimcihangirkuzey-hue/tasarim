@@ -6,14 +6,33 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
 
+## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
+- [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
+- [ ] **Grid şablonuna çok sayfalı akış (flow) modu:** 80-100 kalemlik kataloglar için (Faz 4).
+- [ ] **İsimden foto önerisi:** ürün adı → ortak havuzdaki etiketli stok foto önerisi; havuz varlıklarına etiket alanı (Faz 4/5).
+- [ ] **Çoklu-yüzey sahne:** tek fotoğrafta birden çok quad (vitrin + duvar + ışıklı pano) → "dükkan böyle görünecek" kolaj mockup'ı (Faz 4/5).
+- [ ] **AI konsept görselleştirme (Faz S):** mekan fotoğrafından yenilenmiş konsept görseli; "konsept görselleştirme" olarak konumlanır, iç mimarlık hizmeti DEĞİL. Mimar kararı: SketchUp benzeri 3B modelleme kalıcı kapsam dışı.
+- [ ] **Paket şablonları:** "açılış takımı" gibi tek tıkla N kalemli proje presetleri (Faz 4).
+
 ## Faz 4'e inceleme notu
 - [ ] **PDF sayfa ölçümünde +0.2–0.4 mm sapma:** pdfjs okumaları 216.2×303.4 gibi değerler veriyor (hedef 216×303). Kök neden büyük olasılıkla mm→pt→mm çevrim yuvarlaması (Chromium `page.pdf` mm girdiyi pt'ye çevirir, pdfjs geri çevirir); baskı açısından zararsız. Faz 4'te (CMYK/Ghostscript işleri sırasında) kesin kökeni incele.
 
-## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulama YOK, yalnızca not)
-- [ ] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; **küçük alan + broderie kombinasyonunda ince-detay uyarısı** (ARAS logosu gibi çizimler küçük nakışta kaybolur).
-- [ ] **Mockup motoru:** quad-warp; pazarlamacının keşif fotoğrafları sahne olur.
-- [ ] **Vitrophanie/tabela belge tipleri:** cm bazlı; découpe'ta text→path.
-- [ ] **Tişört mockup renk seti:** mavi dahil.
+## Faz 4'e kayıt (FAZ3-GOREV §9 — uygulama YOK, yalnızca not)
+- [ ] **SVG import + slot işaretleme:** hazır SVG tasarımı içe al, slotları elle işaretle.
+- [ ] **Tema kütüphanesi ekranı:** temaları görsel galeriden seç/önizle.
+- [ ] **Toplu fiyat güncelleme:** katalogda yüzde/mutlak artış aracı.
+- [ ] **CMYK dönüşümü (Ghostscript):** matbaa PDF'i için; mevcut +0.2–0.4 mm pt→mm sapma notuyla birlikte incelenecek (yukarıdaki Faz 4 inceleme notu).
+- [ ] **Snapshot'tan geri yükleme:** export_records.snapshot_json → belgeyi o ana döndür.
+- [ ] **Zip yedek:** data/ klasörünü tek tıkla arşivle (M7).
+- [ ] **Parse sözlüğü yönetim arayüzü:** PRODUCT_DICT / KEY_ALIASES'ı UI'dan genişlet.
+- [ ] **İki kademeli broderie uyarısı (mimar kararı #8):** kural doğru ("broderie + kısa kenar < 15 cm" güçlü uyarı; bavette'te çıkmaz — kabul 6 örneği mimar hatasıydı, davranış değişmedi). Faz 4'te değerlendirilecek: her broderie belgesinde hafif bilgi notu + <15 cm alanda mevcut güçlü uyarı.
+- [ ] **TextLines letterSpacing birim düzeltmesi (mimar kararı #9):** tarayıcı CSS `"Nmm"`'yi SVG kullanıcı birimine 3,78× büyüterek çözüyor (CSS mm ≠ viewBox mm). Reçete: motorda birim yorumu düzeltilir **VE** mevcut şablonlardaki tüm yazar değerleri 3,78'e bölünerek görünüm birebir korunur; **önce/sonra ekran karşılaştırma kanıtı zorunlu** (Faz 1-2 onaylı görseller değişmemeli). Faz 3 kapanışında yalnız vitro-bandeau saat satırının yazar değeri küçültüldü (fs() min-8 kıskacı kaldırılıp oransal 0.006×min değerine dönüldü; motora dokunulmadı).
+
+## Faz 3'e kayıt (FAZ2-GOREV §10 — uygulandı ✓)
+- [x] **Tişört + önlük şablonları:** `technique: impression|broderie`; broderie'de yalnız vektör + cm ölçü + iplik notu çıktısı; küçük alan + broderie'de ince-detay uyarısı.
+- [x] **Mockup motoru:** quad-warp; keşif fotoğrafları sahne oldu (mockup_scenes, müşteri|ortak).
+- [x] **Vitrophanie/tabela belge tipleri:** cm bazlı; découpe'ta text→path (fontkit, mimar #7).
+- [x] **Tişört mockup renk seti:** mavi dahil (fabric_color seti).
 - [ ] Sunum PDF'inde kampanya slotunun katalogdan canlı binding'i (Faz 2'de serbest metin + override; en basit çözüm §0.6).
 - [ ] Sipariş kalemi ↔ belge durum senkronu otomasyonu düşünülebilir (Faz 2'de bilinçli olarak elle — FAZ2-GOREV §2.5).
 

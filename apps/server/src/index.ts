@@ -11,6 +11,10 @@ import { exportRoutes } from "./routes/exports.js";
 import { orderRoutes } from "./routes/orders.js";
 import { cloneRoutes } from "./routes/clone.js";
 import { presentRoutes } from "./routes/present.js";
+import { sceneRoutes } from "./routes/scenes.js";
+import { mockupRoutes } from "./routes/mockup.js";
+import { vectorRoutes } from "./routes/vector.js";
+import { garmentRoutes } from "./routes/garment.js";
 
 migrate();
 
@@ -31,7 +35,7 @@ await app.register(fastifyStatic, {
   decorateReply: false,
 });
 
-app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 2 }));
+app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 3 }));
 
 clientRoutes(app);
 assetRoutes(app);
@@ -40,6 +44,10 @@ exportRoutes(app);
 orderRoutes(app);
 cloneRoutes(app);
 presentRoutes(app);
+sceneRoutes(app);
+mockupRoutes(app);
+vectorRoutes(app);
+garmentRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

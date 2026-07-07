@@ -20,9 +20,15 @@ function DocCard({ doc, client, boxW, boxH }: {
 }) {
   const entry = TEMPLATES[doc.template_id];
   if (!entry) return null;
-  const fmtId = currentFormat(entry.manifest, doc);
-  const fmt = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
-  const B = entry.manifest.bleed_mm;
+  const size = entry.pageSizeMM
+    ? entry.pageSizeMM(client, doc)
+    : (() => {
+        const fmtId = currentFormat(entry.manifest, doc);
+        const f = (entry.manifest.formats as Record<string, { w_mm: number; h_mm: number }>)[fmtId];
+        return { w_mm: f.w_mm, h_mm: f.h_mm, bleed_mm: entry.manifest.bleed_mm };
+      })();
+  const fmt = size;
+  const B = size.bleed_mm;
   const scale = Math.min(boxW / fmt.w_mm, boxH / fmt.h_mm);
   return (
     <div
@@ -55,6 +61,7 @@ export function PresentPage() {
   const docIds = (sp.get("docs") ?? "").split(",").filter(Boolean);
   const note = sp.get("note") ?? "";
   const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+  const includeMockups = sp.get("mockups") !== "0";
 
   const projectQ = useQuery({ queryKey: ["project", id], queryFn: () => api.project(id), enabled: !!id });
   const docQs = useQueries({
@@ -68,15 +75,35 @@ export function PresentPage() {
   });
 
   const docs = docQs.map((q) => q.data).filter((d): d is DocumentDTO => !!d);
-  const ready = !!projectQ.data && !!clientQ.data && docs.length === docIds.length && docIds.length > 0;
+
+  /* FAZ3-GOREV §3.4: belge başına SON mockup (varsa) tam sayfa eklenir */
+  const exportQs = useQueries({
+    queries: docIds.map((d) => ({
+      queryKey: ["exports", d],
+      queryFn: () => api.documentExports(d),
+      enabled: includeMockups,
+    })),
+  });
+  const mockupOf = (docId: string): string | null => {
+    if (!includeMockups) return null;
+    const idx = docIds.indexOf(docId);
+    const recs = exportQs[idx]?.data ?? [];
+    const m = recs.find((r) => r.kind === "mockup");
+    return m ? "/" + m.filepath.replace(/^data\//, "") : null;
+  };
+  const exportsReady = !includeMockups || exportQs.every((q) => q.data !== undefined);
+  const mockupCount = docs.filter((d) => mockupOf(d.id)).length;
+
+  const ready =
+    !!projectQ.data && !!clientQ.data && docs.length === docIds.length && docIds.length > 0 && exportsReady;
 
   useEffect(() => {
     if (!ready) return;
     void document.fonts.ready.then(() => {
-      window.__PAGE_SIZE__ = { w: PAGE_W, h: PAGE_H, pages: 2 + docs.length };
+      window.__PAGE_SIZE__ = { w: PAGE_W, h: PAGE_H, pages: 2 + docs.length + mockupCount };
       window.__PRINT_READY__ = true;
     });
-  }, [ready, docs.length]);
+  }, [ready, docs.length, mockupCount]);
 
   if (!ready) return null;
   const client = clientQ.data!;
@@ -112,19 +139,30 @@ export function PresentPage() {
         </div>
       </div>
 
-      {/* SUNUM KARTLARI (mimar kararı #1) */}
+      {/* SUNUM KARTLARI (mimar kararı #1) + mockup sayfaları (FAZ3 §3.4) */}
       {docs.map((d) => {
         const entry = TEMPLATES[d.template_id];
+        const mockupUrl = mockupOf(d.id);
         return (
-          <div key={d.id} className="psheet" style={{ ...sheet, background: "#232327", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "7mm" }}>
-            <DocCard doc={d} client={client} boxW={168} boxH={225} />
-            <div style={{ color: "#D8D3C8", fontSize: "4mm", display: "flex", gap: "4mm", alignItems: "baseline" }}>
-              <strong>{entry?.manifest.name_tr ?? d.template_id}</strong>
-              <span style={{ opacity: 0.6, fontSize: "3.2mm" }}>
-                {String(d.params["format"] ?? entry?.manifest.defaultFormat ?? "")}
-                {entry?.pageCount && entry.pageCount(client, d) > 1 ? " · 2 yüz" : ""}
-              </span>
+          <div key={d.id} style={{ display: "contents" }}>
+            <div className="psheet" style={{ ...sheet, background: "#232327", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "7mm" }}>
+              <DocCard doc={d} client={client} boxW={168} boxH={225} />
+              <div style={{ color: "#D8D3C8", fontSize: "4mm", display: "flex", gap: "4mm", alignItems: "baseline" }}>
+                <strong>{entry?.manifest.name_tr ?? d.template_id}</strong>
+                <span style={{ opacity: 0.6, fontSize: "3.2mm" }}>
+                  {String(d.params["format"] ?? entry?.manifest.defaultFormat ?? "")}
+                  {entry?.pageCount && entry.pageCount(client, d) > 1 ? " · 2 yüz" : ""}
+                </span>
+              </div>
             </div>
+            {mockupUrl && (
+              <div className="psheet" style={{ ...sheet, background: "#1B1B1E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "5mm" }}>
+                <img src={mockupUrl} style={{ maxWidth: "180mm", maxHeight: "240mm", borderRadius: "1.5mm", boxShadow: "0 6mm 14mm rgba(0,0,0,0.6)" }} alt="mockup" />
+                <div style={{ color: "#D8D3C8", fontSize: "3.6mm" }}>
+                  Mise en situation — {entry?.manifest.name_tr ?? d.template_id}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
