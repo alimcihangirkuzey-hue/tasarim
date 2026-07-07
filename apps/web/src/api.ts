@@ -157,6 +157,14 @@ export const api = {
       body: "{}",
     }),
 
+  /* Tema kütüphanesi — Faz 4 §7 */
+  themes: () => http<import("@tezgah/shared").ThemeDTO[]>(`/api/themes`),
+  createTheme: (body: { name: string; tokens: import("@tezgah/shared").ThemeTokens }) =>
+    http<import("@tezgah/shared").ThemeDTO>(`/api/themes`, { method: "POST", body: JSON.stringify(body) }),
+  updateTheme: (id: string, body: { name: string; tokens: import("@tezgah/shared").ThemeTokens }) =>
+    http<import("@tezgah/shared").ThemeDTO>(`/api/themes/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteTheme: (id: string) => http<{ ok: true }>(`/api/themes/${id}`, { method: "DELETE" }),
+
   /* Snapshot geri yükleme — Faz 4 §5 */
   restoreDocument: (id: string, exportId: string) =>
     http<{ document: DocumentDTO; safety_record_id: string }>(

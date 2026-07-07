@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PRESET_THEMES,
+  customThemeList,
   TEMPLATES,
   currentFormat,
   missingPhotoItems,
@@ -380,6 +381,12 @@ export function EditorPage() {
           {entry.manifest.themes.map((th) => (
             <option key={th} value={th}>
               {PRESET_THEMES[th]?.name_tr ?? th}
+            </option>
+          ))}
+          {/* FAZ4 §7: özel temalar tüm şablonlarda seçilebilir */}
+          {customThemeList().map((th) => (
+            <option key={th.id} value={th.id}>
+              {th.name_tr} ★
             </option>
           ))}
         </select>

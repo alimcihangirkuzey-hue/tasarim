@@ -151,10 +151,92 @@ export function brandTheme(kit: BrandKit): Theme {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Özel temalar — FAZ4-GOREV §7 (DB'de token, burada Theme'e derlenir)  */
+/* ------------------------------------------------------------------ */
+
+/** Font anahtarı → yığın, deterministik ölçüm oranı (M8) ve güvenli ağırlık.
+    Oranlar yerleşik temalardaki ölçümlerle aynı kaynaktan. */
+export const FONT_META: Record<
+  string,
+  { stack: string; ratio: number; weight: number; label: string }
+> = {
+  oswald: { stack: F.oswald, ratio: 0.42, weight: 700, label: "Oswald" },
+  anton: { stack: F.anton, ratio: 0.5, weight: 400, label: "Anton" },
+  archivo: { stack: F.archivo, ratio: 0.64, weight: 400, label: "Archivo Black" },
+  inter: { stack: F.inter, ratio: 0.5, weight: 600, label: "Inter" },
+  bitter: { stack: F.bitter, ratio: 0.54, weight: 700, label: "Bitter" },
+  pacifico: { stack: F.pacifico, ratio: 0.56, weight: 400, label: "Pacifico" },
+};
+
+export interface CustomThemeTokens {
+  base: "or-noir" | "aras-orange" | "velours-rouge";
+  colors: {
+    bg: string; panel: string; heading: string; item: string;
+    desc: string; price: string; accent: string; line: string;
+  };
+  fonts: { heading: string; item: string; body: string; script: string };
+}
+
+/** Token seti → tam Theme: davranış (categoryStyle, uppercase) base'den,
+    ağırlık/oranlar seçilen fontların metriklerinden türer. */
+export function themeFromTokens(id: string, name: string, tokens: CustomThemeTokens): Theme {
+  const base = PRESET_THEMES[tokens.base] ?? OR_NOIR;
+  const fm = (k: string) => FONT_META[k] ?? FONT_META.inter;
+  return {
+    id,
+    name_tr: name,
+    categoryStyle: base.categoryStyle,
+    uppercaseHeading: base.uppercaseHeading,
+    weights: { heading: fm(tokens.fonts.heading).weight, item: fm(tokens.fonts.item).weight },
+    ratios: {
+      heading: fm(tokens.fonts.heading).ratio,
+      item: fm(tokens.fonts.item).ratio,
+      body: fm(tokens.fonts.body).ratio,
+      script: fm(tokens.fonts.script).ratio,
+    },
+    vars: {
+      "--c-bg": tokens.colors.bg,
+      "--c-panel": tokens.colors.panel,
+      "--c-heading": tokens.colors.heading,
+      "--c-item": tokens.colors.item,
+      "--c-desc": tokens.colors.desc,
+      "--c-price": tokens.colors.price,
+      "--c-accent": tokens.colors.accent,
+      "--c-line": tokens.colors.line,
+      "--f-heading": fm(tokens.fonts.heading).stack,
+      "--f-item": fm(tokens.fonts.item).stack,
+      "--f-body": fm(tokens.fonts.body).stack,
+      "--f-script": fm(tokens.fonts.script).stack,
+    },
+  };
+}
+
+/* Kayıt defteri: uygulama açılışında API'den doldurulur (web + print AYNI yol → M3) */
+const CUSTOM_THEMES = new Map<string, Theme>();
+let PREVIEW_THEME: Theme | null = null;
+
+export function registerCustomThemes(
+  list: Array<{ id: string; name: string; tokens: CustomThemeTokens }>
+): void {
+  CUSTOM_THEMES.clear();
+  for (const t of list) CUSTOM_THEMES.set(t.id, themeFromTokens(t.id, t.name, t.tokens));
+}
+
+export function customThemeList(): Theme[] {
+  return [...CUSTOM_THEMES.values()];
+}
+
+/** Ayarlar sayfası canlı önizlemesi: kaydedilmemiş token setini geçici tanıtır */
+export function setPreviewTheme(theme: Theme | null): void {
+  PREVIEW_THEME = theme;
+}
+
 /** theme_id → Theme; bilinmeyen kimlik marka temasına düşer (deterministik, sessiz kırılma yok) */
 export function resolveTheme(themeId: string, kit: BrandKit): Theme {
+  if (PREVIEW_THEME && themeId === PREVIEW_THEME.id) return PREVIEW_THEME;
   if (themeId === "brand") return brandTheme(kit);
-  return PRESET_THEMES[themeId] ?? brandTheme(kit);
+  return PRESET_THEMES[themeId] ?? CUSTOM_THEMES.get(themeId) ?? brandTheme(kit);
 }
 
 /** SVG kök elemanına verilecek inline stil nesnesi */

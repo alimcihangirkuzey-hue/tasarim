@@ -8,9 +8,15 @@ import { createRequire } from "node:module";
 import { db } from "../db.js";
 import { DATA_DIR } from "../paths.js";
 
-/* archiver salt-CJS; ESM default interop'u Node 24 + tsx altında yok */
+/* archiver v7 salt-CJS; ESM default interop'u Node 24 + tsx altında yok.
+   Tip: kullandığımız dar yüzey (paketle gelen tipler v8 API'sini anlatıyor) */
+type Archive = NodeJS.ReadableStream & {
+  file(path: string, opts: { name: string }): void;
+  directory(dir: string, dest: string): void;
+  finalize(): Promise<void>;
+};
 const require = createRequire(import.meta.url);
-const archiver = require("archiver") as typeof import("archiver");
+const archiver = require("archiver") as (format: "zip", opts?: { zlib?: { level?: number } }) => Archive;
 
 function stamp(): string {
   const d = new Date();

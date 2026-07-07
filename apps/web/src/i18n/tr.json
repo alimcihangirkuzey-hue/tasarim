@@ -3,7 +3,8 @@
     "title": "TEZGÂH",
     "subtitle": "Atölye otomasyonu · Faz 3",
     "backup": "Yedek al",
-    "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)"
+    "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)",
+    "themes": "Temalar"
   },
   "nav": {
     "clients": "Müşteriler"
@@ -298,5 +299,17 @@
     "history_manual": "kayıt",
     "restore": "Geri yükle",
     "restore_confirm": "Katalog bu kayda dönecek; mevcut durum da geçmişe yazılacak. Devam?"
+  },
+  "themes": {
+    "title": "Tema Kütüphanesi",
+    "builtin": "yerleşik",
+    "derive": "Kopyala-türet",
+    "edit": "Düzenle",
+    "new": "Yeni tema",
+    "base": "Davranış tabanı:",
+    "save": "Kaydet",
+    "create": "Oluştur",
+    "delete_confirm": "Tema silinecek. Bu temayı kullanan belgeler marka temasına döner. Devam?",
+    "pick_hint": "Düzenlemek için soldan bir tema seç ya da yeni tema oluştur; önizleme gerçek grid şablonuyla canlı."
   }
 }

@@ -17,6 +17,7 @@ import { vectorRoutes } from "./routes/vector.js";
 import { garmentRoutes } from "./routes/garment.js";
 import { catalogRoutes } from "./routes/catalog.js";
 import { backupRoutes } from "./routes/backup.js";
+import { themeRoutes } from "./routes/themes.js";
 
 migrate();
 
@@ -52,6 +53,7 @@ vectorRoutes(app);
 garmentRoutes(app);
 catalogRoutes(app);
 backupRoutes(app);
+themeRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {
