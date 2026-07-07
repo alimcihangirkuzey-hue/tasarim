@@ -35,6 +35,8 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_empty_logo");
     case "mixed-variants":
       return `${t("editor.warn_mixed")}: ${w.categoryId}`;
+    case "qr-contrast":
+      return t("editor.warn_qr_contrast");
   }
 }
 

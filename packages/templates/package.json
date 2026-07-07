@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@tezgah/shared": "*",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1"
   },
   "devDependencies": {
     "@types/fontkit": "^2.0.9",
     "@types/node": "^22.10.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "fontkit": "^2.0.4",
     "typescript": "^5.6.3",

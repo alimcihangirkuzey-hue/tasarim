@@ -247,6 +247,7 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
           mode={mode}
           selectedSlot={selectedSlot}
           onSlotClick={onSlotClick}
+          qr={a.qr}
         />
 
         {/* repeater içerik alanı */}

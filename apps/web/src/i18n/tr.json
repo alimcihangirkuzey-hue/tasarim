@@ -116,6 +116,7 @@
     "warn_low_dpi": "Düşük çözünürlük: {dpi} dpi",
     "warn_empty_logo": "Logo yüklenmemiş",
     "warn_mixed": "Kategoride karışık fiyat varyantları (kolon düzeni)",
+    "warn_qr_contrast": "Tema metin rengi QR için soluk — modüller siyaha düşürüldü",
     "slot": "Seçili slot",
     "no_slot": "Canvas'ta bir slota tıkla",
     "reattach": "⛓ Veriye geri bağla",

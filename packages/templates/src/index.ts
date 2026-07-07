@@ -10,6 +10,7 @@ export * from "./themes.js";
 export * from "./engine/binding.js";
 export * from "./engine/layout.js";
 export * from "./engine/params.js";
+export * from "./engine/qr.js";
 export * from "./parts/price.js";
 export { analyzeGrid } from "./menu-grid-cells/index.js";
 export type { GridAnalysis, CellLayout } from "./menu-grid-cells/analyze.js";
