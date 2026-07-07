@@ -4,6 +4,7 @@
 import type { TemplateEntry } from "./types.js";
 import { menuGridCells } from "./menu-grid-cells/index.js";
 import { menuListePremium } from "./menu-liste-premium/index.js";
+import { menuTrifold } from "./menu-trifold/index.js";
 
 export * from "./types.js";
 export * from "./themes.js";
@@ -17,9 +18,13 @@ export type { GridAnalysis, CellLayout } from "./menu-grid-cells/analyze.js";
 export { analyzeList } from "./menu-liste-premium/index.js";
 export type { ListAnalysis, ListRow } from "./menu-liste-premium/analyze.js";
 
+export { analyzeTrifold } from "./menu-trifold/index.js";
+export type { TrifoldAnalysis } from "./menu-trifold/analyze.js";
+
 export const TEMPLATES: Record<string, TemplateEntry> = {
   [menuGridCells.manifest.id]: menuGridCells,
   [menuListePremium.manifest.id]: menuListePremium,
+  [menuTrifold.manifest.id]: menuTrifold,
 };
 
 export function getTemplate(id: string): TemplateEntry {
