@@ -3,9 +3,11 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { ZodError } from "zod";
 import { migrate } from "./db.js";
-import { ASSETS_DIR } from "./paths.js";
+import { ASSETS_DIR, EXPORTS_DIR } from "./paths.js";
 import { clientRoutes } from "./routes/clients.js";
 import { assetRoutes } from "./routes/assets.js";
+import { documentRoutes } from "./routes/documents.js";
+import { exportRoutes } from "./routes/exports.js";
 
 migrate();
 
@@ -20,10 +22,18 @@ await app.register(fastifyStatic, {
   prefix: "/assets/",
 });
 
-app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 0 }));
+await app.register(fastifyStatic, {
+  root: EXPORTS_DIR,
+  prefix: "/exports/",
+  decorateReply: false,
+});
+
+app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 1 }));
 
 clientRoutes(app);
 assetRoutes(app);
+documentRoutes(app);
+exportRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {
@@ -34,9 +44,9 @@ app.setErrorHandler((err, _req, reply) => {
     });
   }
   app.log.error(err);
-  return reply
-    .code(err.statusCode ?? 500)
-    .send({ error: "internal", message: err.message });
+  const e = err instanceof Error ? err : new Error(String(err));
+  const status = (e as { statusCode?: number }).statusCode ?? 500;
+  return reply.code(status).send({ error: "internal", message: e.message });
 });
 
 const PORT = Number(process.env.PORT ?? 3001);

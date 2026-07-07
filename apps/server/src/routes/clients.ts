@@ -6,6 +6,7 @@ import {
   CatalogSchema,
   ClientCreateSchema,
   ClientUpdateSchema,
+  CurrencySchema,
   defaultBrandKit,
   defaultCatalog,
   newId,
@@ -23,6 +24,7 @@ type ClientRow = {
   name: string;
   slug: string;
   notes: string;
+  currency: string;
   brandkit_json: string;
   catalog_json: string;
   created_at: string;
@@ -75,6 +77,7 @@ function rowToClient(row: ClientRow): ClientDTO {
     name: row.name,
     slug: row.slug,
     notes: row.notes,
+    currency: CurrencySchema.parse(row.currency),
     brandkit: BrandKitSchema.parse(JSON.parse(row.brandkit_json)),
     catalog: CatalogSchema.parse(JSON.parse(row.catalog_json)),
     assets: clientAssets(row.id),
@@ -110,14 +113,15 @@ export function clientRoutes(app: FastifyInstance): void {
       name: body.name.trim(),
       slug: uniqueSlug(body.name),
       notes: body.notes ?? "",
+      currency: "EUR",
       brandkit_json: JSON.stringify(defaultBrandKit()),
       catalog_json: JSON.stringify(defaultCatalog()),
       created_at: now,
       updated_at: now,
     };
     db.prepare(
-      `INSERT INTO clients (id, name, slug, notes, brandkit_json, catalog_json, created_at, updated_at)
-       VALUES (@id, @name, @slug, @notes, @brandkit_json, @catalog_json, @created_at, @updated_at)`
+      `INSERT INTO clients (id, name, slug, notes, currency, brandkit_json, catalog_json, created_at, updated_at)
+       VALUES (@id, @name, @slug, @notes, @currency, @brandkit_json, @catalog_json, @created_at, @updated_at)`
     ).run(client);
     reply.code(201);
     return rowToClient(client);
@@ -144,12 +148,13 @@ export function clientRoutes(app: FastifyInstance): void {
       ...row,
       name: patch.name?.trim() ?? row.name,
       notes: patch.notes ?? row.notes,
+      currency: patch.currency ?? row.currency,
       brandkit_json: patch.brandkit ? JSON.stringify(patch.brandkit) : row.brandkit_json,
       catalog_json: patch.catalog ? JSON.stringify(patch.catalog) : row.catalog_json,
       updated_at: nowISO(),
     };
     db.prepare(
-      `UPDATE clients SET name=@name, notes=@notes, brandkit_json=@brandkit_json,
+      `UPDATE clients SET name=@name, notes=@notes, currency=@currency, brandkit_json=@brandkit_json,
         catalog_json=@catalog_json, updated_at=@updated_at WHERE id=@id`
     ).run(next);
     return rowToClient(next);

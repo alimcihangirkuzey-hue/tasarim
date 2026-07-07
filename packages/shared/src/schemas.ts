@@ -8,6 +8,10 @@ export const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir hex renk olmalı (#RRGGBB)");
 
+/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri) */
+export const CurrencySchema = z.enum(["EUR", "CHF"]);
+export type Currency = z.infer<typeof CurrencySchema>;
+
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
   value: z.number().nonnegative(),
@@ -29,6 +33,7 @@ export type Item = z.infer<typeof ItemSchema>;
 export const CategorySchema = z.object({
   id: z.string(),
   name_fr: z.string().min(1),
+  note_fr: z.string().optional(), // başlık altı küçük not — FAZ1-GOREV §2.3
   order: z.number().int().default(0),
   items: z.array(ItemSchema).default([]),
 });
@@ -104,6 +109,41 @@ export const DocumentStateSchema = z.object({
 });
 export type DocumentState = z.infer<typeof DocumentStateSchema>;
 
+/* Belge API sözleşmeleri — Faz 1 */
+
+export const DocumentCreateSchema = z.object({
+  template_id: z.string().min(1),
+});
+
+/** Kısmi güncelleme: editör otomatik kaydı (2 sn debounce) bu şemayla doğrulanır */
+export const DocumentUpdateSchema = DocumentStateSchema.partial();
+
+export interface DocumentDTO extends DocumentState {
+  id: string;
+  project_id: string;
+  client_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentSummaryDTO {
+  id: string;
+  template_id: string;
+  status: DocumentState["status"];
+  theme_id: string;
+  format: string | null;
+  updated_at: string;
+}
+
+export interface ExportRecordDTO {
+  id: string;
+  document_id: string;
+  kind: "print" | "preview";
+  filepath: string;
+  version: number;
+  created_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* API veri sözleşmeleri                                               */
 /* ------------------------------------------------------------------ */
@@ -135,6 +175,7 @@ export interface ClientDTO {
   name: string;
   slug: string;
   notes: string;
+  currency: Currency;
   brandkit: BrandKit;
   catalog: Catalog;
   assets: AssetDTO[];
@@ -150,6 +191,7 @@ export const ClientCreateSchema = z.object({
 export const ClientUpdateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   notes: z.string().max(4000).optional(),
+  currency: CurrencySchema.optional(),
   brandkit: BrandKitSchema.optional(),
   catalog: CatalogSchema.optional(),
 });

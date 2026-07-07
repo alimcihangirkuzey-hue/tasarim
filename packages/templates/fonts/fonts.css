@@ -1,0 +1,59 @@
+/* TEZGÂH şablon fontları — OFL lisanslı, latin + latin-ext (M9: ğşİı + éèçœ aynı dosyada)
+   font-display: block → PDF üretiminde fallback font kareleri basılmaz (ADR-3/§9.1) */
+
+@font-face {
+  font-family: "Oswald";
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+  src: url("./oswald-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oswald";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("./oswald-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Anton";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("./anton-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Black";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("./archivo-black-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("./inter-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+  src: url("./inter-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bitter";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("./bitter-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Pacifico";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("./pacifico-400.woff2") format("woff2");
+}
