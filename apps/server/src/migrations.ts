@@ -107,4 +107,29 @@ export const MIGRATIONS: string[] = [
     created_at     TEXT NOT NULL
   );
   `,
+  /* v5 — Faz 4 (FAZ4-GOREV §4/§7/§9/§10 tek göçte):
+     catalog_history: toplu fiyat öncesi otomatik yedek + elle geri yükleme;
+     themes: özel tema kütüphanesi (yerleşikler kodda kalır);
+     assets.tags: virgüllü etiketler (foto önerisi);
+     parse_synonyms: parse sözlüğünün DB katmanı (çekirdek ∪ DB). */
+  `
+  CREATE TABLE IF NOT EXISTS catalog_history (
+    id           TEXT PRIMARY KEY,
+    client_id    TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    catalog_json TEXT NOT NULL,
+    reason       TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS themes (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    tokens_json TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+  );
+  ALTER TABLE assets ADD COLUMN tags TEXT NOT NULL DEFAULT '';
+  CREATE TABLE IF NOT EXISTS parse_synonyms (
+    word         TEXT PRIMARY KEY,
+    product_type TEXT NOT NULL
+  );
+  `,
 ];
