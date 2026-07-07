@@ -144,7 +144,9 @@ export interface ExportRecordDTO {
   /** Mimar kararı #3: sunum kayıtlarında null olabilir */
   document_id: string | null;
   project_id: string | null;
-  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png";
+  /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
+     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar */
+  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk";
   filepath: string;
   version: number;
   created_at: string;

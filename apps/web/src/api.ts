@@ -157,6 +157,13 @@ export const api = {
       body: "{}",
     }),
 
+  /* Snapshot geri yükleme — Faz 4 §5 */
+  restoreDocument: (id: string, exportId: string) =>
+    http<{ document: DocumentDTO; safety_record_id: string }>(
+      `/api/documents/${id}/restore/${exportId}`,
+      { method: "POST", body: "{}" }
+    ),
+
   /* Toplu fiyat + katalog geçmişi — Faz 4 §4 */
   bulkPrice: (clientId: string, op: import("@tezgah/shared").BulkPriceOp) =>
     http<{ applied: number; changes: import("@tezgah/shared").PriceChange[] }>(

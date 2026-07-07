@@ -215,7 +215,10 @@
   },
   "history": {
     "title": "Geçmiş",
-    "reveal": "Klasörde göster"
+    "reveal": "Klasörde göster",
+    "restore": "Bu versiyona dön",
+    "restore_confirm": "Belge bu versiyonun durumuna dönecek; mevcut durum güvenlik kaydı olarak geçmişe yazılacak. Devam?",
+    "snapshot_label": "güvenlik kaydı (dönüş öncesi)"
   },
   "scenes": {
     "tab": "Sahneler",

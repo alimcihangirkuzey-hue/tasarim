@@ -265,6 +265,15 @@ export function EditorPage() {
     queryFn: () => api.documentExports(id),
     enabled: !!id,
   });
+
+  /* FAZ4 §5: snapshot'a dön — sunucu önce güvenlik kaydı yazar */
+  const restoreDoc = useMutation({
+    mutationFn: (exportId: string) => api.restoreDocument(id, exportId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["document", id] });
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+  });
   const doExport = useMutation({
     /* tip bazlı yönlendirme: garment → PNG/broderie paketi; vitro decoupe → SVG;
        diğerleri → print+preview PDF */
@@ -637,14 +646,31 @@ export function EditorPage() {
               {exportsQ.data!.map((r) => (
                 <div className="row" key={r.id} style={{ fontSize: 13 }}>
                   <span className="pill">v{r.version}</span>
-                  <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-                    {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
-                  </a>
-                  <button
-                    className="icon"
-                    title={t("history.reveal")}
-                    onClick={() => void api.reveal(r.filepath)}
-                  >📂</button>
+                  {r.kind === "snapshot" ? (
+                    <span className="muted">{t("history.snapshot_label")}</span>
+                  ) : (
+                    <>
+                      <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
+                        {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
+                      </a>
+                      <button
+                        className="icon"
+                        title={t("history.reveal")}
+                        onClick={() => void api.reveal(r.filepath)}
+                      >📂</button>
+                    </>
+                  )}
+                  {/* FAZ4 §5: yalnız state taşıyan kayıtlarda görünür; onay şart */}
+                  {["print", "preview", "decoupe", "broderie", "png", "snapshot"].includes(r.kind) && (
+                    <button
+                      className="icon"
+                      title={t("history.restore")}
+                      disabled={restoreDoc.isPending}
+                      onClick={() => {
+                        if (window.confirm(t("history.restore_confirm"))) restoreDoc.mutate(r.id);
+                      }}
+                    >⤺</button>
+                  )}
                   <span className="muted">{new Date(r.created_at).toLocaleTimeString("tr-TR")}</span>
                 </div>
               ))}
