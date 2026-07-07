@@ -3,6 +3,12 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
+## Faz 1 sırasında düşülen notlar
+- [ ] **QR slotları Faz 2'ye bırakıldı (çelişki çözümü):** FAZ1-GOREV §4/§5 sabit slot listesinde "opsiyonel QR" geçiyor, ancak CONSTITUTION §13 "QR slotları"nı Faz 2 kapsamına koyuyor. FAZ1-GOREV §0.6 "çelişkide CONSTITUTION kazanır" dediği için QR bu fazda uygulanmadı → Faz 2'de `qrcode` ile SVG üretimi (CONSTITUTION §10). Mimar farklı isterse bildirsin.
+- [ ] Proje yönetimi arayüzü yok; ilk belgede müşteri başına "Genel" projesi otomatik açılıyor (en basit çözüm, §0.6) → Faz 2 ("açılış paketi tek projede")
+- [ ] Liste şablonu dekor foto slotları (deco1-3) "kategori bloklarının yanına" yerine deterministik **alt bant** olarak yerleştirildi (tek sütunda yan boşluk yok; en basit çözüm §0.6) → mimar onayına sunulacak
+- [ ] Belgelerde ad kolonu yok (şablon adı + tarih gösteriliyor); istenirse Faz 2'de `documents.name` migration'ı
+
 ## Faz 0 sonrası bilinen sınırlar
 - [ ] Ortak fotoğraf havuzu (assets.client_id = NULL) şemada hazır, arayüzü yok → Faz 1/2 (CONSTITUTION §15/S3)
 - [ ] Müşteri klonlama endpoint'i ve arayüzü → Faz 2 (M6)

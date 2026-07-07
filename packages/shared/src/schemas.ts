@@ -109,6 +109,41 @@ export const DocumentStateSchema = z.object({
 });
 export type DocumentState = z.infer<typeof DocumentStateSchema>;
 
+/* Belge API sözleşmeleri — Faz 1 */
+
+export const DocumentCreateSchema = z.object({
+  template_id: z.string().min(1),
+});
+
+/** Kısmi güncelleme: editör otomatik kaydı (2 sn debounce) bu şemayla doğrulanır */
+export const DocumentUpdateSchema = DocumentStateSchema.partial();
+
+export interface DocumentDTO extends DocumentState {
+  id: string;
+  project_id: string;
+  client_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentSummaryDTO {
+  id: string;
+  template_id: string;
+  status: DocumentState["status"];
+  theme_id: string;
+  format: string | null;
+  updated_at: string;
+}
+
+export interface ExportRecordDTO {
+  id: string;
+  document_id: string;
+  kind: "print" | "preview";
+  filepath: string;
+  version: number;
+  created_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* API veri sözleşmeleri                                               */
 /* ------------------------------------------------------------------ */
