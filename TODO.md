@@ -3,6 +3,9 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
+## Pilot dönem (aktif — Faz 4 kapanışıyla)
+- [ ] **Pilot iş dönemi başladı — FAZ5 paketi pilot saha notlarıyla şekillenecek; bu dönemde gelen her yeni fikir/talep M10 gereği TODO'ya yazılır, sırasız uygulanmaz.**
+
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
 - [ ] **Faz S ön koşulu: güvenlik yükseltme turu (mimar kararı #11):** npm audit'in major yükseltmeleri (vite 8, @fastify/static 9 vb.) SaaS'a çıkmadan ZORUNLU; v1'de yapılmama gerekçesi local-first + yalnız 127.0.0.1 dinleme.
