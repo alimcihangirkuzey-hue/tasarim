@@ -283,6 +283,17 @@ export function EditorPage() {
     enabled: !!id,
   });
 
+  /* FAZ4 §13: CMYK — gs tespiti + son print PDF'ten dönüşüm */
+  const cmykQ = useQuery({ queryKey: ["cmyk-status"], queryFn: api.cmykStatus, staleTime: Infinity });
+  const doCmyk = useMutation({
+    mutationFn: () => api.exportCmyk(id),
+    onSuccess: (r) => {
+      showToast(`CMYK hazır: v${r.version}`);
+      void qc.invalidateQueries({ queryKey: ["exports", id] });
+    },
+    onError: (e) => showToast((e as Error).message),
+  });
+
   /* FAZ4 §5: snapshot'a dön — sunucu önce güvenlik kaydı yazar */
   const restoreDoc = useMutation({
     mutationFn: (exportId: string) => api.restoreDocument(id, exportId),
@@ -502,6 +513,15 @@ export function EditorPage() {
 
         <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>
           {doMockup.isPending ? t("editor.mockup_generating") : t("editor.mockup")}
+        </button>
+        {/* FAZ4 §13: gs varsa aktif; yoksa pasif + kurulum yönlendirmesi (ADR-4) */}
+        <button
+          className="ghost"
+          disabled={!cmykQ.data?.available || doCmyk.isPending}
+          title={cmykQ.data?.available ? `Ghostscript ${cmykQ.data.version}` : t("editor.cmyk_missing")}
+          onClick={() => doCmyk.mutate()}
+        >
+          {t("editor.cmyk")}
         </button>
         <button
           onClick={() => (warnings.length > 0 ? setShowExportModal(true) : doExport.mutate([]))}

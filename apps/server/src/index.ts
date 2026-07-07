@@ -21,6 +21,7 @@ import { themeRoutes } from "./routes/themes.js";
 import { synonymRoutes } from "./routes/synonyms.js";
 import { presetRoutes2 } from "./routes/presets.js";
 import { factoryRoutes } from "./routes/factory.js";
+import { cmykRoutes } from "./routes/cmyk.js";
 
 migrate();
 
@@ -60,6 +61,7 @@ themeRoutes(app);
 synonymRoutes(app);
 presetRoutes2(app);
 factoryRoutes(app);
+cmykRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

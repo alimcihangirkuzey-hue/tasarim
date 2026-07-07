@@ -158,7 +158,10 @@
     "garment_areas": "Baskı alanları",
     "garment_logo_variant": "Logo sürümü",
     "garment_auto": "otomatik (kumaşa göre)",
-    "garment_line_source": "Metin kaynağı (marka kiti)"
+    "garment_line_source": "Metin kaynağı (marka kiti)",
+    "cmyk": "Print (CMYK)",
+    "cmyk_missing": "Ghostscript kurulu değil — gswin64c/gs PATH'te olmalı (ghostscript.com). RGB PDF matbaaların çoğuna yeter (ADR-4).",
+    "cmyk_need_print": "Önce print PDF al"
   },
   "orders": {
     "tab": "Projeler",

@@ -157,6 +157,11 @@ export const api = {
       body: "{}",
     }),
 
+  /* CMYK — Faz 4 §13 (ADR-4) */
+  cmykStatus: () => http<{ available: boolean; version: string | null }>(`/api/cmyk/status`),
+  exportCmyk: (id: string) =>
+    http<ExportRecordDTO>(`/api/documents/${id}/export-cmyk`, { method: "POST", body: "{}" }),
+
   /* Asset silme + preset — Faz 4 §11 */
   deleteAsset: (id: string) =>
     http<{ ok: true }>(`/api/assets/${id}`, { method: "DELETE" }),
