@@ -7,6 +7,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Pilot iş dönemi başladı — FAZ5 paketi pilot saha notlarıyla şekillenecek; bu dönemde gelen her yeni fikir/talep M10 gereği TODO'ya yazılır, sırasız uygulanmaz.**
 
 ### Pilot saha kayıtları (UYGULAMA YOK — kayıt biçimi: `- [YYYY-AA-GG] tek satırlık not / fikir / sürtünme`)
+- [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
