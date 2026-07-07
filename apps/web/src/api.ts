@@ -157,6 +157,10 @@ export const api = {
       body: "{}",
     }),
 
+  /* Varlık etiketleri — Faz 4 §9 */
+  updateAssetTags: (id: string, tags: string) =>
+    http<AssetDTO>(`/api/assets/${id}`, { method: "PATCH", body: JSON.stringify({ tags }) }),
+
   /* Tema kütüphanesi — Faz 4 §7 */
   themes: () => http<import("@tezgah/shared").ThemeDTO[]>(`/api/themes`),
   createTheme: (body: { name: string; tokens: import("@tezgah/shared").ThemeTokens }) =>

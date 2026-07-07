@@ -197,6 +197,8 @@ export interface AssetDTO {
   filename: string; // master dosya adı: {id}.{ext}
   width_px: number;
   height_px: number;
+  /** virgüllü etiketler (FAZ4 §9 foto önerisi; normalize ederek ara) */
+  tags: string;
   created_at: string;
   urls: { orig: string; master: string; thumb: string };
 }

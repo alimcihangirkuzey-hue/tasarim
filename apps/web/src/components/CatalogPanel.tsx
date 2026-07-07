@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { newId, type Catalog, type Category, type ClientDTO, type Item } from "@tezgah/shared";
+import { newId, suggestPhotosForName, type Catalog, type Category, type ClientDTO, type Item } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
 import { BulkPriceModal } from "./BulkPriceModal";
@@ -180,6 +180,22 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
               >
                 {assetThumb(it.photo) ? <img src={assetThumb(it.photo)!} alt="" /> : "📷"}
               </button>
+              {/* FAZ4 §9: fotoğrafsız üründe etiket eşleşmesi → Öneri çipi (taslağa yazar) */}
+              {!it.photo && (() => {
+                const sugId = suggestPhotosForName(it.name_fr, client.assets)[0];
+                const sug = sugId ? client.assets.find((a) => a.id === sugId) : undefined;
+                return sug ? (
+                  <button
+                    className="ghost small"
+                    type="button"
+                    title={`${t("suggest.chip")}: ${sug.tags}`}
+                    onClick={() => editItem(c.id, it.id, { photo: sug.id })}
+                  >
+                    <img src={sug.urls.thumb} alt="" style={{ width: 16, height: 16, objectFit: "cover", borderRadius: 3, verticalAlign: "-3px", marginRight: 3 }} />
+                    {t("suggest.chip")}
+                  </button>
+                ) : null;
+              })()}
               <input
                 type="text"
                 value={it.name_fr}

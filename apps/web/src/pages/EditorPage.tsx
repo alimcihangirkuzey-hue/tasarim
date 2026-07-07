@@ -18,6 +18,7 @@ import {
 import {
   GARMENT_AREAS,
   areasForKind,
+  suggestPhotos,
   type DocumentState,
   type ExportRecordDTO,
   type GarmentKind,
@@ -144,6 +145,21 @@ export function EditorPage() {
     if (f && pendingPhotoItem.current) uploadForItem.mutate({ itemId: pendingPhotoItem.current, file: f });
     e.target.value = "";
   };
+
+  /* FAZ4 §9: öneri çipine tek tık → katalogdaki ürüne foto bağlanır (M1: veri katalogda) */
+  const bindSuggestion = useMutation({
+    mutationFn: async (p: { itemId: string; assetId: string }) => {
+      const catalog = {
+        ...client!.catalog,
+        categories: client!.catalog.categories.map((c) => ({
+          ...c,
+          items: c.items.map((it) => (it.id === p.itemId ? { ...it, photo: p.assetId } : it)),
+        })),
+      };
+      return api.updateClient(client!.id, { catalog });
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["client", clientId] }),
+  });
 
   const onSlotClick = (slotId: string) => {
     if (slotId.endsWith(":photo")) {
@@ -314,6 +330,11 @@ export function EditorPage() {
 
   const format = currentFormat(entry.manifest, doc);
   const missing = missingPhotoItems(resolveSelection(client.catalog, doc.selection));
+  /* FAZ4 §9: fotoğrafsız ürünler için etiket eşleşmeli öneriler (müşteri + ortak havuz) */
+  const photoSuggestions = suggestPhotos(
+    missing.map((m) => m.item),
+    client.assets
+  );
   const warnings = analysis?.warnings ?? [];
   const pages = analysis?.pages ?? 1;
   const Component = entry.Component;
@@ -635,12 +656,32 @@ export function EditorPage() {
           {missing.length > 0 && (
             <div className="epanel">
               <h3>{tf("missing.title", { n: missing.length })}</h3>
-              {missing.map((m) => (
-                <div className="missing-item" key={m.item.id} onClick={() => scrollToItem(m.item.id)}>
-                  <span>{m.item.name_fr}</span>
-                  <span className="muted">{m.category.name_fr}</span>
-                </div>
-              ))}
+              {missing.map((m) => {
+                /* FAZ4 §9: etiket eşleşmesi varsa Öneri çipi — tek tık bağlar, otomatik değil */
+                const sugId = photoSuggestions.get(m.item.id)?.[0];
+                const sug = sugId ? client?.assets.find((a) => a.id === sugId) : undefined;
+                return (
+                  <div className="missing-item" key={m.item.id} onClick={() => scrollToItem(m.item.id)}>
+                    <span>{m.item.name_fr}</span>
+                    {sug ? (
+                      <button
+                        className="ghost small"
+                        title={tf("suggest.bind_title", { tags: sug.tags })}
+                        disabled={bindSuggestion.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          bindSuggestion.mutate({ itemId: m.item.id, assetId: sug.id });
+                        }}
+                      >
+                        <img src={sug.urls.thumb} alt="" style={{ width: 18, height: 18, objectFit: "cover", borderRadius: 3, verticalAlign: "-4px", marginRight: 4 }} />
+                        {t("suggest.chip")}
+                      </button>
+                    ) : (
+                      <span className="muted">{m.category.name_fr}</span>
+                    )}
+                  </div>
+                );
+              })}
               <button className="ghost small" onClick={copyRequest}>
                 {t("missing.copy")}
               </button>

@@ -16,7 +16,7 @@ function makeClient(withMono = true): ClientDTO {
   kit.contact.address = "12 rue de la République, Lyon";
   const asset = (id: string) => ({
     id, client_id: "cli_g", kind: "logo" as const, filename: `${id}.svg`,
-    width_px: 4000, height_px: 4000, created_at: "t",
+    width_px: 4000, height_px: 4000, tags: "", created_at: "t",
     urls: { orig: "/o", master: `/m/${id}`, thumb: "/t" },
   });
   return {

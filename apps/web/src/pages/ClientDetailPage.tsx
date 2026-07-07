@@ -189,12 +189,25 @@ export function ClientDetailPage() {
                 ) : (
                   <div className="thumbs">
                     {list.map((a) => (
-                      <img
-                        key={a.id}
-                        src={a.urls.thumb}
-                        alt={a.kind}
-                        title={`${a.width_px}×${a.height_px}px · ${a.kind}${a.client_id === null ? " · ortak" : ""}`}
-                      />
+                      <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 3, width: 96 }}>
+                        <img
+                          src={a.urls.thumb}
+                          alt={a.kind}
+                          title={`${a.width_px}×${a.height_px}px · ${a.kind}${a.client_id === null ? " · ortak" : ""}`}
+                        />
+                        {/* FAZ4 §9: satır içi etiket düzenleme (virgüllü; blur'da kaydeder) */}
+                        <input
+                          type="text"
+                          defaultValue={a.tags}
+                          placeholder={t("assets.tags_placeholder")}
+                          style={{ fontSize: 11, padding: "2px 4px" }}
+                          onBlur={(e) => {
+                            if (e.target.value !== a.tags) {
+                              void api.updateAssetTags(a.id, e.target.value).then(invalidate);
+                            }
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

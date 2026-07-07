@@ -254,7 +254,8 @@
     "tab_client": "Müşteri",
     "tab_common": "Ortak havuz",
     "scope_client": "Bu müşteriye",
-    "scope_common": "Ortak havuza"
+    "scope_common": "Ortak havuza",
+    "tags_placeholder": "etiketler (virgüllü)"
   },
   "missing": {
     "title": "Eksik fotoğraflar ({n})",
@@ -311,5 +312,9 @@
     "create": "Oluştur",
     "delete_confirm": "Tema silinecek. Bu temayı kullanan belgeler marka temasına döner. Devam?",
     "pick_hint": "Düzenlemek için soldan bir tema seç ya da yeni tema oluştur; önizleme gerçek grid şablonuyla canlı."
+  },
+  "suggest": {
+    "chip": "Öneri — bağla",
+    "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"
   }
 }

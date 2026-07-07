@@ -25,7 +25,7 @@ function makeClient(withMono = false): ClientDTO {
     assets: withMono
       ? [{
           id: "ast_mono", client_id: "cli_v", kind: "logo", filename: "m.png",
-          width_px: 2000, height_px: 2000, created_at: "t",
+          width_px: 2000, height_px: 2000, tags: "", created_at: "t",
           urls: { orig: "/o", master: "/m", thumb: "/t" },
         }]
       : [],
