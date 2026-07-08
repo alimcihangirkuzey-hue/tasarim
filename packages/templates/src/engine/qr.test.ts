@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultBrandKit } from "@tezgah/shared";
 import { buildQr, contrastRatio, qrSourceUrl } from "./qr.js";
+import { TEMPLATES } from "../index.js";
 
 describe("qrSourceUrl", () => {
   it("kaynakları BrandKit'ten çözer; boşsa null", () => {
@@ -18,6 +19,26 @@ describe("qrSourceUrl", () => {
     expect(qrSourceUrl("instagram", kit)).toBe("https://instagram.com/aras.lyon");
     expect(qrSourceUrl("delivery", kit)).toBe("https://ubereats.com/x");
   });
+
+  it("menu kaynağı: menu_url doluysa onu kodlar, boşsa null (mimar #16)", () => {
+    const kit = defaultBrandKit();
+    expect(qrSourceUrl("menu", kit)).toBeNull();
+    kit.contact.menu_url = "https://menu.aras.example/x";
+    expect(qrSourceUrl("menu", kit)).toBe("https://menu.aras.example/x");
+  });
+});
+
+/* Regresyon (F5-11 kabul bulgusu): QrSource tipi + qrSourceUrl "menu"'yü destekler
+   ama menü şablonlarının qrSource param OPTIONS'ında "menu" yoksa paramValue onu
+   default'a düşürür → kullanıcı seçemez. Mimar #16: menü şablonlarında "menu" seçilebilir. */
+describe("menü şablonları qrSource options 'menu' içerir (mimar #16)", () => {
+  for (const id of ["menu-liste-premium", "menu-grid-cells", "menu-trifold"]) {
+    it(id, () => {
+      const p = TEMPLATES[id].manifest.params.find((x) => x.id === "qrSource");
+      expect(p, `${id} qrSource param`).toBeTruthy();
+      expect(p!.options).toContain("menu");
+    });
+  }
 });
 
 describe("buildQr", () => {
