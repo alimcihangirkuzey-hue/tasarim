@@ -320,6 +320,28 @@
     "delete_confirm": "Tema silinecek. Bu temayı kullanan belgeler marka temasına döner. Devam?",
     "pick_hint": "Düzenlemek için soldan bir tema seç ya da yeni tema oluştur; önizleme gerçek grid şablonuyla canlı."
   },
+  "fonts": {
+    "title": "Fontlar",
+    "hint": "woff2/ttf font yükle; TR+FR glif kapsam bekçisinden geçenler marka kiti ve tema seçicilerine katılır. Print PDF aynı fontu gömer (ekran/baskı farkı olamaz).",
+    "coverage_title": "Gerekli glif kümesi (bu karakterlerin tümü fontta bulunmalı):",
+    "family": "Aile adı",
+    "family_placeholder": "ör. Poppins",
+    "file": "Dosya (woff2 / ttf)",
+    "pick_file": "Dosya seç",
+    "no_file": "dosya seçilmedi",
+    "upload": "Yükle",
+    "uploading": "Yükleniyor…",
+    "uploaded": "Yüklendi — seçicilere eklendi",
+    "rejected": "Font reddedildi — glif kapsamı eksik",
+    "missing_glyphs": "Fontta bulunmayan glifler:",
+    "empty": "Henüz yüklenmiş font yok — yerleşik repo fontları çalışmaya devam eder.",
+    "err_exists": "Bu aile adı zaten kayıtlı.",
+    "err_family": "Aile adı geçersiz.",
+    "err_type": "Yalnız woff2 veya ttf yüklenebilir.",
+    "err_parse": "Font dosyası okunamadı.",
+    "err_no_file": "Önce bir dosya seç.",
+    "err_in_use": "Font kullanımda, silinemez — {list}"
+  },
   "suggest": {
     "chip": "Öneri — bağla",
     "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"

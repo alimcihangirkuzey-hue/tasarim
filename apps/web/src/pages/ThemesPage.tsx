@@ -86,6 +86,18 @@ const FONT_FIELDS: Array<{ key: keyof ThemeTokens["fonts"]; label: string }> = [
 export function ThemesPage() {
   const qc = useQueryClient();
   const themesQ = useQuery({ queryKey: ["themes"], queryFn: api.themes });
+  const fontsQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts });
+  /* seçici: yerleşik repo fontları + yüklenen özel aileler (mimar #18, §7) */
+  const fontChoices = useMemo(() => {
+    const repo = Object.entries(FONT_META).map(([value, m]) => ({ value, label: m.label }));
+    const custom = (fontsQ.data ?? []).map((f) => ({ value: f.family, label: `${f.family} (yüklenen)` }));
+    return [...repo, ...custom];
+  }, [fontsQ.data]);
+  /** seçili değer listede yoksa (silinmiş özel font) blank <select> olmasın diye ekle */
+  const optionsFor = (current: string) =>
+    fontChoices.some((c) => c.value === current)
+      ? fontChoices
+      : [...fontChoices, { value: current, label: `${current} (eksik)` }];
 
   /* editör durumu */
   const [editingId, setEditingId] = useState<string | null>(null); // null = yeni
@@ -212,8 +224,8 @@ export function ThemesPage() {
                       patchTokens((tk) => ({ ...tk, fonts: { ...tk.fonts, [f.key]: e.target.value as ThemeTokens["fonts"]["heading"] } }))
                     }
                   >
-                    {Object.entries(FONT_META).map(([k, m]) => (
-                      <option key={k} value={k}>{m.label}</option>
+                    {optionsFor(tokens.fonts[f.key]).map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
                 </label>

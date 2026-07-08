@@ -13,11 +13,14 @@ const TYPES: ProductType[] = [
   "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
 ];
 
-export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" }) {
+export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" | "fonts" }) {
   return (
     <div className="tabs" style={{ marginBottom: 14 }}>
       <Link to="/settings/themes">
         <button className={active === "themes" ? "active" : ""}>{t("themes.title")}</button>
+      </Link>
+      <Link to="/settings/fonts">
+        <button className={active === "fonts" ? "active" : ""}>{t("fonts.title")}</button>
       </Link>
       <Link to="/settings/parse">
         <button className={active === "parse" ? "active" : ""}>{t("parsedict.title")}</button>

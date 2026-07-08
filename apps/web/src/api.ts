@@ -192,6 +192,20 @@ export const api = {
     http<import("@tezgah/shared").ThemeDTO>(`/api/themes/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteTheme: (id: string) => http<{ ok: true }>(`/api/themes/${id}`, { method: "DELETE" }),
 
+  /* Kullanıcı fontları — Faz 5 §7 */
+  fonts: () =>
+    http<Array<{ id: string; family: string; filename: string; created_at: string }>>(`/api/fonts`),
+  uploadFont: async (file: File, family: string) => {
+    const fd = new FormData();
+    fd.append("family", family);
+    fd.append("file", file);
+    return http<{ id: string; family: string; filename: string; created_at: string }>(`/api/fonts`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  deleteFont: (id: string) => http<{ ok: true }>(`/api/fonts/${id}`, { method: "DELETE" }),
+
   /* Snapshot geri yükleme — Faz 4 §5 */
   restoreDocument: (id: string, exportId: string) =>
     http<{ document: DocumentDTO; safety_record_id: string }>(

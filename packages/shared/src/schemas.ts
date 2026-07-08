@@ -206,8 +206,21 @@ export interface ExportRecordDTO {
 
 /** 6-8 haneli hex (velours paneli gibi alfa kanallı değerler serbest) */
 const ThemeHex = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/);
-/** Repo fontları (packages/templates/fonts) — dışarıdan font yok (M9) */
-export const ThemeFontKeySchema = z.enum(["oswald", "anton", "archivo", "inter", "bitter", "pacifico"]);
+/** Font aile adı — CSS font-family yığınına gömülür; tırnak/noktalı virgül/açı gibi
+    karakterler engellenir (harf, rakam, boşluk, tire, alt çizgi, kesme işareti). */
+export const FontFamilySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .regex(/^[\p{L}\p{N} '_-]+$/u, "Aile adı yalnız harf, rakam, boşluk ve - _ ' içerebilir");
+/** Yerleşik repo font anahtarları (packages/templates/fonts) — UI seçicilerinin çekirdeği */
+export const PRESET_FONT_KEYS = ["oswald", "anton", "archivo", "inter", "bitter", "pacifico"] as const;
+/** Tema font referansı: yerleşik anahtar VEYA yüklenmiş özel aile adı.
+    Mimar #18: dışarıdan font kabul edilir ama YALNIZ glif-bekçisinden geçmiş
+    (custom_fonts) ailelerdir; bekçi yüklemede uygular. Bilinmeyen anahtar render'da
+    genel yığına (Inter fallback) düşer — sessiz kırılma yok (M8). */
+export const ThemeFontKeySchema = FontFamilySchema;
 export type ThemeFontKey = z.infer<typeof ThemeFontKeySchema>;
 
 export const ThemeTokensSchema = z.object({

@@ -10,6 +10,7 @@ export default defineConfig({
       "/api": "http://127.0.0.1:3001",
       "/assets": "http://127.0.0.1:3001",
       "/exports": "http://127.0.0.1:3001",
+      "/fonts": "http://127.0.0.1:3001", // FAZ5 §7: kullanıcı fontları print (5173) origininden de erişilir
     },
   },
 });

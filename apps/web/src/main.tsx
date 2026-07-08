@@ -11,6 +11,7 @@ import { MockupPage } from "./pages/MockupPage";
 import { PresentPage } from "./pages/PresentPage";
 import { PrintPage } from "./pages/PrintPage";
 import { ThemesPage } from "./pages/ThemesPage";
+import { FontsPage } from "./pages/FontsPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { api } from "./api";
@@ -18,15 +19,36 @@ import { t } from "./i18n";
 import "./styles.css";
 import "@tezgah/templates/fonts/fonts.css";
 
-/* FAZ4 §7: özel temalar İLK boyamadan önce kayıt defterine girer — print
-   rotaları dahil (M3: web ve PDF aynı çözümleme yolunu kullanır) */
+/* FAZ5 §7: yüklenen fontların @font-face'i — web VE print aynı /fonts/ kaynağını
+   kullanır (M3). font-display:block → PDF'te fallback kareleri basılmaz (ADR-3). */
+function customFontFaceCss(fonts: Array<{ family: string; filename: string }>): string {
+  return fonts
+    .map((f) => {
+      const fmt = f.filename.toLowerCase().endsWith(".woff2") ? "woff2" : "truetype";
+      return `@font-face{font-family:"${f.family}";font-weight:400;font-style:normal;font-display:block;src:url("/fonts/${f.filename}") format("${fmt}");}`;
+    })
+    .join("\n");
+}
+
+/* FAZ4 §7 + FAZ5 §7: özel temalar VE fontlar İLK boyamadan önce hazırlanır — print
+   rotaları dahil (M3: web ve PDF aynı çözümleme yolunu kullanır). Font listesi
+   yüklenmeden hiçbir rota çizilmez; böylece PrintPage'in document.fonts.ready'si
+   özel fontları da bekler (PDF'e gömülür). */
 function ThemesGate({ children }: { children: React.ReactNode }) {
-  const q = useQuery({ queryKey: ["themes"], queryFn: api.themes, staleTime: Infinity, retry: 1 });
+  const themesQ = useQuery({ queryKey: ["themes"], queryFn: api.themes, staleTime: Infinity, retry: 1 });
+  const fontsQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts, staleTime: Infinity, retry: 1 });
   useMemo(() => {
-    if (q.data) registerCustomThemes(q.data);
-  }, [q.data]);
-  if (q.isPending) return null;
-  return <>{children}</>;
+    if (themesQ.data) registerCustomThemes(themesQ.data);
+  }, [themesQ.data]);
+  if (themesQ.isPending || fontsQ.isPending) return null;
+  return (
+    <>
+      {fontsQ.data && fontsQ.data.length > 0 && (
+        <style dangerouslySetInnerHTML={{ __html: customFontFaceCss(fontsQ.data) }} />
+      )}
+      {children}
+    </>
+  );
 }
 
 const qc = new QueryClient({
@@ -73,6 +95,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
                     <Route path="/editor/:id" element={<EditorPage />} />
                     <Route path="/settings/themes" element={<ThemesPage />} />
+                    <Route path="/settings/fonts" element={<FontsPage />} />
                     <Route path="/settings/parse" element={<ParseDictPage />} />
                     <Route path="/settings/factory" element={<FactoryPage />} />
                   </Routes>

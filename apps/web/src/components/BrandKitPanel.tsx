@@ -2,7 +2,7 @@
    bir sonraki açılışta yeni kiti giyer. */
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BrandKit, ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
@@ -10,11 +10,22 @@ import { t } from "../i18n";
 import { AssetPicker } from "./AssetPicker";
 
 const COLOR_KEYS = ["primary", "secondary", "accent", "background", "text"] as const;
+const REPO_HEADING_FONTS = ["Anton", "Oswald", "Archivo Black", "Bitter", "Inter", "Pacifico"];
+const REPO_BODY_FONTS = ["Inter", "Bitter", "Oswald"];
+
+/** Yüklenen aileleri + seçili değeri (silinmiş olsa da) repo listesine ekle — boş <select> olmasın */
+function fontOptions(repo: string[], custom: string[], current: string): string[] {
+  const set = new Set([...repo, ...custom]);
+  if (current) set.add(current);
+  return [...set];
+}
 
 export function BrandKitPanel({ client }: { client: ClientDTO }) {
   const qc = useQueryClient();
   const [kit, setKit] = useState<BrandKit>(client.brandkit);
   useEffect(() => setKit(client.brandkit), [client.id, client.updated_at]);
+  const fontsQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts });
+  const customFamilies = (fontsQ.data ?? []).map((f) => f.family);
 
   const save = useMutation({
     mutationFn: () => api.updateClient(client.id, { brandkit: kit }),
@@ -87,7 +98,7 @@ export function BrandKitPanel({ client }: { client: ClientDTO }) {
           <label className="field">
             {t("brandkit.font_heading")}
             <select value={kit.fonts.heading} onChange={(e) => patch({ fonts: { ...kit.fonts, heading: e.target.value } })}>
-              {["Anton", "Oswald", "Archivo Black", "Bitter", "Inter", "Pacifico"].map((f) => (
+              {fontOptions(REPO_HEADING_FONTS, customFamilies, kit.fonts.heading).map((f) => (
                 <option key={f}>{f}</option>
               ))}
             </select>
@@ -95,7 +106,7 @@ export function BrandKitPanel({ client }: { client: ClientDTO }) {
           <label className="field">
             {t("brandkit.font_body")}
             <select value={kit.fonts.body} onChange={(e) => patch({ fonts: { ...kit.fonts, body: e.target.value } })}>
-              {["Inter", "Bitter", "Oswald"].map((f) => (
+              {fontOptions(REPO_BODY_FONTS, customFamilies, kit.fonts.body).map((f) => (
                 <option key={f}>{f}</option>
               ))}
             </select>
