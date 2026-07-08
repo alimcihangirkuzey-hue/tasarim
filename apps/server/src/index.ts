@@ -23,6 +23,7 @@ import { presetRoutes2 } from "./routes/presets.js";
 import { factoryRoutes } from "./routes/factory.js";
 import { cmykRoutes } from "./routes/cmyk.js";
 import { fontRoutes } from "./routes/fonts.js";
+import { digitalMenuRoutes } from "./routes/digital-menu.js";
 
 migrate();
 
@@ -71,6 +72,7 @@ presetRoutes2(app);
 factoryRoutes(app);
 cmykRoutes(app);
 fontRoutes(app);
+digitalMenuRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

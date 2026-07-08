@@ -46,6 +46,13 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
   });
 
+  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü */
+  const [digitalUrl, setDigitalUrl] = useState<string | null>(null);
+  const digital = useMutation({
+    mutationFn: () => api.digitalMenu(client.id),
+    onSuccess: (rec) => setDigitalUrl(rec.filepath.replace(/^data\//, "/")),
+  });
+
   const allClients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
   const [cloneTarget, setCloneTarget] = useState(client.id);
   const clone = useMutation({
@@ -133,6 +140,23 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
           >✕</button>
         </div>
       ))}
+
+      {/* FAZ5 §9: dijital menü (tek dosya statik HTML) */}
+      <div className="row" style={{ borderTop: "1px solid var(--c-line)", marginTop: 12, paddingTop: 12, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <strong>{t("digital.title")}</strong>
+          <p className="muted" style={{ fontSize: 12, margin: "2px 0 0" }}>{t("digital.hint")}</p>
+        </div>
+        <button onClick={() => digital.mutate()} disabled={digital.isPending}>
+          {digital.isPending ? t("digital.generating") : t("digital.btn")}
+        </button>
+        {digitalUrl && (
+          <a href={digitalUrl} target="_blank" rel="noreferrer" className="ghost-link">
+            {t("digital.open")}
+          </a>
+        )}
+        {digital.isError && <span className="error">{(digital.error as Error).message}</span>}
+      </div>
     </div>
   );
 }

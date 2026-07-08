@@ -187,6 +187,8 @@ export interface ExportRecordDTO {
   /** Mimar kararı #3: sunum kayıtlarında null olabilir */
   document_id: string | null;
   project_id: string | null;
+  /** Mimar kararı #16 (F5-10): dijital menü müşteri düzeyli — belge/proje null, client_id dolu */
+  client_id: string | null;
   /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
      boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar.
      Mimar kararı #16: digital_menu (tek dosya statik HTML). */

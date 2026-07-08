@@ -206,6 +206,12 @@ export const api = {
   },
   deleteFont: (id: string) => http<{ ok: true }>(`/api/fonts/${id}`, { method: "DELETE" }),
 
+  /* Dijital menü (statik HTML) — Faz 5 §9 */
+  digitalMenu: (clientId: string) =>
+    http<ExportRecordDTO>(`/api/clients/${clientId}/menu-digital`, { method: "POST", body: "{}" }),
+  digitalMenuHistory: (clientId: string) =>
+    http<ExportRecordDTO[]>(`/api/clients/${clientId}/menu-digital/history`),
+
   /* Snapshot geri yükleme — Faz 4 §5 */
   restoreDocument: (id: string, exportId: string) =>
     http<{ document: DocumentDTO; safety_record_id: string }>(

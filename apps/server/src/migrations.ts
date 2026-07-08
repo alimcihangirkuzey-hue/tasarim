@@ -142,4 +142,27 @@ export const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  /* v7 — Faz 5 (FAZ5-GOREV §9, mimar #16): dijital menü (statik HTML) MÜŞTERİ
+     düzeyli export'tur — belge/proje değil, doğrudan katalog+kitten üretilir.
+     export_records'e client_id eklenir; CHECK üç kaynaktan (belge|proje|müşteri)
+     birine izin verir. v3 yeniden-kurma deseni; mevcut satırlar korunur.
+     (#16 "yalnız Zod" yalnızca kind DEĞERİ içindi; kapsama kolonu ayrı konudur.) */
+  `
+  CREATE TABLE export_records_v7 (
+    id            TEXT PRIMARY KEY,
+    document_id   TEXT REFERENCES documents(id) ON DELETE CASCADE,
+    project_id    TEXT REFERENCES projects(id) ON DELETE CASCADE,
+    client_id     TEXT REFERENCES clients(id) ON DELETE CASCADE,
+    kind          TEXT NOT NULL,
+    filepath      TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    version       INTEGER NOT NULL,
+    created_at    TEXT NOT NULL,
+    CHECK (document_id IS NOT NULL OR project_id IS NOT NULL OR client_id IS NOT NULL)
+  );
+  INSERT INTO export_records_v7 (id, document_id, project_id, kind, filepath, snapshot_json, version, created_at)
+    SELECT id, document_id, project_id, kind, filepath, snapshot_json, version, created_at FROM export_records;
+  DROP TABLE export_records;
+  ALTER TABLE export_records_v7 RENAME TO export_records;
+  `,
 ];

@@ -342,6 +342,13 @@
     "err_no_file": "Önce bir dosya seç.",
     "err_in_use": "Font kullanımda, silinemez — {list}"
   },
+  "digital": {
+    "title": "Dijital menü (HTML)",
+    "hint": "Katalog + marka kitinden tek dosyalık mobil menü — çevrimdışı açılır, QR ile paylaşılır.",
+    "btn": "Dijital menü üret",
+    "generating": "Üretiliyor…",
+    "open": "Menüyü aç ↗"
+  },
   "guide": {
     "q": "Bu iş ne?",
     "direct": "Şablonu doğrudan seç",
