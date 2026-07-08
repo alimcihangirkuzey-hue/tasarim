@@ -3,12 +3,12 @@
    - item:* slotları: içerik KATALOGDA düzenlenir (M1) → tüm belgelere yansır;
      foto sığdırma/odak ise belge bazında override'dır. */
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ClientDTO, DocumentState, Item } from "@tezgah/shared";
-import { resolveSlotValue, type TemplateEntry } from "@tezgah/templates";
+import { swapSelectionItem, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
+import { resolveSelection, resolveSlotValue, type TemplateEntry } from "@tezgah/templates";
 import { api } from "../api";
-import { t } from "../i18n";
+import { t, tf } from "../i18n";
 import { AssetPicker } from "./AssetPicker";
 
 interface Props {
@@ -17,6 +17,77 @@ interface Props {
   entry: TemplateEntry;
   patch: (p: Partial<DocumentState>) => void;
   select: (slot: string | null) => void;
+  showToast?: (m: string) => void;
+}
+
+/* FAZ5 §5: aynı kategoride ürün takası seçicisi (arama + tıkla) */
+function SwapPicker(props: {
+  client: ClientDTO;
+  doc: DocumentState;
+  item: Item;
+  catId: string;
+  patch: (p: Partial<DocumentState>) => void;
+  select: (slot: string | null) => void;
+  showToast?: (m: string) => void;
+}) {
+  const { client, doc, item, catId, patch, select, showToast } = props;
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const cat = client.catalog.categories.find((c) => c.id === catId);
+  const candidates = useMemo(() => {
+    const fold = (s: string) => s.toLocaleLowerCase("tr-TR");
+    return (cat?.items ?? []).filter(
+      (it) => it.id !== item.id && it.visible && (!q || fold(it.name_fr).includes(fold(q)))
+    );
+  }, [cat, item.id, q]);
+
+  const doSwap = (newItem: Item) => {
+    /* kategorinin şu anki gösterim sırası (resolveSelection) → sıra korunur */
+    const resolved = resolveSelection(client.catalog, doc.selection).find((s) => s.category.id === catId);
+    const orderedIds = (resolved?.items ?? []).map((i) => i.id);
+    const nextSel = swapSelectionItem(doc.selection, catId, item.id, newItem.id, orderedIds);
+    patch({ selection: nextSel });
+    showToast?.(tf("swap.done", { from: item.name_fr, to: newItem.name_fr }));
+    select(`item:${newItem.id}`);
+  };
+
+  if (!open) {
+    return (
+      <button className="ghost small" style={{ marginTop: 6 }} onClick={() => setOpen(true)}>
+        ⇄ {t("swap.open")}
+      </button>
+    );
+  }
+  return (
+    <div className="epanel" style={{ marginTop: 6 }}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <strong style={{ fontSize: 13 }}>{t("swap.title")}</strong>
+        <button className="icon" onClick={() => setOpen(false)}>✕</button>
+      </div>
+      <input
+        type="text"
+        autoFocus
+        placeholder={t("swap.search")}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        style={{ width: "100%", marginTop: 4 }}
+      />
+      <div style={{ maxHeight: 220, overflow: "auto", marginTop: 4 }}>
+        {candidates.length === 0 && <p className="muted" style={{ fontSize: 12 }}>{t("swap.empty")}</p>}
+        {candidates.map((it) => (
+          <button
+            key={it.id}
+            className="ghost small"
+            style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 2 }}
+            onClick={() => doSwap(it)}
+          >
+            {it.name_fr}
+          </button>
+        ))}
+      </div>
+      <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t("swap.hint")}</p>
+    </div>
+  );
 }
 
 function setOverride(doc: DocumentState, key: string, value: unknown): Partial<DocumentState> {
@@ -83,7 +154,17 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
   return (
     <div className="epanel">
       <h3>{t("editor.item_edit")}</h3>
-      <div className="field">
+      {/* FAZ5 §5: ürünü değiştir (aynı kategori) — slot detayının üstünde */}
+      <SwapPicker
+        client={client}
+        doc={doc}
+        item={item}
+        catId={catId}
+        patch={patch}
+        select={select}
+        showToast={props.showToast}
+      />
+      <div className="field" style={{ marginTop: 8 }}>
         {t("catalog.item_name")}
         <input
           type="text"

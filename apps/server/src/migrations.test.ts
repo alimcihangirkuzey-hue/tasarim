@@ -197,3 +197,100 @@ describe("migration v5 (Faz 4 — catalog_history, themes, assets.tags, parse_sy
     ).not.toThrow();
   });
 });
+
+describe("migration v6 (Faz 5 — custom_fonts)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    db.exec(MIGRATIONS[2]);
+    db.exec(MIGRATIONS[3]);
+    db.exec(MIGRATIONS[4]);
+    db.exec(MIGRATIONS[5]);
+  });
+
+  it("custom_fonts tablosu yerinde; family UNIQUE", () => {
+    db.prepare(
+      "INSERT INTO custom_fonts (id, family, filename, created_at) VALUES ('fnt1', 'Menu Sans', 'fnt1.woff2', 't')"
+    ).run();
+    const row = db.prepare("SELECT family, filename FROM custom_fonts WHERE id='fnt1'").get();
+    expect(row).toEqual({ family: "Menu Sans", filename: "fnt1.woff2" });
+    expect(() =>
+      db.prepare(
+        "INSERT INTO custom_fonts (id, family, filename, created_at) VALUES ('fnt2', 'Menu Sans', 'fnt2.ttf', 't')"
+      ).run()
+    ).toThrow(/UNIQUE/i);
+  });
+
+  it("Faz 1-5 akışları kırılmadı: tüm önceki tablolar okunabilir", () => {
+    for (const q of [
+      "SELECT document_id, project_id FROM export_records LIMIT 1",
+      "SELECT kind, settings_json FROM mockup_scenes LIMIT 1",
+      "SELECT catalog_json FROM catalog_history LIMIT 1",
+      "SELECT tokens_json FROM themes LIMIT 1",
+      "SELECT tags FROM assets LIMIT 1",
+      "SELECT word FROM parse_synonyms LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});
+
+describe("migration v7 (Faz 5 — export_records.client_id, dijital menü)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 6; i++) db.exec(MIGRATIONS[i]);
+  });
+
+  it("müşteri düzeyli digital_menu kaydı açılabilir (belge+proje NULL, client_id dolu)", () => {
+    db.prepare(
+      `INSERT INTO export_records (id, document_id, project_id, client_id, kind, filepath, snapshot_json, version, created_at)
+       VALUES ('expdm', NULL, NULL, 'cli1', 'digital_menu', 'data/exports/test/x_menu-digital_v1.html', '{}', 1, 't')`
+    ).run();
+    const row = db.prepare("SELECT client_id, kind, document_id, project_id FROM export_records WHERE id='expdm'").get();
+    expect(row).toEqual({ client_id: "cli1", kind: "digital_menu", document_id: null, project_id: null });
+  });
+
+  it("CHECK: belge, proje ve müşteri üçü birden NULL olamaz", () => {
+    expect(() =>
+      db.prepare(
+        `INSERT INTO export_records (id, document_id, project_id, client_id, kind, filepath, snapshot_json, version, created_at)
+         VALUES ('bad', NULL, NULL, NULL, 'digital_menu', 'x', '{}', 1, 't')`
+      ).run()
+    ).toThrow(/CHECK/i);
+  });
+
+  it("Faz 1 belge bazlı kayıtlar (exp1/exp2) korunur; client_id NULL", () => {
+    const rows = db
+      .prepare("SELECT id, document_id, client_id FROM export_records WHERE id IN ('exp1','exp2') ORDER BY id")
+      .all();
+    expect(rows).toEqual([
+      { id: "exp1", document_id: "doc1", client_id: null },
+      { id: "exp2", document_id: "doc1", client_id: null },
+    ]);
+  });
+
+  it("müşteri silinince digital_menu kaydı düşer (client_id CASCADE)", () => {
+    db.prepare(
+      `INSERT INTO export_records (id, document_id, project_id, client_id, kind, filepath, snapshot_json, version, created_at)
+       VALUES ('expdm', NULL, NULL, 'cli1', 'digital_menu', 'x', '{}', 1, 't')`
+    ).run();
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(db.prepare("SELECT 1 FROM export_records WHERE id='expdm'").get()).toBeUndefined();
+  });
+
+  it("Faz 1-5 akışları kırılmadı: custom_fonts + önceki tablolar okunabilir", () => {
+    for (const q of [
+      "SELECT id, family FROM custom_fonts LIMIT 1",
+      "SELECT client_id, kind FROM export_records LIMIT 1",
+      "SELECT settings_json FROM mockup_scenes LIMIT 1",
+      "SELECT tokens_json FROM themes LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});

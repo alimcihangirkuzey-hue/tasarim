@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import * as fontkitNS from "fontkit";
+import { GLYPH_COVERAGE, missingCoverageGlyphs } from "@tezgah/shared";
 
 const FONTS_DIR = fileURLToPath(new URL("../fonts/", import.meta.url));
 
@@ -41,6 +42,26 @@ describe("font karakter kapsamı (M9)", () => {
         (ch) => !font.hasGlyphForCodePoint(ch.codePointAt(0)!)
       );
       expect(missing, `${file} eksik glifler: ${missing.join(" ")}`).toEqual([]);
+    });
+  }
+});
+
+/* FAZ5 §7 / mimar #18: yerleşik repo fontları FR+TR tam repertuvarı (bekçi
+   kümesi) BİR KEZ doğrulanır; kalıcı test. Kullanıcı yüklemeleri runtime'da
+   aynı bekçiden geçer (server). Pacifico dahil hepsi geçti. */
+describe("repo fontları glif kapsam bekçisi kümesini karşılar (mimar #18)", () => {
+  const ALL_FILES = CASES.map(([f]) => f);
+  it("bekçi kümesi büyük/küçük FR+TR + € içerir", () => {
+    expect(GLYPH_COVERAGE).toContain("İ");
+    expect(GLYPH_COVERAGE).toContain("ğ");
+    expect(GLYPH_COVERAGE).toContain("Œ");
+    expect(GLYPH_COVERAGE).toContain("€");
+  });
+  for (const file of ALL_FILES) {
+    it(`${file} bekçi kümesini TAM karşılar`, () => {
+      const font = createFont!(readFileSync(FONTS_DIR + file));
+      const missing = missingCoverageGlyphs((cp) => font.hasGlyphForCodePoint(cp));
+      expect(missing, `${file} eksik: ${missing.join(" ")}`).toEqual([]);
     });
   }
 });

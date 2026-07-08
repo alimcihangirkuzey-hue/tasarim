@@ -26,7 +26,9 @@ export const manifest = {
       id: "columns",
       type: "choice",
       optionsByFormat: {
-        "a4-portrait": [1, 2],
+        /* FAZ5 §3 (mimar #14): a4-portrait'e 3 sütun yoğun varyant eklendi
+           (a3-portrait zaten 3 destekli; a4-landscape bu şablonda yok) */
+        "a4-portrait": [1, 2, 3],
         "a3-portrait": [2, 3],
       },
       default: 1,
@@ -46,7 +48,7 @@ export const manifest = {
     {
       id: "qrSource",
       type: "choice",
-      options: ["review", "tel", "delivery", "instagram"],
+      options: ["review", "tel", "delivery", "instagram", "menu"], // mimar #16: dijital menü adresi
       default: "review",
       label_tr: "QR kaynağı",
     },

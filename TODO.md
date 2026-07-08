@@ -7,23 +7,28 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Pilot iş dönemi başladı — FAZ5 paketi pilot saha notlarıyla şekillenecek; bu dönemde gelen her yeni fikir/talep M10 gereği TODO'ya yazılır, sırasız uygulanmaz.**
 
 ### Pilot saha kayıtları (UYGULAMA YOK — kayıt biçimi: `- [YYYY-AA-GG] tek satırlık not / fikir / sürtünme`)
-- [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi.
+- [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi. → **FAZ5 §4'te ele alınıyor.**
 - [2026-07-08] Sunucu başlatma sürtünmesi 4. kez yaşandı; kök neden netleşti: tsx watch zinciri (apps/server) bazen 3001'e hiç bağlanmadan askıda kalıyor (EADDRINUSE değil — port boş ama süreç canlı/hayalet), vite tarafı ayakta kalınca proxy sürekli ECONNREFUSED basıyor. start-tezgah.bat artık kendi kendini kontrol ediyor: önce iki portu da yoklar, zaten sağlıklıysa dokunmaz; değilse proje yoluna göre (PowerShell CommandLine filtresi) hayalet node.exe süreçlerini temizleyip yeniden dener, sonucu pencerede "OK"/"BAŞARISIZ + öneri" olarak açıkça yazar (mimar onaylı, script-only). Kalıcı çözüm (tepsi uygulaması / otomatik başlatma / gerçek process-supervisor) Faz 5/S adayı.
-- [2026-07-08] 3 sütunlu A4 flyer: kullanıcının referans tasarımının vektör kaynağı YOK (yalnız JPG). Karar: FAZ5'te ele alınacak — ya (a) liste şablonuna A4 3-sütun yoğun varyant eklenir, ya (b) tasarım vektörel yeniden çizilip Şablon Fabrikası'ndan kalıcı şablona dönüştürülür. Fabrika JPG kabul etmez; bu yüzden bugün üretilemedi.
-- [2026-07-08] Kullanıcı font yükleme talebi (FAZ5 adayı): arayüzden kendi font dosyasını (woff2/ttf) ekleyip başlık/gövde rollerinde seçebilme; glif kapsamı (TR+FR) otomatik kontrol edilmeli. Not: rol-bazlı font sistemi (başlık/gövde tek yerden) zaten mevcut — kullanıcıya gösterildi.
-- [2026-07-08] İLK GERÇEK İŞ TAMAMLANDI: Aras Restaurant, 75 ürün / 10 kategori, menu-liste-premium A4 2 sütun, v1 preview+print (crop marks doğru, aksanlar TR+FR temiz, 2 sayfa). Marka kiti düzeltmesi sonrası v2 alınacak. Pilot akışta göze çarpan: şablon/format/sütun keşfi kullanıcıya başta karışık geldi (Resimli Izgara'ya yanlışlıkla geçildi) — FAZ5 notu: belge açarken "bu iş için hangi şablon?" yönlendirmesi düşünülebilir.
+- [2026-07-08] 3 sütunlu A4 flyer: kullanıcının referans tasarımının vektör kaynağı YOK (yalnız JPG). Karar: FAZ5'te (a) yolu seçildi — `menu-liste-premium`'a A4 3-sütun yoğun varyant eklenir (mimar #14). → **FAZ5 §3'te ele alınıyor** (yalnız a4-portrait; a4-landscape bu şablonda yok, pilotta ihtiyaç doğarsa yeniden değerlendirilir).
+- [2026-07-08] Kullanıcı font yükleme talebi (FAZ5 adayı): arayüzden kendi font dosyasını (woff2/ttf) ekleyip başlık/gövde rollerinde seçebilme; glif kapsamı (TR+FR) otomatik kontrol edilmeli. Not: rol-bazlı font sistemi (başlık/gövde tek yerden) zaten mevcut — kullanıcıya gösterildi. → **FAZ5 §7'de ele alınıyor** (bekçi kümesi mimar #18).
+- [2026-07-08] İLK GERÇEK İŞ TAMAMLANDI: Aras Restaurant, 75 ürün / 10 kategori, menu-liste-premium A4 2 sütun, v1 preview+print (crop marks doğru, aksanlar TR+FR temiz, 2 sayfa). Marka kiti düzeltmesi sonrası v2 alınacak. Pilot akışta göze çarpan: şablon/format/sütun keşfi kullanıcıya başta karışık geldi (Resimli Izgara'ya yanlışlıkla geçildi) — FAZ5 notu: belge açarken "bu iş için hangi şablon?" yönlendirmesi düşünülebilir. → **FAZ5 §8 (şablon seçim rehberi)'nde ele alınıyor.**
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
 - [ ] **Faz S ön koşulu: güvenlik yükseltme turu (mimar kararı #11):** npm audit'in major yükseltmeleri (vite 8, @fastify/static 9 vb.) SaaS'a çıkmadan ZORUNLU; v1'de yapılmama gerekçesi local-first + yalnız 127.0.0.1 dinleme.
 
-## Faz 5'e kayıt (FAZ4-GOREV §15 — uygulama YOK, yalnızca not)
-- [ ] QR dijital menü statik HTML export'u.
-- [ ] Çoklu-yüzey sahne (tek fotoda N quad kolajı).
-- [ ] Arka plan silme entegrasyonu (lokal rembg veya dış API — ADR-7).
-- [ ] FR açıklama önerileri (Claude API, opsiyonel/internetli).
-- [ ] AI destekli foto eşleme.
+## Faz 5'e kayıt (FAZ4-GOREV §15)
+- [x] QR dijital menü statik HTML export'u. → FAZ5 §9'da uygulanıyor.
+- [ ] Çoklu-yüzey sahne (tek fotoda N quad kolajı). → Faz S'e taşındı.
+- [ ] Arka plan silme entegrasyonu (lokal rembg veya dış API — ADR-7). → Faz S'e taşındı.
+- [ ] FR açıklama önerileri (Claude API, opsiyonel/internetli). → Faz S (internetli, opsiyonel).
+- [ ] AI destekli foto eşleme. → Faz S'e taşındı.
 - [ ] Preset yönetim arayüzü (Faz S).
+
+## Faz S'e kayıt (FAZ5-GOREV §11 — uygulama YOK)
+- [ ] **Barındırılan dijital menü (abonelik):** Faz 5'te tek dosyalık statik HTML üretildi (§9); Faz S'te barındırılan sürüm — fiyat değişince otomatik güncellenir, temel abonelik gelir kalemi. (SaaS Vizyon Defteri'ndeki QR dijital menü ile aynı kalem.)
+- [ ] **Arka plan servisi (bat'sız kalıcı çalışma):** sunucu+web `start-tezgah.bat` olmadan da PC açıkken kalıcı çalışsın — Windows servisi / tepsi (tray) uygulaması. Gerekçe: pilotta ve F5 kabul koşusunda sunucu süreci birkaç kez dışarıdan sonlandı (kırılgan başlatma); servisleştirme bunu kalıcı çözer.
+- [ ] Arka plan silme / AI foto eşleme · çoklu-yüzey sahne · preset yönetim arayüzü → yukarıdaki Faz S kalemleriyle aynı (mükerrer değil).
 
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.

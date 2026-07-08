@@ -55,6 +55,8 @@ export const ContactSchema = z.object({
   delivery_hours: z.string().default(""),
   instagram: z.string().default(""),
   google_review_url: z.string().default(""),
+  /** Dijital menü adresi (mimar #16); doluysa QR kaynak listesine "menu" gelir */
+  menu_url: z.string().default(""),
   delivery: z
     .array(z.object({ platform: z.string(), url: z.string() }))
     .default([]),
@@ -93,8 +95,49 @@ export const SelectionSchema = z.object({
   mode: z.enum(["include"]).default("include"),
   category_order: z.array(z.string()).default([]),
   excluded_items: z.array(z.string()).default([]),
+  /* FAZ5 §5/§6: belge düzeyinde açık ürün sırası (categoryId → sıralı item id).
+     REORDER-HİNT (mimar kararı): listelenenler önce (bu sırayla), listelenmeyen
+     kategori ürünleri katalog order'ıyla sonra → yeni katalog ürünleri belgede
+     görünmeye devam eder (M1 korunur). Boş {} → eski davranış (katalog order). */
+  item_order: z.record(z.string(), z.array(z.string())).default({}),
 });
 export type Selection = z.infer<typeof SelectionSchema>;
+
+/* FAZ5 §5: belgede ürün takası — SAF. Aynı kategori içinde eski id yeni id ile
+   değiştirilir (sıra korunur, tekrar eklenmez); eski id excluded'a, yeni id
+   excluded'dan çıkar. Slot override anahtarlarına DOKUNULMAZ (pasifleşir). */
+export function swapSelectionItem(
+  selection: Selection,
+  categoryId: string,
+  oldItemId: string,
+  newItemId: string,
+  currentOrderedIds: string[]
+): Selection {
+  const replaced = currentOrderedIds.map((id) => (id === oldItemId ? newItemId : id));
+  const seen = new Set<string>();
+  const order = replaced.filter((id) => (seen.has(id) ? false : (seen.add(id), true)));
+  const excluded = selection.excluded_items.filter((id) => id !== newItemId);
+  if (!excluded.includes(oldItemId)) excluded.push(oldItemId);
+  return {
+    ...selection,
+    excluded_items: excluded,
+    item_order: { ...selection.item_order, [categoryId]: order },
+  };
+}
+
+/* FAZ5 §6: kategori içi ürün sırasını açıkça ayarla (sürükle-bırak sonucu) — SAF */
+export function setCategoryItemOrder(
+  selection: Selection,
+  categoryId: string,
+  orderedIds: string[]
+): Selection {
+  return { ...selection, item_order: { ...selection.item_order, [categoryId]: [...orderedIds] } };
+}
+
+/* FAZ5 §6: kategori sırasını açıkça ayarla (sürükle-bırak sonucu) — SAF */
+export function setCategoryOrder(selection: Selection, orderedCatIds: string[]): Selection {
+  return { ...selection, category_order: [...orderedCatIds] };
+}
 
 export const OverrideSchema = z.object({
   value: z.unknown(),
@@ -144,9 +187,12 @@ export interface ExportRecordDTO {
   /** Mimar kararı #3: sunum kayıtlarında null olabilir */
   document_id: string | null;
   project_id: string | null;
+  /** Mimar kararı #16 (F5-10): dijital menü müşteri düzeyli — belge/proje null, client_id dolu */
+  client_id: string | null;
   /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
-     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar */
-  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk";
+     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar.
+     Mimar kararı #16: digital_menu (tek dosya statik HTML). */
+  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk" | "digital_menu";
   filepath: string;
   version: number;
   created_at: string;
@@ -162,8 +208,21 @@ export interface ExportRecordDTO {
 
 /** 6-8 haneli hex (velours paneli gibi alfa kanallı değerler serbest) */
 const ThemeHex = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/);
-/** Repo fontları (packages/templates/fonts) — dışarıdan font yok (M9) */
-export const ThemeFontKeySchema = z.enum(["oswald", "anton", "archivo", "inter", "bitter", "pacifico"]);
+/** Font aile adı — CSS font-family yığınına gömülür; tırnak/noktalı virgül/açı gibi
+    karakterler engellenir (harf, rakam, boşluk, tire, alt çizgi, kesme işareti). */
+export const FontFamilySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .regex(/^[\p{L}\p{N} '_-]+$/u, "Aile adı yalnız harf, rakam, boşluk ve - _ ' içerebilir");
+/** Yerleşik repo font anahtarları (packages/templates/fonts) — UI seçicilerinin çekirdeği */
+export const PRESET_FONT_KEYS = ["oswald", "anton", "archivo", "inter", "bitter", "pacifico"] as const;
+/** Tema font referansı: yerleşik anahtar VEYA yüklenmiş özel aile adı.
+    Mimar #18: dışarıdan font kabul edilir ama YALNIZ glif-bekçisinden geçmiş
+    (custom_fonts) ailelerdir; bekçi yüklemede uygular. Bilinmeyen anahtar render'da
+    genel yığına (Inter fallback) düşer — sessiz kırılma yok (M8). */
+export const ThemeFontKeySchema = FontFamilySchema;
 export type ThemeFontKey = z.infer<typeof ThemeFontKeySchema>;
 
 export const ThemeTokensSchema = z.object({

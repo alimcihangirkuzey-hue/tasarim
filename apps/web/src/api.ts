@@ -192,6 +192,26 @@ export const api = {
     http<import("@tezgah/shared").ThemeDTO>(`/api/themes/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteTheme: (id: string) => http<{ ok: true }>(`/api/themes/${id}`, { method: "DELETE" }),
 
+  /* Kullanıcı fontları — Faz 5 §7 */
+  fonts: () =>
+    http<Array<{ id: string; family: string; filename: string; created_at: string }>>(`/api/fonts`),
+  uploadFont: async (file: File, family: string) => {
+    const fd = new FormData();
+    fd.append("family", family);
+    fd.append("file", file);
+    return http<{ id: string; family: string; filename: string; created_at: string }>(`/api/fonts`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  deleteFont: (id: string) => http<{ ok: true }>(`/api/fonts/${id}`, { method: "DELETE" }),
+
+  /* Dijital menü (statik HTML) — Faz 5 §9 */
+  digitalMenu: (clientId: string) =>
+    http<ExportRecordDTO>(`/api/clients/${clientId}/menu-digital`, { method: "POST", body: "{}" }),
+  digitalMenuHistory: (clientId: string) =>
+    http<ExportRecordDTO[]>(`/api/clients/${clientId}/menu-digital/history`),
+
   /* Snapshot geri yükleme — Faz 4 §5 */
   restoreDocument: (id: string, exportId: string) =>
     http<{ document: DocumentDTO; safety_record_id: string }>(
@@ -214,6 +234,17 @@ export const api = {
       `/api/clients/${clientId}/catalog/restore/${historyId}`,
       { method: "POST", body: "{}" }
     ),
+  /* Yapıştır-içe aktarma — Faz 5 §4 */
+  catalogImport: (clientId: string, text: string, mode: "append" | "replace") =>
+    http<{
+      mode: string;
+      applied_categories: number;
+      applied_items: number;
+      skipped: import("@tezgah/shared").ImportSkip[];
+    }>(`/api/clients/${clientId}/catalog/import`, {
+      method: "POST",
+      body: JSON.stringify({ text, mode }),
+    }),
 
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>

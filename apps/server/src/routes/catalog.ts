@@ -7,9 +7,11 @@ import { z } from "zod";
 import {
   CatalogSchema,
   applyBulkPrice,
+  applyCatalogImport,
   bulkPriceReason,
   newId,
   nowISO,
+  parseCatalogText,
   type BulkPriceOp,
 } from "@tezgah/shared";
 import { db } from "../db.js";
@@ -21,6 +23,11 @@ const BulkPriceSchema = z.object({
     value: z.number().finite(),
   }),
   rounding: z.enum(["none", "r010", "r050", "x90"]),
+});
+
+const ImportSchema = z.object({
+  text: z.string().max(200_000),
+  mode: z.enum(["append", "replace"]).default("append"),
 });
 
 type HistoryRow = {
@@ -65,6 +72,45 @@ export function catalogRoutes(app: FastifyInstance): void {
       return { applied: changes.length, changes };
     }
   );
+
+  /* Yapıştır-içe aktarma (FAZ5 §4) — ham metin sunucuda AYNI saf motorla
+     parse edilir (önizlemeyle tutarlı); önce otomatik geçmiş, sonra uygula */
+  app.post<{ Params: { id: string } }>("/api/clients/:id/catalog/import", async (req, reply) => {
+    const row = db
+      .prepare("SELECT catalog_json FROM clients WHERE id = ?")
+      .get(req.params.id) as { catalog_json: string } | undefined;
+    if (!row) return reply.code(404).send({ error: "not_found" });
+
+    const body = ImportSchema.parse(req.body ?? {});
+    const preview = parseCatalogText(body.text);
+    if (preview.itemCount === 0) {
+      return reply.code(400).send({ error: "no_items", skipped: preview.skipped });
+    }
+
+    const current = CatalogSchema.parse(JSON.parse(row.catalog_json));
+    const now = nowISO();
+    const next = applyCatalogImport(current, preview, body.mode, now.slice(0, 19).replace(/[:T-]/g, ""));
+
+    const tx = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO catalog_history (id, client_id, catalog_json, reason, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(newId("ch"), req.params.id, row.catalog_json, "içe aktarma öncesi otomatik kayıt", now);
+      db.prepare("UPDATE clients SET catalog_json = ?, updated_at = ? WHERE id = ?").run(
+        JSON.stringify(next),
+        now,
+        req.params.id
+      );
+    });
+    tx();
+
+    return {
+      mode: body.mode,
+      applied_categories: preview.catCount,
+      applied_items: preview.itemCount,
+      skipped: preview.skipped,
+    };
+  });
 
   /* Geçmiş listesi (hafif — json gövdesiz) */
   app.get<{ Params: { id: string } }>("/api/clients/:id/catalog/history", async (req) => {

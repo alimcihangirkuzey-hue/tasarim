@@ -23,6 +23,9 @@ type ExportRow = {
   id: string;
   document_id: string | null;
   project_id: string | null;
+  /** F5-10: müşteri düzeyli export (dijital menü). Belge/proje bazlı kayıtlar bunu
+      atlar → INSERT kolon listesinde yoksa DB'de NULL; okumada toDTO ?? null. */
+  client_id?: string | null;
   kind: string;
   filepath: string;
   snapshot_json: string;
@@ -35,6 +38,7 @@ function toDTO(r: ExportRow): ExportRecordDTO {
     id: r.id,
     document_id: r.document_id,
     project_id: r.project_id ?? null,
+    client_id: r.client_id ?? null,
     kind: r.kind as ExportRecordDTO["kind"],
     filepath: r.filepath,
     version: r.version,

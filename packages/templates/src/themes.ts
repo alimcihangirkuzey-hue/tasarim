@@ -178,11 +178,18 @@ export interface CustomThemeTokens {
   fonts: { heading: string; item: string; body: string; script: string };
 }
 
+/** Özel (yüklenmiş) font ailesi için metrik: bilinmez genişlik → temkinli oran 0.5,
+    güvenli ağırlık 400. Inter fallback ile deterministik yığın (mimar #18, M8). */
+function customFontMeta(family: string): { stack: string; ratio: number; weight: number; label: string } {
+  return { stack: `"${family}", "Inter", sans-serif`, ratio: 0.5, weight: 400, label: family };
+}
+
 /** Token seti → tam Theme: davranış (categoryStyle, uppercase) base'den,
     ağırlık/oranlar seçilen fontların metriklerinden türer. */
 export function themeFromTokens(id: string, name: string, tokens: CustomThemeTokens): Theme {
   const base = PRESET_THEMES[tokens.base] ?? OR_NOIR;
-  const fm = (k: string) => FONT_META[k] ?? FONT_META.inter;
+  /* yerleşik anahtar → sabit metrik; özel aile adı → temkinli genel yığın; boş → inter */
+  const fm = (k: string) => FONT_META[k] ?? (k ? customFontMeta(k) : FONT_META.inter);
   return {
     id,
     name_tr: name,

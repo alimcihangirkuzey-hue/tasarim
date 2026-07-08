@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "TEZGÂH",
-    "subtitle": "Atölye otomasyonu · Faz 4",
+    "subtitle": "Atölye otomasyonu · Faz 5",
     "backup": "Yedek al",
     "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)",
     "themes": "Temalar",
@@ -161,7 +161,8 @@
     "garment_line_source": "Metin kaynağı (marka kiti)",
     "cmyk": "Print (CMYK)",
     "cmyk_missing": "Ghostscript kurulu değil — gswin64c/gs PATH'te olmalı (ghostscript.com). RGB PDF matbaaların çoğuna yeter (ADR-4).",
-    "cmyk_need_print": "Önce print PDF al"
+    "cmyk_need_print": "Önce print PDF al",
+    "warn_min_font": "Yoğun düzen: yazı okunabilirlik tabanına indi (min font) — sütun/format artırmayı ya da içeriği azaltmayı düşünün"
   },
   "orders": {
     "tab": "Projeler",
@@ -319,6 +320,50 @@
     "delete_confirm": "Tema silinecek. Bu temayı kullanan belgeler marka temasına döner. Devam?",
     "pick_hint": "Düzenlemek için soldan bir tema seç ya da yeni tema oluştur; önizleme gerçek grid şablonuyla canlı."
   },
+  "fonts": {
+    "title": "Fontlar",
+    "hint": "woff2/ttf font yükle; TR+FR glif kapsam bekçisinden geçenler marka kiti ve tema seçicilerine katılır. Print PDF aynı fontu gömer (ekran/baskı farkı olamaz).",
+    "coverage_title": "Gerekli glif kümesi (bu karakterlerin tümü fontta bulunmalı):",
+    "family": "Aile adı",
+    "family_placeholder": "ör. Poppins",
+    "file": "Dosya (woff2 / ttf)",
+    "pick_file": "Dosya seç",
+    "no_file": "dosya seçilmedi",
+    "upload": "Yükle",
+    "uploading": "Yükleniyor…",
+    "uploaded": "Yüklendi — seçicilere eklendi",
+    "rejected": "Font reddedildi — glif kapsamı eksik",
+    "missing_glyphs": "Fontta bulunmayan glifler:",
+    "empty": "Henüz yüklenmiş font yok — yerleşik repo fontları çalışmaya devam eder.",
+    "err_exists": "Bu aile adı zaten kayıtlı.",
+    "err_family": "Aile adı geçersiz.",
+    "err_type": "Yalnız woff2 veya ttf yüklenebilir.",
+    "err_parse": "Font dosyası okunamadı.",
+    "err_no_file": "Önce bir dosya seç.",
+    "err_in_use": "Font kullanımda, silinemez — {list}"
+  },
+  "digital": {
+    "title": "Dijital menü (HTML)",
+    "hint": "Katalog + marka kitinden tek dosyalık mobil menü — çevrimdışı açılır, QR ile paylaşılır.",
+    "btn": "Dijital menü üret",
+    "generating": "Üretiliyor…",
+    "open": "Menüyü aç ↗"
+  },
+  "guide": {
+    "q": "Bu iş ne?",
+    "direct": "Şablonu doğrudan seç",
+    "back": "← Rehbere dön",
+    "opt_liste_t": "Yazı yoğun menü / flyer",
+    "opt_liste_d": "Çok ürün, az fotoğraf — fiyat listesi düzeni (2–3 sütun)",
+    "opt_grid_t": "Fotoğraflı kart menü",
+    "opt_grid_d": "Her ürün fotoğraflı hücre; görsel ağırlıklı",
+    "opt_trifold_t": "Katlamalı broşür (trifold)",
+    "opt_trifold_d": "3'e katlanır, iki yüz — masaüstü/dağıtım",
+    "opt_flyer_t": "Kampanya flyer'ı",
+    "opt_flyer_d": "Tek duyuru; A5 veya 21×21 kare, ön-arka",
+    "opt_fidelite_t": "Sadakat kartı",
+    "opt_fidelite_d": "Cep boyu damga/sadakat kartı"
+  },
   "suggest": {
     "chip": "Öneri — bağla",
     "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"
@@ -350,5 +395,32 @@
     "slots": "Slotlar",
     "generate": "Üret (src/generated)",
     "done": "Üretildi — şablon kayıt defterinde"
+  },
+  "import": {
+    "open": "Yapıştırarak ekle",
+    "title": "Katalog yapıştır-içe aktarma",
+    "hint": "Her satır: Ad | fiyat | açıklama(opsiyonel). \"KATEGORİ: <ad>\" yeni kategori açar. Fiyat 8,00 / 8.00 / 8 tanınır; bozuk satır atlanır.",
+    "preview_cats": "{n} kategori",
+    "preview_items": "{n} ürün",
+    "preview_skipped": "{n} satır atlanacak",
+    "skip_line": "Satır {n}",
+    "skip_no-category": "kategori yok",
+    "skip_no-price": "fiyat yok",
+    "skip_empty-name": "ad yok",
+    "mode_append": "Sona ekle",
+    "mode_replace": "Tümünü değiştir",
+    "replace_confirm": "Mevcut {n} ürünün tamamı silinip yerine bunlar yazılacak — onaylıyorum",
+    "apply": "Uygula"
+  },
+  "swap": {
+    "open": "Ürünü değiştir",
+    "title": "Ürünü değiştir (aynı kategori)",
+    "search": "Ara...",
+    "empty": "Bu kategoride başka ürün yok",
+    "hint": "Seçilen ürün, bu ürünün yerine (sırası korunarak) gelir.",
+    "done": "{from} → {to} değiştirildi"
+  },
+  "reorder": {
+    "drag": "Sürükleyerek sırala"
   }
 }

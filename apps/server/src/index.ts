@@ -3,7 +3,7 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { ZodError } from "zod";
 import { migrate } from "./db.js";
-import { ASSETS_DIR, EXPORTS_DIR } from "./paths.js";
+import { ASSETS_DIR, EXPORTS_DIR, FONTS_DIR } from "./paths.js";
 import { clientRoutes } from "./routes/clients.js";
 import { assetRoutes } from "./routes/assets.js";
 import { documentRoutes } from "./routes/documents.js";
@@ -22,6 +22,8 @@ import { synonymRoutes } from "./routes/synonyms.js";
 import { presetRoutes2 } from "./routes/presets.js";
 import { factoryRoutes } from "./routes/factory.js";
 import { cmykRoutes } from "./routes/cmyk.js";
+import { fontRoutes } from "./routes/fonts.js";
+import { digitalMenuRoutes } from "./routes/digital-menu.js";
 
 migrate();
 
@@ -42,7 +44,14 @@ await app.register(fastifyStatic, {
   decorateReply: false,
 });
 
-app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 4 }));
+/* FAZ5 §7: kullanıcı yüklediği fontlar (@font-face aynı kaynak — M3) */
+await app.register(fastifyStatic, {
+  root: FONTS_DIR,
+  prefix: "/fonts/",
+  decorateReply: false,
+});
+
+app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 5 }));
 
 clientRoutes(app);
 assetRoutes(app);
@@ -62,6 +71,8 @@ synonymRoutes(app);
 presetRoutes2(app);
 factoryRoutes(app);
 cmykRoutes(app);
+fontRoutes(app);
+digitalMenuRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

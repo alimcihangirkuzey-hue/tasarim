@@ -64,12 +64,23 @@ export function resolveSelection(catalog: Catalog, selection: Selection): Select
 
   const excluded = new Set(selection.excluded_items);
   return ordered
-    .map((category) => ({
-      category,
-      items: category.items
-        .filter((it) => it.visible && !excluded.has(it.id))
-        .sort((a, b) => a.order - b.order),
-    }))
+    .map((category) => {
+      const visible = category.items.filter((it) => it.visible && !excluded.has(it.id));
+      /* FAZ5 §5/§6: belge item_order varsa REORDER-HİNT — listelenenler önce
+         (o sırayla), listelenmeyenler katalog order'ıyla sonra (M1: yeni ürün akar) */
+      const ord = selection.item_order?.[category.id];
+      const items =
+        ord && ord.length > 0
+          ? [...visible].sort((a, b) => {
+              const pa = ord.indexOf(a.id);
+              const pb = ord.indexOf(b.id);
+              const ka = pa === -1 ? Number.POSITIVE_INFINITY : pa;
+              const kb = pb === -1 ? Number.POSITIVE_INFINITY : pb;
+              return ka !== kb ? ka - kb : a.order - b.order;
+            })
+          : [...visible].sort((a, b) => a.order - b.order);
+      return { category, items };
+    })
     .filter((sc) => sc.items.length > 0);
 }
 

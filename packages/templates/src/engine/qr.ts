@@ -6,9 +6,9 @@
 import QRCode from "qrcode";
 import type { BrandKit } from "@tezgah/shared";
 
-export type QrSource = "review" | "tel" | "delivery" | "instagram";
+export type QrSource = "review" | "tel" | "delivery" | "instagram" | "menu";
 
-export const QR_SOURCES: QrSource[] = ["review", "tel", "delivery", "instagram"];
+export const QR_SOURCES: QrSource[] = ["review", "tel", "delivery", "instagram", "menu"];
 
 /** Kaynak → URL (yoksa null; şablon boş-slot uyarısı üretir) */
 export function qrSourceUrl(source: QrSource, brand: BrandKit): string | null {
@@ -26,6 +26,9 @@ export function qrSourceUrl(source: QrSource, brand: BrandKit): string | null {
       const h = c.instagram.replace(/^@/, "").trim();
       return h ? `https://instagram.com/${h}` : null;
     }
+    /* Mimar #16: dijital menü adresi; kit'te menu_url doluysa QR bunu kodlar */
+    case "menu":
+      return c.menu_url || null;
   }
 }
 

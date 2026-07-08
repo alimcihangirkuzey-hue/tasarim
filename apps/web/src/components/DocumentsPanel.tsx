@@ -12,10 +12,21 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+/* FAZ5 §8: "Bu iş ne?" rehberi — yalnız başlangıç şablonunu belirler, sonrası mevcut akış.
+   Kayıt defterinde olmayan şablon (ör. henüz eklenmemiş) sessizce atlanır. */
+const GUIDE_OPTIONS: Array<{ tid: string; titleKey: string; descKey: string }> = [
+  { tid: "menu-liste-premium", titleKey: "guide.opt_liste_t", descKey: "guide.opt_liste_d" },
+  { tid: "menu-grid-cells", titleKey: "guide.opt_grid_t", descKey: "guide.opt_grid_d" },
+  { tid: "menu-trifold", titleKey: "guide.opt_trifold_t", descKey: "guide.opt_trifold_d" },
+  { tid: "flyer", titleKey: "guide.opt_flyer_t", descKey: "guide.opt_flyer_d" },
+  { tid: "carte-fidelite", titleKey: "guide.opt_fidelite_t", descKey: "guide.opt_fidelite_d" },
+];
+
 export function DocumentsPanel({ client }: { client: ClientDTO }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [templateId, setTemplateId] = useState(listTemplates()[0]?.manifest.id ?? "");
+  const [mode, setMode] = useState<"guide" | "direct">("guide");
 
   const docs = useQuery({
     queryKey: ["documents", client.id],
@@ -23,7 +34,7 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   });
 
   const create = useMutation({
-    mutationFn: () => api.createDocument(client.id, templateId),
+    mutationFn: (tid: string) => api.createDocument(client.id, tid),
     onSuccess: (doc) => {
       void qc.invalidateQueries({ queryKey: ["documents", client.id] });
       navigate(`/editor/${doc.id}`);
@@ -33,6 +44,13 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   const del = useMutation({
     mutationFn: (id: string) => api.deleteDocument(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
+  });
+
+  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü */
+  const [digitalUrl, setDigitalUrl] = useState<string | null>(null);
+  const digital = useMutation({
+    mutationFn: () => api.digitalMenu(client.id),
+    onSuccess: (rec) => setDigitalUrl(rec.filepath.replace(/^data\//, "/")),
   });
 
   const allClients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
@@ -52,19 +70,47 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   return (
     <div className="panel">
       <h2>{t("client.tab_documents")}</h2>
-      <div className="row">
-        <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-          {listTemplates().map((e) => (
-            <option key={e.manifest.id} value={e.manifest.id}>
-              {e.manifest.name_tr}
-            </option>
-          ))}
-        </select>
-        <button onClick={() => create.mutate()} disabled={create.isPending || !templateId}>
-          + {t("documents.new")}
-        </button>
-        {create.isError && <span className="error">{(create.error as Error).message}</span>}
-      </div>
+      {mode === "guide" ? (
+        <div>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+            <strong>{t("guide.q")}</strong>
+            <button className="ghost-link" onClick={() => setMode("direct")}>{t("guide.direct")}</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 8, marginTop: 8 }}>
+            {GUIDE_OPTIONS.filter((o) => TEMPLATES[o.tid]).map((o) => (
+              <button
+                key={o.tid}
+                onClick={() => create.mutate(o.tid)}
+                disabled={create.isPending}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
+                  textAlign: "left", padding: "10px 12px", border: "1px solid var(--c-line, #e5e0d6)",
+                  borderRadius: 10, background: "transparent", cursor: "pointer", height: "100%",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>{t(o.titleKey)}</span>
+                <span className="muted" style={{ fontSize: 12, lineHeight: 1.3 }}>{t(o.descKey)}</span>
+              </button>
+            ))}
+          </div>
+          {create.isError && <span className="error">{(create.error as Error).message}</span>}
+        </div>
+      ) : (
+        <div className="row">
+          <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            {listTemplates().map((e) => (
+              <option key={e.manifest.id} value={e.manifest.id}>
+                {e.manifest.name_tr}
+              </option>
+            ))}
+          </select>
+          <button onClick={() => create.mutate(templateId)} disabled={create.isPending || !templateId}>
+            + {t("documents.new")}
+          </button>
+          <button className="ghost-link" onClick={() => setMode("guide")}>{t("guide.back")}</button>
+          {create.isError && <span className="error">{(create.error as Error).message}</span>}
+        </div>
+      )}
 
       {docs.data?.length === 0 && <p className="muted">{t("documents.empty")}</p>}
       {docs.data?.map((d) => (
@@ -94,6 +140,23 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
           >✕</button>
         </div>
       ))}
+
+      {/* FAZ5 §9: dijital menü (tek dosya statik HTML) */}
+      <div className="row" style={{ borderTop: "1px solid var(--c-line)", marginTop: 12, paddingTop: 12, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <strong>{t("digital.title")}</strong>
+          <p className="muted" style={{ fontSize: 12, margin: "2px 0 0" }}>{t("digital.hint")}</p>
+        </div>
+        <button onClick={() => digital.mutate()} disabled={digital.isPending}>
+          {digital.isPending ? t("digital.generating") : t("digital.btn")}
+        </button>
+        {digitalUrl && (
+          <a href={digitalUrl} target="_blank" rel="noreferrer" className="ghost-link">
+            {t("digital.open")}
+          </a>
+        )}
+        {digital.isError && <span className="error">{(digital.error as Error).message}</span>}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ export const DATA_DIR = path.join(ROOT_DIR, "data");
 export const DB_PATH = path.join(DATA_DIR, "app.db");
 export const ASSETS_DIR = path.join(DATA_DIR, "assets");
 export const EXPORTS_DIR = path.join(DATA_DIR, "exports");
+export const FONTS_DIR = path.join(DATA_DIR, "fonts"); // FAZ5 §7: kullanıcı fontları
 
 export function ensureDirs(): void {
   for (const d of [
@@ -18,6 +19,7 @@ export function ensureDirs(): void {
     path.join(ASSETS_DIR, "master"),
     path.join(ASSETS_DIR, "thumb"),
     EXPORTS_DIR,
+    FONTS_DIR,
   ]) {
     fs.mkdirSync(d, { recursive: true });
   }

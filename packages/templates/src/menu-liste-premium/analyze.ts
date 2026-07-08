@@ -57,6 +57,44 @@ export interface ListRowCategory {
 
 export type ListRow = ListRowItem | ListRowCategory;
 
+/* FAZ5 §3 (mimar #14): yoğun (3 sütun) metrik seti. Analiz VE Template aynı
+   çarpanları buradan okur (M3 tek kaynak — iki yerde sürüklenmez). */
+export interface ListMetrics {
+  compact: boolean;
+  nameLineH: number; // ad satır aralığı çarpanı
+  descLineH: number; // açıklama satır aralığı çarpanı
+  catH: number; // kategori satırı yüksekliği
+  rowPad: number; // ürün satırı alt boşluğu
+  nameMaxFont: number; // solveFontScale tavanı (compact → bir kademe düşük)
+  descMaxLines: number; // compact → tek satır
+  dotsMaxLen: number; // leader dots azami uzunluğu (compact → kısa)
+}
+
+export function listMetrics(columns: number, nameFontMax: number, descMaxLines: number): ListMetrics {
+  const compact = columns >= 3;
+  return compact
+    ? {
+        compact: true,
+        nameLineH: 1.12,
+        descLineH: 1.15,
+        catH: 10,
+        rowPad: 1.4,
+        nameMaxFont: Math.min(nameFontMax, 3.6), // bir kademe düşük tavan
+        descMaxLines: 1,
+        dotsMaxLen: 10,
+      }
+    : {
+        compact: false,
+        nameLineH: 1.25,
+        descLineH: 1.3,
+        catH: 13,
+        rowPad: 2.4,
+        nameMaxFont: nameFontMax,
+        descMaxLines,
+        dotsMaxLen: Infinity,
+      };
+}
+
 export interface ListPage {
   columns: Array<Array<{ row: ListRow; y: number }>>;
 }
@@ -78,13 +116,13 @@ export interface ListAnalysis {
   decor: Array<{ slotId: string; url: string; detached: boolean }>;
   decorBandH: number;
   nameFont: number;
+  /** FAZ5 §3: yoğun (3 sütun) mod metrikleri — Template aynısını okur */
+  metrics: ListMetrics;
   qr: QrRender | null;
 }
 
 const COL_GAP = 8;
 const PRICE_COL_W = 16;
-const CAT_H = 13;
-const ROW_PAD = 2.4;
 
 export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis {
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
@@ -142,6 +180,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
 
   const nameSlot = manifest.repeater.itemSlots.find((s) => s.id === "name")!;
   const descSlot = manifest.repeater.itemSlots.find((s) => s.id === "desc")!;
+  const metrics = listMetrics(columns, nameSlot.font_mm!.max, descSlot.maxLines!);
 
   /* Satır üretimi: verilen ad fontuna göre yükseklikler */
   const buildRows = (nameFont: number): ListRow[] => {
@@ -158,7 +197,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
           id: entry.category.id,
           name: entry.category.name_fr,
           note: entry.category.note_fr,
-          h: CAT_H + (entry.category.note_fr ? 3.4 : 0),
+          h: metrics.catH + (entry.category.note_fr ? 3.4 : 0),
           colHeaders: priceLayout === "columns" ? columnLabels(items) : [],
         });
         continue;
@@ -193,14 +232,14 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
               font_mm: descFont,
               ratio: theme.ratios.body,
               maxWidth_mm: colW * 0.78,
-              maxLines: descSlot.maxLines!,
+              maxLines: metrics.descMaxLines,
             })
           : { lines: [], truncated: false };
 
       const h =
-        nameWrap.lines.length * nameFont * 1.25 +
-        descWrap.lines.length * descFont * 1.3 +
-        ROW_PAD;
+        nameWrap.lines.length * nameFont * metrics.nameLineH +
+        descWrap.lines.length * descFont * metrics.descLineH +
+        metrics.rowPad;
 
       rows.push({
         kind: "item",
@@ -217,10 +256,11 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     return rows;
   };
 
-  /* Shrink: tek sayfaya sığdıran en büyük font; olmuyorsa min + flow (M8) */
+  /* Shrink: tek sayfaya sığdıran en büyük font; olmuyorsa min + flow (M8).
+     Compact modda tavan bir kademe düşüktür (metrics.nameMaxFont). */
   const fit = solveFontScale({
     min: nameSlot.font_mm!.min,
-    max: nameSlot.font_mm!.max,
+    max: metrics.nameMaxFont,
     fits: (f) => {
       const rows = buildRows(f);
       const flown = flowColumns(
@@ -231,6 +271,12 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
       return flown.pages.length <= 1;
     },
   });
+
+  /* FAZ5 §3: yoğun modda font okunabilirlik tabanına (min) dayandıysa uyar (M8);
+     içerik yine akar (sayfa eklenir), sessiz kırpma yok. */
+  if (metrics.compact && !fit.fits) {
+    warnings.push({ type: "min-font", slotId: "name" });
+  }
 
   const rows = buildRows(fit.font_mm);
   const flown = flowColumns(
@@ -275,6 +321,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     theme, geo, format, formatDef, columns, colW, colGap: COL_GAP,
     showDesc, priceLayout, pages, warnings, scope, decor, decorBandH,
     nameFont: fit.font_mm,
+    metrics,
     qr,
   };
 }
