@@ -8,7 +8,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 ### Pilot saha kayıtları (UYGULAMA YOK — kayıt biçimi: `- [YYYY-AA-GG] tek satırlık not / fikir / sürtünme`)
 - [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi.
-- [2026-07-08] Sunucular PC kapanınca duruyor; günlük başlatma sürtünmesi yaşandı — start-tezgah.bat eklendi (mimar onaylı). Kalıcı çözüm (tepsi uygulaması / otomatik başlatma) Faz 5/S adayı.
+- [2026-07-08] Sunucu başlatma sürtünmesi 4. kez yaşandı; kök neden netleşti: tsx watch zinciri (apps/server) bazen 3001'e hiç bağlanmadan askıda kalıyor (EADDRINUSE değil — port boş ama süreç canlı/hayalet), vite tarafı ayakta kalınca proxy sürekli ECONNREFUSED basıyor. start-tezgah.bat artık kendi kendini kontrol ediyor: önce iki portu da yoklar, zaten sağlıklıysa dokunmaz; değilse proje yoluna göre (PowerShell CommandLine filtresi) hayalet node.exe süreçlerini temizleyip yeniden dener, sonucu pencerede "OK"/"BAŞARISIZ + öneri" olarak açıkça yazar (mimar onaylı, script-only). Kalıcı çözüm (tepsi uygulaması / otomatik başlatma / gerçek process-supervisor) Faz 5/S adayı.
 - [2026-07-08] Atölyenin standart işi netleşti: A4 flyer, 3 sütunlu yoğun menü listesi (referans: ARAS siyah-turuncu tasarım); Premium Yazılı Menü A4'te 1-2 sütunla sınırlı — (a) FAZ5 adayı: liste şablonuna A4'te 3 sütun desteği (küçük font + kısa dots varyantı) (b) kullanıcının referans tasarımı Şablon Fabrikası'ndan geçirilip kalıcı "flyer-3col" şablonu üretilecek; pilot sırasında denenecek.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
