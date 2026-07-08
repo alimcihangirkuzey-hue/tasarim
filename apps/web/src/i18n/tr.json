@@ -342,6 +342,21 @@
     "err_no_file": "Önce bir dosya seç.",
     "err_in_use": "Font kullanımda, silinemez — {list}"
   },
+  "guide": {
+    "q": "Bu iş ne?",
+    "direct": "Şablonu doğrudan seç",
+    "back": "← Rehbere dön",
+    "opt_liste_t": "Yazı yoğun menü / flyer",
+    "opt_liste_d": "Çok ürün, az fotoğraf — fiyat listesi düzeni (2–3 sütun)",
+    "opt_grid_t": "Fotoğraflı kart menü",
+    "opt_grid_d": "Her ürün fotoğraflı hücre; görsel ağırlıklı",
+    "opt_trifold_t": "Katlamalı broşür (trifold)",
+    "opt_trifold_d": "3'e katlanır, iki yüz — masaüstü/dağıtım",
+    "opt_flyer_t": "Kampanya flyer'ı",
+    "opt_flyer_d": "Tek duyuru; A5 veya 21×21 kare, ön-arka",
+    "opt_fidelite_t": "Sadakat kartı",
+    "opt_fidelite_d": "Cep boyu damga/sadakat kartı"
+  },
   "suggest": {
     "chip": "Öneri — bağla",
     "bind_title": "Etiket eşleşmesi: {tags} — tek tıkla bu fotoğrafı bağla"
