@@ -9,6 +9,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ### Pilot saha kayıtları (UYGULAMA YOK — kayıt biçimi: `- [YYYY-AA-GG] tek satırlık not / fikir / sürtünme`)
 - [2026-07-08] 60+ ürünlük el yazısı menü tek tek girilemezdi — katalog toplu içe aktarma (yapıştır-parse) FAZ5 adayı; pilotta mimar+CC eliyle yüklendi.
 - [2026-07-08] Sunucular PC kapanınca duruyor; günlük başlatma sürtünmesi yaşandı — start-tezgah.bat eklendi (mimar onaylı). Kalıcı çözüm (tepsi uygulaması / otomatik başlatma) Faz 5/S adayı.
+- [2026-07-08] Atölyenin standart işi netleşti: A4 flyer, 3 sütunlu yoğun menü listesi (referans: ARAS siyah-turuncu tasarım); Premium Yazılı Menü A4'te 1-2 sütunla sınırlı — (a) FAZ5 adayı: liste şablonuna A4'te 3 sütun desteği (küçük font + kısa dots varyantı) (b) kullanıcının referans tasarımı Şablon Fabrikası'ndan geçirilip kalıcı "flyer-3col" şablonu üretilecek; pilot sırasında denenecek.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
