@@ -322,4 +322,6 @@ export type LayoutWarning =
   | { type: "mono-suggest"; slotId: string }
   | { type: "fine-detail"; areaId: string }
   /* FAZ4 §3 (mimar #8 devamı): her broderie belgesinde silik bilgi notu */
-  | { type: "broderie-info" };
+  | { type: "broderie-info" }
+  /* FAZ5 §3: yoğun (3 sütun) modda font okunabilirlik tabanına indi (min) */
+  | { type: "min-font"; slotId: string };

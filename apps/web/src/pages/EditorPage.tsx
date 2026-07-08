@@ -53,6 +53,8 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_fine_detail");
     case "broderie-info":
       return t("editor.warn_broderie_info");
+    case "min-font":
+      return t("editor.warn_min_font");
   }
 }
 

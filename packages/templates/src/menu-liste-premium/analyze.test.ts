@@ -5,7 +5,7 @@ import {
   defaultBrandKit,
   type ClientDTO,
 } from "@tezgah/shared";
-import { analyzeList } from "./analyze.js";
+import { analyzeList, listMetrics } from "./analyze.js";
 
 function makeClient(itemCount = 10, currency: "EUR" | "CHF" = "EUR"): ClientDTO {
   return {
@@ -90,5 +90,54 @@ describe("analyzeList", () => {
     const a = analyzeList(makeClient(6), doc({ format: "a3-portrait" }));
     expect(a.columns).toBe(2);
     expect(a.colW).toBeCloseTo((277 - 8) / 2, 4);
+  });
+
+  /* ---- FAZ5 §3: 3 sütunlu yoğun (compact) varyant (mimar #14) ---- */
+
+  it("listMetrics: cols=3 yoğun set (font tavanı düşük, dar aralık, tek satır desc, kısa dots)", () => {
+    const compact = listMetrics(3, 4.4, 2);
+    const normal = listMetrics(2, 4.4, 2);
+    expect(compact.compact).toBe(true);
+    expect(compact.nameMaxFont).toBeLessThan(normal.nameMaxFont); // bir kademe düşük
+    expect(compact.nameLineH).toBeLessThan(normal.nameLineH); // satır aralığı sıkı
+    expect(compact.descMaxLines).toBe(1); // açıklama tek satır
+    expect(compact.dotsMaxLen).toBeLessThan(normal.dotsMaxLen); // dots kısa
+    expect(normal.compact).toBe(false);
+  });
+
+  it("cols=3 a4-portrait: sütun genişliği + compact metrikler + font compact tavanı aşmaz", () => {
+    const a = analyzeList(makeClient(74), doc({ columns: 3 })); // 75 ürünlük gerçek boyut
+    expect(a.columns).toBe(3);
+    expect(a.metrics.compact).toBe(true);
+    expect(a.colW).toBeCloseTo((190 - 2 * 8) / 3, 4); // içerik 190mm, 2 gap
+    expect(a.nameFont).toBeLessThanOrEqual(3.6); // compact tavan aşılmaz
+    /* yoğun mod 75 ürünü üç sütuna dağıtır (kırpma yok) */
+    const total = a.pages.flatMap((p) => p.columns.flat()).length;
+    expect(total).toBe(77); // 75 ürün + 2 kategori
+    expect(a.pages[0].columns.length).toBe(3); // üç sütun da kullanıldı
+  });
+
+  it("cols=3 yoğunluk kazancı: 75 ürün 3 sütunda daha büyük fontla ve ≤ sayfada sığar", () => {
+    const three = analyzeList(makeClient(74), doc({ columns: 3 }));
+    const two = analyzeList(makeClient(74), doc({ columns: 2 }));
+    /* 3 sütun compact: ≤ 2 sütunun sayfa sayısı */
+    expect(three.pages.length).toBeLessThanOrEqual(two.pages.length);
+    /* yoğunluk kazancı: 3 sütun fontu compact tavanında (3.6) tutar,
+       2 sütun aynı içeriği sığdırmak için tabana (3.2) iner */
+    expect(three.nameFont).toBeGreaterThan(two.nameFont);
+  });
+
+  it("cols=3: min-font tabanına dayanırsa M8 uyarısı + akış (sessiz kırpma yok)", () => {
+    const a = analyzeList(makeClient(200), doc({ columns: 3 })); // taban aşımı zorlanır
+    expect(a.nameFont).toBe(3.2); // okunabilirlik tabanı (min)
+    expect(a.pages.length).toBeGreaterThan(1); // taşan sayfaya aktı
+    expect(a.warnings.some((w) => w.type === "min-font" && w.slotId === "name")).toBe(true);
+    const total = a.pages.flatMap((p) => p.columns.flat()).length;
+    expect(total).toBe(203); // 201 ürün + 2 kategori, hepsi yerleşti
+  });
+
+  it("cols=2 normalde min-font uyarısı ÇIKMAZ (yalnız compact modda)", () => {
+    const a = analyzeList(makeClient(200), doc({ columns: 2 }));
+    expect(a.warnings.some((w) => w.type === "min-font")).toBe(false);
   });
 });

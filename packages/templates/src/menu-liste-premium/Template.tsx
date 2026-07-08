@@ -6,7 +6,7 @@ import { themeStyle } from "../themes.js";
 import type { TemplateProps } from "../types.js";
 import { CropMarks, Guides, Slot, TextLines } from "../parts/svg.js";
 import { PageChrome } from "../parts/PageChrome.js";
-import { analyzeList, type ListRow } from "./analyze.js";
+import { analyzeList, type ListMetrics, type ListRow } from "./analyze.js";
 import { manifest } from "./manifest.js";
 
 const PRICE_COL_W = 16;
@@ -15,11 +15,12 @@ function Row(props: {
   row: ListRow;
   colW: number;
   theme: ReturnType<typeof analyzeList>["theme"];
+  metrics: ListMetrics;
   mode: "edit" | "print";
   selectedSlot?: string | null;
   onSlotClick?: (id: string) => void;
 }): ReactNode {
-  const { row, colW, theme, mode, selectedSlot, onSlotClick } = props;
+  const { row, colW, theme, metrics, mode, selectedSlot, onSlotClick } = props;
 
   if (row.kind === "category") {
     return (
@@ -92,7 +93,8 @@ function Row(props: {
       : colW - estimateWidth(row.priceTexts[0] ?? "", row.nameFont * 0.92, theme.ratios.item) - 2;
 
   const dotsX1 = Math.min(nameEndW + 2.5, colW - 4);
-  const dotsX2 = Math.max(priceStartX - 2.5, dotsX1);
+  /* FAZ5 §3: yoğun modda leader dots kısalır (fiyata kadar değil, sınırlı boy) */
+  const dotsX2 = Math.min(Math.max(priceStartX - 2.5, dotsX1), dotsX1 + metrics.dotsMaxLen);
 
   return (
     <Slot
@@ -106,7 +108,7 @@ function Row(props: {
         lines={row.nameLines}
         x={0}
         y={baseline}
-        lineH={row.nameFont * 1.25}
+        lineH={row.nameFont * metrics.nameLineH}
         font="var(--f-item)"
         size={row.nameFont}
         fill="var(--c-item)"
@@ -161,8 +163,8 @@ function Row(props: {
         <TextLines
           lines={row.descLines}
           x={0}
-          y={row.nameLines.length * row.nameFont * 1.25 + row.descFont * 0.75}
-          lineH={row.descFont * 1.3}
+          y={row.nameLines.length * row.nameFont * metrics.nameLineH + row.descFont * 0.75}
+          lineH={row.descFont * metrics.descLineH}
           font="var(--f-body)"
           size={row.descFont}
           fill="var(--c-desc)"
@@ -247,6 +249,7 @@ export function MenuListePremiumTemplate(props: TemplateProps): ReactNode {
                     row={row}
                     colW={a.colW}
                     theme={a.theme}
+                    metrics={a.metrics}
                     mode={mode}
                     selectedSlot={selectedSlot}
                     onSlotClick={onSlotClick}
