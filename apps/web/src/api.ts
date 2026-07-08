@@ -214,6 +214,17 @@ export const api = {
       `/api/clients/${clientId}/catalog/restore/${historyId}`,
       { method: "POST", body: "{}" }
     ),
+  /* Yapıştır-içe aktarma — Faz 5 §4 */
+  catalogImport: (clientId: string, text: string, mode: "append" | "replace") =>
+    http<{
+      mode: string;
+      applied_categories: number;
+      applied_items: number;
+      skipped: import("@tezgah/shared").ImportSkip[];
+    }>(`/api/clients/${clientId}/catalog/import`, {
+      method: "POST",
+      body: JSON.stringify({ text, mode }),
+    }),
 
   /* Klonlama — M6 */
   cloneClient: (id: string, body: { name: string; document_ids?: string[] }) =>

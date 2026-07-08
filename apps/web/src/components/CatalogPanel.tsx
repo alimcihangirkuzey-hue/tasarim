@@ -7,6 +7,7 @@ import { newId, suggestPhotosForName, type Catalog, type Category, type ClientDT
 import { api } from "../api";
 import { t } from "../i18n";
 import { BulkPriceModal } from "./BulkPriceModal";
+import { CatalogImportModal } from "./CatalogImportModal";
 
 function moveIn<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
@@ -97,11 +98,13 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
     id ? client.assets.find((a) => a.id === id)?.urls.thumb ?? null : null;
 
   const [showBulk, setShowBulk] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   return (
     <>
       <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
       {showBulk && <BulkPriceModal client={client} onClose={() => setShowBulk(false)} />}
+      {showImport && <CatalogImportModal client={client} onClose={() => setShowImport(false)} />}
 
       <div className="row" style={{ marginTop: 14 }}>
         <button
@@ -125,6 +128,14 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
           onClick={() => setShowBulk(true)}
         >
           {t("bulk.open")}
+        </button>
+        <button
+          className="ghost"
+          disabled={dirty}
+          title={dirty ? t("bulk.save_first") : undefined}
+          onClick={() => setShowImport(true)}
+        >
+          {t("import.open")}
         </button>
         <span className="spacer" style={{ flex: 1 }} />
         {dirty && <span className="pill warn">{t("catalog.unsaved")}</span>}
