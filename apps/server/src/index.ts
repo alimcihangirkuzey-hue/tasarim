@@ -51,7 +51,7 @@ await app.register(fastifyStatic, {
   decorateReply: false,
 });
 
-app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 4 }));
+app.get("/api/health", async () => ({ ok: true, app: "tezgah", phase: 5 }));
 
 clientRoutes(app);
 assetRoutes(app);

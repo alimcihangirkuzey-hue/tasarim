@@ -4,13 +4,12 @@ Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sis
 Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
 detayları: **FAZ1-GOREV.md**.
 
-**Mevcut durum: Faz 4 — Şablon Fabrikası + Verimlilik** (Faz 2 üzerine:
-Faz 3 üzerine:
-şablon fabrikası (SVG import + slot işaretleme → src/generated kod üretimi),
-tema kütüphanesi (özel temalar + canlı önizleme), toplu fiyat + katalog geçmişi,
-snapshot geri yükleme, zip yedek, grid çok-sayfa akışı, foto önerisi + etiketler,
-parse sözlüğü yönetimi, asset silme + Açılış Takımı preseti, CMYK opsiyonu,
-letterSpacing motor düzeltmesi (mimar #10). Faz 4 detayları: **FAZ4-GOREV.md**.
+**Mevcut durum: Faz 5 — Menü Yoğunluğu + Kişiselleştirme** (Faz 4 üzerine:
+A4 3-sütun yoğun menü varyantı, katalog yapıştır-içe aktarma (önizleme + atlanan
+satır listesi), belgede tıkla-takas ürün değiştirme, sürükle-bırak kategori/ürün
+sıralaması (saf pointer-events), kullanıcı font yükleme + FR/TR glif kapsam bekçisi
+(mimar #18), şablon seçim rehberi ("Bu iş ne?"), QR dijital menü v1 (tek dosyalık
+statik HTML, çevrimdışı). Faz 5 detayları: **FAZ5-GOREV.md**.
 
 ## Gereksinimler
 
@@ -31,6 +30,26 @@ API sağlık kontrolü: http://localhost:3001/api/health
 
 Veriler `data/` klasöründe yaşar (SQLite + görseller). **Yedek = bu klasörü kopyalamak.**
 `data/` git'e girmez.
+
+## Faz 5 el testi (kabul senaryosu — FAZ5-GOREV §10)
+
+1. Yazı yoğun menü belgesinde (menu-liste-premium) **format a4-portrait + Sütun: 3** →
+   yoğun varyant; 75 ürün tek sayfaya sığar, font 2-sütundan büyük kalır, taşma uyarısı yok.
+2. Katalog → **Yapıştırarak ekle**: "KATEGORİ: …" + "Ad | fiyat | açıklama" karışık biçim
+   (bozuk satırlar "atlandı" listesinde) → önizleme sayıları doğru → Sona ekle; Geçmişten
+   geri yükle bayt-birebir döner (içe aktarma öncesi otomatik kayıt).
+3. Editörde bir üründe **Ürünü değiştir** (aynı kategori, arama) → seçilen ürün sırası
+   korunarak gelir; export yeni versiyon açar.
+4. Seçim panelinde kategori/ürünü **sürükle** (⠿) ya da ↑↓ → yenilemede kalıcı; PDF sırası
+   birebir; katalog ana sırası da sürüklenip kalıcı.
+5. Ayarlar → **Fontlar**: TR+FR tam bir woff2/ttf yükle → marka kiti & tema seçicilerinde
+   görünür, print PDF'e gömülür; glifi eksik font **RED + eksik glif listesi**; kullanımdaki
+   font silme **409** (nerede kullanıldığı).
+6. Yeni belge akışında **"Bu iş ne?"** rehberi → "Yazı yoğun menü" Premium Yazılı'yı açar;
+   "Şablonu doğrudan seç" tam listeye geçer.
+7. Belgeler'de **Dijital menü üret** → tek dosyalık HTML; `file://` ile çevrimdışı açılır
+   (harici istek yok), kategoriler + fiyat + halal + saat doğru; menü şablonunun QR kaynağı
+   "menu" seçilince `menu_url`'i kodlar.
 
 ## Faz 4 el testi (kabul senaryosu — FAZ4-GOREV §14)
 
