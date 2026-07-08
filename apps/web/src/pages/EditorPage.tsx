@@ -27,6 +27,7 @@ import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { SlotPanel } from "../components/SlotPanel";
+import { SelectionPanel } from "../components/SelectionPanel";
 import { useEditor } from "../store/editorStore";
 
 const MM_PX = 96 / 25.4;
@@ -352,28 +353,7 @@ export function EditorPage() {
   const pages = analysis?.pages ?? 1;
   const Component = entry.Component;
 
-  /* seçim ağacı yardımcıları */
-  const allCatIds = client.catalog.categories.map((c) => c.id);
-  const included = doc.selection.category_order.length === 0 ? allCatIds : doc.selection.category_order;
-  const setOrder = (order: string[]) => patch({ selection: { ...doc.selection, category_order: order } });
-  const toggleCat = (cid: string, on: boolean) => {
-    const base = included.filter((x) => allCatIds.includes(x));
-    setOrder(on ? [...base, cid] : base.filter((x) => x !== cid));
-  };
-  const moveCat = (cid: string, dir: -1 | 1) => {
-    const base = [...included];
-    const i = base.indexOf(cid);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= base.length) return;
-    [base[i], base[j]] = [base[j], base[i]];
-    setOrder(base);
-  };
-  const toggleItem = (itemId: string, on: boolean) => {
-    const set = new Set(doc.selection.excluded_items);
-    if (on) set.delete(itemId);
-    else set.add(itemId);
-    patch({ selection: { ...doc.selection, excluded_items: [...set] } });
-  };
+  /* seçim ağacı (kategori/ürün dahil-hariç + sürükle-sıra) SelectionPanel'de (§6) */
 
   const scrollToItem = (itemId: string) => {
     select(`item:${itemId}`);
@@ -563,38 +543,7 @@ export function EditorPage() {
               })()}
             </div>
           )}
-          <div className="epanel">
-            <h3>{t("editor.selection")}</h3>
-            {client.catalog.categories.map((c) => {
-              const on = included.includes(c.id);
-              return (
-                <div className="sel-cat" key={c.id}>
-                  <label>
-                    <input type="checkbox" checked={on} onChange={(e) => toggleCat(c.id, e.target.checked)} />
-                    <span style={{ flex: 1 }}>{c.name_fr}</span>
-                    <span className="rowbtns">
-                      <button className="icon" onClick={() => moveCat(c.id, -1)}>↑</button>
-                      <button className="icon" onClick={() => moveCat(c.id, 1)}>↓</button>
-                    </span>
-                  </label>
-                  {on &&
-                    c.items
-                      .filter((i) => i.visible)
-                      .map((i) => (
-                        <label className="sel-item" key={i.id}>
-                          <input
-                            type="checkbox"
-                            checked={!doc.selection.excluded_items.includes(i.id)}
-                            onChange={(e) => toggleItem(i.id, e.target.checked)}
-                          />
-                          {i.name_fr}
-                          {!i.photo && <span title={t("missing.photo_waiting")}>📷</span>}
-                        </label>
-                      ))}
-                </div>
-              );
-            })}
-          </div>
+          <SelectionPanel client={client} doc={doc} patch={patch} />
 
           {pages > 1 && (
             <div className="epanel">

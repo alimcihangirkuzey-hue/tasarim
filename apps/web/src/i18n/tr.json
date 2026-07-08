@@ -375,5 +375,8 @@
     "empty": "Bu kategoride başka ürün yok",
     "hint": "Seçilen ürün, bu ürünün yerine (sırası korunarak) gelir.",
     "done": "{from} → {to} değiştirildi"
+  },
+  "reorder": {
+    "drag": "Sürükleyerek sırala"
   }
 }

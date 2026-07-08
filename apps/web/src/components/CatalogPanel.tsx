@@ -8,6 +8,7 @@ import { api } from "../api";
 import { t } from "../i18n";
 import { BulkPriceModal } from "./BulkPriceModal";
 import { CatalogImportModal } from "./CatalogImportModal";
+import { useDragReorder } from "../lib/dragReorder";
 
 function moveIn<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
@@ -100,6 +101,16 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
   const [showBulk, setShowBulk] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  /* FAZ5 §6: ana katalog kategori sırası — sürükle-bırak (↑↓ ile birlikte) */
+  const catDrag = useDragReorder(
+    cat.categories.map((c) => c.id),
+    (order) =>
+      edit((x) => ({
+        ...x,
+        categories: order.map((id) => x.categories.find((c) => c.id === id)!).filter(Boolean),
+      }))
+  );
+
   return (
     <>
       <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
@@ -148,9 +159,15 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
 
       {cat.categories.length === 0 && <p className="muted">{t("catalog.empty")}</p>}
 
+      <div ref={catDrag.containerRef}>
       {cat.categories.map((c, ci) => (
-        <div className="cat-block" key={c.id} style={{ marginTop: 12 }}>
+        <div className="cat-block" key={c.id} {...catDrag.rowProps(c.id)} style={{ marginTop: 12, opacity: catDrag.dragId === c.id ? 0.5 : 1 }}>
           <div className="cat-head">
+            <span
+              {...catDrag.handleProps(c.id)}
+              title={t("reorder.drag")}
+              style={{ cursor: "grab", touchAction: "none", userSelect: "none", color: "#9a938a", paddingRight: 4 }}
+            >⠿</span>
             <input
               type="text"
               value={c.name_fr}
@@ -309,6 +326,7 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
           </button>
         </div>
       ))}
+      </div>
     </>
   );
 }
