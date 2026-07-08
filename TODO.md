@@ -25,6 +25,11 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] AI destekli foto eşleme. → Faz S'e taşındı.
 - [ ] Preset yönetim arayüzü (Faz S).
 
+## Faz S'e kayıt (FAZ5-GOREV §11 — uygulama YOK)
+- [ ] **Barındırılan dijital menü (abonelik):** Faz 5'te tek dosyalık statik HTML üretildi (§9); Faz S'te barındırılan sürüm — fiyat değişince otomatik güncellenir, temel abonelik gelir kalemi. (SaaS Vizyon Defteri'ndeki QR dijital menü ile aynı kalem.)
+- [ ] **Arka plan servisi (bat'sız kalıcı çalışma):** sunucu+web `start-tezgah.bat` olmadan da PC açıkken kalıcı çalışsın — Windows servisi / tepsi (tray) uygulaması. Gerekçe: pilotta ve F5 kabul koşusunda sunucu süreci birkaç kez dışarıdan sonlandı (kırılgan başlatma); servisleştirme bunu kalıcı çözer.
+- [ ] Arka plan silme / AI foto eşleme · çoklu-yüzey sahne · preset yönetim arayüzü → yukarıdaki Faz S kalemleriyle aynı (mükerrer değil).
+
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
 - [ ] **Grid şablonuna çok sayfalı akış (flow) modu:** 80-100 kalemlik kataloglar için (Faz 4).
