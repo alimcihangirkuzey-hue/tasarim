@@ -661,6 +661,7 @@ export function EditorPage() {
             patch={patch}
             select={select}
             selectedSlot={selectedSlot}
+            showToast={showToast}
           />
 
           <div className="epanel">

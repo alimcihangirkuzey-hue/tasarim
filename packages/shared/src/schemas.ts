@@ -95,8 +95,49 @@ export const SelectionSchema = z.object({
   mode: z.enum(["include"]).default("include"),
   category_order: z.array(z.string()).default([]),
   excluded_items: z.array(z.string()).default([]),
+  /* FAZ5 §5/§6: belge düzeyinde açık ürün sırası (categoryId → sıralı item id).
+     REORDER-HİNT (mimar kararı): listelenenler önce (bu sırayla), listelenmeyen
+     kategori ürünleri katalog order'ıyla sonra → yeni katalog ürünleri belgede
+     görünmeye devam eder (M1 korunur). Boş {} → eski davranış (katalog order). */
+  item_order: z.record(z.string(), z.array(z.string())).default({}),
 });
 export type Selection = z.infer<typeof SelectionSchema>;
+
+/* FAZ5 §5: belgede ürün takası — SAF. Aynı kategori içinde eski id yeni id ile
+   değiştirilir (sıra korunur, tekrar eklenmez); eski id excluded'a, yeni id
+   excluded'dan çıkar. Slot override anahtarlarına DOKUNULMAZ (pasifleşir). */
+export function swapSelectionItem(
+  selection: Selection,
+  categoryId: string,
+  oldItemId: string,
+  newItemId: string,
+  currentOrderedIds: string[]
+): Selection {
+  const replaced = currentOrderedIds.map((id) => (id === oldItemId ? newItemId : id));
+  const seen = new Set<string>();
+  const order = replaced.filter((id) => (seen.has(id) ? false : (seen.add(id), true)));
+  const excluded = selection.excluded_items.filter((id) => id !== newItemId);
+  if (!excluded.includes(oldItemId)) excluded.push(oldItemId);
+  return {
+    ...selection,
+    excluded_items: excluded,
+    item_order: { ...selection.item_order, [categoryId]: order },
+  };
+}
+
+/* FAZ5 §6: kategori içi ürün sırasını açıkça ayarla (sürükle-bırak sonucu) — SAF */
+export function setCategoryItemOrder(
+  selection: Selection,
+  categoryId: string,
+  orderedIds: string[]
+): Selection {
+  return { ...selection, item_order: { ...selection.item_order, [categoryId]: [...orderedIds] } };
+}
+
+/* FAZ5 §6: kategori sırasını açıkça ayarla (sürükle-bırak sonucu) — SAF */
+export function setCategoryOrder(selection: Selection, orderedCatIds: string[]): Selection {
+  return { ...selection, category_order: [...orderedCatIds] };
+}
 
 export const OverrideSchema = z.object({
   value: z.unknown(),

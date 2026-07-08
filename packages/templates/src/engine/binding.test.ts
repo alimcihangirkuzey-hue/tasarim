@@ -81,6 +81,21 @@ describe("resolveSelection (CONSTITUTION §4.5)", () => {
     const out = resolveSelection(catalog, sel);
     expect(out.map((s) => s.category.id)).toEqual(["cat_sandwichs"]);
   });
+
+  it("FAZ5 §5/§6 item_order REORDER-HİNT: listelenenler önce, listelenmeyen katalog order'ıyla sonra (M1)", () => {
+    /* s3'ü öne al; s1/s2 belirtilmedi → katalog order'ıyla sonra */
+    const sel = SelectionSchema.parse({ item_order: { cat_sandwichs: ["s3"] } });
+    const out = resolveSelection(catalog, sel);
+    const sandw = out.find((s) => s.category.id === "cat_sandwichs")!;
+    expect(sandw.items.map((i) => i.id)).toEqual(["s3", "s1", "s2"]);
+  });
+
+  it("item_order tam liste: verilen sırayı birebir uygular", () => {
+    const sel = SelectionSchema.parse({ item_order: { cat_sandwichs: ["s2", "s3", "s1"] } });
+    const out = resolveSelection(catalog, sel);
+    const sandw = out.find((s) => s.category.id === "cat_sandwichs")!;
+    expect(sandw.items.map((i) => i.id)).toEqual(["s2", "s3", "s1"]);
+  });
 });
 
 describe("selectionFlow", () => {

@@ -367,5 +367,13 @@
     "mode_replace": "Tümünü değiştir",
     "replace_confirm": "Mevcut {n} ürünün tamamı silinip yerine bunlar yazılacak — onaylıyorum",
     "apply": "Uygula"
+  },
+  "swap": {
+    "open": "Ürünü değiştir",
+    "title": "Ürünü değiştir (aynı kategori)",
+    "search": "Ara...",
+    "empty": "Bu kategoride başka ürün yok",
+    "hint": "Seçilen ürün, bu ürünün yerine (sırası korunarak) gelir.",
+    "done": "{from} → {to} değiştirildi"
   }
 }
