@@ -197,3 +197,42 @@ describe("migration v5 (Faz 4 — catalog_history, themes, assets.tags, parse_sy
     ).not.toThrow();
   });
 });
+
+describe("migration v6 (Faz 5 — custom_fonts)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    db.exec(MIGRATIONS[2]);
+    db.exec(MIGRATIONS[3]);
+    db.exec(MIGRATIONS[4]);
+    db.exec(MIGRATIONS[5]);
+  });
+
+  it("custom_fonts tablosu yerinde; family UNIQUE", () => {
+    db.prepare(
+      "INSERT INTO custom_fonts (id, family, filename, created_at) VALUES ('fnt1', 'Menu Sans', 'fnt1.woff2', 't')"
+    ).run();
+    const row = db.prepare("SELECT family, filename FROM custom_fonts WHERE id='fnt1'").get();
+    expect(row).toEqual({ family: "Menu Sans", filename: "fnt1.woff2" });
+    expect(() =>
+      db.prepare(
+        "INSERT INTO custom_fonts (id, family, filename, created_at) VALUES ('fnt2', 'Menu Sans', 'fnt2.ttf', 't')"
+      ).run()
+    ).toThrow(/UNIQUE/i);
+  });
+
+  it("Faz 1-5 akışları kırılmadı: tüm önceki tablolar okunabilir", () => {
+    for (const q of [
+      "SELECT document_id, project_id FROM export_records LIMIT 1",
+      "SELECT kind, settings_json FROM mockup_scenes LIMIT 1",
+      "SELECT catalog_json FROM catalog_history LIMIT 1",
+      "SELECT tokens_json FROM themes LIMIT 1",
+      "SELECT tags FROM assets LIMIT 1",
+      "SELECT word FROM parse_synonyms LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});

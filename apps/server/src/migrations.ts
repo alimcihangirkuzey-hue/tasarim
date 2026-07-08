@@ -132,4 +132,14 @@ export const MIGRATIONS: string[] = [
     product_type TEXT NOT NULL
   );
   `,
+  /* v6 — Faz 5 (FAZ5-GOREV §2): kullanıcı yüklenen fontlar. Dosyalar data/fonts/
+     altında (git dışı); family UNIQUE (tema/kit seçicilerinde tekil ad). */
+  `
+  CREATE TABLE IF NOT EXISTS custom_fonts (
+    id         TEXT PRIMARY KEY,
+    family     TEXT NOT NULL UNIQUE,
+    filename   TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];

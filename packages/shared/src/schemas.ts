@@ -55,6 +55,8 @@ export const ContactSchema = z.object({
   delivery_hours: z.string().default(""),
   instagram: z.string().default(""),
   google_review_url: z.string().default(""),
+  /** Dijital menü adresi (mimar #16); doluysa QR kaynak listesine "menu" gelir */
+  menu_url: z.string().default(""),
   delivery: z
     .array(z.object({ platform: z.string(), url: z.string() }))
     .default([]),
@@ -145,8 +147,9 @@ export interface ExportRecordDTO {
   document_id: string | null;
   project_id: string | null;
   /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
-     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar */
-  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk";
+     boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar.
+     Mimar kararı #16: digital_menu (tek dosya statik HTML). */
+  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk" | "digital_menu";
   filepath: string;
   version: number;
   created_at: string;
