@@ -4,12 +4,16 @@ Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sis
 Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
 detayları: **FAZ1-GOREV.md**.
 
-**Mevcut durum: Faz 5 — Menü Yoğunluğu + Kişiselleştirme** (Faz 4 üzerine:
-A4 3-sütun yoğun menü varyantı, katalog yapıştır-içe aktarma (önizleme + atlanan
-satır listesi), belgede tıkla-takas ürün değiştirme, sürükle-bırak kategori/ürün
-sıralaması (saf pointer-events), kullanıcı font yükleme + FR/TR glif kapsam bekçisi
-(mimar #18), şablon seçim rehberi ("Bu iş ne?"), QR dijital menü v1 (tek dosyalık
-statik HTML, çevrimdışı). Faz 5 detayları: **FAZ5-GOREV.md**.
+**Mevcut durum: Faz 6 — "Arşiv Önce" (fabrika sağlamlaştırma)** (Faz 5 üzerine:
+gerçek-dünya SVG içe alma bekçisi [ölçü türet-önce-sor, eğri/canlı metin, font
+bekçisi, eksik varlık, 25MB, sanitize — mimar #19], şablon künyesi/provenance
+[manifest içinde, mimar #20], serbest ölçülü fabrika şablonu + bleed 3mm + crop
+marks [30–3000mm, sıfır-slot dekor serbest — mimar #21], InDesign→SVG rehberi).
+Faz 6 detayları: **FAZ6-GOREV.md**.
+
+**Önceki: Faz 5 — Menü Yoğunluğu + Kişiselleştirme** (A4 3-sütun yoğun menü, katalog
+yapıştır-içe aktarma, tıkla-takas, sürükle-bırak sıralama, kullanıcı font yükleme +
+glif bekçisi, şablon seçim rehberi, QR dijital menü v1). Detay: **FAZ5-GOREV.md**.
 
 ## Gereksinimler
 
@@ -30,6 +34,23 @@ API sağlık kontrolü: http://localhost:3001/api/health
 
 Veriler `data/` klasöründe yaşar (SQLite + görseller). **Yedek = bu klasörü kopyalamak.**
 `data/` git'e girmez.
+
+## Faz 6 el testi (kabul senaryosu — FAZ6-GOREV §7)
+
+Ayarlar → **Şablon Fabrikası** (arşivden InDesign/Illustrator SVG'si → şablon):
+1. Karışık SVG yükle → içe alma özeti: tespit edilen ölçü (fiziksel birim varsa
+   otomatik, yoksa cm sorar), canlı/eğri metin, fontlar (yüklü/eksik + Fontlar'a link),
+   varlıklar (gömülü/eksik), 25MB/temizlik uyarıları.
+2. Eksik fontlu **canlı metne** slot atamaya çalış → ENGELLİ; Ayarlar → Fontlar'dan o
+   fontu yükle, SVG'yi yeniden içe al → artık bağlanabilir. Eğriye çevrilmiş metin
+   dekor kalır (slot alamaz).
+3. Serbest ölçü: 750×1900 mm dekor SVG → Üret → belgede aç → **Print PDF sayfası
+   756×1906 mm + crop marks**; preview 750×1900 mm. Belge params.width_mm/height_mm
+   ile ölçü ezilebilir (30–3000 mm).
+4. **Sıfır-slot** (salt dekor/cam-folyo): slot işaretlemeden Üret → belge + export çalışır.
+5. Fabrika ana ekranında **künye kartı**: kaynak dosya/yol, fontlar, gömülü/eksik varlık,
+   sha256, içe alma tarihi.
+6. İçe alma ekranından **"Arşivden şablon rehberi"** linki → InDesign→SVG adımları.
 
 ## Faz 5 el testi (kabul senaryosu — FAZ5-GOREV §10)
 
