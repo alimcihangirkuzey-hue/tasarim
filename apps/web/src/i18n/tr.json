@@ -414,7 +414,13 @@
     "err_font": "\"{font}\" fontu sistemde yok — canlı metne slot için önce Ayarlar → Fontlar'dan yükleyin.",
     "zero_slot_ok": "Slot işaretlemeden de üretebilirsin — salt dekor/çıktı şablonu (cam/folyo).",
     "source_note": "kaynak not (ör. arşiv/Dropbox yolu — opsiyonel)",
-    "source_file": "kaynak dosya"
+    "source_file": "kaynak dosya",
+    "made_title": "Üretilen şablonlar — künye",
+    "kunye_source": "Kaynak",
+    "kunye_note": "Not",
+    "kunye_fonts": "Fontlar",
+    "kunye_assets": "Varlıklar",
+    "kunye_date": "İçe alma"
   },
   "import": {
     "open": "Yapıştırarak ekle",

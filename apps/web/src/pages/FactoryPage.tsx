@@ -7,7 +7,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { analyzeSvg, sanitizeSvg, type ImportAnalysis } from "@tezgah/templates";
+import { analyzeSvg, listTemplates, sanitizeSvg, type ImportAnalysis } from "@tezgah/templates";
 import { REPO_FONT_FAMILIES, missingFontFamilies } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
@@ -320,17 +320,50 @@ export function FactoryPage() {
       <h2>{t("factory.title")}</h2>
 
       {!svgText && (
-        <div className="panel">
-          <p className="muted">{t("factory.intro")}</p>
-          <input
-            type="file"
-            accept=".svg,image/svg+xml"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onFile(f);
-            }}
-          />
-        </div>
+        <>
+          <div className="panel">
+            <p className="muted">{t("factory.intro")}</p>
+            <input
+              type="file"
+              accept=".svg,image/svg+xml"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onFile(f);
+              }}
+            />
+          </div>
+
+          {/* Künye kartları (#20): registry'deki üretilmiş şablonlar */}
+          {(() => {
+            const made = listTemplates().filter((e) => e.manifest.provenance);
+            if (made.length === 0) return null;
+            return (
+              <div className="panel">
+                <h3 style={{ marginTop: 0 }}>{t("factory.made_title")} ({made.length})</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                  {made.map((e) => {
+                    const p = e.manifest.provenance!;
+                    const fmt = e.manifest.formats[e.manifest.defaultFormat];
+                    return (
+                      <div key={e.manifest.id} style={{ border: "1px solid var(--c-line,#e5e0d6)", borderRadius: 10, padding: "10px 12px", fontSize: 12 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{e.manifest.name_tr}</div>
+                        <div className="muted" style={{ fontFamily: "monospace", fontSize: 11 }}>{e.manifest.id} · {fmt ? `${fmt.w_mm}×${fmt.h_mm}mm` : ""}</div>
+                        <dl style={{ margin: "6px 0 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 8px" }}>
+                          <dt className="muted">{t("factory.kunye_source")}</dt><dd style={{ margin: 0 }}>{p.source_filename || "—"}</dd>
+                          {p.source_note && (<><dt className="muted">{t("factory.kunye_note")}</dt><dd style={{ margin: 0 }}>{p.source_note}</dd></>)}
+                          <dt className="muted">{t("factory.kunye_fonts")}</dt><dd style={{ margin: 0 }}>{p.fonts.length ? p.fonts.join(", ") : "—"}</dd>
+                          <dt className="muted">{t("factory.kunye_assets")}</dt><dd style={{ margin: 0 }}>{p.embedded_assets} {t("factory.embedded")}{p.missing_assets.length ? ` · ${p.missing_assets.length} ${t("factory.missing_asset")}` : ""}</dd>
+                          <dt className="muted">sha256</dt><dd style={{ margin: 0, fontFamily: "monospace", fontSize: 10, wordBreak: "break-all" }}>{p.svg_sha256.slice(0, 16)}…</dd>
+                          <dt className="muted">{t("factory.kunye_date")}</dt><dd style={{ margin: 0 }}>{p.imported_at.slice(0, 10)}</dd>
+                        </dl>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </>
       )}
 
       {svgText && (
