@@ -58,10 +58,12 @@ const ID_RE = /^[a-z][a-z0-9-]{2,40}$/;
 export function validateFactoryInput(input: FactoryInput, existingIds: string[]): string | null {
   if (!ID_RE.test(input.id)) return "id küçük harf-kebap olmalı (örn. pizza-menu-a4)";
   if (existingIds.includes(input.id)) return `şablon kimliği zaten var: ${input.id}`;
-  if (!(input.w_mm > 10 && input.h_mm > 10)) return "gerçek boyut (mm) geçersiz";
+  /* #21: serbest ölçü sınırları 30–3000 mm */
+  if (!(input.w_mm >= 30 && input.h_mm >= 30 && input.w_mm <= 3000 && input.h_mm <= 3000))
+    return "gerçek boyut 30–3000 mm aralığında olmalı";
   if (!(input.viewBox.w > 0 && input.viewBox.h > 0)) return "viewBox geçersiz";
   if (input.staticInner.includes("<script")) return "temizlenmemiş içerik (script)";
-  if (input.marks.length === 0 && !input.proto) return "en az bir slot işaretle";
+  /* #21: sıfır-slot (salt dekor/cam-folyo) GEÇERLİDİR — önceki "en az bir slot" kuralı kaldırıldı */
   return null;
 }
 

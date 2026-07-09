@@ -93,6 +93,17 @@ describe("şablon fabrikası kod üreticisi", () => {
     ).toMatch(/script/);
   });
 
+  it("#21: sıfır-slot (salt dekor) GEÇERLİ + ölçü sınırı 30–3000mm", () => {
+    const ok = makeInput();
+    /* sıfır-slot dekor şablonu — önceki 'en az bir slot' kuralı kaldırıldı */
+    expect(validateFactoryInput({ ...ok, marks: [], proto: null }, [])).toBeNull();
+    /* ölçü sınırları */
+    expect(validateFactoryInput({ ...ok, w_mm: 20, h_mm: 297 }, [])).toMatch(/30.*3000/);
+    expect(validateFactoryInput({ ...ok, w_mm: 210, h_mm: 5000 }, [])).toMatch(/30.*3000/);
+    expect(validateFactoryInput({ ...ok, w_mm: 3000, h_mm: 3000 }, [])).toBeNull();
+    expect(validateFactoryInput({ ...ok, w_mm: 30, h_mm: 30 }, [])).toBeNull();
+  });
+
   it("yön=column: hücreler sütun sütun akar (rowsPerCol mantığı)", () => {
     const input = makeInput();
     input.proto!.yon = "column";
