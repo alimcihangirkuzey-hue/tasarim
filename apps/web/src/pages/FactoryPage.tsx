@@ -90,8 +90,9 @@ export function FactoryPage() {
     const r = sanitizeSvg(raw);
     setRemoved(r.removed);
     setViewBox(r.viewBox);
-    /* #19: analiz — ölçü/canlı-outline/font/raster/boyut tek kaynaktan */
-    const an = analyzeSvg(r.svg);
+    /* #19: analiz HAM svg'de yapılır — sanitize harici href'i (raster) siler; eksik
+       varlıkları tespit etmek için ham metin şart (analiz salt-okuma, güvenli). Render sanitized. */
+    const an = analyzeSvg(raw);
     setAnalysis(an);
     /* #19a TÜRET-ÖNCE-SOR: fiziksel birim varsa otomatik, yoksa kullanıcı girer (A4 varsayımı yok) */
     if (an.sizeMm) {
