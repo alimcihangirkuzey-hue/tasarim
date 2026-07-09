@@ -66,6 +66,7 @@ describe("şablon fabrikası kod üreticisi", () => {
     expect(m).toContain(`bind: "item.name_fr"`);
     expect(m).toContain(`bind: "item.prices"`);
     expect(m).toContain(`w_mm: 210, h_mm: 297`);
+    expect(m).toContain(`bleed_mm: 3`); /* #21: bleed 3mm (crop marks için) */
   });
 
   it("template: ölçek, statik taban, Slot sarmalayıcıları, repeater; script yok", () => {
@@ -81,6 +82,16 @@ describe("şablon fabrikası kod üreticisi", () => {
     /* okunabilirlik: üretildi başlığı + rafine notu */
     expect(t).toContain("ÜRETİLDİ");
     expect(t).toContain("elle rafine");
+  });
+
+  it("#21: template bleed + crop marks + custom ölçü override", () => {
+    const t = generateTemplateTsx(makeInput());
+    expect(t).toContain("customSizeMm(doc)"); /* belge override okunur */
+    expect(t).toContain("CropMarks"); /* print crop marks */
+    expect(t).toContain("Guides"); /* edit kılavuzları */
+    expect(t).toContain("bleed={B}");
+    expect(t).toContain("const B = manifest.bleed_mm");
+    expect(t).toContain("const NET_W = cs ? cs.w_mm : W");
   });
 
   it("doğrulama: kötü id, çakışan id, temizlenmemiş içerik reddedilir", () => {
@@ -137,6 +148,17 @@ describe("şablon fabrikası kod üreticisi", () => {
     const r = generateTemplateTsx(makeInput());
     expect(r).toContain("i % PROTO.cols");
     expect(r).toContain("satır satır");
+  });
+
+  it("#21: sıfır-slot (salt dekor) geçerli template üretir — Slot yok, STATIC + crop var", () => {
+    const decor: FactoryInput = { ...makeInput(), marks: [], proto: null };
+    const t = generateTemplateTsx(decor);
+    expect(t).not.toContain("<Slot ");
+    expect(t).toContain("dangerouslySetInnerHTML={{ __html: STATIC }}");
+    expect(t).toContain("CropMarks");
+    expect(t).toContain("const capacity = items.length;"); /* proto yok → tüm liste (dekor'da boş) */
+    const m = generateManifestTs(decor);
+    expect(m).toContain("slots: [\n\n  ],"); /* boş slot listesi */
   });
 
   it("barrel deterministik ve sıralı", () => {

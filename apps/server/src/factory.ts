@@ -115,7 +115,7 @@ export const manifest: TemplateManifest = {
   id: "${input.id}",
   type: "menu",
   name_tr: ${JSON.stringify(input.name_tr)},
-  bleed_mm: 0,
+  bleed_mm: 3,
   safe_mm: 3,
   formats: { custom: { w_mm: ${input.w_mm}, h_mm: ${input.h_mm}, label_tr: "Özel (${input.w_mm}×${input.h_mm} mm)" } },
   defaultFormat: "custom",
@@ -238,12 +238,13 @@ import { formatPrice, type Item } from "@tezgah/shared";
 import { assetById, resolveSelection, resolveSlotValue, type BindScope } from "../../engine/binding.js";
 import { buildQr } from "../../engine/qr.js";
 import { resolveTheme, themeStyle } from "../../themes.js";
+import { customSizeMm } from "../../engine/custom-size.js";
 import type { TemplateProps } from "../../types.js";
-import { Slot } from "../../parts/svg.js";
+import { CropMarks, Guides, Slot } from "../../parts/svg.js";
 import { manifest } from "./manifest.js";
 
-const W = ${input.w_mm};
-const H = ${input.h_mm};
+const W = ${input.w_mm}; /* doğal en (mm) */
+const H = ${input.h_mm}; /* doğal boy (mm) */
 const K = ${kRound}; /* orijinal birim → mm */
 
 /* Temizlenmiş taban tasarım (işaretli slotlar çıkarıldı) */
@@ -253,7 +254,7 @@ ${badgeChunks}${protoConst}
 const str = (x: unknown): string => (typeof x === "string" ? x : x == null ? "" : String(x));
 
 export function GeneratedTemplate(props: TemplateProps): ReactNode {
-  const { client, doc, mode, selectedSlot, onSlotClick } = props;
+  const { client, doc, mode, showGuides, cropMarks, selectedSlot, onSlotClick } = props;
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const asset = (id: string | null) => assetById(client, id);
@@ -274,14 +275,30 @@ ${qrDecls}
   void rowsPerCol;` : "const capacity = items.length;"}
   void capacity;
 
+  /* #21: bleed 3mm + crop marks; belge override (params.width_mm/height_mm) doğal ölçüyü ezer */
+  const B = manifest.bleed_mm;
+  const cs = customSizeMm(doc);
+  const NET_W = cs ? cs.w_mm : W;
+  const NET_H = cs ? cs.h_mm : H;
+  const sx = NET_W / W;
+  const sy = NET_H / H;
+  const PW = NET_W + 2 * B;
+  const PH = NET_H + 2 * B;
+
   return (
-    <svg viewBox={\`0 0 \${W} \${H}\`} width={\`\${W}mm\`} height={\`\${H}mm\`}
+    <svg viewBox={\`0 0 \${PW} \${PH}\`} width={\`\${PW}mm\`} height={\`\${PH}mm\`}
       xmlns="http://www.w3.org/2000/svg" style={{ ...themeStyle(theme), display: "block" }}>
-      <g transform={\`scale(\${K})\`}>
-        {/* taban tasarım */}
-        <g dangerouslySetInnerHTML={{ __html: STATIC }} />
+      <rect width={PW} height={PH} fill="var(--c-bg)" />
+      {/* içerik: doğal birim → mm (scale K) → override ölçek (sx,sy) → bleed ofseti */}
+      <g transform={\`translate(\${B}, \${B}) scale(\${sx}, \${sy})\`}>
+        <g transform={\`scale(\${K})\`}>
+          {/* taban tasarım */}
+          <g dangerouslySetInnerHTML={{ __html: STATIC }} />
 ${slotBlocks.join("\n")}${protoRender}
+        </g>
       </g>
+      {mode === "edit" && showGuides && <Guides w={NET_W} h={NET_H} bleed={B} safe={manifest.safe_mm} />}
+      {mode === "print" && cropMarks && <CropMarks w={NET_W} h={NET_H} bleed={B} />}
     </svg>
   );
 }
