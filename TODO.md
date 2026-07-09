@@ -19,6 +19,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
 - [ ] **Faz S ön koşulu: güvenlik yükseltme turu (mimar kararı #11):** npm audit'in major yükseltmeleri (vite 8, @fastify/static 9 vb.) SaaS'a çıkmadan ZORUNLU; v1'de yapılmama gerekçesi local-first + yalnız 127.0.0.1 dinleme.
+- [2026-07-09] Kullanıcı doğrudan PSD/EPS/CDR/PDF yükleme sordu. Karar: SVG kapısı KORUNUR (fabrika bekçisi vektör-metin formatı üzerine kurulu; PSD/CDR/EPS'i doğrudan parse etmek ayrı, kırılgan bir iş olurdu). Rehbere zaten "önce SVG'ye çevir" yönlendirmesi var. Stok görseller (Freepik/Adobe Stock, PNG/JPG) zaten SORUNSUZ — SVG'ye gömülü (embed) olarak eklenir, rehber madde 3 bunu kapsıyor. Gelecekte değer görürse: PDF→SVG dönüşümünü TEZGÂH'ın kendi içinde otomatikleştirme (örn. pdf2svg benzeri araçla) düşünülebilir — bugün gerek yok, Illustrator/İnternet dönüştürücüsü yeterli.
 
 ## Faz 5'e kayıt (FAZ4-GOREV §15)
 - [x] QR dijital menü statik HTML export'u. → FAZ5 §9'da uygulanıyor.
