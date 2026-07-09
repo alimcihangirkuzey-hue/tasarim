@@ -28,8 +28,9 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Dipnot metni:** Arriva klonunda "Prix nets en euros" teslim öncesi düzeltilecek (ZORUNLU); tercih edilen ifade müşteriye sorulabilir.
 
 ### Aras — teslim öncesi
-- [ ] **Slogan + Instagram müşteriden alınacak.** Kit v3'te "swii" bulaşması `slogan_fr` ve `contact.instagram` alanlarından temizlendi (ikisi de BOŞ bırakıldı — doğrulanmış değer elde yok). Gerçek değerler müşteriden alınıp teslim öncesi girilecek. Boş slogan render'da zarifçe düşüyor (trifold slot boş → hiçbir şey basmaz, M8); yine de teslimde doldurulmalı.
-- [ ] **Placeholder iletişim alanları (şüphe, kapsam dışı gözlem):** `contact.phone` = "3444333444", `contact.address` = "seyrantepe ispar" gerçek dışı görünüyor (Türkçe placeholder). Teslim öncesi doğrulanmalı — bu pakette DOKUNULMADI.
+> **Tek müşteri mesajı:** slogan + Instagram + telefon + adres, dördü birlikte teyit ettirilir. Değerler gelince ayrı küçük yazım yapılır (kit alanları doldurulur).
+- [ ] **Slogan + Instagram müşteriden alınacak.** Kit v3'te "swii" bulaşması `slogan_fr` ve `contact.instagram` alanlarından temizlendi (ikisi de BOŞ bırakıldı — doğrulanmış değer elde yok, tek-kaynak disiplini: uydurulmaz). Gerçek değerler müşteriden alınıp teslim öncesi girilecek. Boş slogan render'da zarifçe düşüyor (trifold/PageChrome slot boş → hiçbir şey basmaz, M8); yine de teslimde doldurulmalı.
+- [ ] **Telefon + adres teyidi (placeholder şüphesi).** `contact.phone` = "3444333444" (tekrarlı rakam), `contact.address` = "seyrantepe ispar " (İstanbul semti) bariz geliştirme artığı placeholder — Fransa'daki restorana basılırsa kaza. **Bu pakette DOKUNULMADI**; yukarıdaki tek mesajda slogan+Instagram ile birlikte müşteriye teyit ettirilecek.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
