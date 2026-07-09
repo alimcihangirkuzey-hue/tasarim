@@ -412,7 +412,9 @@
     "too_big": "SVG 25MB üstü — küçültün (gömülü görselleri optimize edin)",
     "err_outline": "Bu alan eğriye çevrilmiş/dekor — canlı metin değil, slot bağlanamaz (dekor kalır).",
     "err_font": "\"{font}\" fontu sistemde yok — canlı metne slot için önce Ayarlar → Fontlar'dan yükleyin.",
-    "zero_slot_ok": "Slot işaretlemeden de üretebilirsin — salt dekor/çıktı şablonu (cam/folyo)."
+    "zero_slot_ok": "Slot işaretlemeden de üretebilirsin — salt dekor/çıktı şablonu (cam/folyo).",
+    "source_note": "kaynak not (ör. arşiv/Dropbox yolu — opsiyonel)",
+    "source_file": "kaynak dosya"
   },
   "import": {
     "open": "Yapıştırarak ekle",

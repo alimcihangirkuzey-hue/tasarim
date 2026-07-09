@@ -41,6 +41,12 @@ const KNOWN_BINDS = [
 
 let TF_SEQ = 0;
 
+/** Tarayıcıda sha256 → hex (künye svg parmak izi, #20) */
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export function FactoryPage() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [svgText, setSvgText] = useState<string | null>(null);
@@ -53,6 +59,8 @@ export function FactoryPage() {
   const [hCm, setHCm] = useState("");
   const [tplId, setTplId] = useState("");
   const [tplName, setTplName] = useState("");
+  const [sourceFilename, setSourceFilename] = useState(""); /* künye #20 */
+  const [sourceNote, setSourceNote] = useState("");
 
   /* Kurulu font aileleri: yerleşik 6 ∪ yüklenen (custom_fonts) — #19c bekçisi */
   const fontsQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts });
@@ -78,6 +86,7 @@ export function FactoryPage() {
 
   const onFile = async (f: File) => {
     const raw = await f.text();
+    setSourceFilename(f.name); /* künye #20 */
     const r = sanitizeSvg(raw);
     setRemoved(r.removed);
     setViewBox(r.viewBox);
@@ -267,6 +276,8 @@ export function FactoryPage() {
         (el as SVGElement).style.removeProperty("outline");
       });
 
+      /* künye (#20): içe alınan (temizlenmiş) SVG'nin parmak izi */
+      const svgHash = svgText ? await sha256Hex(svgText) : "";
       const res = await fetch("/api/factory/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -276,6 +287,14 @@ export function FactoryPage() {
           w_mm: wMm, h_mm: hMm,
           viewBox, staticInner: cloneRoot.innerHTML,
           marks: marksPayload, proto: protoPayload,
+          provenance: {
+            source_filename: sourceFilename,
+            source_note: sourceNote.trim(),
+            fonts: analysis?.fonts ?? [],
+            embedded_assets: analysis?.embeddedRasterCount ?? 0,
+            missing_assets: analysis?.externalRasters ?? [],
+            svg_sha256: svgHash,
+          },
         }),
       });
       const j = (await res.json()) as { files?: string[]; detail?: string; error?: string };
@@ -366,6 +385,9 @@ export function FactoryPage() {
               {wCm && hCm && !sizeReady && <p className="error" style={{ fontSize: 11, margin: "2px 0 0" }}>{t("factory.size_bounds")}</p>}
               <input type="text" placeholder={t("factory.tpl_id")} value={tplId} onChange={(e) => setTplId(e.target.value)} />
               <input type="text" placeholder={t("factory.tpl_name")} value={tplName} onChange={(e) => setTplName(e.target.value)} />
+              {/* künye #20: kaynak not (opsiyonel — arşiv/Dropbox yolu) */}
+              <input type="text" placeholder={t("factory.source_note")} value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
+              {sourceFilename && <p className="muted" style={{ fontSize: 11, margin: "2px 0 0" }}>{t("factory.source_file")}: {sourceFilename}</p>}
             </div>
 
             <div className="epanel">

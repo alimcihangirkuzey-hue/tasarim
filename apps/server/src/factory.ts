@@ -41,6 +41,17 @@ export interface FactoryProto {
   itemSlots: FactoryItemSlot[];
 }
 
+/** Künye (provenance) — FAZ6 §4, mimar #20 (manifest yolu). imported_at sunucuda damgalanır. */
+export interface FactoryProvenance {
+  source_filename: string;
+  source_note: string;
+  fonts: string[];
+  embedded_assets: number;
+  missing_assets: string[];
+  svg_sha256: string;
+  imported_at: string;
+}
+
 export interface FactoryInput {
   id: string;
   name_tr: string;
@@ -51,6 +62,8 @@ export interface FactoryInput {
   staticInner: string;
   marks: FactorySlotMark[];
   proto: FactoryProto | null;
+  /** İçe alma künyesi (mimar #20); yoksa manifest'e yazılmaz */
+  provenance?: FactoryProvenance;
 }
 
 const ID_RE = /^[a-z][a-z0-9-]{2,40}$/;
@@ -91,6 +104,9 @@ ${input.proto.itemSlots.map((s) => `      { id: "${s.slot}", kind: "${s.slot ===
     ],
   },`
     : "";
+  const provenance = input.provenance
+    ? `\n  /* Künye (mimar #20): içe alma kaydı — yıllar sonra dönen işte sıfır arkeoloji */\n  provenance: ${JSON.stringify(input.provenance)},`
+    : "";
   return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12). Elle rafine edilebilir. */
 
 import type { TemplateManifest } from "../../types.js";
@@ -107,7 +123,7 @@ export const manifest: TemplateManifest = {
   slots: [
 ${slots}
   ],${repeater}
-  themes: ["or-noir", "aras-orange", "velours-rouge"],
+  themes: ["or-noir", "aras-orange", "velours-rouge"],${provenance}
 };
 `;
 }

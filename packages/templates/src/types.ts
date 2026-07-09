@@ -56,6 +56,25 @@ export interface RepeaterDef {
   itemSlots: SlotDef[];
 }
 
+/** Fabrika şablon künyesi (provenance) — FAZ6-GOREV §4, mimar kararı #20 (revize:
+    DB tablosu değil, üretilen manifest içinde yaşar; mimar #12 ile tutarlı). */
+export interface TemplateProvenance {
+  /** İçe alınan SVG dosyasının adı */
+  source_filename: string;
+  /** Kullanıcının girdiği kaynak yol/not (ör. Dropbox/arşiv yolu) — opsiyonel */
+  source_note: string;
+  /** SVG'de tespit edilen font aileleri */
+  fonts: string[];
+  /** Gömülü (data:) raster sayısı */
+  embedded_assets: number;
+  /** Render'a girmeyen harici/eksik varlık referansları */
+  missing_assets: string[];
+  /** İçe alınan (temizlenmiş) SVG'nin sha256'sı — "aynı dosya mı" kanıtı */
+  svg_sha256: string;
+  /** İçe alma tarihi (ISO) — sunucu damgalar */
+  imported_at: string;
+}
+
 export interface TemplateManifest {
   id: string;
   type: "menu";
@@ -70,6 +89,8 @@ export interface TemplateManifest {
   repeater?: RepeaterDef;
   /** Önerilen hazır temalar (brand her zaman ilk seçenek) */
   themes: string[];
+  /** Fabrika üretimi şablonlarda içe alma künyesi (mimar #20); el yazımıda yoktur */
+  provenance?: TemplateProvenance;
 }
 
 /** Tek render kaynağı (M3): editör mode:"edit", PDF sayfası mode:"print" ile aynı bileşeni çizer */

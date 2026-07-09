@@ -93,6 +93,28 @@ describe("şablon fabrikası kod üreticisi", () => {
     ).toMatch(/script/);
   });
 
+  it("#20: künye (provenance) manifest'e yazılır; yoksa yazılmaz", () => {
+    const withProv: FactoryInput = {
+      ...makeInput(),
+      provenance: {
+        source_filename: "A4_Arriva_menukartok.svg",
+        source_note: "Dropbox/arsiv/2025",
+        fonts: ["Bebas Neue"],
+        embedded_assets: 3,
+        missing_assets: ["http://x/a.png"],
+        svg_sha256: "abc123",
+        imported_at: "2026-07-09T00:00:00.000Z",
+      },
+    };
+    const m = generateManifestTs(withProv);
+    expect(m).toContain("provenance:");
+    expect(m).toContain("A4_Arriva_menukartok.svg");
+    expect(m).toContain("abc123");
+    expect(m).toContain("Bebas Neue");
+    /* künyesiz üretim provenance yazmaz */
+    expect(generateManifestTs(makeInput())).not.toContain("provenance:");
+  });
+
   it("#21: sıfır-slot (salt dekor) GEÇERLİ + ölçü sınırı 30–3000mm", () => {
     const ok = makeInput();
     /* sıfır-slot dekor şablonu — önceki 'en az bir slot' kuralı kaldırıldı */
