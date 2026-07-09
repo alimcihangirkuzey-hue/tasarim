@@ -13,8 +13,8 @@ Bir metnin canlı **slot** (fiyatı/adı otomatik değişen alan) olabilmesi iç
 
 - **A) Canlı bırak + fontu yükle (önerilen — slot istiyorsan):**
   metni eğriye çevirme. SVG'de `<text>` olarak kalır. Kullandığın font TEZGÂH'ta
-  kurulu değilse **Ayarlar → Fontlar**'dan yükle (woff2/ttf; TR+FR glif bekçisinden
-  geçmeli). Font yüklü değilse o metne slot **bağlanamaz** (ekran ≠ baskı olmasın diye).
+  kurulu değilse **Ayarlar → Fontlar**'dan yükle (woff2/ttf; TR+FR+DE-CH glif
+  bekçisinden geçmeli). Font yüklü değilse o metne slot **bağlanamaz** (ekran ≠ baskı olmasın diye).
 - **B) Eğriye çevir (outline / "Créer les contours"):**
   metin `<path>`'e döner, her yerde birebir görünür ama **slot olamaz** — dekor kalır.
   Fiyat/ad değişmeyecek sabit yazılar (ör. tabela sloganı) için uygundur.

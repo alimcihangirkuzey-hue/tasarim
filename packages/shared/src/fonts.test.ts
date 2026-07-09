@@ -8,6 +8,16 @@ describe("glif kapsam bekçisi (mimar #18)", () => {
     }
   });
 
+  it("DE-CH eki: küme ä ve Ä içerir (Arriva Käse/Süsskäse — N2)", () => {
+    expect(GLYPH_COVERAGE).toContain("ä");
+    expect(GLYPH_COVERAGE).toContain("Ä");
+  });
+
+  it("ä/Ä eksik font raporlanır (sadece onlar yoksa)", () => {
+    const drop = new Set(["ä".codePointAt(0), "Ä".codePointAt(0)]);
+    expect(missingCoverageGlyphs((cp) => !drop.has(cp))).toEqual(["ä", "Ä"]);
+  });
+
   it("tam kapsam → eksik yok", () => {
     const all = new Set([...GLYPH_COVERAGE].map((c) => c.codePointAt(0)!));
     expect(missingCoverageGlyphs((cp) => all.has(cp))).toEqual([]);

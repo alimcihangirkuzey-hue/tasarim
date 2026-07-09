@@ -4,8 +4,10 @@
    Yerleşik repo fontları çalışma zamanında MUAF (hepsi bu kümeyi geçtiği
    fonts.test.ts ile kanıtlı). SAF: fontkit'e bağlı değil (has() dışarıdan). */
 
-const LOWER = "çğıiöşüàâéèêëîïôœùû";
-const UPPER = "ÇĞİÖŞÜÀÂÉÈÊËÎÏÔŒÙÛ";
+/* FR+TR çekirdek repertuvar (#18) + DE-CH eki ä/Ä (Arriva: Käse/Süsskäse — mimar #18/N2).
+   ä/Ä sona eklendi: mevcut sıra-bağımlı testler (ğ/İ) etkilenmez. */
+const LOWER = "çğıiöşüàâéèêëîïôœùûä";
+const UPPER = "ÇĞİÖŞÜÀÂÉÈÊËÎÏÔŒÙÛÄ";
 export const GLYPH_COVERAGE: string = LOWER + UPPER + "€";
 
 /** Kümeden, has(codePoint) false dönen glifler (kapsam eksikleri). */
