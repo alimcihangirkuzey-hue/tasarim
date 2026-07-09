@@ -66,6 +66,7 @@ describe("şablon fabrikası kod üreticisi", () => {
     expect(m).toContain(`bind: "item.name_fr"`);
     expect(m).toContain(`bind: "item.prices"`);
     expect(m).toContain(`w_mm: 210, h_mm: 297`);
+    expect(m).toContain(`bleed_mm: 3`); /* #21: bleed 3mm (crop marks için) */
   });
 
   it("template: ölçek, statik taban, Slot sarmalayıcıları, repeater; script yok", () => {
@@ -83,6 +84,16 @@ describe("şablon fabrikası kod üreticisi", () => {
     expect(t).toContain("elle rafine");
   });
 
+  it("#21: template bleed + crop marks + custom ölçü override", () => {
+    const t = generateTemplateTsx(makeInput());
+    expect(t).toContain("customSizeMm(doc)"); /* belge override okunur */
+    expect(t).toContain("CropMarks"); /* print crop marks */
+    expect(t).toContain("Guides"); /* edit kılavuzları */
+    expect(t).toContain("bleed={B}");
+    expect(t).toContain("const B = manifest.bleed_mm");
+    expect(t).toContain("const NET_W = cs ? cs.w_mm : W");
+  });
+
   it("doğrulama: kötü id, çakışan id, temizlenmemiş içerik reddedilir", () => {
     const ok = makeInput();
     expect(validateFactoryInput(ok, ["menu-grid-cells"])).toBeNull();
@@ -91,6 +102,39 @@ describe("şablon fabrikası kod üreticisi", () => {
     expect(
       validateFactoryInput({ ...ok, staticInner: `<script>x</script>` }, [])
     ).toMatch(/script/);
+  });
+
+  it("#20: künye (provenance) manifest'e yazılır; yoksa yazılmaz", () => {
+    const withProv: FactoryInput = {
+      ...makeInput(),
+      provenance: {
+        source_filename: "A4_Arriva_menukartok.svg",
+        source_note: "Dropbox/arsiv/2025",
+        fonts: ["Bebas Neue"],
+        embedded_assets: 3,
+        missing_assets: ["http://x/a.png"],
+        svg_sha256: "abc123",
+        imported_at: "2026-07-09T00:00:00.000Z",
+      },
+    };
+    const m = generateManifestTs(withProv);
+    expect(m).toContain("provenance:");
+    expect(m).toContain("A4_Arriva_menukartok.svg");
+    expect(m).toContain("abc123");
+    expect(m).toContain("Bebas Neue");
+    /* künyesiz üretim provenance yazmaz */
+    expect(generateManifestTs(makeInput())).not.toContain("provenance:");
+  });
+
+  it("#21: sıfır-slot (salt dekor) GEÇERLİ + ölçü sınırı 30–3000mm", () => {
+    const ok = makeInput();
+    /* sıfır-slot dekor şablonu — önceki 'en az bir slot' kuralı kaldırıldı */
+    expect(validateFactoryInput({ ...ok, marks: [], proto: null }, [])).toBeNull();
+    /* ölçü sınırları */
+    expect(validateFactoryInput({ ...ok, w_mm: 20, h_mm: 297 }, [])).toMatch(/30.*3000/);
+    expect(validateFactoryInput({ ...ok, w_mm: 210, h_mm: 5000 }, [])).toMatch(/30.*3000/);
+    expect(validateFactoryInput({ ...ok, w_mm: 3000, h_mm: 3000 }, [])).toBeNull();
+    expect(validateFactoryInput({ ...ok, w_mm: 30, h_mm: 30 }, [])).toBeNull();
   });
 
   it("yön=column: hücreler sütun sütun akar (rowsPerCol mantığı)", () => {
@@ -104,6 +148,17 @@ describe("şablon fabrikası kod üreticisi", () => {
     const r = generateTemplateTsx(makeInput());
     expect(r).toContain("i % PROTO.cols");
     expect(r).toContain("satır satır");
+  });
+
+  it("#21: sıfır-slot (salt dekor) geçerli template üretir — Slot yok, STATIC + crop var", () => {
+    const decor: FactoryInput = { ...makeInput(), marks: [], proto: null };
+    const t = generateTemplateTsx(decor);
+    expect(t).not.toContain("<Slot ");
+    expect(t).toContain("dangerouslySetInnerHTML={{ __html: STATIC }}");
+    expect(t).toContain("CropMarks");
+    expect(t).toContain("const capacity = items.length;"); /* proto yok → tüm liste (dekor'da boş) */
+    const m = generateManifestTs(decor);
+    expect(m).toContain("slots: [\n\n  ],"); /* boş slot listesi */
   });
 
   it("barrel deterministik ve sıralı", () => {

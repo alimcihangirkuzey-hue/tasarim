@@ -7,6 +7,7 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { nowISO } from "@tezgah/shared";
 import { ROOT_DIR } from "../paths.js";
 import {
   generateBarrel,
@@ -66,6 +67,17 @@ const InputSchema = z.object({
       ),
     })
     .nullable(),
+  /* Künye (#20) — imported_at sunucuda damgalanır, istemci göndermez */
+  provenance: z
+    .object({
+      source_filename: z.string().max(260).default(""),
+      source_note: z.string().max(2000).default(""),
+      fonts: z.array(z.string()).default([]),
+      embedded_assets: z.number().int().nonnegative().default(0),
+      missing_assets: z.array(z.string()).default([]),
+      svg_sha256: z.string().max(64).default(""),
+    })
+    .optional(),
 });
 
 async function generatedIds(): Promise<string[]> {
@@ -81,7 +93,12 @@ export function factoryRoutes(app: FastifyInstance): void {
   app.get("/api/factory/generated", async () => generatedIds());
 
   app.post("/api/factory/generate", async (req, reply) => {
-    const input = InputSchema.parse(req.body ?? {}) as FactoryInput;
+    const parsed = InputSchema.parse(req.body ?? {});
+    /* Künye: imported_at sunucu saatiyle damgalanır (#20) */
+    const input: FactoryInput = {
+      ...parsed,
+      provenance: parsed.provenance ? { ...parsed.provenance, imported_at: nowISO() } : undefined,
+    } as FactoryInput;
     const existing = [...HANDWRITTEN_IDS, ...(await generatedIds())];
     const err = validateFactoryInput(input, existing);
     if (err) return reply.code(400).send({ error: "invalid_input", detail: err });

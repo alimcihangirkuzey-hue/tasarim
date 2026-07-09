@@ -5,8 +5,11 @@
    Karmaşık akışlar kapsam dışı — üretilen kod elle rafine edilir. */
 
 import { useMemo, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { sanitizeSvg } from "@tezgah/templates";
+import { Link } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { analyzeSvg, listTemplates, sanitizeSvg, type ImportAnalysis } from "@tezgah/templates";
+import { REPO_FONT_FAMILIES, missingFontFamilies } from "@tezgah/shared";
+import { api } from "../api";
 import { t } from "../i18n";
 import { SettingsTabs } from "./ParseDictPage";
 
@@ -38,15 +41,33 @@ const KNOWN_BINDS = [
 
 let TF_SEQ = 0;
 
+/** Tarayıcıda sha256 → hex (künye svg parmak izi, #20) */
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export function FactoryPage() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [svgText, setSvgText] = useState<string | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
   const [viewBox, setViewBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  const [wCm, setWCm] = useState("21");
-  const [hCm, setHCm] = useState("29.7");
+  const [analysis, setAnalysis] = useState<ImportAnalysis | null>(null);
+  const [sizeFromSvg, setSizeFromSvg] = useState(false); /* #19a: ölçü SVG'den mi geldi */
+  const [markErr, setMarkErr] = useState<string | null>(null); /* #19b/c bekçi mesajı */
+  const [wCm, setWCm] = useState(""); /* #19a: A4 varsayımı YOK — SVG'den türet ya da kullanıcı girer */
+  const [hCm, setHCm] = useState("");
   const [tplId, setTplId] = useState("");
   const [tplName, setTplName] = useState("");
+  const [sourceFilename, setSourceFilename] = useState(""); /* künye #20 */
+  const [sourceNote, setSourceNote] = useState("");
+
+  /* Kurulu font aileleri: yerleşik 6 ∪ yüklenen (custom_fonts) — #19c bekçisi */
+  const fontsQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts });
+  const installedFonts = useMemo(
+    () => [...REPO_FONT_FAMILIES, ...(fontsQ.data ?? []).map((f) => f.family)],
+    [fontsQ.data]
+  );
 
   const [selected, setSelected] = useState<Element | null>(null);
   const [marks, setMarks] = useState<Mark[]>([]);
@@ -65,14 +86,25 @@ export function FactoryPage() {
 
   const onFile = async (f: File) => {
     const raw = await f.text();
+    setSourceFilename(f.name); /* künye #20 */
     const r = sanitizeSvg(raw);
     setRemoved(r.removed);
     setViewBox(r.viewBox);
-    if (r.viewBox) {
-      /* boyut önerisi: en boy oranını koru (A4 genişlik varsayımı) */
-      const ratio = r.viewBox.h / r.viewBox.w;
-      setHCm((21 * ratio).toFixed(1));
+    /* #19: analiz HAM svg'de yapılır — sanitize harici href'i (raster) siler; eksik
+       varlıkları tespit etmek için ham metin şart (analiz salt-okuma, güvenli). Render sanitized. */
+    const an = analyzeSvg(raw);
+    setAnalysis(an);
+    /* #19a TÜRET-ÖNCE-SOR: fiziksel birim varsa otomatik, yoksa kullanıcı girer (A4 varsayımı yok) */
+    if (an.sizeMm) {
+      setWCm((an.sizeMm.w / 10).toString());
+      setHCm((an.sizeMm.h / 10).toString());
+      setSizeFromSvg(true);
+    } else {
+      setWCm("");
+      setHCm("");
+      setSizeFromSvg(false);
     }
+    setMarkErr(null);
     setSvgText(r.svg);
     setMarks([]);
     setItemMarks([]);
@@ -112,13 +144,35 @@ export function FactoryPage() {
     (el as SVGElement).style.setProperty("outline", `2px solid ${color}`);
   const clearOutline = (el: Element) => (el as SVGElement).style.removeProperty("outline");
 
+  /* #19(b)+(c) bekçi: metin taşıyan slot için canlı <text> + kurulu font şart.
+     null = geçer; string = engel mesajı. */
+  const textSlotBlock = (el: Element): string | null => {
+    const te = el.tagName === "text" ? el : el.querySelector("text");
+    if (!te) return t("factory.err_outline"); // #19b: eğri/dekor, canlı metin yok → bağlanamaz
+    const fam = (getComputedStyle(te as Element).fontFamily || "").split(",")[0].replace(/["']/g, "").trim();
+    if (fam && missingFontFamilies([fam], installedFonts).length > 0) {
+      return t("factory.err_font").replace("{font}", fam); // #19c: font kurulu değil
+    }
+    return null;
+  };
+
   const addMark = () => {
     if (!selected) return;
+    setMarkErr(null);
     const tfId = tfOf(selected)!;
     if (insideProto(selected)) {
+      /* ürün metin slotları (name/desc/price) de bekçiye tabi; photo hariç */
+      if (fItemSlot !== "photo") {
+        const err = textSlotBlock(selected);
+        if (err) { setMarkErr(err); return; }
+      }
       setItemMarks((prev) => [...prev.filter((x) => x.tfId !== tfId), { tfId, slot: fItemSlot }]);
       outline(selected, "#7C3AED");
       return;
+    }
+    if (fKind === "text" || fKind === "price") {
+      const err = textSlotBlock(selected);
+      if (err) { setMarkErr(err); return; }
     }
     const slotId = fSlotId.trim() || `${fKind}${marks.length + 1}`;
     const mark: Mark = {
@@ -223,6 +277,8 @@ export function FactoryPage() {
         (el as SVGElement).style.removeProperty("outline");
       });
 
+      /* künye (#20): içe alınan (temizlenmiş) SVG'nin parmak izi */
+      const svgHash = svgText ? await sha256Hex(svgText) : "";
       const res = await fetch("/api/factory/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,6 +288,14 @@ export function FactoryPage() {
           w_mm: wMm, h_mm: hMm,
           viewBox, staticInner: cloneRoot.innerHTML,
           marks: marksPayload, proto: protoPayload,
+          provenance: {
+            source_filename: sourceFilename,
+            source_note: sourceNote.trim(),
+            fonts: analysis?.fonts ?? [],
+            embedded_assets: analysis?.embeddedRasterCount ?? 0,
+            missing_assets: analysis?.externalRasters ?? [],
+            svg_sha256: svgHash,
+          },
         }),
       });
       const j = (await res.json()) as { files?: string[]; detail?: string; error?: string };
@@ -242,23 +306,66 @@ export function FactoryPage() {
 
   const scale = useMemo(() => (viewBox ? Math.min(720 / viewBox.w, 900 / viewBox.h) : 1), [viewBox]);
 
+  /* #19a/#21: ölçü hazır mı (30–3000 mm) — generate bekçisi */
+  const wMmNow = parseFloat(wCm.replace(",", ".")) * 10;
+  const hMmNow = parseFloat(hCm.replace(",", ".")) * 10;
+  const sizeReady =
+    Number.isFinite(wMmNow) && Number.isFinite(hMmNow) &&
+    wMmNow >= 30 && hMmNow >= 30 && wMmNow <= 3000 && hMmNow <= 3000;
+  /* #19c: SVG'de geçen kurulu-olmayan fontlar (bilgi amaçlı önizleme) */
+  const missingFonts = analysis ? missingFontFamilies(analysis.fonts, installedFonts) : [];
+
   return (
     <div>
       <SettingsTabs active="factory" />
       <h2>{t("factory.title")}</h2>
 
       {!svgText && (
-        <div className="panel">
-          <p className="muted">{t("factory.intro")}</p>
-          <input
-            type="file"
-            accept=".svg,image/svg+xml"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onFile(f);
-            }}
-          />
-        </div>
+        <>
+          <div className="panel">
+            <p className="muted">{t("factory.intro")}</p>
+            <p style={{ fontSize: 13, margin: "0 0 8px" }}>📄 <Link to="/settings/factory-guide">{t("factory.guide_link")}</Link></p>
+            <input
+              type="file"
+              accept=".svg,image/svg+xml"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onFile(f);
+              }}
+            />
+          </div>
+
+          {/* Künye kartları (#20): registry'deki üretilmiş şablonlar */}
+          {(() => {
+            const made = listTemplates().filter((e) => e.manifest.provenance);
+            if (made.length === 0) return null;
+            return (
+              <div className="panel">
+                <h3 style={{ marginTop: 0 }}>{t("factory.made_title")} ({made.length})</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                  {made.map((e) => {
+                    const p = e.manifest.provenance!;
+                    const fmt = e.manifest.formats[e.manifest.defaultFormat];
+                    return (
+                      <div key={e.manifest.id} style={{ border: "1px solid var(--c-line,#e5e0d6)", borderRadius: 10, padding: "10px 12px", fontSize: 12 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{e.manifest.name_tr}</div>
+                        <div className="muted" style={{ fontFamily: "monospace", fontSize: 11 }}>{e.manifest.id} · {fmt ? `${fmt.w_mm}×${fmt.h_mm}mm` : ""}</div>
+                        <dl style={{ margin: "6px 0 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 8px" }}>
+                          <dt className="muted">{t("factory.kunye_source")}</dt><dd style={{ margin: 0 }}>{p.source_filename || "—"}</dd>
+                          {p.source_note && (<><dt className="muted">{t("factory.kunye_note")}</dt><dd style={{ margin: 0 }}>{p.source_note}</dd></>)}
+                          <dt className="muted">{t("factory.kunye_fonts")}</dt><dd style={{ margin: 0 }}>{p.fonts.length ? p.fonts.join(", ") : "—"}</dd>
+                          <dt className="muted">{t("factory.kunye_assets")}</dt><dd style={{ margin: 0 }}>{p.embedded_assets} {t("factory.embedded")}{p.missing_assets.length ? ` · ${p.missing_assets.length} ${t("factory.missing_asset")}` : ""}</dd>
+                          <dt className="muted">sha256</dt><dd style={{ margin: 0, fontFamily: "monospace", fontSize: 10, wordBreak: "break-all" }}>{p.svg_sha256.slice(0, 16)}…</dd>
+                          <dt className="muted">{t("factory.kunye_date")}</dt><dd style={{ margin: 0 }}>{p.imported_at.slice(0, 10)}</dd>
+                        </dl>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </>
       )}
 
       {svgText && (
@@ -284,18 +391,43 @@ export function FactoryPage() {
 
           {/* PANEL */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* #19: içe alma özeti — tek ekran (ölçü, canlı/outline, font, raster) */}
+            {analysis && (
+              <div className="epanel">
+                <h3>{t("factory.summary")}</h3>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.7 }}>
+                  <li>{t("factory.sum_size")}: {sizeFromSvg ? t("factory.size_svg") : <b className="error">{t("factory.size_ask")}</b>}</li>
+                  <li>{t("factory.sum_text")}: {analysis.liveTextCount} · {t("factory.sum_path")}: {analysis.pathCount}
+                    {analysis.looksOutlined && <span className="error"> — {t("factory.outlined")}</span>}</li>
+                  <li>{t("factory.sum_fonts")}: {analysis.fonts.length === 0 ? "—" : analysis.fonts.join(", ")}
+                    {missingFonts.length > 0 && (
+                      <span className="error"> · {t("factory.font_missing")}: {missingFonts.join(", ")} — <Link to="/settings/fonts">{t("factory.font_upload")}</Link></span>
+                    )}</li>
+                  <li>{t("factory.sum_raster")}: {analysis.embeddedRasterCount} {t("factory.embedded")}
+                    {analysis.externalRasters.length > 0 && <span className="error"> · {analysis.externalRasters.length} {t("factory.missing_asset")}</span>}</li>
+                  {analysis.tooBig && <li className="error">{t("factory.too_big")}</li>}
+                </ul>
+              </div>
+            )}
+
             <div className="epanel">
               <h3>{t("factory.size")}</h3>
+              {!sizeFromSvg && <p className="error" style={{ fontSize: 12, margin: "0 0 4px" }}>{t("factory.size_ask")}</p>}
               <div className="row" style={{ gap: 6 }}>
-                <input type="text" value={wCm} onChange={(e) => setWCm(e.target.value)} style={{ width: 60 }} /> ×
-                <input type="text" value={hCm} onChange={(e) => setHCm(e.target.value)} style={{ width: 60 }} /> cm
+                <input type="text" value={wCm} onChange={(e) => { setWCm(e.target.value); setSizeFromSvg(false); }} style={{ width: 60 }} placeholder="en" /> ×
+                <input type="text" value={hCm} onChange={(e) => { setHCm(e.target.value); setSizeFromSvg(false); }} style={{ width: 60 }} placeholder="boy" /> cm
               </div>
+              {wCm && hCm && !sizeReady && <p className="error" style={{ fontSize: 11, margin: "2px 0 0" }}>{t("factory.size_bounds")}</p>}
               <input type="text" placeholder={t("factory.tpl_id")} value={tplId} onChange={(e) => setTplId(e.target.value)} />
               <input type="text" placeholder={t("factory.tpl_name")} value={tplName} onChange={(e) => setTplName(e.target.value)} />
+              {/* künye #20: kaynak not (opsiyonel — arşiv/Dropbox yolu) */}
+              <input type="text" placeholder={t("factory.source_note")} value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
+              {sourceFilename && <p className="muted" style={{ fontSize: 11, margin: "2px 0 0" }}>{t("factory.source_file")}: {sourceFilename}</p>}
             </div>
 
             <div className="epanel">
               <h3>{t("factory.mark")}</h3>
+              {markErr && <p className="error" style={{ fontSize: 12 }}>{markErr}</p>}
               {!selected && <p className="muted" style={{ fontSize: 13 }}>{t("factory.pick_hint")}</p>}
               {selected && (
                 <>
@@ -366,12 +498,17 @@ export function FactoryPage() {
                   <button className="icon" onClick={() => removeMark(m.tfId)}>✕</button>
                 </div>
               ))}
+              {/* #21: sıfır-slot dekor şablonu GEÇERLİ — "en az bir slot" kuralı kaldırıldı.
+                  Bekçi: geçerli ölçü (30–3000mm) + 25MB altı. */}
               <button
-                disabled={!tplId.trim() || (marks.length === 0 && !protoTf) || generate.isPending}
+                disabled={!tplId.trim() || !sizeReady || analysis?.tooBig || generate.isPending}
                 onClick={() => generate.mutate()}
               >
                 ⚙ {t("factory.generate")}
               </button>
+              {marks.length === 0 && !protoTf && (
+                <p className="muted" style={{ fontSize: 11, margin: "4px 0 0" }}>{t("factory.zero_slot_ok")}</p>
+              )}
               {generate.isError && <span className="error">{(generate.error as Error).message}</span>}
               {generate.data && (
                 <div className="warn ok" style={{ fontSize: 12 }}>

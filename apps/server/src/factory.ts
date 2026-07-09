@@ -41,6 +41,17 @@ export interface FactoryProto {
   itemSlots: FactoryItemSlot[];
 }
 
+/** Künye (provenance) — FAZ6 §4, mimar #20 (manifest yolu). imported_at sunucuda damgalanır. */
+export interface FactoryProvenance {
+  source_filename: string;
+  source_note: string;
+  fonts: string[];
+  embedded_assets: number;
+  missing_assets: string[];
+  svg_sha256: string;
+  imported_at: string;
+}
+
 export interface FactoryInput {
   id: string;
   name_tr: string;
@@ -51,6 +62,8 @@ export interface FactoryInput {
   staticInner: string;
   marks: FactorySlotMark[];
   proto: FactoryProto | null;
+  /** İçe alma künyesi (mimar #20); yoksa manifest'e yazılmaz */
+  provenance?: FactoryProvenance;
 }
 
 const ID_RE = /^[a-z][a-z0-9-]{2,40}$/;
@@ -58,10 +71,12 @@ const ID_RE = /^[a-z][a-z0-9-]{2,40}$/;
 export function validateFactoryInput(input: FactoryInput, existingIds: string[]): string | null {
   if (!ID_RE.test(input.id)) return "id küçük harf-kebap olmalı (örn. pizza-menu-a4)";
   if (existingIds.includes(input.id)) return `şablon kimliği zaten var: ${input.id}`;
-  if (!(input.w_mm > 10 && input.h_mm > 10)) return "gerçek boyut (mm) geçersiz";
+  /* #21: serbest ölçü sınırları 30–3000 mm */
+  if (!(input.w_mm >= 30 && input.h_mm >= 30 && input.w_mm <= 3000 && input.h_mm <= 3000))
+    return "gerçek boyut 30–3000 mm aralığında olmalı";
   if (!(input.viewBox.w > 0 && input.viewBox.h > 0)) return "viewBox geçersiz";
   if (input.staticInner.includes("<script")) return "temizlenmemiş içerik (script)";
-  if (input.marks.length === 0 && !input.proto) return "en az bir slot işaretle";
+  /* #21: sıfır-slot (salt dekor/cam-folyo) GEÇERLİDİR — önceki "en az bir slot" kuralı kaldırıldı */
   return null;
 }
 
@@ -89,6 +104,9 @@ ${input.proto.itemSlots.map((s) => `      { id: "${s.slot}", kind: "${s.slot ===
     ],
   },`
     : "";
+  const provenance = input.provenance
+    ? `\n  /* Künye (mimar #20): içe alma kaydı — yıllar sonra dönen işte sıfır arkeoloji */\n  provenance: ${JSON.stringify(input.provenance)},`
+    : "";
   return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12). Elle rafine edilebilir. */
 
 import type { TemplateManifest } from "../../types.js";
@@ -97,7 +115,7 @@ export const manifest: TemplateManifest = {
   id: "${input.id}",
   type: "menu",
   name_tr: ${JSON.stringify(input.name_tr)},
-  bleed_mm: 0,
+  bleed_mm: 3,
   safe_mm: 3,
   formats: { custom: { w_mm: ${input.w_mm}, h_mm: ${input.h_mm}, label_tr: "Özel (${input.w_mm}×${input.h_mm} mm)" } },
   defaultFormat: "custom",
@@ -105,7 +123,7 @@ export const manifest: TemplateManifest = {
   slots: [
 ${slots}
   ],${repeater}
-  themes: ["or-noir", "aras-orange", "velours-rouge"],
+  themes: ["or-noir", "aras-orange", "velours-rouge"],${provenance}
 };
 `;
 }
@@ -220,12 +238,13 @@ import { formatPrice, type Item } from "@tezgah/shared";
 import { assetById, resolveSelection, resolveSlotValue, type BindScope } from "../../engine/binding.js";
 import { buildQr } from "../../engine/qr.js";
 import { resolveTheme, themeStyle } from "../../themes.js";
+import { customSizeMm } from "../../engine/custom-size.js";
 import type { TemplateProps } from "../../types.js";
-import { Slot } from "../../parts/svg.js";
+import { CropMarks, Guides, Slot } from "../../parts/svg.js";
 import { manifest } from "./manifest.js";
 
-const W = ${input.w_mm};
-const H = ${input.h_mm};
+const W = ${input.w_mm}; /* doğal en (mm) */
+const H = ${input.h_mm}; /* doğal boy (mm) */
 const K = ${kRound}; /* orijinal birim → mm */
 
 /* Temizlenmiş taban tasarım (işaretli slotlar çıkarıldı) */
@@ -235,7 +254,7 @@ ${badgeChunks}${protoConst}
 const str = (x: unknown): string => (typeof x === "string" ? x : x == null ? "" : String(x));
 
 export function GeneratedTemplate(props: TemplateProps): ReactNode {
-  const { client, doc, mode, selectedSlot, onSlotClick } = props;
+  const { client, doc, mode, showGuides, cropMarks, selectedSlot, onSlotClick } = props;
   const theme = resolveTheme(doc.theme_id, client.brandkit);
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const asset = (id: string | null) => assetById(client, id);
@@ -256,14 +275,30 @@ ${qrDecls}
   void rowsPerCol;` : "const capacity = items.length;"}
   void capacity;
 
+  /* #21: bleed 3mm + crop marks; belge override (params.width_mm/height_mm) doğal ölçüyü ezer */
+  const B = manifest.bleed_mm;
+  const cs = customSizeMm(doc);
+  const NET_W = cs ? cs.w_mm : W;
+  const NET_H = cs ? cs.h_mm : H;
+  const sx = NET_W / W;
+  const sy = NET_H / H;
+  const PW = NET_W + 2 * B;
+  const PH = NET_H + 2 * B;
+
   return (
-    <svg viewBox={\`0 0 \${W} \${H}\`} width={\`\${W}mm\`} height={\`\${H}mm\`}
+    <svg viewBox={\`0 0 \${PW} \${PH}\`} width={\`\${PW}mm\`} height={\`\${PH}mm\`}
       xmlns="http://www.w3.org/2000/svg" style={{ ...themeStyle(theme), display: "block" }}>
-      <g transform={\`scale(\${K})\`}>
-        {/* taban tasarım */}
-        <g dangerouslySetInnerHTML={{ __html: STATIC }} />
+      <rect width={PW} height={PH} fill="var(--c-bg)" />
+      {/* içerik: doğal birim → mm (scale K) → override ölçek (sx,sy) → bleed ofseti */}
+      <g transform={\`translate(\${B}, \${B}) scale(\${sx}, \${sy})\`}>
+        <g transform={\`scale(\${K})\`}>
+          {/* taban tasarım */}
+          <g dangerouslySetInnerHTML={{ __html: STATIC }} />
 ${slotBlocks.join("\n")}${protoRender}
+        </g>
       </g>
+      {mode === "edit" && showGuides && <Guides w={NET_W} h={NET_H} bleed={B} safe={manifest.safe_mm} />}
+      {mode === "print" && cropMarks && <CropMarks w={NET_W} h={NET_H} bleed={B} />}
     </svg>
   );
 }

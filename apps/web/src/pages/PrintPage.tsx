@@ -6,7 +6,7 @@
 import { useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { TEMPLATES } from "@tezgah/templates";
+import { TEMPLATES, customSizeMm, supportsCustomSize } from "@tezgah/templates";
 import { api } from "../api";
 
 declare global {
@@ -51,10 +51,13 @@ export function PrintPage() {
           const fmt = entry.manifest.formats[fmtId];
           return { w_mm: fmt.w_mm, h_mm: fmt.h_mm, bleed_mm: entry.manifest.bleed_mm };
         })();
-    const bleed = size.bleed_mm;
+    /* #21: fabrika (custom-format) şablonda belge override (params.width_mm/height_mm) */
+    const cs = supportsCustomSize(entry.manifest) ? customSizeMm(doc) : null;
+    const eff = cs ? { ...size, w_mm: cs.w_mm, h_mm: cs.h_mm } : size;
+    const bleed = eff.bleed_mm;
     const pages = onlyPage !== null ? 1 : entry.pageCount ? entry.pageCount(client, doc) : 1;
-    const w = variant === "print" ? size.w_mm + 2 * bleed : size.w_mm;
-    const h = variant === "print" ? size.h_mm + 2 * bleed : size.h_mm;
+    const w = variant === "print" ? eff.w_mm + 2 * bleed : eff.w_mm;
+    const h = variant === "print" ? eff.h_mm + 2 * bleed : eff.h_mm;
 
     void document.fonts.ready.then(() => {
       window.__PAGE_SIZE__ = { w, h, pages };

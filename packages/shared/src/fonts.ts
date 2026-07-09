@@ -17,3 +17,30 @@ export function missingCoverageGlyphs(has: (codePoint: number) => boolean): stri
   }
   return out;
 }
+
+/** packages/templates/fonts altındaki yerleşik OFL aileleri (ADR-8).
+    Fabrika font bekçisi (mimar #19c): sistemde kurulu = bunlar ∪ custom_fonts. */
+export const REPO_FONT_FAMILIES: readonly string[] = [
+  "Anton",
+  "Oswald",
+  "Archivo Black",
+  "Bitter",
+  "Inter",
+  "Pacifico",
+];
+
+/** Kullanılan aile adlarından, kurulu (repo ∪ custom) kümede OLMAYANLAR.
+    Karşılaştırma büyük/küçük harf ve kenar boşluğu duyarsız (#19c). */
+export function missingFontFamilies(used: string[], installed: string[]): string[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const have = new Set(installed.map(norm));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const u of used) {
+    const key = norm(u);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (!have.has(key)) out.push(u.trim());
+  }
+  return out;
+}
