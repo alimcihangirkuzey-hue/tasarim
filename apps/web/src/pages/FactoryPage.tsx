@@ -323,6 +323,7 @@ export function FactoryPage() {
         <>
           <div className="panel">
             <p className="muted">{t("factory.intro")}</p>
+            <p style={{ fontSize: 13, margin: "0 0 8px" }}>📄 <Link to="/settings/factory-guide">{t("factory.guide_link")}</Link></p>
             <input
               type="file"
               accept=".svg,image/svg+xml"

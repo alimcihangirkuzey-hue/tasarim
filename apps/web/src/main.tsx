@@ -14,6 +14,7 @@ import { ThemesPage } from "./pages/ThemesPage";
 import { FontsPage } from "./pages/FontsPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
 import { FactoryPage } from "./pages/FactoryPage";
+import { FactoryGuidePage } from "./pages/FactoryGuidePage";
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -98,6 +99,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/settings/fonts" element={<FontsPage />} />
                     <Route path="/settings/parse" element={<ParseDictPage />} />
                     <Route path="/settings/factory" element={<FactoryPage />} />
+                    <Route path="/settings/factory-guide" element={<FactoryGuidePage />} />
                   </Routes>
                 </Layout>
               }

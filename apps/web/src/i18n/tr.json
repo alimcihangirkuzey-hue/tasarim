@@ -420,7 +420,8 @@
     "kunye_note": "Not",
     "kunye_fonts": "Fontlar",
     "kunye_assets": "Varlıklar",
-    "kunye_date": "İçe alma"
+    "kunye_date": "İçe alma",
+    "guide_link": "Arşivden şablon: InDesign/Illustrator → SVG rehberi"
   },
   "import": {
     "open": "Yapıştırarak ekle",
