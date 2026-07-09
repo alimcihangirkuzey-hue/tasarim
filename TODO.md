@@ -17,13 +17,17 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [2026-07-09] FAZ 6 main'de: fabrika SVG bekçileri (ölçü türet-önce-sor, outline/font/varlık tespiti), künye (manifest-provenance), serbest ölçü + custom bleed/crop, sıfır-slot dekor hattı, InDesign→SVG rehberi (docs/arsiv-ithalati.md). Migrationsız faz. Sıradaki pilot işi: kullanıcının arşivinden ilk gerçek InDesign→SVG dönüşümü.
 
 ## Küçük bekleyen işler (uygulama YOK — mimar onayı bekler, M10)
-- [2026-07-09] **Glif bekçisi #18 kümesine ä/Ä genişletmesi (DE-CH kapsamı).** Gerekçe: Arriva verisinde Käse/Süsskäse (ä) var; repo fontları (Anton/Inter) render'da kapsıyor AMA kullanıcı ÖZEL FONT yüklerse bekçi (`GLYPH_COVERAGE`, `packages/shared/src/fonts.ts`) ä'yı doğrulamıyor (küme FR+TR: ö/ü var, ä yok). M9 kapsam metnine "+DE-CH" eki mimar onayı bekler. Bu pakette uygulama YOK. Aday paketleme: Aras marka kiti v3 ("swii" temizliği) ile birlikte.
+- [x] [2026-07-09] **Glif bekçisi #18 kümesine ä/Ä genişletmesi (DE-CH kapsamı).** → UYGULANDI (commit ecc9b6b, N2-B). `GLYPH_COVERAGE` sonuna ä/Ä eklendi (`packages/shared/src/fonts.ts`); 2 birim test + tam paket yeşil (255). Repo fontları (8 dosya, Pacifico dahil) ä/Ä içeriyor → kalıcı #18 repo-font testi kırılmadı. Bekçi davranışı: özel font yüklemede HARD-BLOCK (400 missing_glyphs, eksik glif listesi) + GLOBAL (tüm müşteriler için sıkılaşır). CONSTITUTION'a dokunulmadı; rehber kapsam ibaresi "TR+FR+DE-CH" olarak güncellendi (docs).
 - [2026-07-09] **İçe aktarma politikası — fiyatsız ürün.** Şu an fiyatsız satır içe aktarmada ATLANIYOR (Arriva/Schnitzelbrot katalogta hiç yok); motor boş fiyatı güvenli basar (""). İthalatın "boş fiyatla al + içe-aktarma raporunda işaretle" seçeneği mimar kararı bekler ("auf Anfrage / günün fiyatı" senaryosu). Gözlem: içe aktarma yanıtı `skipped[]` listesinde `no-price` olarak DÖNDÜRÜYOR (anlık); kalıcı/UI raporlaması ayrı — paketlenirken doğrulanacak, raporlamıyorsa rapor satırı da kapsama girer.
 - [2026-07-09] **Dipnot varsayılanı — `footnote_fr` EUR-gömülü.** Varsayılan "Prix nets en euros" CHF müşteride yanlış; Almanca menüde FR dipnot ayrıca soru. Para birimi + dil duyarlı varsayılan gerekli. ä/Ä bekçi genişletmesiyle birlikte **"DE-CH yerelleştirme"** aday kümesi.
 
 ### Arriva — teslim öncesi
 - [ ] **Schnitzelbrot:** fiyat gelirse KATALOĞA EKLEME işi (ürün mevcut değil — "fiyatsız duruyor" değil, hiç yok).
 - [ ] **Dipnot metni:** Arriva klonunda "Prix nets en euros" teslim öncesi düzeltilecek (ZORUNLU); tercih edilen ifade müşteriye sorulabilir.
+
+### Aras — teslim öncesi
+- [ ] **Slogan + Instagram müşteriden alınacak.** Kit v3'te "swii" bulaşması `slogan_fr` ve `contact.instagram` alanlarından temizlendi (ikisi de BOŞ bırakıldı — doğrulanmış değer elde yok). Gerçek değerler müşteriden alınıp teslim öncesi girilecek. Boş slogan render'da zarifçe düşüyor (trifold slot boş → hiçbir şey basmaz, M8); yine de teslimde doldurulmalı.
+- [ ] **Placeholder iletişim alanları (şüphe, kapsam dışı gözlem):** `contact.phone` = "3444333444", `contact.address` = "seyrantepe ispar" gerçek dışı görünüyor (Türkçe placeholder). Teslim öncesi doğrulanmalı — bu pakette DOKUNULMADI.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
