@@ -18,6 +18,12 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 ## Küçük bekleyen işler (uygulama YOK — mimar onayı bekler, M10)
 - [2026-07-09] **Glif bekçisi #18 kümesine ä/Ä genişletmesi (DE-CH kapsamı).** Gerekçe: Arriva verisinde Käse/Süsskäse (ä) var; repo fontları (Anton/Inter) render'da kapsıyor AMA kullanıcı ÖZEL FONT yüklerse bekçi (`GLYPH_COVERAGE`, `packages/shared/src/fonts.ts`) ä'yı doğrulamıyor (küme FR+TR: ö/ü var, ä yok). M9 kapsam metnine "+DE-CH" eki mimar onayı bekler. Bu pakette uygulama YOK. Aday paketleme: Aras marka kiti v3 ("swii" temizliği) ile birlikte.
+- [2026-07-09] **İçe aktarma politikası — fiyatsız ürün.** Şu an fiyatsız satır içe aktarmada ATLANIYOR (Arriva/Schnitzelbrot katalogta hiç yok); motor boş fiyatı güvenli basar (""). İthalatın "boş fiyatla al + içe-aktarma raporunda işaretle" seçeneği mimar kararı bekler ("auf Anfrage / günün fiyatı" senaryosu). Gözlem: içe aktarma yanıtı `skipped[]` listesinde `no-price` olarak DÖNDÜRÜYOR (anlık); kalıcı/UI raporlaması ayrı — paketlenirken doğrulanacak, raporlamıyorsa rapor satırı da kapsama girer.
+- [2026-07-09] **Dipnot varsayılanı — `footnote_fr` EUR-gömülü.** Varsayılan "Prix nets en euros" CHF müşteride yanlış; Almanca menüde FR dipnot ayrıca soru. Para birimi + dil duyarlı varsayılan gerekli. ä/Ä bekçi genişletmesiyle birlikte **"DE-CH yerelleştirme"** aday kümesi.
+
+### Arriva — teslim öncesi
+- [ ] **Schnitzelbrot:** fiyat gelirse KATALOĞA EKLEME işi (ürün mevcut değil — "fiyatsız duruyor" değil, hiç yok).
+- [ ] **Dipnot metni:** Arriva klonunda "Prix nets en euros" teslim öncesi düzeltilecek (ZORUNLU); tercih edilen ifade müşteriye sorulabilir.
 
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
