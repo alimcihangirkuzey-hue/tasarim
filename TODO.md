@@ -32,6 +32,14 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Arka plan servisi (bat'sız kalıcı çalışma):** sunucu+web `start-tezgah.bat` olmadan da PC açıkken kalıcı çalışsın — Windows servisi / tepsi (tray) uygulaması. Gerekçe: pilotta ve F5 kabul koşusunda sunucu süreci birkaç kez dışarıdan sonlandı (kırılgan başlatma); servisleştirme bunu kalıcı çözer.
 - [ ] Arka plan silme / AI foto eşleme · çoklu-yüzey sahne · preset yönetim arayüzü → yukarıdaki Faz S kalemleriyle aynı (mükerrer değil).
 
+## Faz 7'ye kayıt (FAZ6-GOREV §8 — "Yol A" adayları, uygulama YOK)
+- [ ] Çoklu fiyat sütunu (ör. pizza Ø24/Ø32/Ø40) — şu an tek fiyat + açıklamada not (Arriva pilotunda sıkıştırıldı). Fiyat modeline birden çok etiketli sütun.
+- [ ] Birim/süre alanı (ör. "/kg", "/saat", "330ml") — ürün fiyat varyantına yapısal birim.
+- [ ] İletişimde yapısal web alanı (`BrandKit.contact.website`) — şu an notlara yazılıyor (Arriva).
+- [ ] Sektörsüz şablon dili + rehber örnekleri (restoran-dışı işler için genel terminoloji).
+- [ ] TV / 16:9 ekran menü varyantı (dijital ekran çıktısı).
+- [ ] Katalogdan hücreye sürükle-takas (editörde slot'a doğrudan ürün bırakma).
+
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
 - [ ] **Grid şablonuna çok sayfalı akış (flow) modu:** 80-100 kalemlik kataloglar için (Faz 4).
