@@ -16,6 +16,9 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [2026-07-09] İkinci gerçek müşteri: Arriva (CHF, çok-boyutlu pizza fiyatı tek-fiyat modeline not olarak sıkıştırıldı — FAZ 6 adayı: çoklu fiyat sütunu desteği).
 - [2026-07-09] FAZ 6 main'de: fabrika SVG bekçileri (ölçü türet-önce-sor, outline/font/varlık tespiti), künye (manifest-provenance), serbest ölçü + custom bleed/crop, sıfır-slot dekor hattı, InDesign→SVG rehberi (docs/arsiv-ithalati.md). Migrationsız faz. Sıradaki pilot işi: kullanıcının arşivinden ilk gerçek InDesign→SVG dönüşümü.
 
+## Küçük bekleyen işler (uygulama YOK — mimar onayı bekler, M10)
+- [2026-07-09] **Glif bekçisi #18 kümesine ä/Ä genişletmesi (DE-CH kapsamı).** Gerekçe: Arriva verisinde Käse/Süsskäse (ä) var; repo fontları (Anton/Inter) render'da kapsıyor AMA kullanıcı ÖZEL FONT yüklerse bekçi (`GLYPH_COVERAGE`, `packages/shared/src/fonts.ts`) ä'yı doğrulamıyor (küme FR+TR: ö/ü var, ä yok). M9 kapsam metnine "+DE-CH" eki mimar onayı bekler. Bu pakette uygulama YOK. Aday paketleme: Aras marka kiti v3 ("swii" temizliği) ile birlikte.
+
 ## Faz S'e kayıt (mimar defteri — uygulama İLERİDE, ayrı mimar paketiyle)
 - [ ] **SaaS evrimi:** Postgres'e geçiş, auth + çok kiracılı çalışma alanı (workspace), bulut depolama, render kuyruğu, abonelik. Local-first (M7) v1 ilkesi korunur; SaaS ayrı bir dağıtım hedefi olarak tasarlanacak. Şimdilik YALNIZ kayıt — kapsam kararı mimarındır.
 - [ ] **Faz S ön koşulu: güvenlik yükseltme turu (mimar kararı #11):** npm audit'in major yükseltmeleri (vite 8, @fastify/static 9 vb.) SaaS'a çıkmadan ZORUNLU; v1'de yapılmama gerekçesi local-first + yalnız 127.0.0.1 dinleme.
