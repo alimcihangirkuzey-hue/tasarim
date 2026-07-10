@@ -29,6 +29,8 @@
     "client_name_ph": "ör. Antalya Kebab — Lyon",
     "client_deferred": "Müşteri kaydı görüşme onaylanınca oluşturulur (yarım görüşme liste kirletmez).",
     "no_clients": "Henüz müşteri yok.",
+    "fetch_error": "Sunucuya ulaşılamıyor — TEZGÂH sunucusu çalışıyor mu?",
+    "retry": "Tekrar dene",
     "menu_lang": "Menü dili",
     "packs_multi": "Karma işletme için birden çok paket seçebilirsin (ör. kebap + pizza).",
     "cat": "kategori",

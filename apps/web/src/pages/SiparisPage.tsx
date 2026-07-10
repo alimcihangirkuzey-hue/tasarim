@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { t } from "../i18n";
 import { useIntake } from "../store/intakeStore";
-import { NavBar } from "../components/IntakeNav";
+import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
 import { IntakeSummaryStep } from "../components/IntakeSummaryStep";
@@ -168,6 +168,15 @@ function ClientStep() {
 function PacksStep() {
   const s = useIntake();
   const sectorsQ = useQuery({ queryKey: ["sectors"], queryFn: api.sectors });
+
+  if (sectorsQ.isError) {
+    return (
+      <section className="intake-step">
+        <h2>{t("intake.step_packs")}</h2>
+        <FetchError onRetry={() => sectorsQ.refetch()} />
+      </section>
+    );
+  }
 
   return (
     <section className="intake-step">

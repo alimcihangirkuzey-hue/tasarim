@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Question, SectorPack } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
-import { NavBar, pickML } from "./IntakeNav";
+import { FetchError, NavBar, pickML } from "./IntakeNav";
 import { useIntake, type IntakeChip, type IntakeProduct, type MenuLang } from "../store/intakeStore";
 
 /* Ürünün varyantlarını sorulardan türet: ilk seçenekli (choice/portion) varyant
@@ -54,6 +54,20 @@ export function IntakeProductsStep() {
       hide_content: false,
     });
   };
+
+  if (sectorsQ.isError || ingredientsQ.isError) {
+    return (
+      <section className="intake-step">
+        <h2>{t("intake.step_products")}</h2>
+        <FetchError
+          onRetry={() => {
+            if (sectorsQ.isError) void sectorsQ.refetch();
+            if (ingredientsQ.isError) void ingredientsQ.refetch();
+          }}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="intake-step">
