@@ -182,6 +182,9 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0
     if (p.kind !== "cell") continue;
     const item = p.item;
 
+    /* Fiyat-bekliyor (K3/F7-A): fiyatsız ürün bilgi uyarısı — sessiz boşluk yok (M8) */
+    if (item.prices.length === 0) warnings.push({ type: "empty-price", itemId: item.id });
+
     const nameText = theme.uppercaseHeading
       ? item.name_fr.toLocaleUpperCase("fr-FR")
       : item.name_fr;

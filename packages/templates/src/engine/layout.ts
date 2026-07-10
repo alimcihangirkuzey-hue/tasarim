@@ -316,6 +316,8 @@ export type LayoutWarning =
   | { type: "text-truncated"; slotId: string; itemId?: string }
   | { type: "low-dpi"; slotId: string; itemId?: string; effectiveDpi: number; level: "yellow" | "red" }
   | { type: "empty-required"; slotId: string }
+  /* F7-A (K3): fiyatsız (fiyat-bekliyor) ürün — bilgi uyarısı, render güvenli (M8) */
+  | { type: "empty-price"; itemId: string }
   | { type: "mixed-variants"; categoryId: string }
   | { type: "qr-contrast"; slotId: string }
   | { type: "contrast"; ratio: number }

@@ -159,4 +159,12 @@ describe("analyzeGrid", () => {
     expect(a.format).toBe("a4-portrait");
     expect(a.cols).toBe(3);
   });
+
+  it("fiyatsız ürün empty-price bilgi uyarısı üretir (K3 paritesi)", () => {
+    const client = makeClient();
+    const target = client.catalog.categories[0].items[0];
+    target.prices = []; // fiyat-bekliyor
+    const a = analyzeGrid(client, baseDoc());
+    expect(a.warnings.some((w) => w.type === "empty-price" && w.itemId === target.id)).toBe(true);
+  });
 });

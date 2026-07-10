@@ -56,6 +56,8 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_broderie_info");
     case "min-font":
       return t("editor.warn_min_font");
+    case "empty-price":
+      return `${t("editor.warn_empty_price")} (${w.itemId})`;
   }
 }
 
