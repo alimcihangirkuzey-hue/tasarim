@@ -24,6 +24,8 @@ import { factoryRoutes } from "./routes/factory.js";
 import { cmykRoutes } from "./routes/cmyk.js";
 import { fontRoutes } from "./routes/fonts.js";
 import { digitalMenuRoutes } from "./routes/digital-menu.js";
+import { sectorRoutes } from "./routes/sectors.js";
+import { ingredientRoutes } from "./routes/ingredients.js";
 
 migrate();
 
@@ -73,6 +75,8 @@ factoryRoutes(app);
 cmykRoutes(app);
 fontRoutes(app);
 digitalMenuRoutes(app);
+sectorRoutes(app);
+ingredientRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {
