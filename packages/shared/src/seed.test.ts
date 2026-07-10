@@ -91,6 +91,18 @@ describe("SECTOR_PACKS tohum paketleri (F7-B2)", () => {
     }
   });
 
+  it("kategori notları taşındı (F7-C/E): Tabaklar + Günün Yemekleri (gerçek terminoloji)", () => {
+    const kebap = SECTOR_PACKS.find((p) => p.id === "pack_kebap_doner")!;
+    const tabaklar = kebap.categories.find((c) => c.name.tr === "Tabaklar")!;
+    expect(tabaklar.note?.fr).toBe("Servies avec frites et salade");
+    const lokanta = SECTOR_PACKS.find((p) => p.id === "pack_lokanta")!;
+    const gunun = lokanta.categories.find((c) => c.name.tr === "Günün Yemekleri")!;
+    expect(gunun.note?.fr).toBe("Change chaque jour");
+    /* not olmayan kategoride note undefined */
+    const sandvic = kebap.categories.find((c) => c.name.tr === "Sandviçler")!;
+    expect(sandvic.note).toBeUndefined();
+  });
+
   it("COMMON_QUESTIONS 12 (q_icerik ÇIKARILDI #3); paket-özel sorular montajlandı", () => {
     expect(COMMON_QUESTIONS.length).toBe(12);
     expect(COMMON_QUESTIONS.some((qq) => qq.id === "q_icerik")).toBe(false);
@@ -108,6 +120,7 @@ describe("Seed DE alanları CH-Almancası — ß KULLANILMAZ (İsviçre kuralı,
     for (const p of SECTOR_PACKS)
       for (const cat of p.categories) {
         if (cat.name.de.includes("ß")) bad.push(`${p.id} kategori: "${cat.name.de}"`);
+        if (cat.note?.de?.includes("ß")) bad.push(`${p.id} kategori notu: "${cat.note.de}"`);
         for (const it of cat.items)
           if (it.name.de.includes("ß")) bad.push(`${p.id}/${it.name.tr}: "${it.name.de}"`);
       }

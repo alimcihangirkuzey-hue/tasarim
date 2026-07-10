@@ -40,6 +40,9 @@ export const IntakeItemSchema = z
     variants: z.array(IntakeVariantSchema).default([]),
     chips: z.array(IngredientRefSchema).default([]),
     extras: z.array(z.string()).default([]),
+    /* Kategori notu (F7-C/E) — UI menü diline çözer (SectorPackCategory.note'tan);
+       projeksiyon Category.note_fr'ye taşır (katalogda alan zaten var). */
+    category_note: z.string().optional(),
   })
   .passthrough(); // bilinmeyen intake anahtarları korunur (veri kaybetmeme)
 export type IntakeItem = z.infer<typeof IntakeItemSchema>;
@@ -108,11 +111,16 @@ export function projectIntake(
 
   const pending: ProjectionResult["pending"] = [];
   const translationGaps: ProjectionResult["translationGaps"] = [];
-  const categories: Category[] = catOrder.map((catName, ci) => ({
+  const categories: Category[] = catOrder.map((catName, ci): Category => {
+    const catItems = byCat.get(catName)!;
+    /* Kategori notu (F7-C/E): bu kategorideki ilk dolu category_note → note_fr */
+    const catNote = catItems.map((it) => it.category_note?.trim()).find((n) => n) ?? "";
+    return {
     id: `${prefix}_c${ci + 1}`,
     name_fr: catName,
     order: ci + 1,
-    items: byCat.get(catName)!.map((it, ii): Item => {
+    ...(catNote ? { note_fr: catNote } : {}),
+    items: catItems.map((it, ii): Item => {
       const prices: PriceVariant[] = it.variants
         .filter((v): v is IntakeVariant & { value: number } => v.value !== null)
         .map((v) => ({ label: v.label, value: v.value }));
@@ -147,7 +155,8 @@ export function projectIntake(
         order: ii + 1,
       };
     }),
-  }));
+    };
+  });
 
   return { categories, pending, translationGaps };
 }
