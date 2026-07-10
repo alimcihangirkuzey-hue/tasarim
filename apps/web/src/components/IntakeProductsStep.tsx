@@ -82,7 +82,8 @@ export function IntakeProductsStep() {
             return (
               <details key={pack.id + catName} className="intake-catgroup">
                 <summary>
-                  <strong>{catName}</strong> <span className="sub">· {pack.label_tr}</span>
+                  <strong>{catName}</strong>
+                  <span className="sub"> · {pack.label_tr}</span>
                 </summary>
                 <div className="intake-list" style={{ marginTop: 8 }}>
                   {cat.items.map((item) => (
