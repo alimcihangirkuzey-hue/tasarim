@@ -17,6 +17,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [2026-07-09] FAZ 5 main'de: 3 sütunlu yoğun menü, katalog yapıştır-içe aktarma, tıkla-takas, sürükle-bırak, font yükleme, şablon rehberi, QR dijital menü v1 kullanımda. Pilot devam ediyor.
 - [2026-07-09] İkinci gerçek müşteri: Arriva (CHF, çok-boyutlu pizza fiyatı tek-fiyat modeline not olarak sıkıştırıldı — FAZ 6 adayı: çoklu fiyat sütunu desteği).
 - [2026-07-09] FAZ 6 main'de: fabrika SVG bekçileri (ölçü türet-önce-sor, outline/font/varlık tespiti), künye (manifest-provenance), serbest ölçü + custom bleed/crop, sıfır-slot dekor hattı, InDesign→SVG rehberi (docs/arsiv-ithalati.md). Migrationsız faz. Sıradaki pilot işi: kullanıcının arşivinden ilk gerçek InDesign→SVG dönüşümü.
+- [2026-07-10] **FAZ 7 AÇILDI — öncelik Sipariş Modu** (mimar+kullanıcı kararı). Atölye içi + saha (tablet/telefon, mobil-öncelikli) tıkla-seç sipariş alma aracı — restoran POS'u DEĞİL. Vizyon: sektör profilleri (hazır kategori+ürün setleri) + ürün-başına akıllı sorular + içerik çipleri (klavyesiz) + çok-dilli (TR tıkla / FR-DE bas) öğrenen malzeme kütüphanesi + kapanış doneler/şartlar çeklisti. Arriva/Aras müşteri-dönüş hattı PARKTA (dönüş gelirse ayrı paket). Keşif (salt-okuma) bu oturumda yapıldı: PAKET-F7-KEŞİF envanter raporu + veri-modeli iskeleti mimara döndü.
 
 ## Küçük bekleyen işler (uygulama YOK — mimar onayı bekler, M10)
 - [x] [2026-07-09] **Glif bekçisi #18 kümesine ä/Ä genişletmesi (DE-CH kapsamı).** → UYGULANDI (commit ecc9b6b, N2-B). `GLYPH_COVERAGE` sonuna ä/Ä eklendi (`packages/shared/src/fonts.ts`); 2 birim test + tam paket yeşil (255). Repo fontları (8 dosya, Pacifico dahil) ä/Ä içeriyor → kalıcı #18 repo-font testi kırılmadı. Bekçi davranışı: özel font yüklemede HARD-BLOCK (400 missing_glyphs, eksik glif listesi) + GLOBAL (tüm müşteriler için sıkılaşır). CONSTITUTION'a dokunulmadı; rehber kapsam ibaresi "TR+FR+DE-CH" olarak güncellendi (docs).
@@ -52,13 +53,19 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Arka plan servisi (bat'sız kalıcı çalışma):** sunucu+web `start-tezgah.bat` olmadan da PC açıkken kalıcı çalışsın — Windows servisi / tepsi (tray) uygulaması. Gerekçe: pilotta ve F5 kabul koşusunda sunucu süreci birkaç kez dışarıdan sonlandı (kırılgan başlatma); servisleştirme bunu kalıcı çözer.
 - [ ] Arka plan silme / AI foto eşleme · çoklu-yüzey sahne · preset yönetim arayüzü → yukarıdaki Faz S kalemleriyle aynı (mükerrer değil).
 
-## Faz 7'ye kayıt (FAZ6-GOREV §8 — "Yol A" adayları, uygulama YOK)
-- [ ] Çoklu fiyat sütunu (ör. pizza Ø24/Ø32/Ø40) — şu an tek fiyat + açıklamada not (Arriva pilotunda sıkıştırıldı). Fiyat modeline birden çok etiketli sütun.
+## Faz 7 (AÇIK — öncelik Sipariş Modu; alttaki "Yol A" adayları FAZ6-GOREV §8)
+- [ ] **★ ÖNCELİK — Sipariş Modu (atölye + saha, mobil-öncelikli).** Acemi pazarlamacı tıkla-seç akışla sipariş alır; görüşmede stil/tasarım KONUŞULMAZ. Bileşenler: (a) **sektör profilleri** (kebap/döner · pizza/fast-food · semt lokantası · café · pastane/tatlıcı) = hazır kategori+ürün setleri; (b) **ürün-başına akıllı sorular** (yarım/taneli porsiyon, ek kaymak/dondurma ister mi); (c) **İÇERİK ÇİPLERİ** — malzeme tıkla-yaz (klavye yok), çipte olmayan malzeme bir kez yazılınca **öğrenen kütüphaneye** katılır, malzeme adı **çok-dilli** (TR tıkla / FR-DE basılır); (d) **kapanış çeklisti** — logo, foto politikası (müşteri fotosu=ücretsiz işleme / atölye çekimi=ücretli), telefon-adres teyidi, kapora eğilimi notu, tasarım teslim zamanı sözü. **SINIR:** atölye içi araçtır, restoran POS'u DEĞİL. Keşif raporu + veri-modeli iskeleti: PAKET-F7-KEŞİF (2026-07-10, salt-okuma). Uygulama kararı + plan mimarda.
+- [ ] Çoklu fiyat sütunu (ör. pizza Ø24/Ø32/Ø40) — şu an tek fiyat + açıklamada not (Arriva pilotunda sıkıştırıldı). Fiyat modeline birden çok etiketli sütun. **[KEŞİF NOTU: veri+render zemini HAZIR — `prices[]` çoklu varyant + `priceLayout:"columns"` menu-liste-premium'de çalışıyor; eksik olan editörde çoklu-fiyat GİRİŞ UI'si.]**
 - [ ] Birim/süre alanı (ör. "/kg", "/saat", "330ml") — ürün fiyat varyantına yapısal birim.
 - [ ] İletişimde yapısal web alanı (`BrandKit.contact.website`) — şu an notlara yazılıyor (Arriva).
 - [ ] Sektörsüz şablon dili + rehber örnekleri (restoran-dışı işler için genel terminoloji).
 - [ ] TV / 16:9 ekran menü varyantı (dijital ekran çıktısı).
 - [ ] Katalogdan hücreye sürükle-takas (editörde slot'a doğrudan ürün bırakma).
+
+### Park notları (PAKET-F7-KEŞİF — 2026-07-10, uygulama YOK)
+- [ ] **Glif bekçisi politika kararı — hard-block KALIR.** Özel font ä/Ä dahil kümeyi tam karşılamazsa yükleme reddedilir (mevcut davranış korunur). Tetikleyici: bir font YALNIZCA ä/Ä yüzünden reddedilirse, dil-duyarlı küme (müşteri diline göre gevşetme) tartışması O GÜN açılır — bugün spekülatif genişletme yok. İlgili: [[phase-6-durumu]] bekçi kararları.
+- [ ] **Harness/health-check standardı: `127.0.0.1`, `localhost` değil.** Windows'ta `localhost` önce IPv6 `::1`'e çözülüyor; server yalnız IPv4 `127.0.0.1`'e bind olduğundan `localhost` üzerinden fetch/Invoke-WebRequest ECONNREFUSED veriyor (N2 kapanışında yaşandı). Tüm betik/health-check/örnek çağrılarda `127.0.0.1` kullan. (Server saha erişimi için `0.0.0.0` bind'i ayrı iş — Sipariş Modu saha maddesi.)
+- [ ] **Müşteri kaydı hijyeni — gerçek/test işaretleme (KULLANICI CEVABI BEKLENİYOR).** Kayıtlı müşterilerden `ARAS Grill Lyon`, `Basel Kebap Haus`, `Antalya Kebab — Lyon` gerçek mi test mi belirsiz; kullanıcıya sorulacak, test olanlar temizlenecek/etiketlenecek. (Gerçek pilot müşteriler: Aras Restaurant, Arriva Restaurant; klon: Arriva Native N1.)
 
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
