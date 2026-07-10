@@ -264,3 +264,7 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .intake-warn ul { margin: 6px 0 0; padding-left: 18px; }
 .intake-result { text-align: center; display: flex; flex-direction: column; gap: 12px; padding: 16px 0; }
 .intake-result .big { font-size: 40px; }
+.intake-catgroup { border: 1px solid var(--c-line); border-radius: 10px; background: #fff; }
+.intake-catgroup summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-size: 15px; }
+.intake-catgroup[open] summary { border-bottom: 1px solid var(--c-line); }
+.intake-catgroup > .intake-list { padding: 10px; }
