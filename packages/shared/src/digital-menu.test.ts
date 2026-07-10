@@ -9,6 +9,7 @@ function makeClient(categories: Category[], currency: ClientDTO["currency"] = "E
     slug: "aras-restaurant",
     notes: "",
     currency,
+    menu_language: "fr",
     brandkit: defaultBrandKit(),
     catalog: { ...defaultCatalog(), categories },
     assets: [],

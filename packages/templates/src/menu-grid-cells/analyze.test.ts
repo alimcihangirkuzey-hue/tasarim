@@ -14,6 +14,7 @@ function makeClient(overrides: Partial<ClientDTO> = {}): ClientDTO {
     slug: "test-kebab",
     notes: "",
     currency: "EUR",
+    menu_language: "fr",
     brandkit: defaultBrandKit(),
     catalog: CatalogSchema.parse({
       categories: [

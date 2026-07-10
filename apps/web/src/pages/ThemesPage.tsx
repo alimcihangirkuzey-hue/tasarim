@@ -43,7 +43,7 @@ function demoClient(): ClientDTO {
     },
   ];
   return {
-    id: "cli_demo", name: "Chez Demo", slug: "chez-demo", notes: "", currency: "EUR",
+    id: "cli_demo", name: "Chez Demo", slug: "chez-demo", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit, catalog, assets: [], created_at: "t", updated_at: "t",
   };
 }

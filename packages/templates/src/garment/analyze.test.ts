@@ -20,7 +20,7 @@ function makeClient(withMono = true): ClientDTO {
     urls: { orig: "/o", master: `/m/${id}`, thumb: "/t" },
   });
   return {
-    id: "cli_g", name: "Garment Test", slug: "garment-test", notes: "", currency: "EUR",
+    id: "cli_g", name: "Garment Test", slug: "garment-test", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit, catalog: defaultCatalog(),
     assets: withMono ? [asset("ast_p"), asset("ast_m")] : [asset("ast_p")],
     created_at: "t", updated_at: "t",

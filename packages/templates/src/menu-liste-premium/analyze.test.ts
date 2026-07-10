@@ -14,6 +14,7 @@ function makeClient(itemCount = 10, currency: "EUR" | "CHF" = "EUR"): ClientDTO 
     slug: "liste-test",
     notes: "",
     currency,
+    menu_language: "fr",
     brandkit: defaultBrandKit(),
     catalog: CatalogSchema.parse({
       categories: [

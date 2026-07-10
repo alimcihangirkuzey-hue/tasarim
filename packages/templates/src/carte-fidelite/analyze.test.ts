@@ -4,7 +4,7 @@ import { manifest } from "./manifest.js";
 import { analyzeFidelite, CARD_H, CARD_W } from "./analyze.js";
 
 const client: ClientDTO = {
-  id: "cli_c", name: "Kart Test", slug: "kart-test", notes: "", currency: "EUR",
+  id: "cli_c", name: "Kart Test", slug: "kart-test", notes: "", currency: "EUR", menu_language: "fr",
   brandkit: defaultBrandKit(), catalog: defaultCatalog(),
   assets: [], created_at: "t", updated_at: "t",
 };

@@ -14,7 +14,7 @@ function makeClient(itemCount = 12): ClientDTO {
   kit.contact.google_review_url = "https://g.page/r/abc";
   kit.slogan_fr = "Le vrai goût du grill";
   return {
-    id: "cli_t", name: "Trifold Test", slug: "trifold-test", notes: "", currency: "EUR",
+    id: "cli_t", name: "Trifold Test", slug: "trifold-test", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit,
     catalog: CatalogSchema.parse({
       categories: [

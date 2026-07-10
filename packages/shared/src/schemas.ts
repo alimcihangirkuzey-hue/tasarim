@@ -302,6 +302,8 @@ export interface ClientDTO {
   slug: string;
   notes: string;
   currency: Currency;
+  /** Menü çıktı dili (F7-A/K2) — kalıcı + API-yazılır; render henüz tüketmez (TODO) */
+  menu_language: MenuLanguage;
   brandkit: BrandKit;
   catalog: Catalog;
   assets: AssetDTO[];
@@ -318,6 +320,7 @@ export const ClientUpdateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   notes: z.string().max(4000).optional(),
   currency: CurrencySchema.optional(),
+  menu_language: MenuLanguageSchema.optional(),
   brandkit: BrandKitSchema.optional(),
   catalog: CatalogSchema.optional(),
 });

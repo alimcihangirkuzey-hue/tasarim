@@ -294,3 +294,74 @@ describe("migration v7 (Faz 5 — export_records.client_id, dijital menü)", () 
     }
   });
 });
+
+describe("migration v8 (Faz 7 — ingredient_library + clients.menu_language)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 7; i++) db.exec(MIGRATIONS[i]);
+  });
+
+  it("ingredient_library: seed kaydı; fr/de/usage_count default; learned kaydı", () => {
+    db.prepare(
+      `INSERT INTO ingredient_library (id, tr, source, created_at) VALUES ('ing_et', 'Et', 'seed', 't')`
+    ).run();
+    /* fr/de '' , usage_count 0 default (TR tıkla / FR-DE sonradan basılır) */
+    expect(db.prepare("SELECT * FROM ingredient_library WHERE id='ing_et'").get()).toMatchObject({
+      id: "ing_et", tr: "Et", fr: "", de: "", usage_count: 0, source: "seed",
+    });
+    db.prepare(
+      `INSERT INTO ingredient_library (id, tr, fr, de, usage_count, source, created_at)
+       VALUES ('ing_x', 'Yeni', 'Nouveau', 'Neu', 3, 'learned', 't')`
+    ).run();
+    expect(
+      db.prepare("SELECT source, usage_count FROM ingredient_library WHERE id='ing_x'").get()
+    ).toEqual({ source: "learned", usage_count: 3 });
+  });
+
+  it("ingredient_library.source yalnız seed|learned (CHECK)", () => {
+    expect(() =>
+      db
+        .prepare(`INSERT INTO ingredient_library (id, tr, source, created_at) VALUES ('bad', 'X', 'imported', 't')`)
+        .run()
+    ).toThrow(/CHECK/i);
+  });
+
+  it("ingredient_library.id PRIMARY KEY: aynı id ikinci kez giremez", () => {
+    db.prepare(`INSERT INTO ingredient_library (id, tr, source, created_at) VALUES ('dup', 'A', 'seed', 't')`).run();
+    expect(() =>
+      db.prepare(`INSERT INTO ingredient_library (id, tr, source, created_at) VALUES ('dup', 'B', 'learned', 't')`).run()
+    ).toThrow(/UNIQUE|PRIMARY/i);
+  });
+
+  it("clients.menu_language: mevcut satır 'fr' default alır (geriye uyumlu); 'de' güncellenebilir", () => {
+    /* cli1 seedV2'de menu_language'sız eklendi → ALTER DEFAULT 'fr' */
+    expect(db.prepare("SELECT menu_language FROM clients WHERE id='cli1'").get()).toEqual({
+      menu_language: "fr",
+    });
+    db.prepare("UPDATE clients SET menu_language='de' WHERE id='cli1'").run();
+    expect(db.prepare("SELECT menu_language FROM clients WHERE id='cli1'").get()).toEqual({
+      menu_language: "de",
+    });
+  });
+
+  it("ingredient_library GLOBAL: müşteri silinince kalır (client_id bağı yok — K2)", () => {
+    db.prepare(`INSERT INTO ingredient_library (id, tr, source, created_at) VALUES ('g', 'Global', 'seed', 't')`).run();
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM ingredient_library").get()).toMatchObject({ c: 1 });
+  });
+
+  it("Faz 1-7 akışları kırılmadı: önceki tablolar + kolonlar okunabilir", () => {
+    for (const q of [
+      "SELECT menu_language, currency FROM clients LIMIT 1",
+      "SELECT id, family FROM custom_fonts LIMIT 1",
+      "SELECT client_id, kind FROM export_records LIMIT 1",
+      "SELECT settings_json FROM mockup_scenes LIMIT 1",
+      "SELECT word FROM parse_synonyms LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});
