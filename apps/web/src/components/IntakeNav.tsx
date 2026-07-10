@@ -40,3 +40,16 @@ export function pickML(name: { tr: string; fr: string; de: string }, lang: MenuL
   const order = lang === "de" ? [name.de, name.fr, name.tr] : [name.fr, name.tr, name.de];
   return (order.find((v) => v && v.trim() !== "") ?? "").trim();
 }
+
+/** Sunucuya ulaşılamadığında GÖRÜNÜR hata + tekrar-dene (HF1/B — M8: sessiz boş
+    liste yok). Yalnız intake fetch'lerinde (sectors/ingredients) kullanılır. */
+export function FetchError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="intake-warn full">
+      <p>{t("intake.fetch_error")}</p>
+      <button className="intake-btn ghost" style={{ marginTop: 8 }} onClick={onRetry}>
+        {t("intake.retry")}
+      </button>
+    </div>
+  );
+}
