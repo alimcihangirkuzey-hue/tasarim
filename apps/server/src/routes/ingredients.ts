@@ -5,11 +5,13 @@
 import type { FastifyInstance } from "fastify";
 import {
   IngredientCreateSchema,
+  IngredientPatchSchema,
   INGREDIENT_SEED,
   findChipByTr,
   mergeIngredients,
   newId,
   nowISO,
+  resolvePatchTarget,
   type IngredientLibraryRow,
   type ResolvedChip,
 } from "@tezgah/shared";
@@ -52,5 +54,40 @@ export function ingredientRoutes(app: FastifyInstance): void {
       id: row.id, tr: row.tr, fr: row.fr, de: row.de, tags: [], source: "learned", usage_count: 0,
     };
     return { created: true, chip };
+  });
+
+  /* Çeviri tamamlama (fr/de doldurma). "TAMAMLAMA" semantiği: boş/verilmemiş alan
+     mevcut değeri EZMEZ (fill, clear değil — || ). Seed çipin düzeltmesi kopyala-yaz
+     ile source=seed override satırı açar (#4); learned/override satırı update edilir. */
+  app.patch<{ Params: { id: string } }>("/api/ingredients/:id", async (req, reply) => {
+    const patch = IngredientPatchSchema.parse(req.body ?? {});
+    const target = resolvePatchTarget(INGREDIENT_SEED, allRows(), req.params.id);
+    if (target.action === "not-found") return reply.code(404).send({ error: "not_found" });
+
+    if (target.action === "update") {
+      const cur = db.prepare(`${selectAll} WHERE id = ?`).get(target.id) as IngredientLibraryRow;
+      db.prepare("UPDATE ingredient_library SET fr = ?, de = ? WHERE id = ?").run(
+        patch.fr?.trim() || cur.fr,
+        patch.de?.trim() || cur.de,
+        target.id
+      );
+    } else {
+      /* insert-override: kod-seed'i DB'ye override olarak yaz (source=seed) */
+      const base = target.base;
+      db.prepare(
+        `INSERT INTO ingredient_library (id, tr, fr, de, usage_count, source, created_at)
+         VALUES (@id, @tr, @fr, @de, 0, 'seed', @created_at)`
+      ).run({
+        id: base.id,
+        tr: base.tr,
+        fr: patch.fr?.trim() || base.fr,
+        de: patch.de?.trim() || base.de,
+        created_at: nowISO(),
+      });
+    }
+
+    /* Güncel birleşik çipi dön (override'da tags kod-seed'den korunur — ŞERH 1) */
+    const chip = mergeIngredients(INGREDIENT_SEED, allRows()).find((c) => c.id === req.params.id);
+    return { chip };
   });
 }
