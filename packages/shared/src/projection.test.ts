@@ -166,3 +166,81 @@ describe("projectIntake (F7-A / K1) — SAF deterministik projeksiyon", () => {
     expect(() => CatalogSchema.parse({ categories: r.categories })).not.toThrow();
   });
 });
+
+describe("projectIntake çeviri fallback + boşluk işareti (MERGE-F7-A önkoşulu)", () => {
+  it("fr istenir, fr boş → tr'ye düşer + translationGaps işareti (sessiz değil)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "Grill", name: "Adana", variants: [{ label: "seul", value: 10 }], chips: [{ tr: "Kıyma" }] },
+      ]),
+      "SEED",
+      "fr"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Kıyma"); // tr fallback basıldı
+    expect(r.translationGaps).toEqual([
+      { category: "Grill", item: "Adana", label: "Kıyma", missingLang: "fr", usedLang: "tr" },
+    ]);
+  });
+
+  it("de istenir, de boş → fr'ye düşer (tr'den ÖNCE — de→fr→tr sırası)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "Et", fr: "Viande" }] },
+      ]),
+      "SEED",
+      "de"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Viande"); // tr ("Et") değil, fr fallback
+    expect(r.translationGaps).toEqual([
+      { category: "X", item: "Y", label: "Viande", missingLang: "de", usedLang: "fr" },
+    ]);
+  });
+
+  it("de istenir, yalnız tr dolu → tr'ye düşer (zincir sonu)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "Soğan" }] },
+      ]),
+      "SEED",
+      "de"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Soğan");
+    expect(r.translationGaps[0]).toMatchObject({ missingLang: "de", usedLang: "tr" });
+  });
+
+  it("istenen dil dolu → fallback yok, translationGaps boş", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "X",
+          name: "Y",
+          variants: [{ label: "seul", value: 5 }],
+          chips: [{ tr: "Et", fr: "Viande", de: "Fleisch" }],
+        },
+      ]),
+      "SEED",
+      "de"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Fleisch");
+    expect(r.translationGaps).toEqual([]);
+  });
+
+  it("karışık: bir çip tam bir çip fallback → yalnız eksik olan işaretlenir", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Pizzas",
+          name: "Mixte",
+          variants: [{ label: "seul", value: 9 }],
+          chips: [{ fr: "Tomate" }, { tr: "Zeytin" }], // fr menü: 1. çip tam, 2. çip fr boş→tr
+        },
+      ]),
+      "SEED",
+      "fr"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Tomate, Zeytin");
+    expect(r.translationGaps).toEqual([
+      { category: "Pizzas", item: "Mixte", label: "Zeytin", missingLang: "fr", usedLang: "tr" },
+    ]);
+  });
+});

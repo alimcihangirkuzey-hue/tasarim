@@ -10,7 +10,8 @@
      fazında açılır (TODO).
 
    Şablonlar dokunulmaz: render bugünkü desc_fr'den çalışır. desc_fr menü diline
-   göre kurulur; TAM çok-dilli render henüz yok (TODO, K2). */
+   göre kurulur; istenen dil boşsa fallback (fr→tr→de / de→fr→tr) + çeviri boşluğu
+   işareti (translationGaps, sessiz değil). TAM çok-dilli render henüz yok (TODO, K2). */
 
 import { z } from "zod";
 import {
@@ -55,21 +56,33 @@ export interface ProjectionResult {
   categories: Category[];
   /** Fiyat-bekliyor ürünler (prices boş kaldı) — sessiz boşluk yok (K3/M8) */
   pending: Array<{ name: string; category: string }>;
+  /** Çeviri boşlukları (MERGE-F7-A önkoşulu): istenen menü dili boş olan çipte
+      fallback kullanıldı — sessiz değil, işaretlenir. missingLang boş kalan dil,
+      usedLang basılan fallback dili, label kullanılan etiket. */
+  translationGaps: Array<{
+    category: string;
+    item: string;
+    label: string;
+    missingLang: MenuLanguage;
+    usedLang: "tr" | "fr" | "de";
+  }>;
 }
 
-/** Çipin menü diline göre görünen etiketi; boşsa TR→diğer dile düşer.
-    D1 refine en az bir dolu dil garanti eder; yine de güvenli fallback. */
-function chipLabel(chip: IngredientRef, lang: MenuLanguage): string {
-  const order = lang === "de" ? [chip.de, chip.tr, chip.fr] : [chip.fr, chip.tr, chip.de];
-  return (order.find((s) => s.trim() !== "") ?? "").trim();
-}
-
-/** desc_fr'yi kur: içerik listesi (çipler, virgüllü) + ek-ikram (görsel ayraçla).
-    Ek-ikram içerik listesinden GÖRSEL olarak ayrılabilir kalır (D2). */
-function buildDesc(chips: IngredientRef[], extras: string[], lang: MenuLanguage): string {
-  const content = chips.map((c) => chipLabel(c, lang)).filter((s) => s !== "").join(CONTENT_SEP);
-  const cleanExtras = extras.map((e) => e.trim()).filter((e) => e !== "");
-  return [content, ...cleanExtras].filter((s) => s !== "").join(EXTRA_SEP);
+/* Çipi menü diline çöz: istenen dil boşsa FALLBACK zinciri — fr istenirse
+   fr→tr→de, de istenirse de→fr→tr (müşteriye bakan menüde tr son çare; MERGE
+   önkoşulu). D1 refine ≥1 dolu dil garanti eder. Basılan etiketle birlikte HANGİ
+   dilin kullanıldığını da döndürür (çeviri boşluğunu işaretlemek için). */
+function resolveChip(
+  chip: IngredientRef,
+  lang: MenuLanguage
+): { label: string; usedLang: "tr" | "fr" | "de" } {
+  const chain: Array<"tr" | "fr" | "de"> =
+    lang === "de" ? ["de", "fr", "tr"] : ["fr", "tr", "de"];
+  for (const l of chain) {
+    const s = chip[l].trim();
+    if (s !== "") return { label: s, usedLang: l };
+  }
+  return { label: "", usedLang: lang }; // teorik: refine ≥1 dil garanti eder
 }
 
 /**
@@ -94,6 +107,7 @@ export function projectIntake(
   }
 
   const pending: ProjectionResult["pending"] = [];
+  const translationGaps: ProjectionResult["translationGaps"] = [];
   const categories: Category[] = catOrder.map((catName, ci) => ({
     id: `${prefix}_c${ci + 1}`,
     name_fr: catName,
@@ -104,10 +118,27 @@ export function projectIntake(
         .map((v) => ({ label: v.label, value: v.value }));
       /* boş fiyat = fiyat-bekliyor: sessiz değil, pending'e işaretlenir (K3/M8) */
       if (prices.length === 0) pending.push({ name: it.name, category: catName });
+
+      /* Çipleri menü diline çöz; istenen dil boşsa fallback + çeviri boşluğu
+         işareti (sessiz değil — MERGE önkoşulu). Ek-ikram görsel ayraçla ekli (D2). */
+      const chipLabels: string[] = [];
+      for (const chip of it.chips) {
+        const { label, usedLang } = resolveChip(chip, menuLang);
+        if (label === "") continue;
+        chipLabels.push(label);
+        if (usedLang !== menuLang) {
+          translationGaps.push({ category: catName, item: it.name, label, missingLang: menuLang, usedLang });
+        }
+      }
+      const cleanExtras = it.extras.map((e) => e.trim()).filter((e) => e !== "");
+      const desc_fr = [chipLabels.join(CONTENT_SEP), ...cleanExtras]
+        .filter((s) => s !== "")
+        .join(EXTRA_SEP);
+
       return {
         id: `${prefix}_c${ci + 1}_i${ii + 1}`,
         name_fr: it.name,
-        desc_fr: buildDesc(it.chips, it.extras, menuLang),
+        desc_fr,
         photo: null,
         prices,
         ingredients: it.chips,
@@ -118,5 +149,5 @@ export function projectIntake(
     }),
   }));
 
-  return { categories, pending };
+  return { categories, pending, translationGaps };
 }
