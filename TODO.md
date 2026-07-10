@@ -4,6 +4,8 @@ Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 > **Ritüel:** origin/main'e KOD push'u yalnız mimar merge onayından SONRA; docs/pilot-kayıt commit'leri istisna. Koşu, mimarın "başla"sı olmadan başlamaz.
+>
+> **Ritüel eki (F7-A dersi):** Onaylı plan, koşu başında dala/scratchpad'e kalıcılaştırılır (oturum kaybına dayanıklılık — plan sohbette kalırsa bağlam özetlenince/oturum düşünce kaybolur; F7-A'da plan önceki oturum transkriptinden kurtarıldı).
 
 ## Pilot dönem (aktif — Faz 4 kapanışıyla)
 - [ ] **Pilot iş dönemi başladı — FAZ5 paketi pilot saha notlarıyla şekillenecek; bu dönemde gelen her yeni fikir/talep M10 gereği TODO'ya yazılır, sırasız uygulanmaz.**
