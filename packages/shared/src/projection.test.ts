@@ -1,0 +1,168 @@
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { CatalogSchema } from "./schemas.js";
+import {
+  IntakeAnswersSchema,
+  IntakeItemSchema,
+  projectIntake,
+  type IntakeAnswers,
+} from "./projection.js";
+
+/* Fixture'lar şemanın GİRDİ tipinde (opsiyoneller boş bırakılabilir); parse doldurur. */
+function answers(items: z.input<typeof IntakeItemSchema>[]): IntakeAnswers {
+  return IntakeAnswersSchema.parse({ items });
+}
+
+describe("projectIntake (F7-A / K1) — SAF deterministik projeksiyon", () => {
+  it("varyant → prices[] (etiketli, sırayla); pending boş", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Pizzas",
+          name: "Margherita",
+          variants: [
+            { label: "Ø24", value: 8 },
+            { label: "Ø32", value: 12 },
+          ],
+        },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].prices).toEqual([
+      { label: "Ø24", value: 8 },
+      { label: "Ø32", value: 12 },
+    ]);
+    expect(r.pending).toEqual([]);
+  });
+
+  it("çip → ingredients[] (inline denormalize) + desc_fr içerik listesi (virgüllü)", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Dönerler",
+          name: "Döner",
+          variants: [{ label: "seul", value: 9 }],
+          chips: [
+            { chip_id: "c_et", tr: "Et", fr: "Viande" },
+            { tr: "Soğan", fr: "Oignon" },
+          ],
+        },
+      ]),
+      "SEED"
+    );
+    const item = r.categories[0].items[0];
+    expect(item.ingredients).toHaveLength(2);
+    expect(item.ingredients[0]).toMatchObject({ chip_id: "c_et", fr: "Viande" });
+    /* desc_fr fr etiketlerinden, virgüllü içerik listesi */
+    expect(item.desc_fr).toBe("Viande, Oignon");
+  });
+
+  it("ek-ikram (extras) → desc_fr'ye GÖRSEL ayraçla eklenir (D2); içerikten ayrılabilir", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Dönerler",
+          name: "İskender",
+          variants: [{ label: "seul", value: 15 }],
+          chips: [
+            { tr: "Et", fr: "Viande" },
+            { tr: "Yoğurt", fr: "Yaourt" },
+          ],
+          extras: ["supplément beurre", "pain compris"],
+        },
+      ]),
+      "SEED"
+    );
+    const desc = r.categories[0].items[0].desc_fr;
+    /* içerik listesi virgüllü; ek-ikram " · " ile GÖRSEL ayrı */
+    expect(desc).toBe("Viande, Yaourt · supplément beurre · pain compris");
+    /* ayrım doğrulaması: içerik kısmı ilk " · " öncesi, ek-ikram sonrası */
+    const [content, ...extras] = desc.split(" · ");
+    expect(content).toBe("Viande, Yaourt"); // içerik: virgüllü tek blok
+    expect(extras).toEqual(["supplément beurre", "pain compris"]); // ek-ikram: ayrı bloklar
+  });
+
+  it("yalnız ek-ikram (çip yok) → desc_fr sadece ek-ikram bloklarından", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], extras: ["à emporter"] },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("à emporter");
+  });
+
+  it("menü dili 'de' → desc_fr de etiketlerinden kurulur (fr yerine)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "Et", fr: "Viande", de: "Fleisch" }] },
+      ]),
+      "SEED",
+      "de"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Fleisch");
+  });
+
+  it("fiyatsız (value null / varyantsız) → prices:[] + pending KALEM listesi (K3/M8)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "Boissons", name: "Ayran", variants: [{ label: "seul", value: null }] },
+        { category_name: "Boissons", name: "Çay" }, // hiç varyant yok → yine pending
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].prices).toEqual([]);
+    expect(r.categories[0].items[1].prices).toEqual([]);
+    expect(r.pending).toEqual([
+      { name: "Ayran", category: "Boissons" },
+      { name: "Çay", category: "Boissons" },
+    ]);
+  });
+
+  it("kısmi fiyat: null varyant düşer, dolu varyant kalır; pending'e girmez", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Pizzas",
+          name: "Mixte",
+          variants: [
+            { label: "Ø24", value: 8 },
+            { label: "Ø32", value: null }, // bu varyant fiyatsız → düşer
+          ],
+        },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].prices).toEqual([{ label: "Ø24", value: 8 }]);
+    expect(r.pending).toEqual([]); // en az bir fiyat var → bekleyen değil
+  });
+
+  it("aynı kategori adı gruplanır (sıra korunur); deterministik id (aynı seed → aynı çıktı)", () => {
+    const input = answers([
+      { category_name: "Pizzas", name: "A", variants: [{ label: "seul", value: 8 }] },
+      { category_name: "Boissons", name: "Cola", variants: [{ label: "seul", value: 3 }] },
+      { category_name: "Pizzas", name: "B", variants: [{ label: "seul", value: 9 }] },
+    ]);
+    const a = projectIntake(input, "SEED");
+    const b = projectIntake(input, "SEED");
+    expect(a.categories.map((c) => c.name_fr)).toEqual(["Pizzas", "Boissons"]);
+    expect(a.categories[0].items.map((i) => i.name_fr)).toEqual(["A", "B"]);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b)); // aynı seed → aynı çıktı
+    expect(a.categories[0].items[0].id).toBe("ord_SEED_c1_i1");
+  });
+
+  it("çıktı CatalogSchema'dan geçer (DB'ye yazılabilir)", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Grill",
+          name: "Adana",
+          variants: [{ label: "seul", value: 14 }],
+          chips: [{ tr: "Kıyma", fr: "Viande hachée" }],
+        },
+      ]),
+      "SEED"
+    );
+    expect(() => CatalogSchema.parse({ categories: r.categories })).not.toThrow();
+  });
+});
