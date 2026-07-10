@@ -43,6 +43,9 @@ export const IntakeItemSchema = z
     /* Kategori notu (F7-C/E) — UI menü diline çözer (SectorPackCategory.note'tan);
        projeksiyon Category.note_fr'ye taşır (katalogda alan zaten var). */
     category_note: z.string().optional(),
+    /* "İçerik basılmasın" (F7-C/B4): true → çipler BASILMAZ (ingredients:[], desc
+       yalnız ek-ikram). Çipler answers_json'da yine saklanır (denetim izi). */
+    hide_content: z.boolean().default(false),
   })
   .passthrough(); // bilinmeyen intake anahtarları korunur (veri kaybetmeme)
 export type IntakeItem = z.infer<typeof IntakeItemSchema>;
@@ -127,10 +130,12 @@ export function projectIntake(
       /* boş fiyat = fiyat-bekliyor: sessiz değil, pending'e işaretlenir (K3/M8) */
       if (prices.length === 0) pending.push({ name: it.name, category: catName });
 
+      /* "İçerik basılmasın" → çipler basılmaz (ingredients + desc'ten düşer, B4). */
+      const shownChips = it.hide_content ? [] : it.chips;
       /* Çipleri menü diline çöz; istenen dil boşsa fallback + çeviri boşluğu
          işareti (sessiz değil — MERGE önkoşulu). Ek-ikram görsel ayraçla ekli (D2). */
       const chipLabels: string[] = [];
-      for (const chip of it.chips) {
+      for (const chip of shownChips) {
         const { label, usedLang } = resolveChip(chip, menuLang);
         if (label === "") continue;
         chipLabels.push(label);
@@ -149,7 +154,7 @@ export function projectIntake(
         desc_fr,
         photo: null,
         prices,
-        ingredients: it.chips,
+        ingredients: shownChips,
         tags: [],
         visible: true,
         order: ii + 1,

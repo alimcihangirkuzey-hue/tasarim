@@ -274,3 +274,36 @@ describe("projectIntake kategori notu (F7-C / E)", () => {
     expect(r.categories[0].note_fr).toBe("Note B");
   });
 });
+
+describe("projectIntake hide_content (F7-C / B4)", () => {
+  it("hide_content: çipler BASILMAZ (ingredients:[], desc yalnız ek-ikram); gap yok", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "X",
+          name: "Y",
+          variants: [{ label: "seul", value: 5 }],
+          chips: [{ tr: "Et", fr: "Viande" }],
+          extras: ["à emporter"],
+          hide_content: true,
+        },
+      ]),
+      "SEED"
+    );
+    const item = r.categories[0].items[0];
+    expect(item.ingredients).toEqual([]); // çip basılmaz
+    expect(item.desc_fr).toBe("à emporter"); // yalnız ek-ikram
+    expect(r.translationGaps).toEqual([]); // gösterilmeyen çip → gap yok
+  });
+
+  it("hide_content=false (varsayılan): çipler normal basılır", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "Et", fr: "Viande" }] },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].ingredients).toHaveLength(1);
+    expect(r.categories[0].items[0].desc_fr).toBe("Viande");
+  });
+});
