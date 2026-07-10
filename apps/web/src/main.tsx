@@ -15,6 +15,7 @@ import { FontsPage } from "./pages/FontsPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { FactoryGuidePage } from "./pages/FactoryGuidePage";
+import { SiparisPage } from "./pages/SiparisPage";
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -65,6 +66,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </Link>
         <span className="sub">{t("app.subtitle")}</span>
         <span style={{ flex: 1 }} />
+        <Link className="ghost-link siparis-link" to="/siparis">{t("app.siparis")}</Link>
         <Link className="ghost-link" to="/settings/themes">{t("app.settings")}</Link>
         {/* FAZ4 §6: data/ zip yedeği tarayıcıdan iner (M7) */}
         <a className="ghost-link" href="/api/backup" title={t("app.backup_hint")}>
@@ -93,6 +95,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Layout>
                   <Routes>
                     <Route path="/" element={<ClientListPage />} />
+                    <Route path="/siparis" element={<SiparisPage />} />
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
                     <Route path="/editor/:id" element={<EditorPage />} />
                     <Route path="/settings/themes" element={<ThemesPage />} />
