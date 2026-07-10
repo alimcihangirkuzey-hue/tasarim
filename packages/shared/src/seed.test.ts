@@ -100,3 +100,17 @@ describe("SECTOR_PACKS tohum paketleri (F7-B2)", () => {
       expect(cafeQ, id).toContain(id);
   });
 });
+
+describe("Seed DE alanları CH-Almancası — ß KULLANILMAZ (İsviçre kuralı, M9/DE-CH)", () => {
+  it("hiçbir seed DE string'i 'ß' içermez (çip + item + kategori)", () => {
+    const bad: string[] = [];
+    for (const c of SEED_CHIPS) if (c.de.includes("ß")) bad.push(`çip ${c.id}: "${c.de}"`);
+    for (const p of SECTOR_PACKS)
+      for (const cat of p.categories) {
+        if (cat.name.de.includes("ß")) bad.push(`${p.id} kategori: "${cat.name.de}"`);
+        for (const it of cat.items)
+          if (it.name.de.includes("ß")) bad.push(`${p.id}/${it.name.tr}: "${it.name.de}"`);
+      }
+    expect(bad, `ß içeren DE alanları: ${bad.join(" · ")}`).toEqual([]);
+  });
+});

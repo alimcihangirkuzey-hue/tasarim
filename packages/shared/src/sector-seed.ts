@@ -219,7 +219,7 @@ const lokanta = pack("pack_lokanta", "Semt Lokantası", [
     item("Tavuk Suyu", "Tavuk Suyu", "Hühnersuppe"),
   ]),
   cat("Günün Yemekleri", "Plats du Jour", "Tagesgerichte", [
-    item("Kuru Fasulye", "Kuru Fasulye", "Weiße Bohnen", ["q_porsiyon"]),
+    item("Kuru Fasulye", "Kuru Fasulye", "Weisse Bohnen", ["q_porsiyon"]),
     item("Nohut Yemeği", "Nohut Yemeği", "Kichererbsengericht", ["q_porsiyon"]),
     item("Türlü", "Türlü", "Gemüseeintopf", ["q_porsiyon"]),
     item("Karnıyarık", "Karnıyarık", "Karnıyarık", ["q_porsiyon"]),
@@ -256,7 +256,7 @@ const lokanta = pack("pack_lokanta", "Semt Lokantası", [
 ]);
 
 const cafe = pack("pack_cafe", "Café", [
-  cat("Sıcak İçecekler", "Boissons Chaudes", "Heiße Getränke", [
+  cat("Sıcak İçecekler", "Boissons Chaudes", "Heisse Getränke", [
     item("Türk Kahvesi", "Türk Kahvesi", "Türkischer Kaffee", ["q_boy_kahve"]),
     item("Espresso", "Espresso", "Espresso"),
     item("Cappuccino", "Cappuccino", "Cappuccino"),
