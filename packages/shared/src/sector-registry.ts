@@ -1,12 +1,13 @@
-/* Sektör paketi kayıt defteri — F7-B1. GET /api/sectors bunu servis eder.
-   ŞU AN BOŞ: gerçek paketler (kebap/pizza/lokanta/café/pastane) F7-B2'de saf veri
-   olarak eklenir (kullanıcı onayı bekliyor). Schema dosyası (sector.ts) kirlenmez;
-   içerik yalnız buraya düşer. */
+/* Sektör paketi kayıt defteri — GET /api/sectors bunu servis eder. İçerik F7-B2
+   tohum verisinden gelir (sector-seed.ts); veri↔kayıt ayrı. COMMON_QUESTIONS da
+   buradan re-export edilir (tek kaynak). */
 
 import { SectorPackSchema, type SectorPack } from "./sector.js";
+import { SECTOR_PACKS_DATA, COMMON_QUESTIONS } from "./sector-seed.js";
 
-export const SECTOR_PACKS: SectorPack[] = [];
+export const SECTOR_PACKS: SectorPack[] = SECTOR_PACKS_DATA;
+export { COMMON_QUESTIONS };
 
-/* Yük-zamanı koruması: F7-B2 içeriği eklendiğinde her paket şemadan geçmeli
-   (bozuk paket import'ta patlar — sessiz kabul yok). Boşken no-op. */
+/* Yük-zamanı koruması: her paket şemadan geçmeli (bozuk paket import'ta patlar —
+   sessiz kabul yok, kabul #1). */
 for (const pack of SECTOR_PACKS) SectorPackSchema.parse(pack);
