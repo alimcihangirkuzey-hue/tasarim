@@ -109,6 +109,9 @@ export function catalogRoutes(app: FastifyInstance): void {
       applied_categories: preview.catCount,
       applied_items: preview.itemCount,
       skipped: preview.skipped,
+      /* Fiyatsız alınan ürünler (fiyat-bekliyor) — SAYI değil KALEM listesi:
+         intake UI + operatör görünürlüğü (K3/M8, sessiz bekleyen yok) */
+      pending: preview.pending,
     };
   });
 

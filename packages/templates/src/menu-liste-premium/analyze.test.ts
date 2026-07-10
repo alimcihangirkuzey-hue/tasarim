@@ -14,6 +14,7 @@ function makeClient(itemCount = 10, currency: "EUR" | "CHF" = "EUR"): ClientDTO 
     slug: "liste-test",
     notes: "",
     currency,
+    menu_language: "fr",
     brandkit: defaultBrandKit(),
     catalog: CatalogSchema.parse({
       categories: [
@@ -139,5 +140,16 @@ describe("analyzeList", () => {
   it("cols=2 normalde min-font uyarısı ÇIKMAZ (yalnız compact modda)", () => {
     const a = analyzeList(makeClient(200), doc({ columns: 2 }));
     expect(a.warnings.some((w) => w.type === "min-font")).toBe(false);
+  });
+
+  it("fiyatsız (fiyat-bekliyor) görünür ürün empty-price bilgi uyarısı üretir (K3)", () => {
+    const client = makeClient(3);
+    const target = client.catalog.categories[0].items[1];
+    target.prices = []; // fiyat-bekliyor
+    const a = analyzeList(client, doc());
+    expect(a.warnings.some((w) => w.type === "empty-price" && w.itemId === target.id)).toBe(true);
+    /* fiyatlı ürün uyarı üretmez */
+    const priced = client.catalog.categories[0].items[0].id;
+    expect(a.warnings.some((w) => w.type === "empty-price" && w.itemId === priced)).toBe(false);
   });
 });

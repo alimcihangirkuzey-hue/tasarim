@@ -314,6 +314,7 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
                     desc_fr: "",
                     photo: null,
                     prices: [{ label: "seul", value: 0 }],
+                    ingredients: [],
                     tags: [],
                     visible: true,
                     order: c.items.length + 1,

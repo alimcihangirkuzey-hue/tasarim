@@ -14,6 +14,7 @@ function makeClient(overrides: Partial<ClientDTO> = {}): ClientDTO {
     slug: "test-kebab",
     notes: "",
     currency: "EUR",
+    menu_language: "fr",
     brandkit: defaultBrandKit(),
     catalog: CatalogSchema.parse({
       categories: [
@@ -68,6 +69,7 @@ describe("analyzeGrid", () => {
       desc_fr: "",
       photo: null,
       prices: [{ label: "seul", value: 5 }],
+      ingredients: [],
       tags: [],
       visible: true,
       order: i,
@@ -106,9 +108,10 @@ describe("analyzeGrid", () => {
         desc_fr: "",
         photo: null,
         prices: [{ label: "seul", value: 6 }],
-        tags: [],
+        ingredients: [],
         visible: true,
         order: i,
+        tags: [],
       })),
     })); // toplam 80 ürün
     const doc = DocumentStateSchema.parse({
@@ -155,5 +158,13 @@ describe("analyzeGrid", () => {
     const a = analyzeGrid(makeClient(), bad);
     expect(a.format).toBe("a4-portrait");
     expect(a.cols).toBe(3);
+  });
+
+  it("fiyatsız ürün empty-price bilgi uyarısı üretir (K3 paritesi)", () => {
+    const client = makeClient();
+    const target = client.catalog.categories[0].items[0];
+    target.prices = []; // fiyat-bekliyor
+    const a = analyzeGrid(client, baseDoc());
+    expect(a.warnings.some((w) => w.type === "empty-price" && w.itemId === target.id)).toBe(true);
   });
 });

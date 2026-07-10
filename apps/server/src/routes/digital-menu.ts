@@ -25,6 +25,7 @@ type ClientRow = {
   slug: string;
   notes: string;
   currency: ClientDTO["currency"];
+  menu_language: ClientDTO["menu_language"];
   brandkit_json: string;
   catalog_json: string;
   created_at: string;
@@ -42,6 +43,7 @@ export function digitalMenuRoutes(app: FastifyInstance): void {
       slug: row.slug,
       notes: row.notes,
       currency: row.currency,
+      menu_language: row.menu_language, // dijital menü render'ı tüketmez; DTO tipi için taşınır
       brandkit: BrandKitSchema.parse(JSON.parse(row.brandkit_json)),
       catalog: CatalogSchema.parse(JSON.parse(row.catalog_json)),
       assets: [],

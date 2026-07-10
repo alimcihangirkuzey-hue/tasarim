@@ -12,11 +12,33 @@ export const HexColor = z
 export const CurrencySchema = z.enum(["EUR", "CHF"]);
 export type Currency = z.infer<typeof CurrencySchema>;
 
+/* Menü çıktı dili — Sipariş Modu (F7-A/K2). Client bazında "fr" | "de".
+   Şimdilik kalıcı + API-yazılır ama render TÜKETMEZ (tam çok-dilli çıktı TODO). */
+export const MenuLanguageSchema = z.enum(["fr", "de"]).default("fr");
+export type MenuLanguage = z.infer<typeof MenuLanguageSchema>;
+
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
   value: z.number().nonnegative(),
 });
 export type PriceVariant = z.infer<typeof PriceVariantSchema>;
+
+/* Sipariş Modu içerik çipi referansı — F7-A (K1/K2, karar D1). INLINE DENORMALIZE:
+   baskı için kendine yeter (tr/fr/de gömülü → M1/M3, kütüphaneye join gerekmez);
+   chip_id yalnız öğrenme/editleme geri-bağıdır (kütüphane rename ESKİ katalogları
+   DEĞİŞTİRMEZ — arşiv sabitliği). Sertleştirme (D1): en az bir dil alanı dolu. */
+export const IngredientRefSchema = z
+  .object({
+    chip_id: z.string().optional(),
+    tr: z.string().default(""),
+    fr: z.string().default(""),
+    de: z.string().default(""),
+  })
+  .refine(
+    (r) => r.tr.trim() !== "" || r.fr.trim() !== "" || r.de.trim() !== "",
+    { message: "İçerik çipinde en az bir dil alanı (tr/fr/de) dolu olmalı" }
+  );
+export type IngredientRef = z.infer<typeof IngredientRefSchema>;
 
 export const ItemSchema = z.object({
   id: z.string(),
@@ -24,6 +46,10 @@ export const ItemSchema = z.object({
   desc_fr: z.string().default(""),
   photo: z.string().nullable().default(null), // asset id
   prices: z.array(PriceVariantSchema).default([]),
+  /* Sipariş Modu projeksiyonu içerik çiplerini buraya gömer (F7-A/K1);
+     .default([]) → mevcut kataloglar geriye uyumlu. Baskı bugün desc_fr'den
+     çalışır; ingredients yapısal kaynaktır (çok-dilli render TODO). */
+  ingredients: z.array(IngredientRefSchema).default([]),
   tags: z.array(z.string()).default([]), // "populaire" | "nouveau" | "épicé" | "végé"
   visible: z.boolean().default(true),
   order: z.number().int().default(0),
@@ -276,6 +302,8 @@ export interface ClientDTO {
   slug: string;
   notes: string;
   currency: Currency;
+  /** Menü çıktı dili (F7-A/K2) — kalıcı + API-yazılır; render henüz tüketmez (TODO) */
+  menu_language: MenuLanguage;
   brandkit: BrandKit;
   catalog: Catalog;
   assets: AssetDTO[];
@@ -286,12 +314,17 @@ export interface ClientDTO {
 export const ClientCreateSchema = z.object({
   name: z.string().min(1, "İsim boş olamaz").max(120),
   notes: z.string().max(4000).default(""),
+  /* Opsiyonel — verilmezse route EUR/fr uygular (currency deseni; F7-A/Adım 6).
+     CHF/de müşteride oluşturmadan sonra ikinci-PUT zorunluluğunu kaldırır. */
+  currency: CurrencySchema.optional(),
+  menu_language: MenuLanguageSchema.optional(),
 });
 
 export const ClientUpdateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   notes: z.string().max(4000).optional(),
   currency: CurrencySchema.optional(),
+  menu_language: MenuLanguageSchema.optional(),
   brandkit: BrandKitSchema.optional(),
   catalog: CatalogSchema.optional(),
 });

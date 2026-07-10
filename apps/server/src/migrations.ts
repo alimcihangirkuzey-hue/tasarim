@@ -165,4 +165,23 @@ export const MIGRATIONS: string[] = [
   DROP TABLE export_records;
   ALTER TABLE export_records_v7 RENAME TO export_records;
   `,
+  /* v8 — Faz 7 (PAKET-F7-A): Sipariş Modu temel veri modeli (K2).
+     ingredient_library: öğrenen içerik çipi kütüphanesi — parse_synonyms (v5)
+     "çekirdek ∪ DB" desenini izler (source seed|learned); usage_count sık
+     kullanılanı öne almak için. fr/de boş başlayabilir ("TR tıkla / FR-DE
+     basılır" — çok-dilli öğrenme). clients.menu_language: menü çıktı dili
+     (currency v2 ALTER deseni birebir; NOT NULL DEFAULT ile mevcut satırlar
+     'fr' alır — geriye uyumlu). */
+  `
+  CREATE TABLE IF NOT EXISTS ingredient_library (
+    id          TEXT PRIMARY KEY,
+    tr          TEXT NOT NULL,
+    fr          TEXT NOT NULL DEFAULT '',
+    de          TEXT NOT NULL DEFAULT '',
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    source      TEXT NOT NULL CHECK(source IN ('seed','learned')),
+    created_at  TEXT NOT NULL
+  );
+  ALTER TABLE clients ADD COLUMN menu_language TEXT NOT NULL DEFAULT 'fr';
+  `,
 ];

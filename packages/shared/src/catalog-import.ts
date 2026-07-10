@@ -11,14 +11,18 @@ const CAT_PREFIXES = ["kategori:", "categorie:", "catégorie:", "category:"];
 export interface ImportSkip {
   line: number; // 1-tabanlı
   text: string;
-  reason: "no-category" | "no-price" | "empty-name";
+  /* no-price ARTIK atlama değil (K3): fiyatsız ürün alınır + pending işaretlenir */
+  reason: "no-category" | "empty-name";
 }
 
 export interface ImportPreview {
-  categories: Array<{ name_fr: string; items: Array<{ name_fr: string; value: number; desc_fr: string }> }>;
+  categories: Array<{ name_fr: string; items: Array<{ name_fr: string; value: number | null; desc_fr: string }> }>;
   catCount: number;
   itemCount: number;
   skipped: ImportSkip[];
+  /** Fiyatsız alınan ürünler (fiyat-bekliyor) — sessiz değil, KALEM listesi (K3/M8).
+      Sayı değil {name, category}: intake UI + operatör görünürlüğü. */
+  pending: Array<{ name: string; category: string }>;
 }
 
 /** Fiyat metnini sayıya çevir: "8,00" | "8.00" | "8" | "8,5 €" → 8 / 8.5; yoksa null */
@@ -42,6 +46,7 @@ export function parseCatalogText(text: string): ImportPreview {
   const cats: ImportPreview["categories"] = [];
   let cur: ImportPreview["categories"][number] | null = null;
   const skipped: ImportSkip[] = [];
+  const pending: ImportPreview["pending"] = [];
   let itemCount = 0;
 
   const lines = text.split(/\r?\n/);
@@ -68,17 +73,16 @@ export function parseCatalogText(text: string): ImportPreview {
       skipped.push({ line: i + 1, text: lines[i], reason: "empty-name" });
       continue;
     }
+    /* Fiyat null olabilir → ürün ATLANMAZ, "fiyat-bekliyor" alınır (K3); yalnız
+       kategorisiz satır gerçek skip kalır (yerleştirilecek kategori yok). */
     const value = parsePrice(priceStr);
-    if (value === null) {
-      skipped.push({ line: i + 1, text: lines[i], reason: "no-price" });
-      continue;
-    }
     if (!cur) {
       skipped.push({ line: i + 1, text: lines[i], reason: "no-category" });
       continue;
     }
     cur.items.push({ name_fr: name, value, desc_fr: desc });
     itemCount++;
+    if (value === null) pending.push({ name, category: cur.name_fr });
   }
 
   return {
@@ -86,6 +90,7 @@ export function parseCatalogText(text: string): ImportPreview {
     catCount: cats.length,
     itemCount,
     skipped,
+    pending,
   };
 }
 
@@ -101,7 +106,9 @@ function previewToCategories(preview: ImportPreview, idPrefix: string): Category
         name_fr: it.name_fr,
         desc_fr: it.desc_fr,
         photo: null,
-        prices: [{ label: "seul", value: it.value }],
+        /* Fiyatsız (K3): prices boş kalır → analiz "empty-price" bilgi-uyarısı verir */
+        prices: it.value === null ? [] : [{ label: "seul", value: it.value }],
+        ingredients: [], // içe aktarmada çip yok (Sipariş Modu projeksiyonu doldurur) — F7-A
         tags: [],
         visible: true,
         order: ii + 1,

@@ -11,7 +11,7 @@ function makeClient(items = 8, contact: Partial<ReturnType<typeof defaultBrandKi
   const kit = defaultBrandKit();
   kit.contact = { ...kit.contact, phone: "04 78 00 00 00", ...contact };
   return {
-    id: "cli_f", name: "Flyer Test", slug: "flyer-test", notes: "", currency: "EUR",
+    id: "cli_f", name: "Flyer Test", slug: "flyer-test", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit,
     catalog: CatalogSchema.parse({
       categories: [{

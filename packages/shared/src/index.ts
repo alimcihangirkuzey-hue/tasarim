@@ -1,4 +1,7 @@
 export * from "./schemas.js";
+export * from "./sector.js";
+export * from "./projection.js";
+export * from "./backfill.js";
 export * from "./utils.js";
 export * from "./orders.js";
 export * from "./parse.js";

@@ -36,14 +36,14 @@ function demoClient(): ClientDTO {
     {
       id: "c1", name_fr: "Sandwichs", order: 1,
       items: [
-        { id: "i1", name_fr: "Döner Kebab", desc_fr: "Veau ou dinde, crudités", photo: null, prices: [{ label: "seul", value: 7.5 }, { label: "menu", value: 10 }], tags: [], visible: true, order: 1 },
-        { id: "i2", name_fr: "Assiette Grillades", desc_fr: "Brochettes, riz, salade", photo: null, prices: [{ label: "seul", value: 13.5 }], tags: [], visible: true, order: 2 },
-        { id: "i3", name_fr: "Tacos Mixte", desc_fr: "Sauce fromagère", photo: null, prices: [{ label: "seul", value: 8 }, { label: "menu", value: 10.5 }], tags: [], visible: true, order: 3 },
+        { id: "i1", name_fr: "Döner Kebab", desc_fr: "Veau ou dinde, crudités", photo: null, prices: [{ label: "seul", value: 7.5 }, { label: "menu", value: 10 }], ingredients: [], tags: [], visible: true, order: 1 },
+        { id: "i2", name_fr: "Assiette Grillades", desc_fr: "Brochettes, riz, salade", photo: null, prices: [{ label: "seul", value: 13.5 }], ingredients: [], tags: [], visible: true, order: 2 },
+        { id: "i3", name_fr: "Tacos Mixte", desc_fr: "Sauce fromagère", photo: null, prices: [{ label: "seul", value: 8 }, { label: "menu", value: 10.5 }], ingredients: [], tags: [], visible: true, order: 3 },
       ],
     },
   ];
   return {
-    id: "cli_demo", name: "Chez Demo", slug: "chez-demo", notes: "", currency: "EUR",
+    id: "cli_demo", name: "Chez Demo", slug: "chez-demo", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit, catalog, assets: [], created_at: "t", updated_at: "t",
   };
 }

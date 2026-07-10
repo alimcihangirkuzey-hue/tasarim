@@ -37,23 +37,27 @@ describe("parseCatalogText (FAZ5 §4)", () => {
     expect(p.categories[1].items[0].name_fr).toBe("Ayran");
   });
 
-  it("bozuk/karışık satırlar atlanır ve raporlanır (sessiz yutma yok)", () => {
+  it("K3: fiyatsız ürün ATLANMAZ (alınır + pending); yalnız kategorisiz/adsız gerçek skip", () => {
     const p = parseCatalogText(
       [
-        "Kategori öncesi ürün | 5",   // kategori yok → atla
+        "Kategori öncesi ürün | 5",   // kategori yok → gerçek skip
         "KATEGORİ: Test",
-        "Fiyatsız ürün",               // fiyat yok → atla
+        "Fiyatsız ürün",               // fiyat yok → ALINIR + pending (K3)
         "Geçerli | 9,90",
-        "| 4",                         // ad yok → atla
+        "| 4",                         // ad yok → gerçek skip
         "",                            // boş → sessizce geç (skip listesinde değil)
       ].join("\n")
     );
-    expect(p.itemCount).toBe(1);
-    expect(p.skipped.map((s) => s.reason)).toEqual(["no-category", "no-price", "empty-name"]);
-    /* satır numaraları 1-tabanlı ve doğru */
-    expect(p.skipped[0].line).toBe(1);
-    expect(p.skipped[1].line).toBe(3);
-    expect(p.skipped[2].line).toBe(5);
+    expect(p.itemCount).toBe(2); // fiyatsız + geçerli, ikisi de alındı
+    /* no-price ARTIK skip değil: yalnız kategorisiz + adsız gerçek skip */
+    expect(p.skipped.map((s) => s.reason)).toEqual(["no-category", "empty-name"]);
+    expect(p.skipped.map((s) => s.line)).toEqual([1, 5]);
+    /* fiyatsız ürün SAYI değil KALEM listesi olarak pending (intake UI + operatör) */
+    expect(p.pending).toEqual([{ name: "Fiyatsız ürün", category: "Test" }]);
+    /* alınan fiyatsız ürünün value'su null (previewToCategories → prices:[]) */
+    const test = p.categories.find((c) => c.name_fr === "Test")!;
+    expect(test.items.find((i) => i.name_fr === "Fiyatsız ürün")!.value).toBeNull();
+    expect(test.items.find((i) => i.name_fr === "Geçerli")!.value).toBe(9.9);
   });
 
   it("çeşitli KATEGORİ önekleri (TR/FR) tanınır", () => {
@@ -94,6 +98,15 @@ describe("applyCatalogImport", () => {
   it("çıktı CatalogSchema'dan geçer (DB'ye yazılabilir)", () => {
     const p = parseCatalogText("KATEGORİ: Grill\nAdana | 14,50 | Agneau\nİskender | 16");
     const next = applyCatalogImport(base, p, "append", "SEED");
+    expect(() => CatalogSchema.parse(next)).not.toThrow();
+  });
+
+  it("K3: içe aktarılan fiyatsız ürün prices:[] (fiyat-bekliyor); CatalogSchema geçer", () => {
+    const p = parseCatalogText("KATEGORİ: Boissons\nAyran"); // fiyatsız satır
+    expect(p.pending).toEqual([{ name: "Ayran", category: "Boissons" }]);
+    const next = applyCatalogImport(base, p, "append", "SEED");
+    const cat = next.categories.find((c) => c.name_fr === "Boissons")!;
+    expect(cat.items[0].prices).toEqual([]); // boş fiyat → analiz empty-price verir
     expect(() => CatalogSchema.parse(next)).not.toThrow();
   });
 });

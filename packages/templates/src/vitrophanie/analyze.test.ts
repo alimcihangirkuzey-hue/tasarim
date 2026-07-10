@@ -12,7 +12,7 @@ function makeClient(withMono = false): ClientDTO {
   const kit = defaultBrandKit();
   if (withMono) kit.logo_mono = "ast_mono";
   return {
-    id: "cli_v", name: "Vitro Test", slug: "vitro-test", notes: "", currency: "EUR",
+    id: "cli_v", name: "Vitro Test", slug: "vitro-test", notes: "", currency: "EUR", menu_language: "fr",
     brandkit: kit,
     catalog: CatalogSchema.parse({
       categories: [{

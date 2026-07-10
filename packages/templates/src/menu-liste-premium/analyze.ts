@@ -178,6 +178,14 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     }
   }
 
+  /* Fiyat-bekliyor (K3/F7-A): fiyatsız görünür ürün için bilgi uyarısı — render
+     güvenli (boş fiyat basılmaz), ama sessiz kaybolmaz (M8) */
+  for (const sc of selected) {
+    for (const it of sc.items) {
+      if (it.prices.length === 0) warnings.push({ type: "empty-price", itemId: it.id });
+    }
+  }
+
   const nameSlot = manifest.repeater.itemSlots.find((s) => s.id === "name")!;
   const descSlot = manifest.repeater.itemSlots.find((s) => s.id === "desc")!;
   const metrics = listMetrics(columns, nameSlot.font_mm!.max, descSlot.maxLines!);
