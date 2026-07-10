@@ -102,6 +102,7 @@ function previewToCategories(preview: ImportPreview, idPrefix: string): Category
         desc_fr: it.desc_fr,
         photo: null,
         prices: [{ label: "seul", value: it.value }],
+        ingredients: [], // içe aktarmada çip yok (Sipariş Modu projeksiyonu doldurur) — F7-A
         tags: [],
         visible: true,
         order: ii + 1,

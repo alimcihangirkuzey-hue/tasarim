@@ -68,6 +68,7 @@ describe("analyzeGrid", () => {
       desc_fr: "",
       photo: null,
       prices: [{ label: "seul", value: 5 }],
+      ingredients: [],
       tags: [],
       visible: true,
       order: i,
@@ -106,9 +107,10 @@ describe("analyzeGrid", () => {
         desc_fr: "",
         photo: null,
         prices: [{ label: "seul", value: 6 }],
-        tags: [],
+        ingredients: [],
         visible: true,
         order: i,
+        tags: [],
       })),
     })); // toplam 80 ürün
     const doc = DocumentStateSchema.parse({
