@@ -29,6 +29,10 @@ npm run dev        # server (3001) + web (5173) birlikte açılır
 
 Günlük başlatma: **start-tezgah.bat** (çift tık) — server+web'i açıp pencereyi açık tutar.
 
+> Server artık **watch'suz** açılır (kanıtlanmış sağlam boot — `tsx watch` bazen
+> `app.listen`'e ulaşmadan askıda kalıyordu). Kod değişikliğinde manuel restart
+> gerekir. Hot-reload isteyen geliştiriciler: `npm run dev:watch -w apps/server`.
+
 Tarayıcıda: **http://localhost:5173**
 API sağlık kontrolü: http://localhost:3001/api/health
 
