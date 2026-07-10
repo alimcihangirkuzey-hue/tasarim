@@ -121,8 +121,8 @@ export function clientRoutes(app: FastifyInstance): void {
       name: body.name.trim(),
       slug: uniqueSlug(body.name),
       notes: body.notes ?? "",
-      currency: "EUR",
-      menu_language: "fr", // Adım 6'da body'den opsiyonel gelecek (currency deseni)
+      currency: body.currency ?? "EUR",
+      menu_language: body.menu_language ?? "fr", // opsiyonel; verilmezse fr (F7-A/Adım 6)
       brandkit_json: JSON.stringify(defaultBrandKit()),
       catalog_json: JSON.stringify(defaultCatalog()),
       created_at: now,

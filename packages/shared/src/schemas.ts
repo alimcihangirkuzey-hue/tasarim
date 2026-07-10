@@ -314,6 +314,10 @@ export interface ClientDTO {
 export const ClientCreateSchema = z.object({
   name: z.string().min(1, "İsim boş olamaz").max(120),
   notes: z.string().max(4000).default(""),
+  /* Opsiyonel — verilmezse route EUR/fr uygular (currency deseni; F7-A/Adım 6).
+     CHF/de müşteride oluşturmadan sonra ikinci-PUT zorunluluğunu kaldırır. */
+  currency: CurrencySchema.optional(),
+  menu_language: MenuLanguageSchema.optional(),
 });
 
 export const ClientUpdateSchema = z.object({

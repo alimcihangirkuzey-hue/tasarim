@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CatalogSchema,
+  ClientCreateSchema,
   IngredientRefSchema,
   ItemSchema,
   MenuLanguageSchema,
@@ -150,5 +151,24 @@ describe("Sektör paketi iskeleti (F7-A / K1) — örnek yapı YALNIZ testte (to
       categories: [{ name: { tr: "Sadece TR" }, items: [] }],
     });
     expect(pack.categories[0].name).toEqual({ tr: "Sadece TR", fr: "", de: "" });
+  });
+});
+
+describe("ClientCreateSchema currency + menu_language (F7-A / Adım 6)", () => {
+  it("opsiyonel: verilmezse undefined (route EUR/fr uygular)", () => {
+    const c = ClientCreateSchema.parse({ name: "Yeni" });
+    expect(c.currency).toBeUndefined();
+    expect(c.menu_language).toBeUndefined();
+  });
+
+  it("verilirse taşınır (CHF/de) — oluşturmada ikinci-PUT zorunluluğu kalkar", () => {
+    const c = ClientCreateSchema.parse({ name: "Arriva", currency: "CHF", menu_language: "de" });
+    expect(c.currency).toBe("CHF");
+    expect(c.menu_language).toBe("de");
+  });
+
+  it("geçersiz currency/menu_language reddedilir", () => {
+    expect(() => ClientCreateSchema.parse({ name: "X", currency: "USD" })).toThrow();
+    expect(() => ClientCreateSchema.parse({ name: "X", menu_language: "en" })).toThrow();
   });
 });
