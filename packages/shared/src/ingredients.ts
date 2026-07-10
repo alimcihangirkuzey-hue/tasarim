@@ -4,11 +4,12 @@
 
 import { z } from "zod";
 import { foldTr } from "./parse.js";
+import { SEED_CHIPS } from "./seed-chips.js";
 import type { IngredientChip } from "./sector.js";
 
-/* Kod-seed çip kütüphanesi — ŞU AN BOŞ (içerik F7-B2, kullanıcı onayı bekliyor).
-   SEED ∪ DB modelinin "çekirdek" tarafı; F7-B2 saf veri olarak doldurur. */
-export const INGREDIENT_SEED: IngredientChip[] = [];
+/* Kod-seed çip kütüphanesi — F7-B2 tohum verisi (seed-chips.ts). SEED ∪ DB
+   modelinin "çekirdek" tarafı (parse_synonyms/themes hizası). */
+export const INGREDIENT_SEED: IngredientChip[] = SEED_CHIPS;
 
 /* ingredient_library (migration v8) satırı. NOT: tags kolonu YOK — learned çip
    tagsizdir; tags yalnız kod-seed'de yaşar (ResolvedChip.tags kaynağı kod-seed). */
