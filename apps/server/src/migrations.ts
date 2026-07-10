@@ -184,4 +184,17 @@ export const MIGRATIONS: string[] = [
   );
   ALTER TABLE clients ADD COLUMN menu_language TEXT NOT NULL DEFAULT 'fr';
   `,
+  /* v9 — Faz 7 (PAKET-F7-C): Sipariş Modu intake kaydı (denetim izi, K1). Atomik
+     POST /api/intake commit'inde yazılır. answers_json = IntakeAnswers (deterministik
+     re-projeksiyon), checklist_json = doneler/şartlar. Baskı-işi projesi DEĞİL —
+     ayrı tablo (semantik ayrım). client silinince CASCADE. */
+  `
+  CREATE TABLE IF NOT EXISTS intake_records (
+    id             TEXT PRIMARY KEY,
+    client_id      TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    answers_json   TEXT NOT NULL,
+    checklist_json TEXT NOT NULL DEFAULT '{}',
+    created_at     TEXT NOT NULL
+  );
+  `,
 ];
