@@ -40,6 +40,12 @@ export const IntakeItemSchema = z
     variants: z.array(IntakeVariantSchema).default([]),
     chips: z.array(IngredientRefSchema).default([]),
     extras: z.array(z.string()).default([]),
+    /* Kategori notu (F7-C/E) — UI menü diline çözer (SectorPackCategory.note'tan);
+       projeksiyon Category.note_fr'ye taşır (katalogda alan zaten var). */
+    category_note: z.string().optional(),
+    /* "İçerik basılmasın" (F7-C/B4): true → çipler BASILMAZ (ingredients:[], desc
+       yalnız ek-ikram). Çipler answers_json'da yine saklanır (denetim izi). */
+    hide_content: z.boolean().default(false),
   })
   .passthrough(); // bilinmeyen intake anahtarları korunur (veri kaybetmeme)
 export type IntakeItem = z.infer<typeof IntakeItemSchema>;
@@ -108,21 +114,28 @@ export function projectIntake(
 
   const pending: ProjectionResult["pending"] = [];
   const translationGaps: ProjectionResult["translationGaps"] = [];
-  const categories: Category[] = catOrder.map((catName, ci) => ({
+  const categories: Category[] = catOrder.map((catName, ci): Category => {
+    const catItems = byCat.get(catName)!;
+    /* Kategori notu (F7-C/E): bu kategorideki ilk dolu category_note → note_fr */
+    const catNote = catItems.map((it) => it.category_note?.trim()).find((n) => n) ?? "";
+    return {
     id: `${prefix}_c${ci + 1}`,
     name_fr: catName,
     order: ci + 1,
-    items: byCat.get(catName)!.map((it, ii): Item => {
+    ...(catNote ? { note_fr: catNote } : {}),
+    items: catItems.map((it, ii): Item => {
       const prices: PriceVariant[] = it.variants
         .filter((v): v is IntakeVariant & { value: number } => v.value !== null)
         .map((v) => ({ label: v.label, value: v.value }));
       /* boş fiyat = fiyat-bekliyor: sessiz değil, pending'e işaretlenir (K3/M8) */
       if (prices.length === 0) pending.push({ name: it.name, category: catName });
 
+      /* "İçerik basılmasın" → çipler basılmaz (ingredients + desc'ten düşer, B4). */
+      const shownChips = it.hide_content ? [] : it.chips;
       /* Çipleri menü diline çöz; istenen dil boşsa fallback + çeviri boşluğu
          işareti (sessiz değil — MERGE önkoşulu). Ek-ikram görsel ayraçla ekli (D2). */
       const chipLabels: string[] = [];
-      for (const chip of it.chips) {
+      for (const chip of shownChips) {
         const { label, usedLang } = resolveChip(chip, menuLang);
         if (label === "") continue;
         chipLabels.push(label);
@@ -141,13 +154,14 @@ export function projectIntake(
         desc_fr,
         photo: null,
         prices,
-        ingredients: it.chips,
+        ingredients: shownChips,
         tags: [],
         visible: true,
         order: ii + 1,
       };
     }),
-  }));
+    };
+  });
 
   return { categories, pending, translationGaps };
 }

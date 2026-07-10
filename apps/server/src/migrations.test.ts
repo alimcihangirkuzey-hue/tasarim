@@ -365,3 +365,43 @@ describe("migration v8 (Faz 7 — ingredient_library + clients.menu_language)", 
     }
   });
 });
+
+describe("migration v9 (Faz 7 — intake_records)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 8; i++) db.exec(MIGRATIONS[i]);
+  });
+
+  it("intake_records: kayıt açılabilir; checklist_json default '{}'", () => {
+    db.prepare(
+      `INSERT INTO intake_records (id, client_id, answers_json, created_at)
+       VALUES ('intk1', 'cli1', '{"items":[]}', 't')`
+    ).run();
+    expect(db.prepare("SELECT client_id, answers_json, checklist_json FROM intake_records WHERE id='intk1'").get()).toEqual({
+      client_id: "cli1",
+      answers_json: '{"items":[]}',
+      checklist_json: "{}",
+    });
+  });
+
+  it("müşteri silinince intake kaydı düşer (CASCADE)", () => {
+    db.prepare(
+      `INSERT INTO intake_records (id, client_id, answers_json, created_at) VALUES ('intk1', 'cli1', '{}', 't')`
+    ).run();
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(db.prepare("SELECT 1 FROM intake_records WHERE id='intk1'").get()).toBeUndefined();
+  });
+
+  it("Faz 1-8 akışları kırılmadı: ingredient_library + önceki tablolar okunabilir", () => {
+    for (const q of [
+      "SELECT id, usage_count, source FROM ingredient_library LIMIT 1",
+      "SELECT menu_language FROM clients LIMIT 1",
+      "SELECT catalog_json FROM catalog_history LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});

@@ -5,6 +5,7 @@ import {
   IngredientCreateSchema,
   IngredientPatchSchema,
   mergeIngredients,
+  planUsageBump,
   resolvePatchTarget,
   type IngredientLibraryRow,
 } from "./ingredients.js";
@@ -119,5 +120,30 @@ describe("IngredientCreateSchema / IngredientPatchSchema (F7-B1)", () => {
     expect(() => IngredientPatchSchema.parse({})).toThrow();
     expect(() => IngredientPatchSchema.parse({ fr: "  " })).toThrow(); // yalnız boşluk
     expect(() => IngredientPatchSchema.parse({ fr: "", de: "" })).toThrow();
+  });
+});
+
+describe("planUsageBump (F7-C, B1 #5 borcu) — SAF", () => {
+  const seedIds = new Set(["ing_domates", "ing_sogan"]);
+
+  it("mevcut DB → increment; kod-seed → insertSeed; bilinmeyen → skipped (ŞERH 4)", () => {
+    const dbRows = [row({ id: "ing_learned", tr: "Zeytin", source: "learned" })];
+    const plan = planUsageBump(seedIds, dbRows, ["ing_learned", "ing_domates", "ing_yok"]);
+    expect(plan.increment).toEqual(["ing_learned"]);
+    expect(plan.insertSeed).toEqual(["ing_domates"]);
+    expect(plan.skipped).toEqual(["ing_yok"]); // sessiz değil
+  });
+
+  it("seed-override DB satırı (source=seed) → increment (DB'de var, insertSeed değil)", () => {
+    const dbRows = [row({ id: "ing_domates", tr: "Domates", source: "seed" })];
+    const plan = planUsageBump(seedIds, dbRows, ["ing_domates"]);
+    expect(plan.increment).toEqual(["ing_domates"]);
+    expect(plan.insertSeed).toEqual([]);
+  });
+
+  it("görüşme içinde tekilleştirilir (aynı id iki kez → bir bump)", () => {
+    const plan = planUsageBump(seedIds, [], ["ing_sogan", "ing_sogan", "ing_domates"]);
+    expect(plan.insertSeed).toEqual(["ing_sogan", "ing_domates"]);
+    expect(plan.skipped).toEqual([]);
   });
 });

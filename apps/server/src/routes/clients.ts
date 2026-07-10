@@ -56,7 +56,7 @@ export function assetToDTO(a: AssetRow): AssetDTO {
   };
 }
 
-function uniqueSlug(name: string): string {
+export function uniqueSlug(name: string): string {
   const base = slugify(name);
   let slug = base;
   let i = 2;

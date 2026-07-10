@@ -106,6 +106,38 @@ export function resolvePatchTarget(
   return { action: "not-found" };
 }
 
+/** usage_count bump planı — SAF (F7-C, B1 #5 borcu). Intake commit'inde kullanılan
+    çip id'leri için ne yapılacağını sınıflar (uygulaması route'ta):
+    - mevcut DB satırı (learned VEYA seed-override) → increment (usage_count +1)
+    - kod-seed (DB'de yok) → insertSeed (source=seed satırı aç, sayaç kopyala-yaz)
+    - bilinmeyen id → skipped (SESSİZ DEĞİL — ŞERH 4, log/rapora düşer)
+    Görüşme içinde tekilleştirilir (bir intake = çip başına en çok 1 bump). */
+export interface UsageBumpPlan {
+  increment: string[];
+  insertSeed: string[];
+  skipped: string[];
+}
+
+export function planUsageBump(
+  seedIds: Set<string>,
+  dbRows: IngredientLibraryRow[],
+  usedIds: string[]
+): UsageBumpPlan {
+  const dbIds = new Set(dbRows.map((r) => r.id));
+  const increment: string[] = [];
+  const insertSeed: string[] = [];
+  const skipped: string[] = [];
+  const seen = new Set<string>();
+  for (const id of usedIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (dbIds.has(id)) increment.push(id);
+    else if (seedIds.has(id)) insertSeed.push(id);
+    else skipped.push(id);
+  }
+  return { increment, insertSeed, skipped };
+}
+
 /* --- API şemaları --- */
 
 /** POST gövdesi: tr zorunlu, fr/de opsiyonel (source=learned route'ta atanır). */

@@ -67,8 +67,15 @@ const item = (
   questions,
 });
 
-const cat = (tr: string, fr: string, de: string, items: SectorPackItem[]): SectorPackCategory => ({
+const cat = (
+  tr: string,
+  fr: string,
+  de: string,
+  items: SectorPackItem[],
+  note?: { tr: string; fr: string; de: string }
+): SectorPackCategory => ({
   name: { tr, fr, de },
+  ...(note ? { note } : {}),
   items,
 });
 
@@ -135,7 +142,7 @@ const kebap = pack("pack_kebap_doner", "Kebap / Döner", [
     item("Escalope Tabağı", "Assiette Escalope", "Schnitzel-Teller"),
     item("Falafel Tabağı", "Assiette Falafels", "Falafel-Teller"),
     item("Nugget Tabağı", "Assiette Nuggets", "Nuggets-Teller"),
-  ]),
+  ], { tr: "Frites + salata ile servis edilir", fr: "Servies avec frites et salade", de: "Mit Pommes und Salat serviert" }),
   cat("Box", "Box", "Box", [
     item("Kebap Box", "Box Kebab", "Kebab-Box"),
     item("Nugget Box", "Box Nuggets", "Nuggets-Box"),
@@ -227,7 +234,7 @@ const lokanta = pack("pack_lokanta", "Semt Lokantası", [
     item("İçli Köfte", "İçli Köfte", "İçli Köfte", ["q_porsiyon"]),
     item("Mantı", "Mantı", "Mantı", ["q_porsiyon"]),
     item("Yaprak Sarma", "Yaprak Sarma", "Gefüllte Weinblätter", ["q_porsiyon"]),
-  ]),
+  ], { tr: "Her gün değişir", fr: "Change chaque jour", de: "Täglich wechselnd" }),
   cat("Izgaralar", "Grillades", "Grillspezialitäten", [
     item("Izgara Köfte", "Izgara Köfte", "Gegrillte Köfte", ["q_porsiyon"]),
     item("Tavuk Şiş", "Tavuk Şiş", "Hähnchenspiess", ["q_porsiyon"]),

@@ -244,3 +244,66 @@ describe("projectIntake çeviri fallback + boşluk işareti (MERGE-F7-A önkoşu
     ]);
   });
 });
+
+describe("projectIntake kategori notu (F7-C / E)", () => {
+  it("item.category_note → Category.note_fr; notsuz kategoride note_fr yok", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "Tabaklar",
+          name: "Kebap Tabağı",
+          variants: [{ label: "seul", value: 12 }],
+          category_note: "Servies avec frites et salade",
+        },
+        { category_name: "İçecekler", name: "Ayran", variants: [{ label: "seul", value: 2 }] },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].note_fr).toBe("Servies avec frites et salade");
+    expect(r.categories[1].note_fr).toBeUndefined();
+  });
+
+  it("kategorideki İLK dolu category_note kullanılır (boş olan atlanır)", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "A", variants: [{ label: "seul", value: 1 }] }, // notsuz
+        { category_name: "X", name: "B", variants: [{ label: "seul", value: 2 }], category_note: "Note B" },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].note_fr).toBe("Note B");
+  });
+});
+
+describe("projectIntake hide_content (F7-C / B4)", () => {
+  it("hide_content: çipler BASILMAZ (ingredients:[], desc yalnız ek-ikram); gap yok", () => {
+    const r = projectIntake(
+      answers([
+        {
+          category_name: "X",
+          name: "Y",
+          variants: [{ label: "seul", value: 5 }],
+          chips: [{ tr: "Et", fr: "Viande" }],
+          extras: ["à emporter"],
+          hide_content: true,
+        },
+      ]),
+      "SEED"
+    );
+    const item = r.categories[0].items[0];
+    expect(item.ingredients).toEqual([]); // çip basılmaz
+    expect(item.desc_fr).toBe("à emporter"); // yalnız ek-ikram
+    expect(r.translationGaps).toEqual([]); // gösterilmeyen çip → gap yok
+  });
+
+  it("hide_content=false (varsayılan): çipler normal basılır", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "Et", fr: "Viande" }] },
+      ]),
+      "SEED"
+    );
+    expect(r.categories[0].items[0].ingredients).toHaveLength(1);
+    expect(r.categories[0].items[0].desc_fr).toBe("Viande");
+  });
+});

@@ -67,6 +67,9 @@ export type SectorPackItem = z.infer<typeof SectorPackItemSchema>;
 
 export const SectorPackCategorySchema = z.object({
   name: LocalizedNameSchema,
+  /* Kategori notu (F7-C/E) — opsiyonel; projeksiyon menü diline göre Category.note_fr'ye
+     taşır (ör. "Servies avec frites et salade"). Boşsa taşınmaz. */
+  note: LocalizedNameSchema.optional(),
   items: z.array(SectorPackItemSchema).default([]),
 });
 export type SectorPackCategory = z.infer<typeof SectorPackCategorySchema>;

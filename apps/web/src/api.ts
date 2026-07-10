@@ -257,4 +257,35 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  /* Sipariş Modu — Faz 7 (F7-B servis + F7-C intake) */
+  sectors: () => http<import("@tezgah/shared").SectorPack[]>("/api/sectors"),
+  ingredients: () => http<import("@tezgah/shared").ResolvedChip[]>("/api/ingredients"),
+  createIngredient: (body: { tr: string; fr?: string; de?: string }) =>
+    http<{ created: boolean; chip: import("@tezgah/shared").ResolvedChip }>("/api/ingredients", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchIngredient: (id: string, body: { fr?: string; de?: string }) =>
+    http<{ chip: import("@tezgah/shared").ResolvedChip }>(`/api/ingredients/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Atomik intake commit (F7-C): müşteri yarat (yeni ise) + katalog + usage bump + kayıt */
+  intakeCommit: (body: {
+    client_id?: string;
+    new_client?: { name: string; currency?: ClientDTO["currency"]; menu_language?: "fr" | "de" };
+    answers: import("@tezgah/shared").IntakeAnswers;
+    checklist?: Record<string, unknown>;
+  }) =>
+    http<{
+      client_id: string;
+      created_client: boolean;
+      intake_id: string;
+      applied_categories: number;
+      catalog_had_categories: boolean;
+      pending: Array<{ name: string; category: string }>;
+      translationGaps: import("@tezgah/shared").ProjectionResult["translationGaps"];
+      skipped_bumps: string[];
+    }>("/api/intake", { method: "POST", body: JSON.stringify(body) }),
 };
