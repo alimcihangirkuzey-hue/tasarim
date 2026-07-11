@@ -93,15 +93,28 @@ export function IntakeProductsStep() {
                   <span className="sub"> · {pack.label_tr}</span>
                 </summary>
                 <div className="intake-list" style={{ marginTop: 8 }}>
-                  {cat.items.map((item) => (
-                    <button
-                      key={item.name.tr}
-                      className="intake-choice"
-                      onClick={() => addProduct(pack, cat.name, cat.note, item)}
-                    >
-                      + {pickDisplay(item.name)}
-                    </button>
-                  ))}
+                  {cat.items.map((item) => {
+                    /* CILA1/1: varsayılan içerik önizlemesi — TR, soluk küçük yazı.
+                       chipById ZATEN /api/ingredients'ten çözülmüş; boşsa satır sade kalır. */
+                    const previewChips = item.default_chips
+                      .map((id) => chipById.get(id))
+                      .filter((c): c is IntakeChip => !!c)
+                      .map((c) => pickDisplay(c));
+                    return (
+                      <button
+                        key={item.name.tr}
+                        className="intake-choice"
+                        onClick={() => addProduct(pack, cat.name, cat.note, item)}
+                      >
+                        <span className="choice-main">
+                          <span>+ {pickDisplay(item.name)}</span>
+                          {previewChips.length > 0 && (
+                            <span className="preview">{previewChips.join(", ")}</span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </details>
             );
