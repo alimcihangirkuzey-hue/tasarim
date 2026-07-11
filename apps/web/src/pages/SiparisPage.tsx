@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
-import { t } from "../i18n";
+import { t, tf } from "../i18n";
 import { consumeDraftDiscardedNotice, useIntake } from "../store/intakeStore";
 import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
@@ -118,6 +118,12 @@ function ClientStep() {
           {t("intake.client_existing")}
         </button>
       </div>
+
+      {/* CILA1/3: mevcut müşteri seçiliyken HER ZAMAN görünür bant — kazanın
+          kök önleyicisi (yanlışlıkla "existing" modda kalıp fark edilmemesin). */}
+      {s.clientMode === "existing" && s.existingClientId && (
+        <div className="intake-warn full">{tf("intake.existing_selected", { name: s.existingClientName ?? "" })}</div>
+      )}
 
       {s.clientMode === "new" && (
         <div className="intake-fields">

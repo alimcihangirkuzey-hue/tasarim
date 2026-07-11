@@ -75,7 +75,7 @@ interface IntakeData {
 
 const INITIAL: IntakeData = {
   step: 1,
-  clientMode: null,
+  clientMode: "new", // CILA1/3: varsayılan YENİ (kazanın kök önleyicisi)
   newClient: { name: "", currency: "EUR", menu_language: "fr" },
   existingClientId: null,
   existingClientName: null,
@@ -162,8 +162,11 @@ export const useIntake = create<IntakeStore>()(
 
       hasDraft: () => {
         const s = get();
+        /* CILA1/3: clientMode artık HER ZAMAN "new" (INITIAL) — "!== null" kontrolü
+           anlamsızlaştı (her zaman true döner, false-pozitif taslak-uyarısı riski).
+           Yerine existingClientId (kullanıcı GERÇEKTEN bir müşteri seçtiyse) bakılır. */
         return s.step > 1 || s.products.length > 0 || s.selectedPackIds.length > 0 ||
-          s.clientMode !== null || s.newClient.name.trim() !== "";
+          s.existingClientId !== null || s.newClient.name.trim() !== "";
       },
       draftLabel: () => {
         const s = get();

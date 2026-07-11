@@ -30,6 +30,7 @@
     "client_name_ph": "ör. Antalya Kebab — Lyon",
     "client_deferred": "Müşteri kaydı görüşme onaylanınca oluşturulur (yarım görüşme liste kirletmez).",
     "no_clients": "Henüz müşteri yok.",
+    "existing_selected": "Mevcut müşteri seçili: {name}",
     "fetch_error": "Sunucuya ulaşılamıyor — TEZGÂH sunucusu çalışıyor mu?",
     "retry": "Tekrar dene",
     "menu_lang": "Menü dili",
