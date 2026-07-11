@@ -67,8 +67,10 @@
     "committing": "Yazılıyor…",
     "committed": "Tamam — katalog güncellendi",
     "commit_error": "Hata",
-    "result_preview": "Menü önizle (A4)",
+    "result_preview": "Menüyü önizle (A4)",
     "result_client": "Müşteri sayfası",
+    "result_ok": "{name} — {n} yeni kategori eklendi.",
+    "result_new": "Yeni görüşme",
     "wip": "(sonraki adımda)",
     "back": "← Geri",
     "next": "İleri →"

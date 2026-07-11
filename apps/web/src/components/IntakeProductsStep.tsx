@@ -7,7 +7,7 @@
    category_note store'da HAM LocalizedName olarak saklanır, menu_language'e
    çözme İŞLEMİ YALNIZ commit anında (IntakeSummaryStep) yapılır. */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LocalizedName, Question, SectorPack } from "@tezgah/shared";
 import { api } from "../api";
@@ -44,12 +44,31 @@ export function IntakeProductsStep() {
     return m;
   }, [ingredientsQ.data]);
 
+  /* CILA2/B2: mükerrer "+" — özette "Kebap ×3" kazası. Aynı ürün (ad+kategori,
+     TR anahtarıyla) zaten ekliyse yeni satır AÇILMAZ; mevcut karta kaydırılır
+     ve kart kısa süre vurgulanır (kart bu görünümün altında, aynı sayfada). */
+  const [flashUid, setFlashUid] = useState<string | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
+  const flashCard = (uid: string) => {
+    window.clearTimeout(flashTimer.current);
+    setFlashUid(uid);
+    flashTimer.current = window.setTimeout(() => setFlashUid(null), 1500);
+    document.getElementById(`intake-prod-${uid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const addProduct = (
     pack: SectorPack,
     categoryName: LocalizedName,
     categoryNote: LocalizedName | undefined,
     item: SectorPack["categories"][number]["items"][number]
   ) => {
+    const dup = s.products.find(
+      (p) => p.name.tr === item.name.tr && p.category_name.tr === categoryName.tr
+    );
+    if (dup) {
+      flashCard(dup.uid);
+      return;
+    }
     s.addProduct({
       uid: crypto.randomUUID(),
       category_name: categoryName, // ham — display tr (pickDisplay), commit menu_language (pickML)
@@ -63,10 +82,14 @@ export function IntakeProductsStep() {
     });
   };
 
+  /* CILA2/B3: bileşen adım 3 VE 4'te render edilir (SiparisPage) — başlık
+     adıma göre: 3=Ürünler, 4=Sorular (stepper etiketiyle tutarlı). */
+  const title = t(s.step === 4 ? "intake.step_questions" : "intake.step_products");
+
   if (sectorsQ.isError || ingredientsQ.isError) {
     return (
       <section className="intake-step">
-        <h2>{t("intake.step_products")}</h2>
+        <h2>{title}</h2>
         <FetchError
           onRetry={() => {
             if (sectorsQ.isError) void sectorsQ.refetch();
@@ -79,7 +102,7 @@ export function IntakeProductsStep() {
 
   return (
     <section className="intake-step">
-      <h2>{t("intake.step_products")}</h2>
+      <h2>{title}</h2>
 
       {/* Ürün seçici — seçili paketlerin kategorileri yan yana */}
       <div className="intake-list">
@@ -128,7 +151,7 @@ export function IntakeProductsStep() {
 
       {/* Eklenen ürünler */}
       {s.products.map((p) => (
-        <ProductCard key={p.uid} product={p} library={ingredientsQ.data ?? []} />
+        <ProductCard key={p.uid} product={p} flash={p.uid === flashUid} library={ingredientsQ.data ?? []} />
       ))}
 
       <NavBar canNext={s.products.length > 0} />
@@ -138,9 +161,12 @@ export function IntakeProductsStep() {
 
 function ProductCard({
   product,
+  flash,
   library,
 }: {
   product: IntakeProduct;
+  /** CILA2/B2: mükerrer "+" bu karta yönlendirdi — kısa vurgu animasyonu */
+  flash: boolean;
   library: Array<{ id: string; tr: string; fr: string; de: string }>;
 }) {
   const s = useIntake();
@@ -162,7 +188,7 @@ function ProductCard({
   };
 
   return (
-    <div className="intake-product">
+    <div id={`intake-prod-${product.uid}`} className={`intake-product${flash ? " flash" : ""}`}>
       <div className="head">
         <span>
           <strong>{pickDisplay(product.name)}</strong>
