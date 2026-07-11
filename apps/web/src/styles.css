@@ -223,7 +223,7 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 
 .intake-fields { display: flex; flex-direction: column; gap: 10px; }
 .intake-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
-.intake-fields input, .intake-fields select, .intake-product input, .intake-product select, .intake-checklist input, .intake-checklist select, .intake-checklist textarea {
+.intake-fields input, .intake-fields select, .intake-prodbody input, .intake-prodbody select, .intake-checklist input, .intake-checklist select, .intake-checklist textarea {
   min-height: 44px; padding: 8px 12px; font-size: 15px; border: 1px solid var(--c-line); border-radius: 8px; background: #fff;
 }
 
@@ -245,16 +245,16 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .intake-navbar { position: sticky; bottom: 0; display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; background: linear-gradient(transparent, var(--c-bg) 30%); }
 .intake-navbar .intake-btn { flex: 1; }
 
-/* Ürün kartı + çipler (Adım 3-4) */
-.intake-product { border: 1px solid var(--c-line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
-/* CILA2/B2: mükerrer "+" mevcut karta kaydırır — kart 1.5sn amber halkayla vurgulanır */
-.intake-product.flash { animation: intake-flash 1.5s ease-out; }
-@keyframes intake-flash {
-  0% { box-shadow: 0 0 0 3px #F59E0B; }
-  100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0); }
+/* CILA3: tek yüzey — ürün satırı yerinde genişler (3 durumlu akordeon).
+   Eski iki-bölge kartı (.intake-product) ve CILA2/B2 flash'ı KALKTI —
+   mükerrer yapısal imkânsız olduğundan kaydır/vurgula da gereksizleşti. */
+.intake-prodrow { display: flex; flex-direction: column; }
+.intake-prodrow.open > .intake-choice.selected { border-radius: 10px 10px 0 0; }
+.intake-prodbody {
+  border: 1px solid var(--c-primary); border-top: none; border-radius: 0 0 10px 10px;
+  padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px;
 }
-.intake-product .head { display: flex; justify-content: space-between; align-items: baseline; }
-.intake-product .cat { font-size: 12px; color: #8a8377; }
+.intake-prodbody .rowend { display: flex; justify-content: flex-end; }
 .intake-variants { display: flex; flex-wrap: wrap; gap: 6px; }
 .intake-variant { display: flex; align-items: center; gap: 4px; font-size: 13px; }
 .intake-variant input { width: 84px; }

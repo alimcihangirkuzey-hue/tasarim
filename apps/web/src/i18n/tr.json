@@ -38,6 +38,8 @@
     "item": "ürün",
     "add_product": "+ Ürün ekle",
     "remove": "Kaldır",
+    "remove_confirm": "{name} kaldırılsın mı? Girilen fiyat/içerik silinecek.",
+    "orphan_group": "Eklenmiş — paketi kapatılmış ürünler (düzenlenebilir)",
     "hide_content": "İçerik basılmasın",
     "price_ph": "fiyat (boş = fiyat-bekliyor)",
     "chip_add_ph": "malzeme yaz + Enter (yoksa öğrenilir)",
