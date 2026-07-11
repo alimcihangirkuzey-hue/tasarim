@@ -74,7 +74,6 @@ export function IntakeProductsStep() {
       category_name: categoryName, // ham — display tr (pickDisplay), commit menu_language (pickML)
       category_note: categoryNote,
       name: item.name, // ham — aynı desen
-      question_ids: item.questions,
       variants: deriveVariants(item.questions, pack.questions),
       chips: item.default_chips.map((id) => chipById.get(id)).filter((c): c is IntakeChip => !!c),
       extras: [],
@@ -82,14 +81,10 @@ export function IntakeProductsStep() {
     });
   };
 
-  /* CILA2/B3: bileşen adım 3 VE 4'te render edilir (SiparisPage) — başlık
-     adıma göre: 3=Ürünler, 4=Sorular (stepper etiketiyle tutarlı). */
-  const title = t(s.step === 4 ? "intake.step_questions" : "intake.step_products");
-
   if (sectorsQ.isError || ingredientsQ.isError) {
     return (
       <section className="intake-step">
-        <h2>{title}</h2>
+        <h2>{t("intake.step_products")}</h2>
         <FetchError
           onRetry={() => {
             if (sectorsQ.isError) void sectorsQ.refetch();
@@ -102,7 +97,7 @@ export function IntakeProductsStep() {
 
   return (
     <section className="intake-step">
-      <h2>{title}</h2>
+      <h2>{t("intake.step_products")}</h2>
 
       {/* Ürün seçici — seçili paketlerin kategorileri yan yana */}
       <div className="intake-list">

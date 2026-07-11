@@ -18,7 +18,9 @@ import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
 import { IntakeSummaryStep, type IntakeResultData } from "../components/IntakeSummaryStep";
 
-const STEP_KEYS = ["client", "packs", "products", "questions", "checklist", "summary"] as const;
+/* CILA3: "Sorular" adımı kalktı — ürün ayarları Ürünler adımında YERİNDE
+   (tek çalışma yüzeyi). Akış 5 adım. */
+const STEP_KEYS = ["client", "packs", "products", "checklist", "summary"] as const;
 
 function ageLabel(ts: number | null): string {
   if (!ts) return "";
@@ -104,9 +106,8 @@ export function SiparisPage() {
       {s.step === 1 && <ClientStep />}
       {s.step === 2 && <PacksStep />}
       {s.step === 3 && <IntakeProductsStep />}
-      {s.step === 4 && <IntakeProductsStep />}
-      {s.step === 5 && <IntakeChecklistStep />}
-      {s.step === 6 && <IntakeSummaryStep onCommitted={setResult} />}
+      {s.step === 4 && <IntakeChecklistStep />}
+      {s.step === 5 && <IntakeSummaryStep onCommitted={setResult} />}
     </div>
   );
 }
