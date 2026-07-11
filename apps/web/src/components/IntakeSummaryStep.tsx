@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { IntakeAnswersSchema, projectIntake } from "@tezgah/shared";
 import { api } from "../api";
-import { t } from "../i18n";
+import { t, tf } from "../i18n";
 import { pickDisplay, pickML } from "./IntakeNav";
 import { useIntake } from "../store/intakeStore";
 
@@ -49,6 +49,22 @@ export function IntakeSummaryStep() {
 
   const preview = useMemo(() => projectIntake(answers, "PREVIEW", lang), [answers, lang]);
   const catalogFull = s.clientMode === "existing" && (existingQ.data?.catalog.categories.length ?? 0) > 0;
+
+  /* CILA1/2 — "bu gecenin kazası": mevcut+dolu müşteride kırmızı kutu (ŞERH 1
+     uyarısı) YETMEDİ, kullanıcı görmeden/anlamadan basabildi. Artık bu YOLDA
+     (yalnız catalogFull true iken — window.confirm proje deseni, 5+ yerde
+     kullanılıyor, bkz ClientDetailPage/EditorPage/ThemesPage) net bir onay
+     sorusu araya girer; yeni-müşteri yolunda HİÇ TETİKLENMEZ. */
+  const handleCommitClick = () => {
+    if (catalogFull) {
+      const name = existingQ.data?.name ?? s.existingClientName ?? "";
+      const ok = window.confirm(
+        tf("intake.commit_confirm", { name, n: preview.categories.length })
+      );
+      if (!ok) return;
+    }
+    commit.mutate();
+  };
 
   /* Operatöre HER ZAMAN TR (HF2-B) — hangi ürünler fiyatsız kaldığını
      preview.pending ile AYNI kuralla (tüm varyant value'ları null) belirler,
@@ -155,7 +171,7 @@ export function IntakeSummaryStep() {
         <button
           className="intake-btn primary"
           disabled={commit.isPending || s.products.length === 0}
-          onClick={() => commit.mutate()}
+          onClick={handleCommitClick}
         >
           {commit.isPending ? t("intake.committing") : t("intake.commit")}
         </button>
