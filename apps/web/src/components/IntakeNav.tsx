@@ -35,10 +35,18 @@ export function NavBar({
 }
 
 /** Çok-dilli addan menü diline göre etiket (fr→tr→de / de→fr→tr fallback) —
-    projeksiyon resolveChip mantığıyla aynı; operatör UI'da menü çıktısını gösterir. */
+    projeksiyon resolveChip mantığıyla aynı. YALNIZ commit eşlemesinde kullanılır
+    (IntakeSummaryStep) — operatör UI'da KULLANILMAZ (HF2-B: bkz pickDisplay). */
 export function pickML(name: { tr: string; fr: string; de: string }, lang: MenuLang): string {
   const order = lang === "de" ? [name.de, name.fr, name.tr] : [name.fr, name.tr, name.de];
   return (order.find((v) => v && v.trim() !== "") ?? "").trim();
+}
+
+/** Operatör görünümü — HER ZAMAN TR (HF2-B mimar kararı: menu_language yalnız
+    çıktı dilidir, UI dili değil). tr boşsa (teorik — D1 refine ≥1 dil garanti
+    eder) fr→de'ye düşer; sessiz boş değil, en azından bir değer gösterir. */
+export function pickDisplay(name: { tr: string; fr: string; de: string }): string {
+  return ([name.tr, name.fr, name.de].find((v) => v && v.trim() !== "") ?? "").trim();
 }
 
 /** Sunucuya ulaşılamadığında GÖRÜNÜR hata + tekrar-dene (HF1/B — M8: sessiz boş

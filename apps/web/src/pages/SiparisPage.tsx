@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { t } from "../i18n";
-import { useIntake } from "../store/intakeStore";
+import { consumeDraftDiscardedNotice, useIntake } from "../store/intakeStore";
 import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
@@ -29,6 +29,10 @@ function ageLabel(ts: number | null): string {
 export function SiparisPage() {
   const s = useIntake();
   const [draftAck, setDraftAck] = useState(false);
+  /* HF2-B taslak sürüm bekçisi: migrate() bu bayrağı SENKRON olarak (modül
+     yüklenirken, mount'tan önce) set eder — bir kez oku+sıfırla (yeniden
+     render'da tekrar gösterilmesin). */
+  const [incompatibleDraft] = useState(consumeDraftDiscardedNotice);
   const showDraftPrompt = s.hasDraft() && !draftAck;
 
   if (showDraftPrompt) {
@@ -60,6 +64,11 @@ export function SiparisPage() {
 
   return (
     <div className="intake-page">
+      {incompatibleDraft && (
+        <div className="intake-warn full" style={{ marginBottom: 8 }}>
+          {t("intake.draft_incompatible")}
+        </div>
+      )}
       <ol className="intake-stepper">
         {STEP_KEYS.map((k, i) => (
           <li

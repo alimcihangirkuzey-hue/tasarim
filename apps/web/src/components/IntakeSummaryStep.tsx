@@ -1,6 +1,13 @@
 /* Sipariş Modu Adım 6 (F7-C): özet — pending (fiyat-bekliyor) + translationGaps
    GÖRÜNÜR (M8, sessiz hiçbir şey yok) + katalog-dolu uyarısı (ŞERH 1) → atomik
-   commit (api.intakeCommit) → sonuç: menü A4 önizleme köprüsü (tıklamadan menüye). */
+   commit (api.intakeCommit) → sonuç: menü A4 önizleme köprüsü (tıklamadan menüye).
+
+   HF2-B: name/category_name/category_note store'da HAM LocalizedName — TEK
+   NOKTA burada (answers oluşturulurken) pickML(x, menu_language) ile çözülür.
+   Pending listesi operatöre HER ZAMAN TR gösterilir (pendingTr, s.products'tan
+   ayrıca hesaplanır) — preview.pending (server/projection çıktısı, DEĞİŞMEDİ)
+   HANGİ ürünlerin fiyatsız olduğunu belirlemek için hâlâ kullanılır (commit-
+   öncesi doğrulama + translationGaps), yalnız GÖSTERİLEN metin ayrıştırılmıştır. */
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { IntakeAnswersSchema, projectIntake } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
+import { pickDisplay, pickML } from "./IntakeNav";
 import { useIntake } from "../store/intakeStore";
 
 export function IntakeSummaryStep() {
@@ -27,20 +35,31 @@ export function IntakeSummaryStep() {
     () =>
       IntakeAnswersSchema.parse({
         items: s.products.map((p) => ({
-          category_name: p.category_name,
-          name: p.name,
-          category_note: p.category_note,
+          category_name: pickML(p.category_name, lang), // TEK NOKTA — ham→çıktı dili
+          name: pickML(p.name, lang),
+          category_note: p.category_note ? pickML(p.category_note, lang) : undefined,
           variants: p.variants,
           chips: p.chips,
           extras: p.extras,
           hide_content: p.hide_content,
         })),
       }),
-    [s.products]
+    [s.products, lang]
   );
 
   const preview = useMemo(() => projectIntake(answers, "PREVIEW", lang), [answers, lang]);
   const catalogFull = s.clientMode === "existing" && (existingQ.data?.catalog.categories.length ?? 0) > 0;
+
+  /* Operatöre HER ZAMAN TR (HF2-B) — hangi ürünler fiyatsız kaldığını
+     preview.pending ile AYNI kuralla (tüm varyant value'ları null) belirler,
+     ama isimleri store'daki ham LocalizedName'den (pickDisplay→TR) gösterir. */
+  const pendingTr = useMemo(
+    () =>
+      s.products
+        .filter((p) => p.variants.every((v) => v.value === null))
+        .map((p) => ({ name: pickDisplay(p.name), category: pickDisplay(p.category_name) })),
+    [s.products]
+  );
 
   const commit = useMutation({
     mutationFn: () =>
@@ -95,7 +114,7 @@ export function IntakeSummaryStep() {
     );
   }
 
-  const clean = preview.pending.length === 0 && preview.translationGaps.length === 0;
+  const clean = pendingTr.length === 0 && preview.translationGaps.length === 0;
 
   return (
     <section className="intake-step">
@@ -103,11 +122,11 @@ export function IntakeSummaryStep() {
 
       {catalogFull && <div className="intake-warn full">{t("intake.catalog_has")}</div>}
 
-      {preview.pending.length > 0 && (
+      {pendingTr.length > 0 && (
         <div className="intake-warn pending">
           {t("intake.summary_pending")}:
           <ul>
-            {preview.pending.map((p, i) => (
+            {pendingTr.map((p, i) => (
               <li key={i}>
                 {p.category} — {p.name}
               </li>

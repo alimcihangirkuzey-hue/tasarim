@@ -1,10 +1,18 @@
 /* Sipariş Modu intake akış state'i — Zustand + localStorage taslak (F7-C/D).
    Müşteri YALNIZ commit'te yaratılır (yarım görüşme listeyi kirletmez). Yenileme/
    kilitlenme → taslaktan geri yüklenir; akış başında eski taslak varsa devam/at
-   seçimi (ŞERH 2). Referans veri (paketler/çipler) burada DEĞİL — react-query'de. */
+   seçimi (ŞERH 2). Referans veri (paketler/çipler) burada DEĞİL — react-query'de.
+
+   HF2-B (mimar SEÇENEK 1): görüntüleme HER YERDE TR; menu_language YALNIZ çıktı
+   dilidir. name/category_name/category_note ham LocalizedName {tr,fr,de} taşır
+   (SectorPack item/kategori adının KENDİSİ) — component'ler pickDisplay() ile
+   HER ZAMAN TR gösterir (IntakeNav.tsx), commit anında TEK noktada (IntakeSummaryStep)
+   pickML() ile menu_language'e çözülür. Sunucu/projeksiyon/IntakeAnswers şekli
+   DEĞİŞMEDİ — yalnız istemci. */
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { LocalizedName } from "@tezgah/shared";
 
 export type Currency = "EUR" | "CHF";
 export type MenuLang = "fr" | "de";
@@ -23,9 +31,9 @@ export interface IntakeVariantAnswer {
 
 export interface IntakeProduct {
   uid: string;
-  category_name: string; // menü dilinde (grup anahtarı)
-  category_note?: string; // menü dilinde kategori notu (F7-C/E)
-  name: string; // menü dilinde ürün adı
+  category_name: LocalizedName; // ham (SectorPackCategory.name) — display tr, commit menu_language
+  category_note?: LocalizedName; // ham kategori notu (F7-C/E)
+  name: LocalizedName; // ham (SectorPackItem.name) — display tr, commit menu_language
   question_ids: string[];
   variants: IntakeVariantAnswer[];
   chips: IntakeChip[];
@@ -99,6 +107,22 @@ interface IntakeStore extends IntakeData {
 
 const touch = (): { savedAt: number } => ({ savedAt: Date.now() });
 
+/* HF2-B taslak sürüm bekçisi: name/category_name/category_note artık ham
+   LocalizedName {tr,fr,de} taşıyor (önceki string şemasıyla UYUMSUZ). Persisted
+   version eşleşmezse (eski taslak) MİGRASYON DENENMEZ — taslak temiz atılır;
+   kullanıcıya açık mesaj (SiparisPage consumeDraftDiscardedNotice() ile mount'ta
+   bir kez okur+sıfırlar — sessiz kayıp yok, M8). migrate() create() sırasında
+   (modül yüklenirken) senkron çalışır, component render'ından önce tamamlanmış
+   olur. Modül-seviyesi `let` import eden taraftan YAZILAMAZ (ES module read-only
+   binding) — bu yüzden setter/consumer fonksiyon üzerinden. */
+let draftDiscardedNotice = false;
+export function consumeDraftDiscardedNotice(): boolean {
+  const v = draftDiscardedNotice;
+  draftDiscardedNotice = false;
+  return v;
+}
+const SCHEMA_VERSION = 1;
+
 export const useIntake = create<IntakeStore>()(
   persist(
     (set, get) => ({
@@ -151,6 +175,14 @@ export const useIntake = create<IntakeStore>()(
     }),
     {
       name: "tezgah-intake-draft",
+      version: SCHEMA_VERSION,
+      migrate: (persisted, version) => {
+        if (version !== SCHEMA_VERSION) {
+          draftDiscardedNotice = true;
+          return { ...INITIAL } as IntakeStore; // migrasyon denemesi YOK — temiz atılır
+        }
+        return persisted as IntakeStore;
+      },
       partialize: (s): IntakeData => ({
         step: s.step,
         clientMode: s.clientMode,

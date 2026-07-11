@@ -248,7 +248,7 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .intake-variant { display: flex; align-items: center; gap: 4px; font-size: 13px; }
 .intake-variant input { width: 84px; }
 .intake-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.intake-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 16px; font-size: 13px; border: 1px solid var(--c-line); background: #F5F2EC; }
+.intake-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 16px; font-size: 13px; border: 1px solid var(--c-line); background: #F5F2EC; color: var(--c-ink); }
 .intake-chip button { border: none; background: none; cursor: pointer; font-size: 15px; line-height: 1; color: #b45; padding: 0; }
 .intake-chip.learning { border-color: #F59E0B; background: #FEF3C7; }
 .intake-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; }
