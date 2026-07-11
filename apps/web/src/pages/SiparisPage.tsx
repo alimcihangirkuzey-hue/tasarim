@@ -1,17 +1,22 @@
 /* Sipariş Modu — mobil-öncelikli tek-kolon intake akışı (F7-C). AYRI sayfa
    (sabit-genişlik editör YENİDEN KULLANILMAZ — keşif Q5). Adımlar: müşteri →
    paketler → ürünler → sorular/çipler → çeklist → özet/commit. Taslak
-   localStorage'da (D); akış başında eski taslak → devam/at (ŞERH 2). */
+   localStorage'da (D); akış başında eski taslak → devam/at (ŞERH 2).
+
+   CILA2/B1: commit SONUÇ görünümü BU SAYFANIN yerel durumunda (result) yaşar —
+   özet adımındaki s.reset() (step→1) adım bileşenlerini unmount etse de sonuç
+   ekranı ondan etkilenmez. Render önceliği: result > taslak-sorusu > adımlar. */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { consumeDraftDiscardedNotice, useIntake } from "../store/intakeStore";
 import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
-import { IntakeSummaryStep } from "../components/IntakeSummaryStep";
+import { IntakeSummaryStep, type IntakeResultData } from "../components/IntakeSummaryStep";
 
 const STEP_KEYS = ["client", "packs", "products", "questions", "checklist", "summary"] as const;
 
@@ -29,11 +34,25 @@ function ageLabel(ts: number | null): string {
 export function SiparisPage() {
   const s = useIntake();
   const [draftAck, setDraftAck] = useState(false);
+  /* CILA2/B1: commit sonucu — adım/taslak durumundan BAĞIMSIZ (reset silmez) */
+  const [result, setResult] = useState<IntakeResultData | null>(null);
   /* HF2-B taslak sürüm bekçisi: migrate() bu bayrağı SENKRON olarak (modül
      yüklenirken, mount'tan önce) set eder — bir kez oku+sıfırla (yeniden
      render'da tekrar gösterilmesin). */
   const [incompatibleDraft] = useState(consumeDraftDiscardedNotice);
   const showDraftPrompt = s.hasDraft() && !draftAck;
+
+  if (result) {
+    return (
+      <IntakeResult
+        data={result}
+        onNew={() => {
+          s.reset(); // commit'te zaten sıfırlandı — yine de idempotent güvence
+          setResult(null);
+        }}
+      />
+    );
+  }
 
   if (showDraftPrompt) {
     return (
@@ -87,7 +106,76 @@ export function SiparisPage() {
       {s.step === 3 && <IntakeProductsStep />}
       {s.step === 4 && <IntakeProductsStep />}
       {s.step === 5 && <IntakeChecklistStep />}
-      {s.step === 6 && <IntakeSummaryStep />}
+      {s.step === 6 && <IntakeSummaryStep onCommitted={setResult} />}
+    </div>
+  );
+}
+
+/* ---- Commit sonucu (CILA2/B1) — başarı + pending/gaps + A4 önizleme + yeni görüşme ---- */
+function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => void }) {
+  const navigate = useNavigate();
+
+  /* "MENÜYÜ ÖNİZLE": müşterinin menu-liste-premium belgesi VARSA yeniden kullanılır
+     (liste updated_at DESC gelir → ilk eşleşme en güncel), yoksa oluşturulur;
+     ardından /print/:id?variant=preview (net A4, işaretsiz — insan-görünür). */
+  const openPreview = useMutation({
+    mutationFn: async () => {
+      const docs = await api.documents(data.client_id);
+      const existing = docs.find((d) => d.template_id === "menu-liste-premium");
+      if (existing) return existing.id;
+      return (await api.createDocument(data.client_id, "menu-liste-premium")).id;
+    },
+    onSuccess: (docId) => navigate(`/print/${docId}?variant=preview`),
+  });
+
+  return (
+    <div className="intake-page">
+      <div className="intake-result">
+        <div className="big">✓</div>
+        <h2>{t("intake.committed")}</h2>
+        <p className="intake-hint">{tf("intake.result_ok", { name: data.client_name, n: data.applied })}</p>
+
+        {data.pending.length > 0 && (
+          <div className="intake-warn pending" style={{ textAlign: "left" }}>
+            {t("intake.summary_pending")}:
+            <ul>
+              {data.pending.map((p, i) => (
+                <li key={i}>
+                  {p.category} — {p.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {data.gaps.length > 0 && (
+          <div className="intake-warn gaps" style={{ textAlign: "left" }}>
+            {t("intake.summary_gaps")}:
+            <ul>
+              {data.gaps.map((g, i) => (
+                <li key={i}>
+                  {g.item}: {g.label} ({g.usedLang})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <button
+          className="intake-btn primary"
+          disabled={openPreview.isPending}
+          onClick={() => openPreview.mutate()}
+        >
+          {openPreview.isPending ? "…" : t("intake.result_preview")}
+        </button>
+        <button className="intake-btn ghost" onClick={onNew}>
+          {t("intake.result_new")}
+        </button>
+        {openPreview.isError && (
+          <p className="intake-warn full">
+            {t("intake.commit_error")}: {(openPreview.error as Error).message}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

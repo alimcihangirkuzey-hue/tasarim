@@ -1,29 +1,43 @@
 /* Sipariş Modu Adım 6 (F7-C): özet — pending (fiyat-bekliyor) + translationGaps
    GÖRÜNÜR (M8, sessiz hiçbir şey yok) + katalog-dolu uyarısı (ŞERH 1) → atomik
-   commit (api.intakeCommit) → sonuç: menü A4 önizleme köprüsü (tıklamadan menüye).
+   commit (api.intakeCommit).
 
    HF2-B: name/category_name/category_note store'da HAM LocalizedName — TEK
    NOKTA burada (answers oluşturulurken) pickML(x, menu_language) ile çözülür.
    Pending listesi operatöre HER ZAMAN TR gösterilir (pendingTr, s.products'tan
    ayrıca hesaplanır) — preview.pending (server/projection çıktısı, DEĞİŞMEDİ)
    HANGİ ürünlerin fiyatsız olduğunu belirlemek için hâlâ kullanılır (commit-
-   öncesi doğrulama + translationGaps), yalnız GÖSTERİLEN metin ayrıştırılmıştır. */
+   öncesi doğrulama + translationGaps), yalnız GÖSTERİLEN metin ayrıştırılmıştır.
 
-import { useMemo, useState } from "react";
+   CILA2/B1: SONUÇ görünümü artık BU BİLEŞENDE DEĞİL — onSuccess'teki s.reset()
+   step'i 1'e çektiğinden SiparisPage'deki `s.step === 6` koşulu düşüyor ve bu
+   bileşen (içindeki result state'iyle) unmount oluyordu → sonuç ekranı hiç
+   görünmüyordu. Sonuç verisi onCommitted ile SiparisPage'e (adım-bağımsız yerel
+   duruma) yukarı taşınır; taslak reset'i commit anında KALIR (taslak-sızıntısı /
+   çift-commit önlemi — kapanan sekme dolu taslak bırakmaz). */
+
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { IntakeAnswersSchema, projectIntake } from "@tezgah/shared";
+import { IntakeAnswersSchema, projectIntake, type ProjectionResult } from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { pickDisplay, pickML } from "./IntakeNav";
 import { useIntake } from "../store/intakeStore";
 
-export function IntakeSummaryStep() {
+/** Commit sonucu — taslak/store reset'inden BAĞIMSIZ yaşar (SiparisPage tutar).
+    pending TR'dir (HF2-B: operatör görünümü; res.pending çıktı dilinde olurdu). */
+export interface IntakeResultData {
+  client_id: string;
+  client_name: string;
+  applied: number;
+  pending: Array<{ name: string; category: string }>;
+  gaps: ProjectionResult["translationGaps"];
+}
+
+export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResultData) => void }) {
   const s = useIntake();
   const lang = s.menuLang();
-  const navigate = useNavigate();
   const qc = useQueryClient();
-  const [result, setResult] = useState<{ client_id: string; applied: number; pending: number } | null>(null);
 
   const existingQ = useQuery({
     queryKey: ["client", s.existingClientId],
@@ -93,42 +107,23 @@ export function IntakeSummaryStep() {
         checklist: s.checklist as unknown as Record<string, unknown>,
       }),
     onSuccess: (res) => {
-      setResult({ client_id: res.client_id, applied: res.applied_categories, pending: res.pending.length });
+      /* Sonuç verisi ÖNCE yukarı (SiparisPage) — reset'ten etkilenmez (B1).
+         client_name reset'ten önce yakalanır; pending TR listesidir (HF2-B). */
+      onCommitted({
+        client_id: res.client_id,
+        client_name:
+          s.clientMode === "new"
+            ? s.newClient.name.trim()
+            : existingQ.data?.name ?? s.existingClientName ?? "",
+        applied: res.applied_categories,
+        pending: pendingTr,
+        gaps: res.translationGaps,
+      });
       void qc.invalidateQueries({ queryKey: ["clients"] });
       void qc.invalidateQueries({ queryKey: ["ingredients"] });
-      s.reset(); // taslak temizlenir
+      s.reset(); // taslak commit anında temizlenir (çift-commit önlemi) — sonuç görünümü bundan bağımsız
     },
   });
-
-  const openMenu = useMutation({
-    mutationFn: (clientId: string) => api.createDocument(clientId, "menu-liste-premium"),
-    onSuccess: (doc) => navigate(`/editor/${doc.id}`),
-  });
-
-  if (result) {
-    return (
-      <div className="intake-page">
-        <div className="intake-result">
-          <div className="big">✓</div>
-          <h2>{t("intake.committed")}</h2>
-          <p className="intake-hint">
-            {result.applied} {t("intake.cat")}
-            {result.pending > 0 ? ` · ${result.pending} ${t("intake.summary_pending").toLowerCase()}` : ""}
-          </p>
-          <button
-            className="intake-btn primary"
-            disabled={openMenu.isPending}
-            onClick={() => openMenu.mutate(result.client_id)}
-          >
-            {openMenu.isPending ? "…" : t("intake.result_preview")}
-          </button>
-          <button className="intake-btn ghost" onClick={() => navigate(`/clients/${result.client_id}`)}>
-            {t("intake.result_client")}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const clean = pendingTr.length === 0 && preview.translationGaps.length === 0;
 
