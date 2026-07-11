@@ -1,15 +1,19 @@
 /* Sipariş Modu Adım 3-4 (F7-C): seçili paketlerden ürün tıkla-seç (kategoriler yan
    yana) → ürün kartı: sorular → varyant fiyat girişleri (boş = fiyat-bekliyor) +
    çipler (default ÖN-SEÇİLİ, tek-tık sil, kütüphaneden ekle, yoksa yaz→öğren) +
-   "içerik basılmasın" anahtarı. */
+   "içerik basılmasın" anahtarı.
+
+   HF2-B: operatör görünümü HER YERDE TR (pickDisplay) — name/category_name/
+   category_note store'da HAM LocalizedName olarak saklanır, menu_language'e
+   çözme İŞLEMİ YALNIZ commit anında (IntakeSummaryStep) yapılır. */
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Question, SectorPack } from "@tezgah/shared";
+import type { LocalizedName, Question, SectorPack } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
-import { FetchError, NavBar, pickML } from "./IntakeNav";
-import { useIntake, type IntakeChip, type IntakeProduct, type MenuLang } from "../store/intakeStore";
+import { FetchError, NavBar, pickDisplay } from "./IntakeNav";
+import { useIntake, type IntakeChip, type IntakeProduct } from "../store/intakeStore";
 
 /* Ürünün varyantlarını sorulardan türet: ilk seçenekli (choice/portion) varyant
    sorusunun opsiyonları → varyant satırları; yoksa tek "seul". */
@@ -26,7 +30,6 @@ function deriveVariants(questionIds: string[], packQ: Question[]): IntakeProduct
 
 export function IntakeProductsStep() {
   const s = useIntake();
-  const lang = s.menuLang();
   const sectorsQ = useQuery({ queryKey: ["sectors"], queryFn: api.sectors });
   const ingredientsQ = useQuery({ queryKey: ["ingredients"], queryFn: api.ingredients });
 
@@ -41,12 +44,17 @@ export function IntakeProductsStep() {
     return m;
   }, [ingredientsQ.data]);
 
-  const addProduct = (pack: SectorPack, categoryName: string, categoryNote: string | undefined, item: SectorPack["categories"][number]["items"][number]) => {
+  const addProduct = (
+    pack: SectorPack,
+    categoryName: LocalizedName,
+    categoryNote: LocalizedName | undefined,
+    item: SectorPack["categories"][number]["items"][number]
+  ) => {
     s.addProduct({
       uid: crypto.randomUUID(),
-      category_name: categoryName,
+      category_name: categoryName, // ham — display tr (pickDisplay), commit menu_language (pickML)
       category_note: categoryNote,
-      name: pickML(item.name, lang),
+      name: item.name, // ham — aynı desen
       question_ids: item.questions,
       variants: deriveVariants(item.questions, pack.questions),
       chips: item.default_chips.map((id) => chipById.get(id)).filter((c): c is IntakeChip => !!c),
@@ -77,21 +85,21 @@ export function IntakeProductsStep() {
       <div className="intake-list">
         {selectedPacks.map((pack) =>
           pack.categories.map((cat) => {
-            const catName = pickML(cat.name, lang);
-            const catNote = cat.note ? pickML(cat.note, lang) : undefined;
+            const catName = pickDisplay(cat.name); // operatör HER ZAMAN TR (HF2-B)
             return (
               <details key={pack.id + catName} className="intake-catgroup">
                 <summary>
-                  <strong>{catName}</strong> <span className="sub">· {pack.label_tr}</span>
+                  <strong>{catName}</strong>
+                  <span className="sub"> · {pack.label_tr}</span>
                 </summary>
                 <div className="intake-list" style={{ marginTop: 8 }}>
                   {cat.items.map((item) => (
                     <button
                       key={item.name.tr}
                       className="intake-choice"
-                      onClick={() => addProduct(pack, catName, catNote, item)}
+                      onClick={() => addProduct(pack, cat.name, cat.note, item)}
                     >
-                      + {pickML(item.name, lang)}
+                      + {pickDisplay(item.name)}
                     </button>
                   ))}
                 </div>
@@ -107,7 +115,7 @@ export function IntakeProductsStep() {
 
       {/* Eklenen ürünler */}
       {s.products.map((p) => (
-        <ProductCard key={p.uid} product={p} lang={lang} library={ingredientsQ.data ?? []} />
+        <ProductCard key={p.uid} product={p} library={ingredientsQ.data ?? []} />
       ))}
 
       <NavBar canNext={s.products.length > 0} />
@@ -117,11 +125,9 @@ export function IntakeProductsStep() {
 
 function ProductCard({
   product,
-  lang,
   library,
 }: {
   product: IntakeProduct;
-  lang: MenuLang;
   library: Array<{ id: string; tr: string; fr: string; de: string }>;
 }) {
   const s = useIntake();
@@ -146,8 +152,8 @@ function ProductCard({
     <div className="intake-product">
       <div className="head">
         <span>
-          <strong>{product.name}</strong>
-          <span className="cat"> · {product.category_name}</span>
+          <strong>{pickDisplay(product.name)}</strong>
+          <span className="cat"> · {pickDisplay(product.category_name)}</span>
         </span>
         <button className="intake-btn ghost" style={{ minHeight: 32, padding: "4px 10px" }} onClick={() => s.removeProduct(product.uid)}>
           {t("intake.remove")}
@@ -169,18 +175,18 @@ function ProductCard({
         ))}
       </div>
 
-      {/* Çipler */}
+      {/* Çipler — HER ZAMAN TR (HF2-B) */}
       <div className="intake-chips">
         {product.chips.map((c, i) => (
           <span key={i} className={`intake-chip ${c.chip_id ? "" : "learning"}`}>
-            {pickML(c, lang) || c.tr}
+            {pickDisplay(c)}
             <button title={t("intake.remove")} onClick={() => removeChip(i)}>
               ×
             </button>
           </span>
         ))}
       </div>
-      <ChipAdder onAdd={addChip} library={library} lang={lang} existing={product.chips} />
+      <ChipAdder onAdd={addChip} library={library} existing={product.chips} />
 
       {/* İçerik anahtarı — çipli her üründe yerleşik */}
       {hasChips && (
@@ -201,12 +207,10 @@ function ProductCard({
 function ChipAdder({
   onAdd,
   library,
-  lang,
   existing,
 }: {
   onAdd: (c: IntakeChip) => void;
   library: Array<{ id: string; tr: string; fr: string; de: string }>;
-  lang: MenuLang;
   existing: IntakeChip[];
 }) {
   const [q, setQ] = useState("");
@@ -249,7 +253,7 @@ function ChipAdder({
                 setQ("");
               }}
             >
-              + {pickML(c, lang) || c.tr}
+              + {pickDisplay(c)}
             </button>
           ))}
         </div>

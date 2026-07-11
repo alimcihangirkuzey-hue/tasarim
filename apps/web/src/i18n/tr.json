@@ -18,6 +18,7 @@
     "draft_found": "Yarım bir görüşme var",
     "draft_continue": "Devam et",
     "draft_new": "Yeni görüşme (taslağı at)",
+    "draft_incompatible": "Eski taslak uyumsuz — temiz başlatıldı (bir önceki görüşme kaydedilmemişti).",
     "age_now": "az önce",
     "age_min": "dakika önce",
     "age_hour": "saat önce",
