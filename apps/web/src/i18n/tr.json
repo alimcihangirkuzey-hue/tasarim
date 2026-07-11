@@ -62,6 +62,7 @@
     "summary_gaps": "Çeviri boşlukları (fallback kullanıldı)",
     "summary_none": "Sessiz bırakılan yok ✓",
     "catalog_has": "Bu müşterinin kataloğu DOLU — intake yalnız YENİ kategoriler ekler (mevcutlar değişmez).",
+    "commit_confirm": "{name} MEVCUT bir müşteri — kataloğuna {n} yeni kategori eklenecek. Devam?",
     "commit": "Görüşmeyi tamamla → kataloğa yaz",
     "committing": "Yazılıyor…",
     "committed": "Tamam — katalog güncellendi",
