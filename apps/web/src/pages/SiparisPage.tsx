@@ -7,12 +7,15 @@
    özet adımındaki s.reset() (step→1) adım bileşenlerini unmount etse de sonuç
    ekranı ondan etkilenmez. Render önceliği: result > taslak-sorusu > adımlar. */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { consumeDraftDiscardedNotice, useIntake, type MenuLang } from "../store/intakeStore";
+
+/* HF3: menü dili etiketi (bant + operatör görünürlüğü) */
+const LANG_LABEL: Record<MenuLang, string> = { fr: "Français", de: "Deutsch", tr: "Türkçe" };
 import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
@@ -189,6 +192,19 @@ function ClientStep() {
   const s = useIntake();
   const clientsQ = useQuery({ queryKey: ["clients"], queryFn: api.clients });
 
+  /* HF3: seçilen mevcut müşterinin TAM DTO'su (menu_language listede yok, yalnız
+     ClientDTO'da). Aynı ["client", id] anahtarı IntakeSummaryStep'in existingQ'suyla
+     paylaşılır → tek fetch. Dil gelince taslağa yazılır (menuLang() doğru döner). */
+  const selClientQ = useQuery({
+    queryKey: ["client", s.existingClientId],
+    queryFn: () => api.client(s.existingClientId!),
+    enabled: s.clientMode === "existing" && !!s.existingClientId,
+  });
+  const selLang = selClientQ.data?.menu_language;
+  useEffect(() => {
+    if (selLang && selLang !== s.existingClientLang) s.setExistingClientLang(selLang);
+  }, [selLang, s.existingClientLang, s.setExistingClientLang]);
+
   const canNext =
     (s.clientMode === "new" && s.newClient.name.trim() !== "") ||
     (s.clientMode === "existing" && !!s.existingClientId);
@@ -214,7 +230,10 @@ function ClientStep() {
       {/* CILA1/3: mevcut müşteri seçiliyken HER ZAMAN görünür bant — kazanın
           kök önleyicisi (yanlışlıkla "existing" modda kalıp fark edilmemesin). */}
       {s.clientMode === "existing" && s.existingClientId && (
-        <div className="intake-warn full">{tf("intake.existing_selected", { name: s.existingClientName ?? "" })}</div>
+        <div className="intake-warn full">
+          {tf("intake.existing_selected", { name: s.existingClientName ?? "" })}
+          {selLang ? ` · ${LANG_LABEL[selLang]}` : ""}
+        </div>
       )}
 
       {s.clientMode === "new" && (

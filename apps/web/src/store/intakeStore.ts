@@ -83,6 +83,11 @@ interface IntakeData {
   newClient: { name: string; currency: Currency; menu_language: MenuLang };
   existingClientId: string | null;
   existingClientName: string | null;
+  /* HF3: seçilen mevcut müşterinin GERÇEK menü dili (ClientDTO'dan; ClientStep
+     fetch'i taslağa yazar). menuLang() bunu döner — ad çözümü müşterinin diliyle
+     yapılsın (eski sabit "fr" tr müşteride Fransızca ad + Türkçe çip karışımına
+     yol açıyordu). Yeni müşteride kullanılmaz (newClient.menu_language geçerli). */
+  existingClientLang: MenuLang;
   selectedPackIds: string[];
   products: IntakeProduct[];
   checklist: Checklist;
@@ -95,6 +100,7 @@ const INITIAL: IntakeData = {
   newClient: { name: "", currency: "EUR", menu_language: "fr" },
   existingClientId: null,
   existingClientName: null,
+  existingClientLang: "fr", // fetch gelene dek güvenli varsayılan
   selectedPackIds: [],
   products: [],
   checklist: EMPTY_CHECKLIST,
@@ -108,6 +114,7 @@ interface IntakeStore extends IntakeData {
   setClientMode: (m: "new" | "existing") => void;
   setNewClient: (p: Partial<IntakeData["newClient"]>) => void;
   setExistingClient: (id: string, name: string) => void;
+  setExistingClientLang: (lang: MenuLang) => void; // HF3: ClientStep fetch'i çağırır
   togglePack: (id: string) => void;
   addProduct: (p: IntakeProduct) => void;
   updateProduct: (uid: string, patch: Partial<IntakeProduct>) => void;
@@ -158,6 +165,7 @@ export const useIntake = create<IntakeStore>()(
       setNewClient: (p) => set({ newClient: { ...get().newClient, ...p }, ...touch() }),
       setExistingClient: (id, name) =>
         set({ existingClientId: id, existingClientName: name, ...touch() }),
+      setExistingClientLang: (lang) => set({ existingClientLang: lang }), // touch YOK: türetilmiş meta, taslak yaşını değiştirmesin
 
       togglePack: (id) => {
         const cur = get().selectedPackIds;
@@ -194,8 +202,11 @@ export const useIntake = create<IntakeStore>()(
 
       reset: () => set({ ...INITIAL }),
 
+      /* HF3: mevcut müşteride artık GERÇEK dil (existingClientLang, ClientStep
+         fetch'inden). Eski "fr" sabiti → ad çözümü Fransızca, çipler sunucuda tr
+         çözülünce karışık menü. Yeni müşteride form seçimi (newClient). */
       menuLang: () =>
-        get().clientMode === "new" ? get().newClient.menu_language : "fr",
+        get().clientMode === "new" ? get().newClient.menu_language : get().existingClientLang,
 
       hasDraft: () => {
         const s = get();
@@ -235,6 +246,7 @@ export const useIntake = create<IntakeStore>()(
         newClient: s.newClient,
         existingClientId: s.existingClientId,
         existingClientName: s.existingClientName,
+        existingClientLang: s.existingClientLang, // HF3: reload'da da doğru dil
         selectedPackIds: s.selectedPackIds,
         products: s.products,
         checklist: s.checklist,
