@@ -12,9 +12,11 @@ export const HexColor = z
 export const CurrencySchema = z.enum(["EUR", "CHF"]);
 export type Currency = z.infer<typeof CurrencySchema>;
 
-/* Menü çıktı dili — Sipariş Modu (F7-A/K2). Client bazında "fr" | "de".
-   Şimdilik kalıcı + API-yazılır ama render TÜKETMEZ (tam çok-dilli çıktı TODO). */
-export const MenuLanguageSchema = z.enum(["fr", "de"]).default("fr");
+/* Menü çıktı dili — Sipariş Modu (F7-A/K2). Client bazında "fr" | "de" | "tr".
+   CILA4/EK-1: "tr" eklendi (Türkçe menü) — fallback zinciri tr→fr→de (resolveChip
+   / pickML). Şimdilik kalıcı + API-yazılır; desc menü diline göre kurulur (tam
+   çok-dilli render TODO, K2). */
+export const MenuLanguageSchema = z.enum(["fr", "de", "tr"]).default("fr");
 export type MenuLanguage = z.infer<typeof MenuLanguageSchema>;
 
 export const PriceVariantSchema = z.object({

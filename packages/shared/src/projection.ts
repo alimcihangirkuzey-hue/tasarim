@@ -82,8 +82,9 @@ function resolveChip(
   chip: IngredientRef,
   lang: MenuLanguage
 ): { label: string; usedLang: "tr" | "fr" | "de" } {
+  /* CILA4/EK-1: tr dalı eklendi (tr→fr→de). de: de→fr→tr; fr (varsayılan): fr→tr→de. */
   const chain: Array<"tr" | "fr" | "de"> =
-    lang === "de" ? ["de", "fr", "tr"] : ["fr", "tr", "de"];
+    lang === "de" ? ["de", "fr", "tr"] : lang === "tr" ? ["tr", "fr", "de"] : ["fr", "tr", "de"];
   for (const l of chain) {
     const s = chip[l].trim();
     if (s !== "") return { label: s, usedLang: l };

@@ -76,10 +76,11 @@ describe("Item.ingredients + IngredientRef (F7-A / karar D1)", () => {
   });
 });
 
-describe("MenuLanguageSchema (F7-A / K2)", () => {
-  it("fr|de kabul; varsayılan fr; geçersiz reddedilir", () => {
+describe("MenuLanguageSchema (F7-A / K2; CILA4/EK-1 tr)", () => {
+  it("fr|de|tr kabul; varsayılan fr; geçersiz reddedilir", () => {
     expect(MenuLanguageSchema.parse("fr")).toBe("fr");
     expect(MenuLanguageSchema.parse("de")).toBe("de");
+    expect(MenuLanguageSchema.parse("tr")).toBe("tr"); // CILA4/EK-1
     expect(MenuLanguageSchema.parse(undefined)).toBe("fr"); // default
     expect(() => MenuLanguageSchema.parse("en")).toThrow();
   });
