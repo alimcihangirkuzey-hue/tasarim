@@ -119,7 +119,10 @@
     "tab_documents": "Belgeler",
     "tab_assets": "Görseller",
     "currency": "Para birimi",
-    "currency_hint": "CHF seçilirse fiyatlar 22.00 biçiminde, sembolsüz yazılır (İsviçre)"
+    "currency_hint": "CHF seçilirse fiyatlar 22.00 biçiminde, sembolsüz yazılır (İsviçre)",
+    "surfaces": "Yüzeyler (kayıtlı ölçüler)",
+    "surfaces_empty": "Henüz kayıtlı yüzey yok — Sipariş Al akışında eklenir.",
+    "surface_delete_confirm": "Bu yüzey kaydı silinsin mi?"
   },
   "brandkit": {
     "colors": "Renkler",

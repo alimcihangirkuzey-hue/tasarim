@@ -282,6 +282,10 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .surface-row .dim { flex: 0 0 68px; width: 68px; }
 .surface-row .note { flex: 1 1 100%; }
 .surface-row .surface-x { flex: 0 0 auto; min-height: 44px; padding: 4px 12px; }
+/* F8-A: ClientDetailPage yüzey listesi (salt okuma + sil) */
+.surface-list { display: flex; flex-direction: column; gap: 8px; }
+.surface-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid var(--c-line); border-radius: 8px; padding: 8px 10px; }
+.surface-item .dims { font-size: 13px; color: var(--c-muted); }
 
 /* Özet uyarıları */
 .intake-warn { border-radius: 8px; padding: 10px 12px; font-size: 13px; }
