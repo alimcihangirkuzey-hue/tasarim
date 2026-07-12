@@ -274,7 +274,7 @@ export const api = {
   /** Atomik intake commit (F7-C): müşteri yarat (yeni ise) + katalog + usage bump + kayıt */
   intakeCommit: (body: {
     client_id?: string;
-    new_client?: { name: string; currency?: ClientDTO["currency"]; menu_language?: "fr" | "de" };
+    new_client?: { name: string; currency?: ClientDTO["currency"]; menu_language?: "fr" | "de" | "tr" };
     answers: import("@tezgah/shared").IntakeAnswers;
     checklist?: Record<string, unknown>;
   }) =>

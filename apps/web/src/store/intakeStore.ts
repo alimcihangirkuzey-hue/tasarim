@@ -15,7 +15,7 @@ import { persist } from "zustand/middleware";
 import type { LocalizedName } from "@tezgah/shared";
 
 export type Currency = "EUR" | "CHF";
-export type MenuLang = "fr" | "de";
+export type MenuLang = "fr" | "de" | "tr"; // CILA4/EK-1: tr eklendi
 
 export interface IntakeChip {
   chip_id?: string; // kütüphane id'si (varsa usage bump'a girer)

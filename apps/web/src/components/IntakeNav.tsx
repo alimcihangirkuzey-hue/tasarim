@@ -38,7 +38,11 @@ export function NavBar({
     projeksiyon resolveChip mantığıyla aynı. YALNIZ commit eşlemesinde kullanılır
     (IntakeSummaryStep) — operatör UI'da KULLANILMAZ (HF2-B: bkz pickDisplay). */
 export function pickML(name: { tr: string; fr: string; de: string }, lang: MenuLang): string {
-  const order = lang === "de" ? [name.de, name.fr, name.tr] : [name.fr, name.tr, name.de];
+  /* CILA4/EK-1: tr dalı (tr→fr→de) — projeksiyon resolveChip zinciriyle aynı. */
+  const order =
+    lang === "de" ? [name.de, name.fr, name.tr]
+    : lang === "tr" ? [name.tr, name.fr, name.de]
+    : [name.fr, name.tr, name.de];
   return (order.find((v) => v && v.trim() !== "") ?? "").trim();
 }
 

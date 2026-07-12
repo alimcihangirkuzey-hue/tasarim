@@ -12,7 +12,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t, tf } from "../i18n";
-import { consumeDraftDiscardedNotice, useIntake } from "../store/intakeStore";
+import { consumeDraftDiscardedNotice, useIntake, type MenuLang } from "../store/intakeStore";
 import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
@@ -238,10 +238,11 @@ function ClientStep() {
             {t("intake.menu_lang")}
             <select
               value={s.newClient.menu_language}
-              onChange={(e) => s.setNewClient({ menu_language: e.target.value as "fr" | "de" })}
+              onChange={(e) => s.setNewClient({ menu_language: e.target.value as MenuLang })}
             >
               <option value="fr">Français</option>
               <option value="de">Deutsch</option>
+              <option value="tr">Türkçe</option>
             </select>
           </label>
           <p className="intake-hint">{t("intake.client_deferred")}</p>
