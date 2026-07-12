@@ -83,14 +83,16 @@ describe("ChecklistSurfacesSchema (F8-A) — dizi + geriye uyum", () => {
 
 describe("migrateIntakeDraftV2toV3 (F8-A / D4 — additive migrate)", () => {
   it("v2 taslağa checklist.surfaces:[] ekler; KALAN HER ŞEY aynen", () => {
-    const v2 = {
+    /* Record<string, unknown> (taze literal DEĞİL) — persisted taslak gerçekte
+       any-şekilli gelir; fn dönüşünü aynı şekilde okuruz. */
+    const v2: Record<string, unknown> = {
       step: 3,
       clientMode: "new",
       products: [{ uid: "p1", name: { tr: "Kebap" } }],
       checklist: { logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" },
       savedAt: 123,
     };
-    const v3 = migrateIntakeDraftV2toV3(v2);
+    const v3 = migrateIntakeDraftV2toV3(v2) as Record<string, any>;
     expect(v3.checklist.surfaces).toEqual([]); // additive
     expect(v3.checklist).toMatchObject({ logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" }); // kalan aynen
     expect(v3.step).toBe(3);
@@ -99,7 +101,8 @@ describe("migrateIntakeDraftV2toV3 (F8-A / D4 — additive migrate)", () => {
   });
 
   it("checklist yoksa da güvenli (surfaces:[] ile kurar)", () => {
-    expect(migrateIntakeDraftV2toV3({ step: 1 }).checklist).toEqual({ surfaces: [] });
+    const out = migrateIntakeDraftV2toV3({ step: 1 } as Record<string, unknown>) as Record<string, any>;
+    expect(out.checklist).toEqual({ surfaces: [] });
   });
 
   it("surfaces zaten varsa dokunmaz (idempotent — aynı referans)", () => {
