@@ -21,7 +21,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Question, SectorPack } from "@tezgah/shared";
+import { foldTr, type Question, type SectorPack } from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { FetchError, NavBar, pickDisplay } from "./IntakeNav";
@@ -42,6 +42,29 @@ function deriveVariants(questionIds: string[], packQ: Question[]): IntakeProduct
 
 type PackCategory = SectorPack["categories"][number];
 type PackItem = PackCategory["items"][number];
+
+/* CILA4: özel ürünün varyant desenini KATEGORİDEN devralır — kategorinin
+   item'larının referansladığı variant sorularını sayar, EN SIK olanı seçer
+   (Pizzalar → hepsi q_boy_pizza → Ø24/Ø32/Ø40). Eşitlikte ilk-görülen kazanır
+   (Map insertion order + strict '>' — deterministik). Desen yoksa tek "seul". */
+function deriveCategoryVariantPattern(cat: PackCategory, packQ: Question[]): IntakeProduct["variants"] {
+  const byId = new Map(packQ.map((q) => [q.id, q]));
+  const freq = new Map<string, number>();
+  for (const item of cat.items)
+    for (const qid of item.questions) {
+      const q = byId.get(qid);
+      if (q && q.affects === "variant" && q.options && q.options.length > 0)
+        freq.set(qid, (freq.get(qid) ?? 0) + 1);
+    }
+  let bestId: string | null = null;
+  let best = 0;
+  for (const [qid, n] of freq) if (n > best) { best = n; bestId = qid; }
+  const q = bestId ? byId.get(bestId) : undefined;
+  if (q && q.options && q.options.length > 0) {
+    return q.options.map((o) => ({ label: o.label_tr, value: null }));
+  }
+  return [{ label: "seul", value: null }];
+}
 
 export function IntakeProductsStep() {
   const s = useIntake();
@@ -86,20 +109,60 @@ export function IntakeProductsStep() {
     setExpandedUid(uid);
   };
 
-  /* Yetimler: görünür hiçbir satıra eşleşmeyen ürünler (paketi kapatılmış) */
-  const matchedUids = useMemo(() => {
+  /* CILA4: pakette OLMAYAN ürün — kategorinin içine özel ürün. Tek input (tr
+     slotu; çıktı fallback'le her dilde basar). Mükerrer koruması: aynı kategoride
+     foldTr eşleşmesi → yeni açılmaz, mevcut satır genişletilir. Boş/salt-boşluk
+     reddedilir; 1..80 (LocalizedName tr:min(1) ile uyumlu, üst sınır UI). */
+  const addCustom = (pack: SectorPack, cat: PackCategory, rawText: string) => {
+    const text = rawText.trim();
+    if (text === "" || text.length > 80) return;
+    const fold = foldTr(text);
+    /* Seed-çakışma yapısal güvencesi: yazılan ad kategorinin bir seed item'ıyla
+       (foldTr — büyük/küçük harf duyarsız) çakışırsa özel ürün YARATMA; o seed'i
+       seç/genişlet (mükerrer imkânsız, projeksiyon birebir aynı). */
+    const seedItem = cat.items.find((i) => foldTr(i.name.tr) === fold);
+    if (seedItem) {
+      const existing = s.products.find(
+        (p) => p.category_name.tr === cat.name.tr && p.name.tr === seedItem.name.tr
+      );
+      if (existing) setExpandedUid(existing.uid);
+      else addAndOpen(pack, cat, seedItem);
+      return;
+    }
+    /* Mevcut özel ürünle mükerrer → yeni açma, mevcut satırı genişlet. */
+    const dup = s.products.find(
+      (p) => p.category_name.tr === cat.name.tr && foldTr(p.name.tr) === fold
+    );
+    if (dup) {
+      setExpandedUid(dup.uid);
+      return;
+    }
+    const uid = crypto.randomUUID();
+    s.addProduct({
+      uid,
+      category_name: cat.name,
+      category_note: cat.note,
+      name: { tr: text, fr: "", de: "" }, // tek input → tr; pickML fallback her dilde basar
+      variants: deriveCategoryVariantPattern(cat, pack.questions),
+      chips: [], // boş başlar (öğrenme yok, v1)
+      extras: [],
+      hide_content: false,
+    });
+    setExpandedUid(uid);
+  };
+
+  /* CILA4: orphan mantığı KATEGORİ-tabanı — bir ürün category_name.tr'si görünür
+     bir kategoriye eşitse "in-category" (seed veya özel fark etmez). Böylece özel
+     ürünler kategorisinde kalır; yalnız paketi kapatılmış kategoriler orphan olur.
+     SEED-PARİTE: seed ürünü zaten görünür kategoriden eklendi → kategorisi görünür
+     → matched (eski matchedUids seed-item eşleşmesiyle aynı sonuç); değişen tek
+     davranış özel ürünün (seed adına uymayan) artık orphan'a düşmemesi. */
+  const visibleCatTrs = useMemo(() => {
     const set = new Set<string>();
-    for (const pack of selectedPacks)
-      for (const cat of pack.categories)
-        for (const item of cat.items) {
-          const p = s.products.find(
-            (x) => x.category_name.tr === cat.name.tr && x.name.tr === item.name.tr
-          );
-          if (p) set.add(p.uid);
-        }
+    for (const pack of selectedPacks) for (const cat of pack.categories) set.add(cat.name.tr);
     return set;
-  }, [selectedPacks, s.products]);
-  const orphans = s.products.filter((p) => !matchedUids.has(p.uid));
+  }, [selectedPacks]);
+  const orphans = s.products.filter((p) => !visibleCatTrs.has(p.category_name.tr));
 
   if (sectorsQ.isError || ingredientsQ.isError) {
     return (
@@ -124,6 +187,11 @@ export function IntakeProductsStep() {
         {selectedPacks.map((pack) =>
           pack.categories.map((cat) => {
             const catName = pickDisplay(cat.name); // operatör HER ZAMAN TR (HF2-B)
+            /* CILA4: bu kategorinin ÖZEL ürünleri (seed adına uymayan, aynı kategori) */
+            const seedTrs = new Set(cat.items.map((i) => i.name.tr));
+            const customInCat = s.products.filter(
+              (p) => p.category_name.tr === cat.name.tr && !seedTrs.has(p.name.tr)
+            );
             return (
               <details key={pack.id + catName} className="intake-catgroup">
                 <summary>
@@ -169,6 +237,22 @@ export function IntakeProductsStep() {
                       </button>
                     );
                   })}
+
+                  {/* CILA4: kategorinin özel ürünleri (aynı ProductRow bileşeni) */}
+                  {customInCat.map((p) => (
+                    <ProductRow
+                      key={`custom-${p.uid}`}
+                      product={p}
+                      defaultChipIds={[]} // özel ürün boş çiple başlar → çip eklenmişse Kaldır onaylı
+                      expanded={expandedUid === p.uid}
+                      onToggle={() => toggle(p.uid)}
+                      onRemoved={() => setExpandedUid(null)}
+                      library={library}
+                    />
+                  ))}
+
+                  {/* CILA4: "+ özel ürün" — pakette olmayan, kategoriye özgü ürün */}
+                  <CustomProductAdder onAdd={(text) => addCustom(pack, cat, text)} />
                 </div>
               </details>
             );
@@ -327,6 +411,34 @@ function ProductRow({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* CILA4: "+ özel ürün" ekleyici — kategorinin sonunda. Ad yaz + Enter (ya da
+   tablet için "+ Ekle" düğmesi, ≥44px). Boş/salt-boşluk gönderilmez; maxLength 80. */
+function CustomProductAdder({ onAdd }: { onAdd: (text: string) => void }) {
+  const [text, setText] = useState("");
+  const submit = () => {
+    const v = text.trim();
+    if (v === "") return;
+    onAdd(v);
+    setText(""); // dup ise addCustom mevcut satırı genişletti; her hâlde input temizlenir
+  };
+  return (
+    <div className="intake-custom-add">
+      <input
+        value={text}
+        placeholder={t("intake.custom_add_ph")}
+        maxLength={80}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+        }}
+      />
+      <button className="intake-btn ghost" disabled={text.trim() === ""} onClick={submit}>
+        + {t("intake.custom_add")}
+      </button>
     </div>
   );
 }

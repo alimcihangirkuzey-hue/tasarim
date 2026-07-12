@@ -88,8 +88,9 @@ export function intakeRoutes(app: FastifyInstance): void {
       const current: Catalog = CatalogSchema.parse(JSON.parse(client.catalog_json));
       const hadCategories = current.categories.length > 0;
 
-      /* 2. Projeksiyon (menü diline göre) */
-      const menuLang = client.menu_language === "de" ? "de" : "fr";
+      /* 2. Projeksiyon (menü diline göre). CILA4/EK-1: tr de geçer (tr→fr→de);
+         bilinmeyen değer güvenli fr'ye düşer (MenuLanguageSchema.catch). */
+      const menuLang = MenuLanguageSchema.catch("fr").parse(client.menu_language);
       const projected = projectIntake(body.answers, idSeed, menuLang);
 
       /* 3. APPEND (ŞERH 1 / M5): sona ekle, order yeniden numaralandır. Projeksiyon

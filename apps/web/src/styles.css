@@ -255,6 +255,10 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
   padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px;
 }
 .intake-prodbody .rowend { display: flex; justify-content: flex-end; }
+/* CILA4: "+ özel ürün" satırı — kategori sonunda; input + Ekle düğmesi (≥44px) */
+.intake-custom-add { display: flex; gap: 6px; align-items: stretch; }
+.intake-custom-add input { flex: 1; min-height: 44px; padding: 8px 12px; font-size: 15px; border: 1px dashed var(--c-line); border-radius: 8px; background: #fff; }
+.intake-custom-add .intake-btn { white-space: nowrap; }
 .intake-variants { display: flex; flex-wrap: wrap; gap: 6px; }
 .intake-variant { display: flex; align-items: center; gap: 4px; font-size: 13px; }
 .intake-variant input { width: 84px; }

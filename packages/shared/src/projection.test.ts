@@ -103,6 +103,32 @@ describe("projectIntake (F7-A / K1) — SAF deterministik projeksiyon", () => {
     expect(r.categories[0].items[0].desc_fr).toBe("Fleisch");
   });
 
+  it("menü dili 'tr' (CILA4/EK-1) → desc_fr tr etiketlerinden kurulur; boşluk YOK", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "Pizzalar", name: "Margherita", variants: [{ label: "Ø32", value: 12 }], chips: [{ tr: "Domates sosu", fr: "Sauce tomate", de: "Tomatensauce" }] },
+      ]),
+      "SEED",
+      "tr"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Domates sosu"); // tr basıldı (fr/de değil)
+    expect(r.translationGaps).toEqual([]); // tr dolu → boşluk yok
+  });
+
+  it("menü dili 'tr', tr boş → fr'ye düşer (tr→fr→de sırası) + boşluk işareti", () => {
+    const r = projectIntake(
+      answers([
+        { category_name: "X", name: "Y", variants: [{ label: "seul", value: 5 }], chips: [{ tr: "", fr: "Fromage", de: "Käse" }] },
+      ]),
+      "SEED",
+      "tr"
+    );
+    expect(r.categories[0].items[0].desc_fr).toBe("Fromage"); // de ("Käse") değil, fr fallback (tr'den sonra)
+    expect(r.translationGaps).toEqual([
+      { category: "X", item: "Y", label: "Fromage", missingLang: "tr", usedLang: "fr" },
+    ]);
+  });
+
   it("fiyatsız (value null / varyantsız) → prices:[] + pending KALEM listesi (K3/M8)", () => {
     const r = projectIntake(
       answers([
