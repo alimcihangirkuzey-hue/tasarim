@@ -27,6 +27,7 @@ import { digitalMenuRoutes } from "./routes/digital-menu.js";
 import { sectorRoutes } from "./routes/sectors.js";
 import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
+import { surfaceRoutes } from "./routes/surfaces.js";
 
 migrate();
 
@@ -79,6 +80,7 @@ digitalMenuRoutes(app);
 sectorRoutes(app);
 ingredientRoutes(app);
 intakeRoutes(app);
+surfaceRoutes(app);
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {

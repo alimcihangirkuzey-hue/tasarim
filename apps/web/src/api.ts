@@ -287,5 +287,10 @@ export const api = {
       pending: Array<{ name: string; category: string }>;
       translationGaps: import("@tezgah/shared").ProjectionResult["translationGaps"];
       skipped_bumps: string[];
+      surfaces_saved: number; // F8-A
     }>("/api/intake", { method: "POST", body: JSON.stringify(body) }),
+  /* F8-A: müşteri yüzey profili (hafif tüketici — ClientDetailPage paneli) */
+  clientSurfaces: (clientId: string) =>
+    http<import("@tezgah/shared").ClientSurfaceDTO[]>(`/api/clients/${clientId}/surfaces`),
+  deleteSurface: (id: string) => http<{ ok: true }>(`/api/surfaces/${id}`, { method: "DELETE" }),
 };

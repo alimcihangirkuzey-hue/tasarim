@@ -12,10 +12,22 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { LocalizedName } from "@tezgah/shared";
+import { migrateIntakeDraftV2toV3, type LocalizedName, type SurfaceKind } from "@tezgah/shared";
 
 export type Currency = "EUR" | "CHF";
 export type MenuLang = "fr" | "de" | "tr"; // CILA4/EK-1: tr eklendi
+
+/* F8-A: intake çeklistinde toplanan yapısal yüzey TASLAĞI (web-yerel — w/h input
+   STRING'i; boş=henüz ölçülmedi). Commit'te temizlenip IntakeSurface'e çevrilir
+   (label trim + boş satır düşer + w/h sayıya). SurfaceKind shared'dan. */
+export interface SurfaceDraft {
+  kind: SurfaceKind;
+  label: string;
+  w_cm: string;
+  h_cm: string;
+  note: string;
+}
+export const EMPTY_SURFACE: SurfaceDraft = { kind: "vitrine", label: "", w_cm: "", h_cm: "", note: "" };
 
 export interface IntakeChip {
   chip_id?: string; // kütüphane id'si (varsa usage bump'a girer)
@@ -50,6 +62,8 @@ export interface Checklist {
   surface_note: string;
   deposit_note: string;
   delivery_date: string;
+  /* F8-A: yapısal yüzeyler (serbest-metin size_note/surface_note KALIR — M8) */
+  surfaces: SurfaceDraft[];
 }
 
 const EMPTY_CHECKLIST: Checklist = {
@@ -60,6 +74,7 @@ const EMPTY_CHECKLIST: Checklist = {
   surface_note: "",
   deposit_note: "",
   delivery_date: "",
+  surfaces: [],
 };
 
 interface IntakeData {
@@ -98,6 +113,9 @@ interface IntakeStore extends IntakeData {
   updateProduct: (uid: string, patch: Partial<IntakeProduct>) => void;
   removeProduct: (uid: string) => void;
   setChecklist: (p: Partial<Checklist>) => void;
+  addSurface: () => void;
+  updateSurface: (i: number, patch: Partial<SurfaceDraft>) => void;
+  removeSurface: (i: number) => void;
   reset: () => void; // taslağı at
   /** Menü dili — commit'te projeksiyona geçer; mevcut müşteride sunucu kendi diliyle re-projekte eder */
   menuLang: () => MenuLang;
@@ -116,14 +134,16 @@ const touch = (): { savedAt: number } => ({ savedAt: Date.now() });
    import eden taraftan YAZILAMAZ (ES module read-only binding) — bu yüzden
    setter/consumer fonksiyon üzerinden.
    Sürüm geçmişi: v1 = HF2-B (LocalizedName refactor) · v2 = CILA3 (akış 5 adım,
-   step aralığı daraldı + IntakeProduct.question_ids kalktı). */
+   step aralığı daraldı + IntakeProduct.question_ids kalktı) · v3 = F8-A (çeklist
+   surfaces[] — İLK GERÇEK additive migrasyon: v2 taslak ATILMAZ, surfaces:[]
+   eklenip taşınır; v1 vb. hâlâ atılır). */
 let draftDiscardedNotice = false;
 export function consumeDraftDiscardedNotice(): boolean {
   const v = draftDiscardedNotice;
   draftDiscardedNotice = false;
   return v;
 }
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export const useIntake = create<IntakeStore>()(
   persist(
@@ -157,6 +177,21 @@ export const useIntake = create<IntakeStore>()(
 
       setChecklist: (p) => set({ checklist: { ...get().checklist, ...p }, ...touch() }),
 
+      /* F8-A yüzey taslağı aksiyonları (array — dedicated, component'te yeniden
+         kurmak yerine) */
+      addSurface: () =>
+        set({ checklist: { ...get().checklist, surfaces: [...get().checklist.surfaces, { ...EMPTY_SURFACE }] }, ...touch() }),
+      updateSurface: (i, patch) =>
+        set({
+          checklist: {
+            ...get().checklist,
+            surfaces: get().checklist.surfaces.map((s, j) => (j === i ? { ...s, ...patch } : s)),
+          },
+          ...touch(),
+        }),
+      removeSurface: (i) =>
+        set({ checklist: { ...get().checklist, surfaces: get().checklist.surfaces.filter((_, j) => j !== i) }, ...touch() }),
+
       reset: () => set({ ...INITIAL }),
 
       menuLang: () =>
@@ -182,6 +217,12 @@ export const useIntake = create<IntakeStore>()(
       name: "tezgah-intake-draft",
       version: SCHEMA_VERSION,
       migrate: (persisted, version) => {
+        /* F8-A/D4: v2→v3 GERÇEK additive migrasyon (checklist.surfaces:[] eklenir,
+           kalan aynen — shared migrateIntakeDraftV2toV3, orada test edilir). Daha
+           eski (v1 vb.) hâlâ bekçiyle atılır + operatöre mesaj (sessiz kayıp yok). */
+        if (version === 2) {
+          return migrateIntakeDraftV2toV3(persisted as { checklist?: Record<string, unknown> }) as unknown as IntakeStore;
+        }
         if (version !== SCHEMA_VERSION) {
           draftDiscardedNotice = true;
           return { ...INITIAL } as IntakeStore; // migrasyon denemesi YOK — temiz atılır

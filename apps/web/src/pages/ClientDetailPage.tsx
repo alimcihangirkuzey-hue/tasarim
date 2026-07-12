@@ -9,6 +9,7 @@ import { CatalogPanel } from "../components/CatalogPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
 import { ProjectsPanel } from "../components/ProjectsPanel";
 import { ScenesPanel } from "../components/ScenesPanel";
+import { ClientSurfacesPanel } from "../components/ClientSurfacesPanel";
 
 type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "scenes" | "assets";
 
@@ -146,6 +147,7 @@ export function ClientDetailPage() {
       </div>
 
       {tab === "general" && (
+        <>
         <div className="panel">
           <h2>{t("client.name")}</h2>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
@@ -180,6 +182,8 @@ export function ClientDetailPage() {
             </button>
           </div>
         </div>
+        <ClientSurfacesPanel clientId={data.id} />
+        </>
       )}
 
       {tab === "projects" && <ProjectsPanel client={data} />}

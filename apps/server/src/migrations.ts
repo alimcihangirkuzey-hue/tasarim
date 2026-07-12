@@ -197,4 +197,26 @@ export const MIGRATIONS: string[] = [
     created_at     TEXT NOT NULL
   );
   `,
+  /* v10 — Faz 8 (PAKET-F8-A): müşteri-düzeyi yapısal yüzey profili. Intake
+     çeklistinde toplanan surfaces[] commit'te buraya UPSERT edilir ("ön cam sol:
+     218×134" — bir kez gir, hep kullan); denetim izi = intake_records (ayrı
+     history YOK, D2). client silinince CASCADE (temizlik otomatik, delete rotası
+     dokunmaz). UPSERT anahtarı (client_id, foldTr(label)) uygulama katmanında
+     çözülür — hesaplanmış foldTr için DB-unique gereksiz. w_cm/h_cm NULL olabilir
+     (ölçü sonra alınabilir, M8). */
+  `
+  CREATE TABLE IF NOT EXISTS client_surfaces (
+    id               TEXT PRIMARY KEY,
+    client_id        TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    kind             TEXT NOT NULL,
+    label            TEXT NOT NULL,
+    w_cm             REAL,
+    h_cm             REAL,
+    note             TEXT NOT NULL DEFAULT '',
+    source_intake_id TEXT,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_client_surfaces_client ON client_surfaces(client_id);
+  `,
 ];
