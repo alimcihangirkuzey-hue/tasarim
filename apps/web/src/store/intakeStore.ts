@@ -34,7 +34,8 @@ export interface IntakeProduct {
   category_name: LocalizedName; // ham (SectorPackCategory.name) — display tr, commit menu_language
   category_note?: LocalizedName; // ham kategori notu (F7-C/E)
   name: LocalizedName; // ham (SectorPackItem.name) — display tr, commit menu_language
-  question_ids: string[];
+  /* CILA3: question_ids kalktı — varyantlar EKLEME ANINDA türetilir (deriveVariants),
+     answers'a hiç girmiyordu; ayrı "Sorular" adımı da kalktı. */
   variants: IntakeVariantAnswer[];
   chips: IntakeChip[];
   extras: string[];
@@ -62,7 +63,7 @@ const EMPTY_CHECKLIST: Checklist = {
 };
 
 interface IntakeData {
-  step: number; // 1..6
+  step: number; // 1..5 (CILA3: Müşteri · Paketler · Ürünler · Çeklist · Özet)
   clientMode: "new" | "existing" | null;
   newClient: { name: string; currency: Currency; menu_language: MenuLang };
   existingClientId: string | null;
@@ -107,21 +108,22 @@ interface IntakeStore extends IntakeData {
 
 const touch = (): { savedAt: number } => ({ savedAt: Date.now() });
 
-/* HF2-B taslak sürüm bekçisi: name/category_name/category_note artık ham
-   LocalizedName {tr,fr,de} taşıyor (önceki string şemasıyla UYUMSUZ). Persisted
-   version eşleşmezse (eski taslak) MİGRASYON DENENMEZ — taslak temiz atılır;
-   kullanıcıya açık mesaj (SiparisPage consumeDraftDiscardedNotice() ile mount'ta
-   bir kez okur+sıfırlar — sessiz kayıp yok, M8). migrate() create() sırasında
-   (modül yüklenirken) senkron çalışır, component render'ından önce tamamlanmış
-   olur. Modül-seviyesi `let` import eden taraftan YAZILAMAZ (ES module read-only
-   binding) — bu yüzden setter/consumer fonksiyon üzerinden. */
+/* HF2-B taslak sürüm bekçisi: persisted version eşleşmezse (eski taslak)
+   MİGRASYON DENENMEZ — taslak temiz atılır; kullanıcıya açık mesaj (SiparisPage
+   consumeDraftDiscardedNotice() ile mount'ta bir kez okur+sıfırlar — sessiz
+   kayıp yok, M8). migrate() create() sırasında (modül yüklenirken) senkron
+   çalışır, component render'ından önce tamamlanmış olur. Modül-seviyesi `let`
+   import eden taraftan YAZILAMAZ (ES module read-only binding) — bu yüzden
+   setter/consumer fonksiyon üzerinden.
+   Sürüm geçmişi: v1 = HF2-B (LocalizedName refactor) · v2 = CILA3 (akış 5 adım,
+   step aralığı daraldı + IntakeProduct.question_ids kalktı). */
 let draftDiscardedNotice = false;
 export function consumeDraftDiscardedNotice(): boolean {
   const v = draftDiscardedNotice;
   draftDiscardedNotice = false;
   return v;
 }
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export const useIntake = create<IntakeStore>()(
   persist(
@@ -129,7 +131,7 @@ export const useIntake = create<IntakeStore>()(
       ...INITIAL,
 
       setStep: (s) => set({ step: s, ...touch() }),
-      next: () => set({ step: Math.min(6, get().step + 1), ...touch() }),
+      next: () => set({ step: Math.min(5, get().step + 1), ...touch() }),
       back: () => set({ step: Math.max(1, get().step - 1), ...touch() }),
 
       setClientMode: (m) => set({ clientMode: m, ...touch() }),

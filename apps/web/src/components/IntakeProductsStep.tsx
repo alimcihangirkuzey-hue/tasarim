@@ -1,17 +1,29 @@
-/* Sipariş Modu Adım 3-4 (F7-C): seçili paketlerden ürün tıkla-seç (kategoriler yan
-   yana) → ürün kartı: sorular → varyant fiyat girişleri (boş = fiyat-bekliyor) +
-   çipler (default ÖN-SEÇİLİ, tek-tık sil, kütüphaneden ekle, yoksa yaz→öğren) +
-   "içerik basılmasın" anahtarı.
+/* Sipariş Modu Adım 3 (CILA3): TEK ÇALIŞMA YÜZEYİ — "yukarıda seç, aşağıda
+   ayarla" iki-bölge deseni KALKTI (kullanıcı UX kararı: aynı iş iki kez).
+   Ürün satırı 3 durumlu akordeon:
+   - SADE (üründe yok): "+ ad" + soluk varsayılan içerik önizlemesi (CILA1).
+     Tık → ürün eklenir (deriveVariants + default çipler) ve satır YERİNDE açılır.
+   - SEÇİLİ+AÇIK: ✓ + vurgu (paket kartı deseni); gövdede editör: varyant fiyat
+     kutuları · çipler (× sil / yaz+Enter→öğren) · "içerik basılmasın" · Kaldır.
+     Başlık tıkı → daraltır.
+   - SEÇİLİ+KAPALI: ✓ işaretli, gövde gizli; soluk önizleme CANLI çip setini
+     gösterir. Başlık tıkı → açar.
+   Mükerrer ekleme YAPISAL imkânsız: ekleme yalnız SADE satır tıkında; ikinci
+   bir ekleme yolu yok (CILA2-B2 flash/scroll bu yüzden öldü). Eşleme anahtarı
+   name.tr + category_name.tr (CILA2 dedup anahtarının kendisi).
+   Yetimler (paketi sonradan kapatılmış ürünler) sayfa altında aynı satır
+   bileşeniyle listelenir — hiçbir ürün görünmez kalıp sessizce commit'e
+   gidemez (M8; eski alt-bölge davranışıyla parite).
 
    HF2-B: operatör görünümü HER YERDE TR (pickDisplay) — name/category_name/
    category_note store'da HAM LocalizedName olarak saklanır, menu_language'e
    çözme İŞLEMİ YALNIZ commit anında (IntakeSummaryStep) yapılır. */
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { LocalizedName, Question, SectorPack } from "@tezgah/shared";
+import type { Question, SectorPack } from "@tezgah/shared";
 import { api } from "../api";
-import { t } from "../i18n";
+import { t, tf } from "../i18n";
 import { FetchError, NavBar, pickDisplay } from "./IntakeNav";
 import { useIntake, type IntakeChip, type IntakeProduct } from "../store/intakeStore";
 
@@ -27,6 +39,9 @@ function deriveVariants(questionIds: string[], packQ: Question[]): IntakeProduct
   }
   return [{ label: "seul", value: null }];
 }
+
+type PackCategory = SectorPack["categories"][number];
+type PackItem = PackCategory["items"][number];
 
 export function IntakeProductsStep() {
   const s = useIntake();
@@ -44,52 +59,52 @@ export function IntakeProductsStep() {
     return m;
   }, [ingredientsQ.data]);
 
-  /* CILA2/B2: mükerrer "+" — özette "Kebap ×3" kazası. Aynı ürün (ad+kategori,
-     TR anahtarıyla) zaten ekliyse yeni satır AÇILMAZ; mevcut karta kaydırılır
-     ve kart kısa süre vurgulanır (kart bu görünümün altında, aynı sayfada). */
-  const [flashUid, setFlashUid] = useState<string | null>(null);
-  const flashTimer = useRef<number | undefined>(undefined);
-  const flashCard = (uid: string) => {
-    window.clearTimeout(flashTimer.current);
-    setFlashUid(uid);
-    flashTimer.current = window.setTimeout(() => setFlashUid(null), 1500);
-    document.getElementById(`intake-prod-${uid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  const library = ingredientsQ.data ?? [];
 
-  const addProduct = (
-    pack: SectorPack,
-    categoryName: LocalizedName,
-    categoryNote: LocalizedName | undefined,
-    item: SectorPack["categories"][number]["items"][number]
-  ) => {
-    const dup = s.products.find(
-      (p) => p.name.tr === item.name.tr && p.category_name.tr === categoryName.tr
-    );
-    if (dup) {
-      flashCard(dup.uid);
-      return;
-    }
+  /* Akordeon durumu — TEK satır açık (mobil); YEREL UI state, taslağa yazılmaz
+     (taslaktan dönüşte hepsi kapalı gelir). */
+  const [expandedUid, setExpandedUid] = useState<string | null>(null);
+  const toggle = (uid: string) => setExpandedUid(expandedUid === uid ? null : uid);
+
+  const findProduct = (catTr: string, itemTr: string): IntakeProduct | undefined =>
+    s.products.find((p) => p.category_name.tr === catTr && p.name.tr === itemTr);
+
+  /* TEK ekleme yolu: sade satır tıkı. Satır zaten seçiliyse bu dal hiç render
+     edilmez (ProductRow render edilir) → mükerrer yapısal imkânsız. */
+  const addAndOpen = (pack: SectorPack, cat: PackCategory, item: PackItem) => {
+    const uid = crypto.randomUUID();
     s.addProduct({
-      uid: crypto.randomUUID(),
-      category_name: categoryName, // ham — display tr (pickDisplay), commit menu_language (pickML)
-      category_note: categoryNote,
+      uid,
+      category_name: cat.name, // ham — display tr (pickDisplay), commit menu_language (pickML)
+      category_note: cat.note,
       name: item.name, // ham — aynı desen
-      question_ids: item.questions,
       variants: deriveVariants(item.questions, pack.questions),
       chips: item.default_chips.map((id) => chipById.get(id)).filter((c): c is IntakeChip => !!c),
       extras: [],
       hide_content: false,
     });
+    setExpandedUid(uid);
   };
 
-  /* CILA2/B3: bileşen adım 3 VE 4'te render edilir (SiparisPage) — başlık
-     adıma göre: 3=Ürünler, 4=Sorular (stepper etiketiyle tutarlı). */
-  const title = t(s.step === 4 ? "intake.step_questions" : "intake.step_products");
+  /* Yetimler: görünür hiçbir satıra eşleşmeyen ürünler (paketi kapatılmış) */
+  const matchedUids = useMemo(() => {
+    const set = new Set<string>();
+    for (const pack of selectedPacks)
+      for (const cat of pack.categories)
+        for (const item of cat.items) {
+          const p = s.products.find(
+            (x) => x.category_name.tr === cat.name.tr && x.name.tr === item.name.tr
+          );
+          if (p) set.add(p.uid);
+        }
+    return set;
+  }, [selectedPacks, s.products]);
+  const orphans = s.products.filter((p) => !matchedUids.has(p.uid));
 
   if (sectorsQ.isError || ingredientsQ.isError) {
     return (
       <section className="intake-step">
-        <h2>{title}</h2>
+        <h2>{t("intake.step_products")}</h2>
         <FetchError
           onRetry={() => {
             if (sectorsQ.isError) void sectorsQ.refetch();
@@ -102,9 +117,9 @@ export function IntakeProductsStep() {
 
   return (
     <section className="intake-step">
-      <h2>{title}</h2>
+      <h2>{t("intake.step_products")}</h2>
 
-      {/* Ürün seçici — seçili paketlerin kategorileri yan yana */}
+      {/* Tek yüzey — seçili paketlerin kategorileri; satırlar yerinde genişler */}
       <div className="intake-list">
         {selectedPacks.map((pack) =>
           pack.categories.map((cat) => {
@@ -117,8 +132,24 @@ export function IntakeProductsStep() {
                 </summary>
                 <div className="intake-list" style={{ marginTop: 8 }}>
                   {cat.items.map((item) => {
-                    /* CILA1/1: varsayılan içerik önizlemesi — TR, soluk küçük yazı.
-                       chipById ZATEN /api/ingredients'ten çözülmüş; boşsa satır sade kalır. */
+                    const product = findProduct(cat.name.tr, item.name.tr);
+                    if (product) {
+                      /* Onay eşiği için varsayılan çip seti — ekleme anındaki
+                         filtreyle birebir (yalnız kütüphanede çözülenler) */
+                      const defaultChipIds = item.default_chips.filter((id) => chipById.has(id));
+                      return (
+                        <ProductRow
+                          key={item.name.tr}
+                          product={product}
+                          defaultChipIds={defaultChipIds}
+                          expanded={expandedUid === product.uid}
+                          onToggle={() => toggle(product.uid)}
+                          onRemoved={() => setExpandedUid(null)}
+                          library={library}
+                        />
+                      );
+                    }
+                    /* CILA1/1: varsayılan içerik önizlemesi — TR, soluk küçük yazı */
                     const previewChips = item.default_chips
                       .map((id) => chipById.get(id))
                       .filter((c): c is IntakeChip => !!c)
@@ -127,7 +158,7 @@ export function IntakeProductsStep() {
                       <button
                         key={item.name.tr}
                         className="intake-choice"
-                        onClick={() => addProduct(pack, cat.name, cat.note, item)}
+                        onClick={() => addAndOpen(pack, cat, item)}
                       >
                         <span className="choice-main">
                           <span>+ {pickDisplay(item.name)}</span>
@@ -149,25 +180,53 @@ export function IntakeProductsStep() {
         {s.products.length} {t("intake.products_selected")}
       </p>
 
-      {/* Eklenen ürünler */}
-      {s.products.map((p) => (
-        <ProductCard key={p.uid} product={p} flash={p.uid === flashUid} library={ingredientsQ.data ?? []} />
-      ))}
+      {/* Yetim ürünler — paketi kapatılmış ama üründe duran kalemler (M8) */}
+      {orphans.length > 0 && (
+        <>
+          <p className="intake-hint">{t("intake.orphan_group")}</p>
+          <div className="intake-list">
+            {orphans.map((p) => (
+              <ProductRow
+                key={p.uid}
+                product={p}
+                defaultChipIds={[]}
+                expanded={expandedUid === p.uid}
+                onToggle={() => toggle(p.uid)}
+                onRemoved={() => setExpandedUid(null)}
+                library={library}
+                showCategory
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <NavBar canNext={s.products.length > 0} />
     </section>
   );
 }
 
-function ProductCard({
+/* Seçili ürün satırı: ✓ başlık (tık → aç/kapa) + açıkken yerinde editör.
+   Kapalıyken soluk önizleme CANLI çip setidir (sade satırın varsayılan
+   önizlemesiyle görsel süreklilik). */
+function ProductRow({
   product,
-  flash,
+  defaultChipIds,
+  expanded,
+  onToggle,
+  onRemoved,
   library,
+  showCategory = false,
 }: {
   product: IntakeProduct;
-  /** CILA2/B2: mükerrer "+" bu karta yönlendirdi — kısa vurgu animasyonu */
-  flash: boolean;
+  /** Ekleme anındaki varsayılan çip id seti — Kaldır onay eşiği bununla kıyaslar */
+  defaultChipIds: string[];
+  expanded: boolean;
+  onToggle: () => void;
+  onRemoved: () => void;
   library: Array<{ id: string; tr: string; fr: string; de: string }>;
+  /** Yetim grubunda kategori adı satırda gösterilir (grup başlığı yok) */
+  showCategory?: boolean;
 }) {
   const s = useIntake();
   const hasChips = product.chips.length > 0;
@@ -187,56 +246,86 @@ function ProductCard({
     s.updateProduct(product.uid, { chips: [...product.chips, chip] });
   };
 
+  /* ŞERH (mimar, BAŞLA): KULLANICI VERİSİ varsa Kaldır onay ister — en az bir
+     fiyat girilmiş YA DA çip seti varsayılandan farklı (sahada yanlış dokunuş
+     5 saniyelik emeği silmesin). Veri yoksa onaysız kaldırır. Yetimde
+     defaultChipIds=[] → çipli yetim her zaman sorar (temkinli taraf). */
+  const chipKey = (c: IntakeChip) => c.chip_id ?? `tr:${c.tr}`;
+  const chipsDiffer =
+    product.chips.length !== defaultChipIds.length ||
+    product.chips.map(chipKey).sort().join("|") !== [...defaultChipIds].sort().join("|");
+  const hasUserData = product.variants.some((v) => v.value !== null) || chipsDiffer;
+  const handleRemove = () => {
+    if (hasUserData && !window.confirm(tf("intake.remove_confirm", { name: pickDisplay(product.name) }))) {
+      return;
+    }
+    s.removeProduct(product.uid);
+    onRemoved();
+  };
+
   return (
-    <div id={`intake-prod-${product.uid}`} className={`intake-product${flash ? " flash" : ""}`}>
-      <div className="head">
-        <span>
-          <strong>{pickDisplay(product.name)}</strong>
-          <span className="cat"> · {pickDisplay(product.category_name)}</span>
-        </span>
-        <button className="intake-btn ghost" style={{ minHeight: 32, padding: "4px 10px" }} onClick={() => s.removeProduct(product.uid)}>
-          {t("intake.remove")}
-        </button>
-      </div>
-
-      {/* Varyant fiyatları (boş = fiyat-bekliyor) */}
-      <div className="intake-variants">
-        {product.variants.map((v, i) => (
-          <label key={i} className="intake-variant">
-            {v.label}
-            <input
-              inputMode="decimal"
-              value={v.value ?? ""}
-              placeholder={t("intake.price_ph")}
-              onChange={(e) => setVariantPrice(i, e.target.value)}
-            />
-          </label>
-        ))}
-      </div>
-
-      {/* Çipler — HER ZAMAN TR (HF2-B) */}
-      <div className="intake-chips">
-        {product.chips.map((c, i) => (
-          <span key={i} className={`intake-chip ${c.chip_id ? "" : "learning"}`}>
-            {pickDisplay(c)}
-            <button title={t("intake.remove")} onClick={() => removeChip(i)}>
-              ×
-            </button>
+    <div className={`intake-prodrow${expanded ? " open" : ""}`}>
+      <button className="intake-choice selected" onClick={onToggle}>
+        <span className="check">✓</span>
+        <span className="choice-main">
+          <span>
+            {pickDisplay(product.name)}
+            {showCategory && <span className="sub">{pickDisplay(product.category_name)}</span>}
           </span>
-        ))}
-      </div>
-      <ChipAdder onAdd={addChip} library={library} existing={product.chips} />
+          {!expanded && hasChips && (
+            <span className="preview">{product.chips.map((c) => pickDisplay(c)).join(", ")}</span>
+          )}
+        </span>
+      </button>
 
-      {/* İçerik anahtarı — çipli her üründe yerleşik */}
-      {hasChips && (
-        <label className="intake-toggle">
-          <input
-            type="checkbox"
-            checked={product.hide_content}
-            onChange={(e) => s.updateProduct(product.uid, { hide_content: e.target.checked })}
-          />
-          {t("intake.hide_content")}
-        </label>
+      {expanded && (
+        <div className="intake-prodbody">
+          {/* Varyant fiyatları (boş = fiyat-bekliyor) */}
+          <div className="intake-variants">
+            {product.variants.map((v, i) => (
+              <label key={i} className="intake-variant">
+                {v.label}
+                <input
+                  inputMode="decimal"
+                  value={v.value ?? ""}
+                  placeholder={t("intake.price_ph")}
+                  onChange={(e) => setVariantPrice(i, e.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+
+          {/* Çipler — HER ZAMAN TR (HF2-B) */}
+          <div className="intake-chips">
+            {product.chips.map((c, i) => (
+              <span key={i} className={`intake-chip ${c.chip_id ? "" : "learning"}`}>
+                {pickDisplay(c)}
+                <button title={t("intake.remove")} onClick={() => removeChip(i)}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <ChipAdder onAdd={addChip} library={library} existing={product.chips} />
+
+          {/* İçerik anahtarı — çipli her üründe yerleşik */}
+          {hasChips && (
+            <label className="intake-toggle">
+              <input
+                type="checkbox"
+                checked={product.hide_content}
+                onChange={(e) => s.updateProduct(product.uid, { hide_content: e.target.checked })}
+              />
+              {t("intake.hide_content")}
+            </label>
+          )}
+
+          <div className="rowend">
+            <button className="intake-btn ghost" onClick={handleRemove}>
+              {t("intake.remove")}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
