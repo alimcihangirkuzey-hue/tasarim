@@ -23,6 +23,7 @@ import {
 } from "@tezgah/shared";
 import { db } from "../db.js";
 import { uniqueSlug } from "./clients.js";
+import { extractSurfaces, upsertClientSurfaces } from "../surfaces.js";
 
 const IntakeCommitSchema = z
   .object({
@@ -49,6 +50,11 @@ const SEED_IDS = new Set(INGREDIENT_SEED.map((c) => c.id));
 export function intakeRoutes(app: FastifyInstance): void {
   app.post("/api/intake", async (req, reply) => {
     const body = IntakeCommitSchema.parse(req.body ?? {});
+    /* F8-A ATOMİKLİK: yüzeyleri transaction'dan ÖNCE doğrula — bozuksa
+       ChecklistSurfacesSchema.parse ZodError fırlatır → setErrorHandler 400'e
+       çevirir, transaction HİÇ AÇILMAZ (yeni müşteri/intake_record/katalog
+       doğmaz; sessiz yarım kayıt YASAK). */
+    const surfaces = extractSurfaces(body.checklist);
     const now = nowISO();
     const idSeed = now.slice(0, 19).replace(/[:T-]/g, "");
 
@@ -136,6 +142,10 @@ export function intakeRoutes(app: FastifyInstance): void {
         `INSERT INTO intake_records (id, client_id, answers_json, checklist_json, created_at) VALUES (?, ?, ?, ?, ?)`
       ).run(intakeId, client.id, JSON.stringify(body.answers), JSON.stringify(body.checklist), now);
 
+      /* 8. F8-A: yapısal yüzeyler → müşteri profili (UPSERT, aynı transaction —
+         atomik). intakeId denetim izi köprüsü. Boşsa no-op. */
+      const surfaceResult = upsertClientSurfaces(db, client.id, surfaces, intakeId, now);
+
       return {
         client_id: client.id,
         created_client: createdClient,
@@ -145,6 +155,7 @@ export function intakeRoutes(app: FastifyInstance): void {
         pending: projected.pending,
         translationGaps: projected.translationGaps,
         skipped_bumps: plan.skipped, // ŞERH 4: sessiz değil
+        surfaces_saved: surfaceResult.total, // F8-A: özet/sonuç ekranı görünürlüğü (M8)
       };
     })();
 
