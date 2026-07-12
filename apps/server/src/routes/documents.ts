@@ -13,6 +13,7 @@ import {
   type DocumentSummaryDTO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { surfacePrefillParams } from "../surfaces.js";
 
 type DocumentRow = {
   id: string;
@@ -113,12 +114,15 @@ export function documentRoutes(app: FastifyInstance): void {
       projectId = ensureDefaultProject(client.id);
     }
     const state = DocumentStateSchema.parse({ template_id: body.template_id });
+    /* F8-A (D6): vitro/enseigne belgesinde müşteri yüzey ölçüsü ön-dolumu. Yoksa
+       {} → şablon varsayılanı geçerli. Değer editör param panelinde görünür (M8). */
+    const params = { ...state.params, ...surfacePrefillParams(db, client.id, state.template_id) };
     const now = nowISO();
     const row: DocumentRow = {
       id: newId("doc"),
       project_id: projectId,
       template_id: state.template_id,
-      params_json: JSON.stringify(state.params),
+      params_json: JSON.stringify(params),
       theme_id: state.theme_id,
       selection_json: JSON.stringify(state.selection),
       overrides_json: JSON.stringify(state.overrides),

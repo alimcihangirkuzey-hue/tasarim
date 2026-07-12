@@ -5,7 +5,7 @@ import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
 import { IntakeSurfaceSchema, type IntakeSurface } from "@tezgah/shared";
 import { MIGRATIONS } from "./migrations.js";
-import { extractSurfaces, upsertClientSurfaces } from "./surfaces.js";
+import { extractSurfaces, surfacePrefillParams, upsertClientSurfaces } from "./surfaces.js";
 
 function freshDb(): Database.Database {
   const db = new Database(":memory:");
@@ -84,6 +84,35 @@ describe("upsertClientSurfaces (F8-A / D2 UPSERT)", () => {
     expect(countSurfaces(db)).toBe(2);
     db.prepare("DELETE FROM clients WHERE id = 'cli1'").run();
     expect(countSurfaces(db)).toBe(0);
+  });
+});
+
+describe("surfacePrefillParams (F8-A / D6) — belge ölçü ön-dolumu", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = freshDb();
+    upsertClientSurfaces(db, "cli1", [
+      surf({ kind: "vitrine", label: "Ön cam", w_cm: 218, h_cm: 134 }),
+      surf({ kind: "tabela", label: "Tabela", w_cm: 400 }), // yalnız w
+    ], "intk1", "t1");
+  });
+
+  it("vitro-* → vitrine yüzeyinin w/h'i", () => {
+    expect(surfacePrefillParams(db, "cli1", "vitro-bandeau")).toEqual({ w_cm: 218, h_cm: 134 });
+  });
+
+  it("enseigne-panneau → tabela; yalnız w varsa yalnız w", () => {
+    expect(surfacePrefillParams(db, "cli1", "enseigne-panneau")).toEqual({ w_cm: 400 });
+  });
+
+  it("eşleşmeyen şablon → {} (şablon varsayılanı)", () => {
+    expect(surfacePrefillParams(db, "cli1", "menu-liste-premium")).toEqual({});
+    expect(surfacePrefillParams(db, "cli1", "garment")).toEqual({}); // garment ön-dolumu yok
+  });
+
+  it("yüzey yoksa → {}", () => {
+    const empty = freshDb();
+    expect(surfacePrefillParams(empty, "cli1", "vitro-centre")).toEqual({});
   });
 });
 

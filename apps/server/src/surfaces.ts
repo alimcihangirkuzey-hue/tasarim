@@ -104,3 +104,30 @@ export function upsertClientSurfaces(
   }
   return { inserted, updated, total: surfaces.length };
 }
+
+/* F8-A (D6): belge oluşturmada ölçü ön-dolumu. vitro-* → vitrine, enseigne-panneau
+   → tabela yüzeyi; en güncel (updated_at) eşleşen kaydın w_cm/h_cm'i param olarak
+   döner (varsa). Eşleşme/yüzey yoksa {} (şablon varsayılanı geçerli). garment
+   ön-dolumu YOK (alan-preset'li, w/h paramı değil — F8 devam notu). */
+export function surfacePrefillParams(
+  db: Database,
+  clientId: string,
+  templateId: string
+): Record<string, number> {
+  const kind = templateId.startsWith("vitro-")
+    ? "vitrine"
+    : templateId === "enseigne-panneau"
+      ? "tabela"
+      : null;
+  if (!kind) return {};
+  const row = db
+    .prepare(
+      "SELECT w_cm, h_cm FROM client_surfaces WHERE client_id = ? AND kind = ? ORDER BY updated_at DESC LIMIT 1"
+    )
+    .get(clientId, kind) as { w_cm: number | null; h_cm: number | null } | undefined;
+  if (!row) return {};
+  const out: Record<string, number> = {};
+  if (row.w_cm !== null) out.w_cm = row.w_cm;
+  if (row.h_cm !== null) out.h_cm = row.h_cm;
+  return out;
+}
