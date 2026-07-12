@@ -427,6 +427,48 @@ export const ProjectUpdateSchema = z.object({
 export const SceneKindSchema = z.enum(["vitrine", "facade", "garment", "generic"]);
 export type SceneKind = z.infer<typeof SceneKindSchema>;
 
+/* ------------------------------------------------------------------ */
+/* F8-A — Yapısal yüzey ölçüsü (intake çeklisti → müşteri yüzey profili) */
+/* ------------------------------------------------------------------ */
+
+/* Yüzey türü — intake çeklistinde toplanır (checklist.surfaces), commit'te
+   müşteri-düzeyi client_surfaces tablosuna UPSERT edilir ("bir kez gir, hep
+   kullan"). SceneKind'a (vitrine/facade/garment/generic) eşleme F8-D işi. */
+export const SurfaceKindSchema = z.enum(["vitrine", "tabela", "garment", "diger"]);
+export type SurfaceKind = z.infer<typeof SurfaceKindSchema>;
+
+/* Tek yapısal yüzey. label 1..80 (trim sonrası; boş/salt-boşluk reddedilir —
+   client_surfaces.label NOT NULL ile uyumlu). w/h opsiyonel (ölçü sonra
+   alınabilir, M8: eksik bilgi görünür), 0<..≤2000 cm. note ≤300. */
+export const IntakeSurfaceSchema = z.object({
+  kind: SurfaceKindSchema.default("diger"),
+  label: z.string().trim().min(1).max(80),
+  w_cm: z.number().positive().max(2000).optional(),
+  h_cm: z.number().positive().max(2000).optional(),
+  note: z.string().max(300).default(""),
+});
+export type IntakeSurface = z.infer<typeof IntakeSurfaceSchema>;
+
+/* checklist.surfaces dizisi — sunucu commit'te bununla parse eder (bozuksa 400,
+   fail-loud). Eski intake_records'ta surfaces anahtarı YOKtur → çağıran boş
+   kabul eder (geriye uyum); bu şema yalnız VAR olan diziyi doğrular. */
+export const ChecklistSurfacesSchema = z.array(IntakeSurfaceSchema);
+
+/** Müşteri-düzeyi kalıcı yüzey kaydı (client_surfaces satırı) DTO'su. */
+export interface ClientSurfaceDTO {
+  id: string;
+  client_id: string;
+  kind: SurfaceKind;
+  label: string;
+  w_cm: number | null;
+  h_cm: number | null;
+  note: string;
+  /** Bu yüzeyi en son yazan intake (denetim izi köprüsü); manuel/eski kayıtta null */
+  source_intake_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Foto pikseli cinsinden köşe; sıra SABİT: sol-üst, sağ-üst, sağ-alt, sol-alt */
 export const QuadPointSchema = z.object({ x: z.number(), y: z.number() });
 export const QuadSchema = z.array(QuadPointSchema).length(4);
