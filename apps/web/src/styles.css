@@ -233,6 +233,8 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
    beyaz (görünmez buton) oluşur. Yeni .intake-* butonlarında da aynı tuzağa dikkat. */
 .intake-choice { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px; text-align: left; border: 1px solid var(--c-line); border-radius: 10px; background: #fff; color: var(--c-ink); cursor: pointer; font-size: 15px; }
 .intake-choice.selected { border-color: var(--c-primary); background: #FFF3F3; box-shadow: inset 0 0 0 1px var(--c-primary); }
+/* CILA5: "+ diğer ürünler (N)" daralt/genişlet satırı — sade, soluk (seçili değil) */
+.intake-choice.intake-others { border-style: dashed; color: var(--c-muted); font-size: 14px; }
 /* CILA1/1: ürün satırı içerik önizlemesi — ana metin + soluk küçük alt satır (TR).
    flex:1 sarma alanını verir; min-height buton üzerinde ALT SINIR (≤44px altına
    düşmez), içerik büyürse buton doğal olarak büyür. */
