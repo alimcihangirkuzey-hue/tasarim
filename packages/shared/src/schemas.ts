@@ -469,6 +469,16 @@ export interface ClientSurfaceDTO {
   updated_at: string;
 }
 
+/* Web intake taslağı v2→v3 additive migrasyonu (F8-A/D4 — SCHEMA_VERSION 2→3):
+   checklist'e surfaces:[] ekler, KALAN HER ŞEY AYNEN kalır. Web'de vitest yok —
+   bu SAF, şekil-agnostik transform burada test edilir; store migrate() çağırır.
+   Daha eski sürümler (v1 vb.) store bekçisiyle atılmaya devam (bu fn yalnız v2→v3). */
+export function migrateIntakeDraftV2toV3<T extends { checklist?: Record<string, unknown> }>(persisted: T): T {
+  const checklist = (persisted.checklist ?? {}) as Record<string, unknown>;
+  if (Array.isArray(checklist["surfaces"])) return persisted; // zaten var → idempotent
+  return { ...persisted, checklist: { ...checklist, surfaces: [] } } as T;
+}
+
 /** Foto pikseli cinsinden köşe; sıra SABİT: sol-üst, sağ-üst, sağ-alt, sol-alt */
 export const QuadPointSchema = z.object({ x: z.number(), y: z.number() });
 export const QuadSchema = z.array(QuadPointSchema).length(4);

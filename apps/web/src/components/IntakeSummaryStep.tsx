@@ -22,7 +22,7 @@ import { IntakeAnswersSchema, projectIntake, type ProjectionResult } from "@tezg
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { pickDisplay, pickML } from "./IntakeNav";
-import { useIntake } from "../store/intakeStore";
+import { useIntake, type SurfaceDraft } from "../store/intakeStore";
 
 /** Commit sonucu — taslak/store reset'inden BAĞIMSIZ yaşar (SiparisPage tutar).
     pending TR'dir (HF2-B: operatör görünümü; res.pending çıktı dilinde olurdu). */
@@ -32,6 +32,20 @@ export interface IntakeResultData {
   applied: number;
   pending: Array<{ name: string; category: string }>;
   gaps: ProjectionResult["translationGaps"];
+  surfaces: number; // F8-A: kaydedilen yapısal yüzey sayısı (sunucu surfaces_saved)
+}
+
+/* F8-A: yüzey TASLAKLARI (w/h input string'i) → commit gövdesi için temiz
+   IntakeSurface şekli. label boş satır DÜŞER; w/h boş/geçersiz → alan atlanır
+   (sunucu ChecklistSurfacesSchema doğrular, sınır dışı → 400 fail-loud). */
+function cleanSurfaces(drafts: SurfaceDraft[]): Array<Record<string, unknown>> {
+  const num = (raw: string): number | undefined => {
+    const v = Number(raw.replace(",", "."));
+    return raw.trim() !== "" && Number.isFinite(v) && v > 0 ? v : undefined;
+  };
+  return drafts
+    .map((d) => ({ kind: d.kind, label: d.label.trim(), w_cm: num(d.w_cm), h_cm: num(d.h_cm), note: d.note.trim() }))
+    .filter((d) => d.label !== "");
 }
 
 export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResultData) => void }) {
@@ -91,6 +105,10 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
     [s.products]
   );
 
+  /* F8-A: commit gövdesine giren temiz yüzeyler (boş-label satırlar düşer);
+     count özet + sonuç ekranı görünürlüğü için (M8). */
+  const surfacesPayload = useMemo(() => cleanSurfaces(s.checklist.surfaces), [s.checklist.surfaces]);
+
   const commit = useMutation({
     mutationFn: () =>
       api.intakeCommit({
@@ -104,7 +122,8 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
             }
           : { client_id: s.existingClientId! }),
         answers,
-        checklist: s.checklist as unknown as Record<string, unknown>,
+        /* Çeklist denetim izi + temizlenmiş yapısal yüzeyler (F8-A). */
+        checklist: { ...s.checklist, surfaces: surfacesPayload } as unknown as Record<string, unknown>,
       }),
     onSuccess: (res) => {
       /* Sonuç verisi ÖNCE yukarı (SiparisPage) — reset'ten etkilenmez (B1).
@@ -118,6 +137,7 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
         applied: res.applied_categories,
         pending: pendingTr,
         gaps: res.translationGaps,
+        surfaces: res.surfaces_saved,
       });
       void qc.invalidateQueries({ queryKey: ["clients"] });
       void qc.invalidateQueries({ queryKey: ["ingredients"] });
@@ -158,6 +178,11 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
         </div>
       )}
       {clean && <p className="intake-hint">{t("intake.summary_none")}</p>}
+      {surfacesPayload.length > 0 && (
+        <p className="intake-hint">
+          {surfacesPayload.length} {t("intake.surfaces_saved")}
+        </p>
+      )}
 
       <div className="intake-navbar">
         <button className="intake-btn ghost" onClick={s.back}>

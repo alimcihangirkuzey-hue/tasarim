@@ -134,7 +134,10 @@ function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => vo
       <div className="intake-result">
         <div className="big">✓</div>
         <h2>{t("intake.committed")}</h2>
-        <p className="intake-hint">{tf("intake.result_ok", { name: data.client_name, n: data.applied })}</p>
+        <p className="intake-hint">
+          {tf("intake.result_ok", { name: data.client_name, n: data.applied })}
+          {data.surfaces > 0 ? ` · ${data.surfaces} ${t("intake.surfaces_saved")}` : ""}
+        </p>
 
         {data.pending.length > 0 && (
           <div className="intake-warn pending" style={{ textAlign: "left" }}>

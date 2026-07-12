@@ -3,6 +3,7 @@ import {
   ChecklistSurfacesSchema,
   IntakeSurfaceSchema,
   SurfaceKindSchema,
+  migrateIntakeDraftV2toV3,
 } from "./schemas.js";
 
 describe("SurfaceKindSchema (F8-A)", () => {
@@ -77,5 +78,32 @@ describe("ChecklistSurfacesSchema (F8-A) — dizi + geriye uyum", () => {
     expect(() =>
       ChecklistSurfacesSchema.parse([{ kind: "uçak", label: "L" }])
     ).toThrow();
+  });
+});
+
+describe("migrateIntakeDraftV2toV3 (F8-A / D4 — additive migrate)", () => {
+  it("v2 taslağa checklist.surfaces:[] ekler; KALAN HER ŞEY aynen", () => {
+    const v2 = {
+      step: 3,
+      clientMode: "new",
+      products: [{ uid: "p1", name: { tr: "Kebap" } }],
+      checklist: { logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" },
+      savedAt: 123,
+    };
+    const v3 = migrateIntakeDraftV2toV3(v2);
+    expect(v3.checklist.surfaces).toEqual([]); // additive
+    expect(v3.checklist).toMatchObject({ logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" }); // kalan aynen
+    expect(v3.step).toBe(3);
+    expect(v3.products).toEqual([{ uid: "p1", name: { tr: "Kebap" } }]);
+    expect(v3.savedAt).toBe(123);
+  });
+
+  it("checklist yoksa da güvenli (surfaces:[] ile kurar)", () => {
+    expect(migrateIntakeDraftV2toV3({ step: 1 }).checklist).toEqual({ surfaces: [] });
+  });
+
+  it("surfaces zaten varsa dokunmaz (idempotent — aynı referans)", () => {
+    const x = { checklist: { surfaces: [{ label: "X" }] } };
+    expect(migrateIntakeDraftV2toV3(x)).toBe(x);
   });
 });

@@ -1,10 +1,14 @@
 /* Sipariş Modu Adım 5 (F7-C): doneler & şartlar çeklisti — ZORUNLU adım (görüşme
    bunsuz bitmez). logo · foto politikası (eksikse hatırlatma) · tel+adres teyidi ·
-   ölçü/yüzey notu (VERİ; mockup Faz 8) · kapora · teslim tarihi. */
+   ölçü/yüzey notu (serbest metin, KALIR) · YAPISAL yüzeyler (F8-A — commit'te
+   müşteri profiline) · kapora · teslim tarihi. */
 
+import type { SurfaceKind } from "@tezgah/shared";
 import { t } from "../i18n";
 import { useIntake } from "../store/intakeStore";
 import { NavBar } from "./IntakeNav";
+
+const SURFACE_KINDS: SurfaceKind[] = ["vitrine", "tabela", "garment", "diger"];
 
 export function IntakeChecklistStep() {
   const s = useIntake();
@@ -62,6 +66,60 @@ export function IntakeChecklistStep() {
           <span>{t("intake.cl_surface")}</span>
           <input value={c.surface_note} onChange={(e) => s.setChecklist({ surface_note: e.target.value })} />
         </div>
+
+        {/* F8-A: yapısal yüzeyler — serbest-metin notlar (yukarıda) KALIR (M8);
+            bu yapısal kayıt commit'te müşteri yüzey profiline UPSERT edilir */}
+        <div className="row">
+          <span>{t("intake.cl_surfaces")}</span>
+          <div className="intake-surfaces">
+            {c.surfaces.map((sf, i) => (
+              <div key={i} className="surface-row">
+                <select value={sf.kind} onChange={(e) => s.updateSurface(i, { kind: e.target.value as SurfaceKind })}>
+                  {SURFACE_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {t(`intake.sk_${k}`)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="lbl"
+                  value={sf.label}
+                  placeholder={t("intake.surface_label_ph")}
+                  maxLength={80}
+                  onChange={(e) => s.updateSurface(i, { label: e.target.value })}
+                />
+                <input
+                  className="dim"
+                  inputMode="decimal"
+                  value={sf.w_cm}
+                  placeholder={t("intake.surface_w")}
+                  onChange={(e) => s.updateSurface(i, { w_cm: e.target.value })}
+                />
+                <input
+                  className="dim"
+                  inputMode="decimal"
+                  value={sf.h_cm}
+                  placeholder={t("intake.surface_h")}
+                  onChange={(e) => s.updateSurface(i, { h_cm: e.target.value })}
+                />
+                <input
+                  className="note"
+                  value={sf.note}
+                  placeholder={t("intake.surface_note_ph")}
+                  maxLength={300}
+                  onChange={(e) => s.updateSurface(i, { note: e.target.value })}
+                />
+                <button className="intake-btn ghost surface-x" title={t("intake.remove")} onClick={() => s.removeSurface(i)}>
+                  ×
+                </button>
+              </div>
+            ))}
+            <button className="intake-btn ghost" onClick={s.addSurface}>
+              {t("intake.surface_add")}
+            </button>
+          </div>
+        </div>
+
         <div className="row">
           <span>{t("intake.cl_deposit")}</span>
           <input value={c.deposit_note} onChange={(e) => s.setChecklist({ deposit_note: e.target.value })} />
