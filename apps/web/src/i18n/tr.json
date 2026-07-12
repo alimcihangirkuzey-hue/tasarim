@@ -42,6 +42,8 @@
     "orphan_group": "Eklenmiş — paketi kapatılmış ürünler (düzenlenebilir)",
     "custom_add_ph": "Pakette yok mu? Ürün adı yaz + Enter",
     "custom_add": "Ekle",
+    "others_show": "+ diğer ürünler ({n})",
+    "others_hide": "− diğer ürünleri gizle",
     "hide_content": "İçerik basılmasın",
     "price_ph": "fiyat (boş = fiyat-bekliyor)",
     "chip_add_ph": "malzeme yaz + Enter (yoksa öğrenilir)",

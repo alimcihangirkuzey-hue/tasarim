@@ -89,6 +89,17 @@ export function IntakeProductsStep() {
   const [expandedUid, setExpandedUid] = useState<string | null>(null);
   const toggle = (uid: string) => setExpandedUid(expandedUid === uid ? null : uid);
 
+  /* CILA5: kategori bazında "diğer ürünler (seçilmeyenler)" daralt/genişlet durumu
+     (YEREL UI, taslağa yazılmaz). Seçim varken varsayılan DARALIK; kullanıcı açar. */
+  const [openOthers, setOpenOthers] = useState<Set<string>>(new Set());
+  const toggleOthers = (key: string) =>
+    setOpenOthers((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const findProduct = (catTr: string, itemTr: string): IntakeProduct | undefined =>
     s.products.find((p) => p.category_name.tr === catTr && p.name.tr === itemTr);
 
@@ -187,11 +198,53 @@ export function IntakeProductsStep() {
         {selectedPacks.map((pack) =>
           pack.categories.map((cat) => {
             const catName = pickDisplay(cat.name); // operatör HER ZAMAN TR (HF2-B)
-            /* CILA4: bu kategorinin ÖZEL ürünleri (seed adına uymayan, aynı kategori) */
-            const seedTrs = new Set(cat.items.map((i) => i.name.tr));
-            const customInCat = s.products.filter(
-              (p) => p.category_name.tr === cat.name.tr && !seedTrs.has(p.name.tr)
-            );
+            const catKey = pack.id + "|" + cat.name.tr;
+            /* CILA5: SEÇİLİ ürünler (seed+özel) SEÇİM SIRASIYLA (s.products insertion
+               sırası) üstte; seçilmemiş seed item'lar altta. */
+            const productsInCat = s.products.filter((p) => p.category_name.tr === cat.name.tr);
+            const selectedTrs = new Set(productsInCat.map((p) => p.name.tr));
+            const unselectedItems = cat.items.filter((item) => !selectedTrs.has(item.name.tr));
+            const hasSelection = productsInCat.length > 0;
+            const othersOpen = openOthers.has(catKey);
+            const seedByTr = new Map(cat.items.map((i) => [i.name.tr, i]));
+
+            /* Seçili ürün satırı — seed ise defaultChipIds seed'den (Kaldır onay eşiği),
+               özel ise [] (çip eklenmişse onaylı). ProductRow/akordeon aynen (CILA3). */
+            const rowFor = (p: IntakeProduct) => {
+              const seed = seedByTr.get(p.name.tr);
+              const defaultChipIds = seed ? seed.default_chips.filter((id) => chipById.has(id)) : [];
+              return (
+                <ProductRow
+                  key={p.uid}
+                  product={p}
+                  defaultChipIds={defaultChipIds}
+                  expanded={expandedUid === p.uid}
+                  onToggle={() => toggle(p.uid)}
+                  onRemoved={() => setExpandedUid(null)}
+                  library={library}
+                />
+              );
+            };
+            /* Sade (seçilmemiş) satır — içerik önizlemesi korunur (CILA1) */
+            const sadeButton = (item: PackItem) => {
+              const previewChips = item.default_chips
+                .map((id) => chipById.get(id))
+                .filter((c): c is IntakeChip => !!c)
+                .map((c) => pickDisplay(c));
+              return (
+                <button
+                  key={item.name.tr}
+                  className="intake-choice"
+                  onClick={() => addAndOpen(pack, cat, item)}
+                >
+                  <span className="choice-main">
+                    <span>+ {pickDisplay(item.name)}</span>
+                    {previewChips.length > 0 && <span className="preview">{previewChips.join(", ")}</span>}
+                  </span>
+                </button>
+              );
+            };
+
             return (
               <details key={pack.id + catName} className="intake-catgroup">
                 <summary>
@@ -199,59 +252,37 @@ export function IntakeProductsStep() {
                   <span className="sub"> · {pack.label_tr}</span>
                 </summary>
                 <div className="intake-list" style={{ marginTop: 8 }}>
-                  {cat.items.map((item) => {
-                    const product = findProduct(cat.name.tr, item.name.tr);
-                    if (product) {
-                      /* Onay eşiği için varsayılan çip seti — ekleme anındaki
-                         filtreyle birebir (yalnız kütüphanede çözülenler) */
-                      const defaultChipIds = item.default_chips.filter((id) => chipById.has(id));
-                      return (
-                        <ProductRow
-                          key={item.name.tr}
-                          product={product}
-                          defaultChipIds={defaultChipIds}
-                          expanded={expandedUid === product.uid}
-                          onToggle={() => toggle(product.uid)}
-                          onRemoved={() => setExpandedUid(null)}
-                          library={library}
-                        />
-                      );
-                    }
-                    /* CILA1/1: varsayılan içerik önizlemesi — TR, soluk küçük yazı */
-                    const previewChips = item.default_chips
-                      .map((id) => chipById.get(id))
-                      .filter((c): c is IntakeChip => !!c)
-                      .map((c) => pickDisplay(c));
-                    return (
-                      <button
-                        key={item.name.tr}
-                        className="intake-choice"
-                        onClick={() => addAndOpen(pack, cat, item)}
-                      >
-                        <span className="choice-main">
-                          <span>+ {pickDisplay(item.name)}</span>
-                          {previewChips.length > 0 && (
-                            <span className="preview">{previewChips.join(", ")}</span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {/* 1. SEÇİLİ yığın — seçim sırasıyla (CILA5/1) */}
+                  {productsInCat.map(rowFor)}
 
-                  {/* CILA4: kategorinin özel ürünleri (aynı ProductRow bileşeni) */}
-                  {customInCat.map((p) => (
-                    <ProductRow
-                      key={`custom-${p.uid}`}
-                      product={p}
-                      defaultChipIds={[]} // özel ürün boş çiple başlar → çip eklenmişse Kaldır onaylı
-                      expanded={expandedUid === p.uid}
-                      onToggle={() => toggle(p.uid)}
-                      onRemoved={() => setExpandedUid(null)}
-                      library={library}
-                    />
-                  ))}
+                  {/* 2. SEÇİLMEYEN (CILA5/2): seçim varsa "+ diğer ürünler (N)" arkasına
+                       daralır (M8: her zaman geri açılır, sayaç görünür); seçim yoksa
+                       BUGÜNKÜ tam liste aynen. */}
+                  {unselectedItems.length > 0 &&
+                    (hasSelection ? (
+                      <>
+                        <button
+                          type="button"
+                          className="intake-choice intake-others"
+                          onClick={() => toggleOthers(catKey)}
+                        >
+                          <span className="choice-main">
+                            <span>
+                              {othersOpen
+                                ? t("intake.others_hide")
+                                : tf("intake.others_show", { n: unselectedItems.length })}
+                            </span>
+                          </span>
+                        </button>
+                        {othersOpen && unselectedItems.map(sadeButton)}
+                      </>
+                    ) : (
+                      unselectedItems.map(sadeButton)
+                    ))}
 
-                  {/* CILA4: "+ özel ürün" — pakette olmayan, kategoriye özgü ürün */}
+                  {/* 3. "+ özel ürün" — HER DURUMDA görünür (M8); EN ALTTA → seçim yokken
+                       bugünkü liste aynen (ürünler→adder), seçim varken seçili yığının
+                       altında erişilebilir. */}
                   <CustomProductAdder onAdd={(text) => addCustom(pack, cat, text)} />
                 </div>
               </details>
