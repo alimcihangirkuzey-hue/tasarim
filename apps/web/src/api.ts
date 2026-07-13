@@ -11,8 +11,12 @@ import type {
 } from "@tezgah/shared";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  /* TUR-FIX-1: Content-Type YALNIZ gövde varsa (ve FormData değilse). Eski hali
+     gövdesiz isteklere de (DELETE/GET) application/json koyuyordu → Fastify boş
+     gövdeli DELETE'i "Body cannot be empty..." ile 400'lüyordu (yüzey silme
+     bug'ı). Gövdesiz istek başlıksız gider; FormData kendi boundary'sini koyar. */
   const res = await fetch(path, {
-    headers: init?.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
+    headers: init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : undefined,
     ...init,
   });
   if (!res.ok) {
