@@ -484,12 +484,53 @@ export const QuadPointSchema = z.object({ x: z.number(), y: z.number() });
 export const QuadSchema = z.array(QuadPointSchema).length(4);
 export type Quad = z.infer<typeof QuadSchema>;
 
+/* F8-D: premium sahne katmanları — ADDITIVE (settings_json JSON kolonu; eski
+   sahneler varsayılanla parse olur, migration YOK). opacity=0 → katman kapalı. */
+export const SceneShadowSchema = z.object({
+  opacity: z.number().min(0).max(1).default(0),
+  blur_px: z.number().min(0).max(200).default(24),
+  dy_px: z.number().min(-100).max(100).default(12),
+});
+export type SceneShadow = z.infer<typeof SceneShadowSchema>;
+
+export const SceneOverlaySchema = z.object({
+  opacity: z.number().min(0).max(1).default(0),
+  color: z.string().default("#000000"),
+});
+export type SceneOverlay = z.infer<typeof SceneOverlaySchema>;
+
 export const SceneSettingsSchema = z.object({
   blend: z.enum(["normal", "multiply"]).default("normal"),
   opacity: z.number().min(0).max(1).default(0.9),
   fabric_color: z.string().optional(),
+  /* F8-D additive: tasarım gölgesi + sahne ışık/vinyet tabakası */
+  shadow: SceneShadowSchema.default({}),
+  overlay: SceneOverlaySchema.default({}),
 });
 export type SceneSettings = z.infer<typeof SceneSettingsSchema>;
+
+/* F8-D: adlandırılmış stil preset İSKELETLERİ (altyapı — ScenesPanel UI wiring
+   AYRI tur, Δ1). Sahne İÇERİĞİ (gerçek foto) kullanıcı işi. */
+export const SCENE_STYLE_PRESETS: Record<
+  string,
+  { label_tr: string; settings: SceneSettings }
+> = {
+  soft_shadow: {
+    label_tr: "Yumuşak gölge",
+    settings: SceneSettingsSchema.parse({
+      shadow: { opacity: 0.35, blur_px: 24, dy_px: 12 },
+    }),
+  },
+  vitrine_glare: {
+    label_tr: "Vitrin parlaması",
+    settings: SceneSettingsSchema.parse({
+      blend: "multiply",
+      opacity: 0.92,
+      shadow: { opacity: 0.2, blur_px: 18, dy_px: 8 },
+      overlay: { opacity: 0.12, color: "#ffffff" },
+    }),
+  },
+};
 
 export interface MockupSceneDTO {
   id: string;
