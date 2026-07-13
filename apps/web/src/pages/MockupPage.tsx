@@ -1,16 +1,22 @@
 /* /mockup/:docId?scene=scn_… — mimar kararı #5: canlı önizleme ve Puppeteer JPG
    AYNI bu sayfayı kullanır. Tasarımın 0. sayfası (net boyut, bleed kırpılmış)
-   sahne fotoğrafı üzerine homografiyle bindirilir. */
+   sahne fotoğrafı üzerine homografiyle bindirilir.
+
+   F8-D: "BASKI PROVASI DEĞİL" damgası YALNIZ bu sayfada, KOŞULSUZ render —
+   JPG = bu sayfanın ekran görüntüsü olduğundan damga piksele gömülü çıkar;
+   print/preview AYRI bileşendir (PrintPage), damga oraya yapısal olarak
+   sızamaz (ADR-005: mockup ≠ baskı provası). Çözünürlük tavanı MOCKUP_MAX_W
+   (shared — server JPG rotasıyla AYNI sabit; anti-kaçış H2). Sahne katmanları
+   (shadow/overlay, F8-D H3) settings'ten CSS olarak basılır. */
 
 import { useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TEMPLATES, currentFormat } from "@tezgah/templates";
-import { quadTransform } from "@tezgah/shared";
+import { MOCKUP_MAX_W, mockupWatermarkText, quadTransform } from "@tezgah/shared";
 import { api } from "../api";
 
 const MM_PX = 96 / 25.4;
-const TARGET_W = 1600;
 
 export function MockupPage() {
   const { id = "" } = useParams();
@@ -47,9 +53,9 @@ export function MockupPage() {
     const B = size.bleed_mm;
     const designW = Math.round(size.w_mm * MM_PX);
     const designH = Math.round(size.h_mm * MM_PX);
-    const pw = scene.photo_px.w || 1600;
+    const pw = scene.photo_px.w || MOCKUP_MAX_W;
     const ph = scene.photo_px.h || 1200;
-    const dispW = Math.min(TARGET_W, pw);
+    const dispW = Math.min(MOCKUP_MAX_W, pw);
     const scale = dispW / pw;
     let css: string | null = null;
     try {
@@ -72,6 +78,9 @@ export function MockupPage() {
   if (!scene.photo_urls || !geom.css) {
     return <p style={{ fontFamily: "sans-serif" }}>Sahne çözülemedi.</p>;
   }
+
+  const { shadow, overlay } = scene.settings;
+  const watermark = mockupWatermarkText(client.menu_language); // Δ2: çıktı dilini izler
 
   return (
     <div style={{ margin: 0 }}>
@@ -102,12 +111,71 @@ export function MockupPage() {
               mixBlendMode: scene.settings.blend,
               opacity: scene.settings.opacity,
               overflow: "hidden",
+              /* F8-D H3: gölge — filter transform'lu elemanda quad'la birlikte
+                 eğilir (perspektifle uyumlu); opacity=0 → katman kapalı */
+              filter:
+                shadow.opacity > 0
+                  ? `drop-shadow(0 ${shadow.dy_px}px ${shadow.blur_px}px rgba(0,0,0,${shadow.opacity}))`
+                  : undefined,
             }}
           >
             {/* net tasarım: bleed negatif kenar boşluğuyla kırpılır */}
             <div style={{ marginLeft: -geom.B * MM_PX, marginTop: -geom.B * MM_PX, lineHeight: 0 }}>
               <entry.Component client={client} doc={doc} mode="print" pageIndex={0} cropMarks={false} />
             </div>
+          </div>
+        </div>
+
+        {/* F8-D H3: ışık/vinyet tabakası — foto+tasarım üstü, damga altı */}
+        {overlay.opacity > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: overlay.color,
+              opacity: overlay.opacity,
+              mixBlendMode: "soft-light",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* F8-D H1: "BASKI PROVASI DEĞİL" damgası — KOŞULSUZ (bu sayfa = yalnız
+            mockup kanalı; JPG'ye piksel olarak gömülür, sökülemez). Soluk
+            diyagonal + sağ-alt köşe bandı; mockup'ın işini gölgelemez. */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 10 }}>
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%) rotate(-24deg)",
+              fontSize: Math.max(24, Math.round(geom.dispW * 0.05)),
+              fontWeight: 700,
+              letterSpacing: "0.25em",
+              color: "rgba(255,255,255,0.13)",
+              textShadow: "0 0 2px rgba(0,0,0,0.15)",
+              whiteSpace: "nowrap",
+              fontFamily: "system-ui, sans-serif",
+            }}
+          >
+            MOCKUP
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              background: "rgba(17,17,17,0.72)",
+              color: "#ffffff",
+              fontSize: Math.max(11, Math.round(geom.dispW * 0.011)),
+              padding: "6px 12px",
+              fontFamily: "system-ui, sans-serif",
+              letterSpacing: "0.04em",
+              borderTopLeftRadius: 6,
+            }}
+          >
+            {watermark}
           </div>
         </div>
       </div>
