@@ -18,7 +18,7 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { IntakeAnswersSchema, projectIntake, type ProjectionResult } from "@tezgah/shared";
+import { IntakeAnswersSchema, foldTr, projectIntake, type ProjectionResult } from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { pickDisplay, pickML } from "./IntakeNav";
@@ -33,6 +33,9 @@ export interface IntakeResultData {
   pending: Array<{ name: string; category: string }>;
   gaps: ProjectionResult["translationGaps"];
   surfaces: number; // F8-A: kaydedilen yapısal yüzey sayısı (sunucu surfaces_saved)
+  /* T1b/FIX-3: mevcut kategorilere birleşen toplam ürün sayısı (sunucu
+     merged_into_existing'ten; 0 = hepsi yeni kategori) */
+  mergedItems: number;
 }
 
 /* F8-A: yüzey TASLAKLARI (w/h input string'i) → commit gövdesi için temiz
@@ -78,16 +81,37 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
   const preview = useMemo(() => projectIntake(answers, "PREVIEW", lang), [answers, lang]);
   const catalogFull = s.clientMode === "existing" && (existingQ.data?.catalog.categories.length ?? 0) > 0;
 
+  /* T1b/FIX-3 ÖN-GÖRÜNÜRLÜK: hangi projeksiyon kategorileri MEVCUT kataloğa
+     birleşecek (foldTr eşleşmesi — sunucu appendIntakeCategories ile aynı kural)?
+     mergePreview: birleşecekler {label(mevcut), items}; newCats: gerçekten yeni. */
+  const mergePreview = useMemo(() => {
+    const existingCats = existingQ.data?.catalog.categories ?? [];
+    const byFold = new Map(existingCats.map((c) => [foldTr(c.name_fr), c.name_fr]));
+    const merging: Array<{ label: string; items: number }> = [];
+    let newCats = 0;
+    for (const pc of preview.categories) {
+      const hit = byFold.get(foldTr(pc.name_fr));
+      if (hit !== undefined) merging.push({ label: hit, items: pc.items.length });
+      else newCats++;
+    }
+    return { merging, newCats };
+  }, [existingQ.data, preview.categories]);
+
   /* CILA1/2 — "bu gecenin kazası": mevcut+dolu müşteride kırmızı kutu (ŞERH 1
      uyarısı) YETMEDİ, kullanıcı görmeden/anlamadan basabildi. Artık bu YOLDA
      (yalnız catalogFull true iken — window.confirm proje deseni, 5+ yerde
      kullanılıyor, bkz ClientDetailPage/EditorPage/ThemesPage) net bir onay
-     sorusu araya girer; yeni-müşteri yolunda HİÇ TETİKLENMEZ. */
+     sorusu araya girer; yeni-müşteri yolunda HİÇ TETİKLENMEZ.
+     T1b: sayı artık GERÇEKTEN YENİ kategori sayısı (birleşenler ayrı cümle). */
   const handleCommitClick = () => {
     if (catalogFull) {
       const name = existingQ.data?.name ?? s.existingClientName ?? "";
+      const mergeNote =
+        mergePreview.merging.length > 0
+          ? " " + tf("intake.commit_confirm_merge", { m: mergePreview.merging.reduce((n, x) => n + x.items, 0) })
+          : "";
       const ok = window.confirm(
-        tf("intake.commit_confirm", { name, n: preview.categories.length })
+        tf("intake.commit_confirm", { name, n: mergePreview.newCats }) + mergeNote
       );
       if (!ok) return;
     }
@@ -138,6 +162,7 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
         pending: pendingTr,
         gaps: res.translationGaps,
         surfaces: res.surfaces_saved,
+        mergedItems: res.merged_into_existing.reduce((n, m) => n + m.items, 0),
       });
       void qc.invalidateQueries({ queryKey: ["clients"] });
       void qc.invalidateQueries({ queryKey: ["ingredients"] });
@@ -152,6 +177,18 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
       <h2>{t("intake.step_summary")}</h2>
 
       {catalogFull && <div className="intake-warn full">{t("intake.catalog_has")}</div>}
+
+      {/* T1b/FIX-3 ön-görünürlük: mevcut kategorilere birleşecekler (M8) */}
+      {mergePreview.merging.length > 0 && (
+        <div className="intake-warn gaps">
+          {t("intake.merge_title")}:
+          <ul>
+            {mergePreview.merging.map((m, i) => (
+              <li key={i}>{tf("intake.merge_into", { n: m.items, x: m.label })}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {pendingTr.length > 0 && (
         <div className="intake-warn pending">

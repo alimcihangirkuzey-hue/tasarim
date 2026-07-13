@@ -286,7 +286,10 @@ export const api = {
       client_id: string;
       created_client: boolean;
       intake_id: string;
+      /** T1b: GERÇEKTEN YENİ açılan kategori sayısı (birleşenler hariç) */
       applied_categories: number;
+      /** T1b/FIX-3: mevcut kategorilere birleşenler (M8 görünürlük) */
+      merged_into_existing: import("@tezgah/shared").IntakeMergeInfo[];
       catalog_had_categories: boolean;
       pending: Array<{ name: string; category: string }>;
       translationGaps: import("@tezgah/shared").ProjectionResult["translationGaps"];
