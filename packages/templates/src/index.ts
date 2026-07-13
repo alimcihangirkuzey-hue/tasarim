@@ -41,6 +41,7 @@ export type { GarmentAnalysis, GarmentAreaLayout, LineSource } from "./garment/i
 
 export * from "./factory/sanitize.js";
 export * from "./factory/analyze.js";
+export * from "./parts/chrome-title.js";
 
 /* Fabrika üretimi şablonlar (mimar #12) el yazımı kayıtlarla birleşir;
    çakışmada el yazımı kazanır (yerleşik kimlikler ezilemez). */
