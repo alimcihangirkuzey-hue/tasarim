@@ -139,6 +139,7 @@ function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => vo
         <h2>{t("intake.committed")}</h2>
         <p className="intake-hint">
           {tf("intake.result_ok", { name: data.client_name, n: data.applied })}
+          {data.mergedItems > 0 ? ` · ${tf("intake.result_merged", { m: data.mergedItems })}` : ""}
           {data.surfaces > 0 ? ` · ${data.surfaces} ${t("intake.surfaces_saved")}` : ""}
         </p>
 

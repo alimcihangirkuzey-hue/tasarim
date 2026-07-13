@@ -3,6 +3,7 @@ export * from "./sector.js";
 export * from "./sector-registry.js";
 export * from "./ingredients.js";
 export * from "./projection.js";
+export * from "./intake-merge.js";
 export * from "./backfill.js";
 export * from "./utils.js";
 export * from "./orders.js";

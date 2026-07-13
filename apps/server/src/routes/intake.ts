@@ -12,6 +12,7 @@ import {
   INGREDIENT_SEED,
   IntakeAnswersSchema,
   MenuLanguageSchema,
+  appendIntakeCategories,
   defaultBrandKit,
   defaultCatalog,
   newId,
@@ -99,10 +100,12 @@ export function intakeRoutes(app: FastifyInstance): void {
       const menuLang = MenuLanguageSchema.catch("fr").parse(client.menu_language);
       const projected = projectIntake(body.answers, idSeed, menuLang);
 
-      /* 3. APPEND (ŞERH 1 / M5): sona ekle, order yeniden numaralandır. Projeksiyon
-         id'leri (ord_<seed>) mevcutlarla çakışmaz; mevcut kategori/ürün dokunulmaz. */
-      const mergedCats = [...current.categories, ...projected.categories].map((c, i) => ({ ...c, order: i + 1 }));
-      const nextCatalog: Catalog = { ...current, categories: mergedCats };
+      /* 3. T1b/FIX-3: birleşme-duyarlı APPEND (ŞERH 1 / M5 korunur). Projeksiyon
+         kategorisi mevcutta foldTr eşleşmesi buluyorsa mükerrer AÇILMAZ — ürünler
+         mevcut kategoriye eklenir (mevcut satırlar dokunulmaz); eşleşmeyenler
+         eskisi gibi sona eklenir, order yeniden numaralanır. */
+      const merge = appendIntakeCategories(current.categories, projected.categories);
+      const nextCatalog: Catalog = { ...current, categories: merge.categories };
 
       /* 4. catalog_history yedek (geri-al güvencesi) */
       db.prepare(
@@ -150,7 +153,10 @@ export function intakeRoutes(app: FastifyInstance): void {
         client_id: client.id,
         created_client: createdClient,
         intake_id: intakeId,
-        applied_categories: projected.categories.length,
+        /* T1b: artık GERÇEKTEN YENİ açılan kategori sayısı (birleşenler hariç) */
+        applied_categories: merge.addedCategories,
+        /* T1b/FIX-3 görünürlüğü (M8): mevcut kategorilere birleşenler */
+        merged_into_existing: merge.mergedInto,
         catalog_had_categories: hadCategories, // ŞERH 1 uyarısı UI özetinde
         pending: projected.pending,
         translationGaps: projected.translationGaps,
