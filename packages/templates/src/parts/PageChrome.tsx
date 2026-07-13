@@ -9,6 +9,7 @@ import type { QrRender } from "../engine/qr.js";
 import type { Theme } from "../themes.js";
 import type { SlotDef } from "../types.js";
 import type { PageGeometry } from "./geometry.js";
+import { resolveChromeTitle } from "./chrome-title.js";
 import { Slot, TextLines } from "./svg.js";
 
 export const CHROME_SLOTS: SlotDef[] = [
@@ -70,10 +71,13 @@ export function PageChrome(props: {
   const halalCy = geo.header.y + 7;
 
   /* Başlık: tek satır, 14→8 mm shrink; sağa yaslı.
-     Halal rozeti açıksa başlığın sağ kenarı rozetin soluna çekilir (çakışma QA bulgusu) */
+     Halal rozeti açıksa başlığın sağ kenarı rozetin soluna çekilir (çakışma QA bulgusu).
+     TUR-FIX-2: override yoksa başlık ÇIKTI diline göre (tr=MENÜ, de=SPEISEKARTE
+     ß'siz, fr=NOTRE CARTE); override (detached) aynen kazanır. */
   const titleRightX = halalOn ? halalCx - 10 : w - margin;
   const titleMaxW = titleRightX - (geo.header.logo.x + geo.header.logo.w + 8);
-  const titleText = theme.uppercaseHeading ? title.str.toLocaleUpperCase("fr-FR") : title.str;
+  const titleStr = resolveChromeTitle(title, client.menu_language);
+  const titleText = theme.uppercaseHeading ? titleStr.toLocaleUpperCase("fr-FR") : titleStr;
   const titleFit = solveFontScale({
     min: 8,
     max: 14,
