@@ -1,11 +1,14 @@
 /* Mockup JPG üretimi — FAZ3-GOREV §3.3 (mimar #5: /mockup sayfasının ekran görüntüsü).
-   Versiyon sayacı belge + kind:'mockup' bazında; §9.3 adlandırma `_mockup.jpg`. */
+   Versiyon sayacı belge + kind:'mockup' bazında; §9.3 adlandırma `_mockup.jpg`.
+   F8-D/H2: çözünürlük tavanı MOCKUP_MAX_W (shared — MockupPage ile AYNI sabit,
+   dedupe). Yüksek-çöz mockup yolu bilerek YOK (anti-kaçış; mockup ≠ baskı
+   provası, ADR-005) — damga zaten /mockup sayfasında piksele gömülü gelir. */
 
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { newId, nowISO } from "@tezgah/shared";
+import { MOCKUP_MAX_W, newId, nowISO } from "@tezgah/shared";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -13,7 +16,6 @@ import { getBrowser, toDTO, type ExportRow } from "./exports.js";
 import { sceneById } from "./scenes.js";
 
 const PRINT_BASE = process.env.PRINT_BASE ?? "http://localhost:5173";
-const TARGET_W = 1600;
 
 const MockupSchema = z.object({ scene_id: z.string().min(1) });
 
@@ -45,9 +47,9 @@ export function mockupRoutes(app: FastifyInstance): void {
         )
         .get(req.params.id) as { v: number | null }).v ?? 0) + 1;
 
-    const pw = asset.width_px || TARGET_W;
-    const ph = asset.height_px || Math.round(TARGET_W * 0.75);
-    const dispW = Math.min(TARGET_W, pw);
+    const pw = asset.width_px || MOCKUP_MAX_W;
+    const ph = asset.height_px || Math.round(MOCKUP_MAX_W * 0.75);
+    const dispW = Math.min(MOCKUP_MAX_W, pw);
     const dispH = Math.round((ph * dispW) / pw);
 
     const browser = await getBrowser();
