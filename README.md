@@ -1,5 +1,7 @@
 # TEZGÂH
 
+Başlamadan önce: /docs/00_READ_FIRST.md
+
 Fransa'daki Türk restoranları/dönerciler için grafik atölyesi otomasyon sistemi.
 Anayasa ve tam spesifikasyon: **CONSTITUTION.md** (önce onu oku). Faz 1 tasarım
 detayları: **FAZ1-GOREV.md**.

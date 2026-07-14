@@ -28,6 +28,7 @@ import { sectorRoutes } from "./routes/sectors.js";
 import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
 import { surfaceRoutes } from "./routes/surfaces.js";
+import { renderRoutes } from "./routes/render.js";
 
 migrate();
 
@@ -81,6 +82,7 @@ sectorRoutes(app);
 ingredientRoutes(app);
 intakeRoutes(app);
 surfaceRoutes(app);
+renderRoutes(app); // T3 PART-B: Render Contract v1 kapısı (env'siz 503 — kapalı)
 
 /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
 app.setErrorHandler((err, _req, reply) => {
