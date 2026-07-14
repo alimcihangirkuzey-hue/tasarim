@@ -79,7 +79,11 @@ export function MockupPage() {
     return <p style={{ fontFamily: "sans-serif" }}>Sahne çözülemedi.</p>;
   }
 
-  const { shadow, overlay } = scene.settings;
+  /* Eski-server/yeni-web (HMR) karışımına dayanıklılık: API eski şemayla dönerse
+     (shadow/overlay alanları YOK) katmanları kapalı say — Zod default'larının
+     istemci ikizi. Restart sonrası sunucu parse'ı bunları zaten doldurur. */
+  const shadow = scene.settings.shadow ?? { opacity: 0, blur_px: 24, dy_px: 12 };
+  const overlay = scene.settings.overlay ?? { opacity: 0, color: "#000000" };
   const watermark = mockupWatermarkText(client.menu_language); // Δ2: çıktı dilini izler
 
   return (
