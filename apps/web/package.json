@@ -11,8 +11,10 @@
     "@tanstack/react-query": "^5.62.0",
     "@tezgah/shared": "*",
     "@tezgah/templates": "*",
+    "konva": "^9.3.22",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-konva": "^18.2.16",
     "react-router-dom": "^6.28.0",
     "zustand": "^5.0.2"
   },
