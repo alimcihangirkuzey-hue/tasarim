@@ -13,6 +13,7 @@ import {
   EMPTY_CANVAS,
   canvasReduce,
   clampToBounds,
+  shapeAtPoint,
   snapToGrid,
   zoomAt,
   type CanvasState,
@@ -84,7 +85,8 @@ describe("canvasReduce — add/select", () => {
     expect(s1.shapes).toHaveLength(1);
     expect(s1.shapes[0]).toMatchObject({ id: "r1", kind: "rect", x: 10, y: 20, w: 120, h: 80 });
     expect(s1.selectedId).toBe("r1");
-    const s2 = canvasReduce(s1, add("t1", "text"), B);
+    /* FIX-A sonrası fixture: ikinci şekil BOŞ noktaya (ilkiyle çakışmasın) */
+    const s2 = canvasReduce(s1, add("t1", "text", { x: 400, y: 300 }), B);
     expect(s2.shapes[1]).toMatchObject({ kind: "text", text: "Metin" });
   });
 
@@ -130,9 +132,10 @@ describe("canvasReduce — move/resize korkulukları", () => {
 });
 
 describe("canvasReduce — set_text/remove", () => {
+  /* FIX-A sonrası fixture: iki şekil AYRIK noktalara (çakışma seçime dönüşürdü) */
   const withText = canvasReduce(
     canvasReduce(EMPTY_CANVAS, add("t1", "text"), B),
-    add("r1", "rect"),
+    add("r1", "rect", { x: 400, y: 300 }),
     B
   );
 
@@ -149,6 +152,40 @@ describe("canvasReduce — set_text/remove", () => {
     expect(s.selectedId).toBeNull();
     const sel2 = canvasReduce(withText, { type: "select", id: "r1" }, B);
     expect(canvasReduce(sel2, { type: "remove", id: "t1" }, B).selectedId).toBe("r1");
+  });
+});
+
+describe("CV1-FIX-01/FIX-A — shapeAtPoint + add-üstüne-tıklama = SEÇİM (GT m.13a)", () => {
+  const two = canvasReduce(
+    canvasReduce(EMPTY_CANVAS, add("r1", "rect", { x: 100, y: 100 }), B),
+    add("r2", "rect", { x: 400, y: 100 }),
+    B
+  );
+
+  it("shapeAtPoint: içerideki nokta şekli bulur, boştaki null; ellipse dahil BBOX semantiği", () => {
+    expect(shapeAtPoint(two.shapes, { x: 150, y: 130 })?.id).toBe("r1");
+    expect(shapeAtPoint(two.shapes, { x: 700, y: 500 })).toBeNull();
+  });
+
+  it("üstteki kazanır: çakışan iki şekilde SONRA eklenen seçilir", () => {
+    const stacked = canvasReduce(two, { type: "move", id: "r2", x: 100, y: 100 }, B);
+    const s = canvasReduce(stacked, add("r3", "rect", { x: 150, y: 130 }), B);
+    expect(s.shapes).toHaveLength(2);
+    expect(s.selectedId).toBe("r2");
+  });
+
+  it("add-mode'da mevcut şeklin ÜSTÜNE tıklama: şekil SAYISI SABİT + o şekil seçilir (çoğalma biter)", () => {
+    const s = canvasReduce(two, add("r9", "rect", { x: 150, y: 130 }), B);
+    expect(s.shapes).toHaveLength(2);
+    expect(s.selectedId).toBe("r1");
+    expect(s.shapes.some((x) => x.id === "r9")).toBe(false);
+  });
+
+  it("hit-test HAM noktayla yapılır (snap'ten önce — kenar tıklaması komşu boşluğa kaçmaz)", () => {
+    const one = canvasReduce(EMPTY_CANVAS, add("r1", "rect", { x: 100, y: 100 }), B);
+    const s = canvasReduce(one, add("rX", "rect", { x: 104, y: 104 }), B);
+    expect(s.shapes).toHaveLength(1);
+    expect(s.selectedId).toBe("r1");
   });
 });
 

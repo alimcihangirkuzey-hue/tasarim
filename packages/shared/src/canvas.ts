@@ -84,6 +84,21 @@ const DEFAULT_SIZE: Record<CanvasShapeKind, { w: number; h: number }> = {
   text: { w: 160, h: 24 },
 };
 
+/* CV1-FIX-01/FIX-A — nokta hit-testi (üstteki kazanır = dizinin SONU; iskelet
+   semantiği: ellipse dahil BBOX kutusu — basit ve öngörülebilir). GT m.13a kökü:
+   add-mode'da mevcut şeklin üstüne tıklama YENİ şekil doğuruyordu (üst üste
+   piksel-özdeş çoğalma); artık reducer düzeyinde SEÇİME çevrilir. */
+export function shapeAtPoint(
+  shapes: CanvasShape[],
+  p: { x: number; y: number }
+): CanvasShape | null {
+  for (let i = shapes.length - 1; i >= 0; i--) {
+    const s = shapes[i];
+    if (p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h) return s;
+  }
+  return null;
+}
+
 export type CanvasAction =
   | { type: "add"; id: string; kind: CanvasTool; at: { x: number; y: number }; snap?: boolean }
   | { type: "select"; id: string | null }
@@ -104,6 +119,10 @@ export function canvasReduce(
   switch (action.type) {
     case "add": {
       if (action.kind === "select" || !CANVAS_TOOLS.includes(action.kind)) return state;
+      /* FIX-A (GT m.13a): tıklanan nokta MEVCUT bir şeklin üstündeyse ekleme
+         DEĞİL seçim — çoğalma reducer'da ölür (ham `at` ile, snap'ten önce). */
+      const hit = shapeAtPoint(state.shapes, action.at);
+      if (hit) return { ...state, selectedId: hit.id };
       const kind = action.kind as CanvasShapeKind;
       const size = DEFAULT_SIZE[kind];
       const snap = action.snap !== false;

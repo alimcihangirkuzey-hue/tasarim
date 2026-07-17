@@ -88,10 +88,18 @@ export default function AtolyePage() {
     setView(zoomAt(view, pointer, e.evt.deltaY < 0 ? 1 : -1));
   };
 
-  /* Boş alana tık: aktif araç şekil ekler (izin-listesi reducer'da); Seç → seçim temizlenir */
+  /* CV1-FIX-01/FIX-A: seçim TEK kaynaktan (stage mousedown) — şekle tıklama HER
+     araçta SEÇİMDİR; yeni şekil YALNIZ boş alana tıklayınca doğar. Reducer'daki
+     shapeAtPoint kemeri UI'yi kaçırsa bile çoğalmayı ölümcül biçimde keser. */
   const onStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const isEmpty = e.target === e.target.getStage() || e.target.name() === "scene-bg";
-    if (!isEmpty) return;
+    const t = e.target;
+    const isEmpty = t === t.getStage() || t.name() === "scene-bg";
+    if (!isEmpty) {
+      if (t.name() === "shape" && canvas.selectedId !== t.id()) {
+        dispatch({ type: "select", id: t.id() });
+      }
+      return; /* Transformer tutamaçları vb. → dokunma */
+    }
     if (tool === "select") {
       if (canvas.selectedId) dispatch({ type: "select", id: null });
       return;
@@ -112,9 +120,7 @@ export default function AtolyePage() {
     name: "shape",
     draggable: true,
     dragBoundFunc: dragBound(s),
-    onMouseDown: () => {
-      if (canvas.selectedId !== s.id) dispatch({ type: "select", id: s.id });
-    },
+    /* seçim stage-mousedown'da (FIX-A tek kaynak) — burada handler yok */
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
       const n = e.target;
       /* Ellipse merkez-koordinatlıdır → sol-üst köşeye çevir */
@@ -169,8 +175,28 @@ export default function AtolyePage() {
             {TOOL_TR[t]}
           </button>
         ))}
+        {/* CV1-FIX-01/FIX-B (GT m.13b): görünür Sil — klavyeye mahkûmiyet biter */}
+        <button
+          onClick={() => {
+            if (canvas.selectedId) dispatch({ type: "remove", id: canvas.selectedId });
+          }}
+          disabled={!canvas.selectedId}
+          style={{
+            padding: "5px 10px",
+            marginLeft: 6,
+            background: canvas.selectedId ? "#7a1220" : "#2b2b2f",
+            color: canvas.selectedId ? "#fff" : "#777",
+            border: "1px solid #444",
+            borderRadius: 4,
+            cursor: canvas.selectedId ? "pointer" : "default",
+          }}
+        >
+          Sil
+        </button>
         <span style={{ opacity: 0.6, marginLeft: 8 }}>
-          {tool === "select" ? "şekle tık: seç · sürükle: taşı · Del: sil · metne çift tık: düzenle" : "sahneye tık: ekle"}
+          {tool === "select"
+            ? "şekle tık: seç · sürükle: taşı · Sil/Del: sil · metne çift tık: düzenle"
+            : "boş alana tık: ekle · şekle tık: seç"}
         </span>
         <span style={{ flex: 1 }} />
         <span style={{ opacity: 0.6 }}>
