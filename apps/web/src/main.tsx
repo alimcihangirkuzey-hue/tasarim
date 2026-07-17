@@ -16,6 +16,8 @@ import { ParseDictPage } from "./pages/ParseDictPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { FactoryGuidePage } from "./pages/FactoryGuidePage";
 import { SiparisPage } from "./pages/SiparisPage";
+/* P2 CAP-CANVAS-01: /atolye LAZY — konva chunk'ı YALNIZ bu rotada iner (ana bundle Δ=0) */
+const AtolyePage = React.lazy(() => import("./pages/AtolyePage"));
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -89,6 +91,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/present/:id" element={<PresentPage />} />
             <Route path="/mockup/:id" element={<MockupPage />} />
             <Route path="/fiche/:id" element={<FichePage />} />
+            {/* P2: /atolye chrome'suz + lazy (izole canvas iskeleti) */}
+            <Route
+              path="/atolye"
+              element={
+                <React.Suspense fallback={null}>
+                  <AtolyePage />
+                </React.Suspense>
+              }
+            />
             <Route
               path="*"
               element={
