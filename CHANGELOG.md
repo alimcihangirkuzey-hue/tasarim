@@ -5,6 +5,14 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
 
 ## [Unreleased]
 ### Added
+- **P1 CAP-CD-01 — Creative Document v1:** belge modeline sürüm damgası —
+  `CD_VERSION=1` + `DocumentStateSchema.cd_version` (`z.literal(1).default(1)`;
+  eski belgeler/snapshot'lar parse anında uyumlu, DB kolonu/migration YOK);
+  additive-only uyum kuralı + ÇIKAR/ÇIKMAZ dış-yüzey sınırı
+  (docs/creative-document-v1.md — C1 iskeleti); Render Contract yanıt meta'sına
+  `cd_version` (ADDITIVE — istek şeması/kanonik imza değişmedi,
+  RENDER_CONTRACT_V=1 korundu). refs/K3 alanları bilinçli AÇILMADI (D-35, YAGNI).
+  Test tabanı 412→426.
 - **F8-E:** çok-yüzey kurumsal sunum — `POST /api/projects/:id/present` additive
   `mockup_mode:"per_scene_kind"` (belge×sahne-türü EN SON mockup sayfaları + tür
   etiketi + yüzey etiket/cm + kapak "N tasarım · M yüzey" + BAT Surfaces; default
