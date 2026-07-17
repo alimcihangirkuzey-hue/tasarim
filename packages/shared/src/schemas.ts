@@ -220,7 +220,7 @@ export interface ExportRecordDTO {
   /* Mimar kararı #13: snapshot (geri yükleme öncesi güvenlik kaydı, filepath
      boş dize olabilir) ve print_cmyk eklendi; versiyon sayacına katılırlar.
      Mimar kararı #16: digital_menu (tek dosya statik HTML). */
-  kind: "print" | "preview" | "presentation" | "mockup" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk" | "digital_menu";
+  kind: "print" | "preview" | "presentation" | "mockup" | "mockup_hires" | "decoupe" | "broderie" | "broderie_fiche" | "png" | "snapshot" | "print_cmyk" | "digital_menu";
   filepath: string;
   version: number;
   created_at: string;
@@ -433,7 +433,7 @@ export type SceneKind = z.infer<typeof SceneKindSchema>;
 
 /* Yüzey türü — intake çeklistinde toplanır (checklist.surfaces), commit'te
    müşteri-düzeyi client_surfaces tablosuna UPSERT edilir ("bir kez gir, hep
-   kullan"). SceneKind'a (vitrine/facade/garment/generic) eşleme F8-D işi. */
+   kullan"). SceneKind'a eşleme: surfaceToSceneKind (mockup.ts — F8-E'de kapandı). */
 export const SurfaceKindSchema = z.enum(["vitrine", "tabela", "garment", "diger"]);
 export type SurfaceKind = z.infer<typeof SurfaceKindSchema>;
 
