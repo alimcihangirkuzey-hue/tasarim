@@ -1,3 +1,4 @@
+import { MOCKUP_HIRES_CONFIRM } from "@tezgah/shared";
 import type {
   AssetDTO,
   ClientDTO,
@@ -7,6 +8,7 @@ import type {
   DocumentSummaryDTO,
   ExportRecordDTO,
   OrderItemDTO,
+  PresentMockupMode,
   ProjectDTO,
 } from "@tezgah/shared";
 
@@ -125,7 +127,10 @@ export const api = {
     http<Array<{ id: string; client_id: string; client_name: string; name: string; due_date: string; open_items: number }>>(
       "/api/projects/upcoming"
     ),
-  presentProject: (id: string, body: { document_ids?: string[]; note?: string }) =>
+  presentProject: (
+    id: string,
+    body: { document_ids?: string[]; note?: string; mockup_mode?: PresentMockupMode }
+  ) =>
     http<ExportRecordDTO>(`/api/projects/${id}/present`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -152,6 +157,12 @@ export const api = {
     http<ExportRecordDTO>(`/api/documents/${id}/mockup`, {
       method: "POST",
       body: JSON.stringify({ scene_id }),
+    }),
+  /* F8-E: kapılı yüksek-çöz (EKRAN) — re-onay literal'i shared sabitten gömülür */
+  mockupHiresDocument: (id: string, scene_id: string) =>
+    http<ExportRecordDTO>(`/api/documents/${id}/mockup-hires`, {
+      method: "POST",
+      body: JSON.stringify({ scene_id, confirm: MOCKUP_HIRES_CONFIRM }),
     }),
   exportSvg: (id: string) =>
     http<ExportRecordDTO>(`/api/documents/${id}/export-svg`, { method: "POST", body: "{}" }),

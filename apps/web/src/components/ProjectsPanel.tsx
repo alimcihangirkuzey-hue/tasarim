@@ -347,6 +347,8 @@ function ProjectBlock({ project, client, showToast }: {
   const qc = useQueryClient();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
   const [newType, setNewType] = useState<ProductType>("menu");
+  /* F8-E: sunum mockup modu — "last" = eski davranış (varsayılan) */
+  const [presentMode, setPresentMode] = useState<"last" | "per_scene_kind">("last");
   const today = new Date().toISOString().slice(0, 10);
   const level = dueLevel(project.due_date, today);
 
@@ -368,7 +370,11 @@ function ProjectBlock({ project, client, showToast }: {
         t("orders.present_note_prompt"),
         "Toute modification après signature fera l'objet d'une nouvelle facturation."
       );
-      return api.presentProject(project.id, { note: note ?? "" });
+      /* F8-E: mod yalnız default-dışıysa gönderilir (last isteği birebir eski) */
+      return api.presentProject(project.id, {
+        note: note ?? "",
+        ...(presentMode !== "last" ? { mockup_mode: presentMode } : {}),
+      });
     },
     onSuccess: (rec) => {
       showToast(tf("orders.present_done", { n: rec.version }));
@@ -394,6 +400,14 @@ function ProjectBlock({ project, client, showToast }: {
           </span>
         )}
         <span style={{ flex: 1 }} />
+        <select
+          value={presentMode}
+          onChange={(e) => setPresentMode(e.target.value as "last" | "per_scene_kind")}
+          style={{ padding: "4px 6px" }}
+        >
+          <option value="last">{t("orders.present_mode_last")}</option>
+          <option value="per_scene_kind">{t("orders.present_mode_multi")}</option>
+        </select>
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>
           {present.isPending ? t("editor.exporting") : t("orders.present_btn")}
         </button>

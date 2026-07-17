@@ -9,11 +9,17 @@
    (shared — server JPG rotasıyla AYNI sabit; anti-kaçış H2). Sahne katmanları
    (shadow/overlay, F8-D H3) settings'ten CSS olarak basılır. */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TEMPLATES, currentFormat } from "@tezgah/templates";
-import { MOCKUP_MAX_W, mockupWatermarkText, quadTransform } from "@tezgah/shared";
+import {
+  MOCKUP_HIRES_CONFIRM,
+  MOCKUP_HIRES_MAX_W,
+  MOCKUP_MAX_W,
+  mockupWatermarkText,
+  quadTransform,
+} from "@tezgah/shared";
 import { api } from "../api";
 
 const MM_PX = 96 / 25.4;
@@ -22,6 +28,14 @@ export function MockupPage() {
   const { id = "" } = useParams();
   const [sp] = useSearchParams();
   const sceneId = sp.get("scene") ?? "";
+  /* F8-E: hires=1 YALNIZ sunucu mockup-hires rotasından gelir → tavan 3200;
+     paramsız varsayılan yol 1600 tavanıyla AYNEN. shot=1 = ekran görüntüsü
+     çekimi (iki sunucu rotası da geçer): operatör çubuğu render EDİLMEZ —
+     çubuk JPG'ye sızamaz (ikinci güvence: çubuk görüntü alanının ALTINDA). */
+  const hires = sp.get("hires") === "1";
+  const shot = sp.get("shot") === "1";
+  const [hiresBusy, setHiresBusy] = useState(false);
+  const [hiresMsg, setHiresMsg] = useState("");
 
   const docQ = useQuery({ queryKey: ["document", id], queryFn: () => api.document(id), enabled: !!id });
   const clientId = docQ.data?.client_id;
@@ -55,7 +69,8 @@ export function MockupPage() {
     const designH = Math.round(size.h_mm * MM_PX);
     const pw = scene.photo_px.w || MOCKUP_MAX_W;
     const ph = scene.photo_px.h || 1200;
-    const dispW = Math.min(MOCKUP_MAX_W, pw);
+    /* F8-E: tavan yalnız hires paramıyla yükselir (varsayılan 1600 AYNEN) */
+    const dispW = Math.min(hires ? MOCKUP_HIRES_MAX_W : MOCKUP_MAX_W, pw);
     const scale = dispW / pw;
     let css: string | null = null;
     try {
@@ -64,7 +79,7 @@ export function MockupPage() {
       css = null;
     }
     return { B, designW, designH, pw, ph, dispW, dispH: Math.round(ph * scale), scale, css };
-  }, [doc, entry, scene, client]);
+  }, [doc, entry, scene, client, hires]);
 
   useEffect(() => {
     if (!doc || !client || !scene || !geom?.css) return;
@@ -85,6 +100,25 @@ export function MockupPage() {
   const shadow = scene.settings.shadow ?? { opacity: 0, blur_px: 24, dy_px: 12 };
   const overlay = scene.settings.overlay ?? { opacity: 0, color: "#000000" };
   const watermark = mockupWatermarkText(client.menu_language); // Δ2: çıktı dilini izler
+
+  /* F8-E: TEK onay diyaloğu (D-30) — literal shared sabitten; onaysız istek yok */
+  const onHires = async () => {
+    const ok = window.confirm(
+      `MOCKUP yüksek çözünürlük (ekran) üretilecek — tavan ${MOCKUP_HIRES_MAX_W}px.\n\n` +
+        `Bu çıktı ${MOCKUP_HIRES_CONFIRM}; damga korunur.\n\nDevam edilsin mi?`
+    );
+    if (!ok) return;
+    setHiresBusy(true);
+    setHiresMsg("Üretiliyor…");
+    try {
+      const rec = await api.mockupHiresDocument(id, sceneId);
+      setHiresMsg(`Kaydedildi: ${rec.filepath} (v${rec.version})`);
+    } catch (e) {
+      setHiresMsg(`Hata: ${(e as Error).message}`);
+    } finally {
+      setHiresBusy(false);
+    }
+  };
 
   return (
     <div style={{ margin: 0 }}>
@@ -183,6 +217,30 @@ export function MockupPage() {
           </div>
         </div>
       </div>
+
+      {/* F8-E: operatör çubuğu — shot=1'de (sunucu ekran görüntüsü) RENDER EDİLMEZ;
+          ayrıca görüntü alanının (dispW×dispH viewport) ALTINDA durur (çifte güvence). */}
+      {!shot && (
+        <div
+          style={{
+            width: geom.dispW,
+            boxSizing: "border-box",
+            background: "#141416",
+            color: "#EDEBE6",
+            fontFamily: "system-ui, sans-serif",
+            fontSize: 13,
+            padding: "8px 12px",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <button onClick={() => void onHires()} disabled={hiresBusy} style={{ padding: "6px 10px" }}>
+            Yüksek çözünürlük (ekran)
+          </button>
+          <span style={{ opacity: 0.85 }}>{hiresMsg}</span>
+        </div>
+      )}
     </div>
   );
 }
