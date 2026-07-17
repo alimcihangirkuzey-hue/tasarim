@@ -5,6 +5,16 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
 
 ## [Unreleased]
 ### Added
+- **P2 CAP-CANVAS-01 — Konva iskeleti:** programın ilk yeni bağımlılığı
+  (`konva 9.3.22` + `react-konva 18.2.16`, MIT; lockfile'da mevcut sürüm
+  oynamadı) · izole `/atolye` rotası (React.lazy — konva chunk'ı YALNIZ bu
+  rotada iner: 91.83KB gzip ≤160 hedef; ana bundle Δ +0.57KB = yalnız rota
+  kaydı) · Stage + tek Layer + pan/zoom + izin-listeli şekiller
+  (Kare/Elips/Metin) + seç/taşı + kısıtlı Transformer + Del + çift-tık metin ·
+  korkuluk çekirdeği SAF fonksiyonlarla `shared/canvas.ts`'te (clampToBounds ·
+  snapToGrid · zoomAt · canvasReduce; +19 test) · kalıcılık/CD bağı BİLİNÇLİ
+  yok (D-35(c); K3'te additive) · ADR-002'ye federasyon şerhi dosyada.
+  Test tabanı 426→445.
 - **P1 CAP-CD-01 — Creative Document v1:** belge modeline sürüm damgası —
   `CD_VERSION=1` + `DocumentStateSchema.cd_version` (`z.literal(1).default(1)`;
   eski belgeler/snapshot'lar parse anında uyumlu, DB kolonu/migration YOK);
