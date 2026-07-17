@@ -281,6 +281,8 @@
     "missing_prefix": "eksik",
     "miroir": "⚠ içten uygulama → miroir",
     "present_btn": "Sunum PDF'i oluştur",
+    "present_mode_last": "Sunum: son mockup",
+    "present_mode_multi": "Sunum: çok yüzey",
     "present_note_prompt": "BAT hukuki notu (düzenlenebilir):",
     "present_done": "Sunum PDF'i hazır — v{n}",
     "no_docs": "Bu projede belge yok — önce bir kalemden tasarıma başla",
