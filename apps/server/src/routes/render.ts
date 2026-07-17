@@ -85,6 +85,9 @@ export function renderRoutes(app: FastifyInstance): void {
       file,
       meta: {
         contract_v: RENDER_CONTRACT_V,
+        /* CD1-2 (P1): belgenin Creative Document sürümü — ADDITIVE meta alanı;
+           istek şeması ve kanonik imza dizesi DEĞİŞMEDİ → RENDER_CONTRACT_V=1 korunur */
+        cd_version: docDTO.cd_version,
         document_id: body.doc,
         template_id: docDTO.template_id,
         variant: body.variant,

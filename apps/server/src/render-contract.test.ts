@@ -2,6 +2,7 @@
    Route davranışı canlı smoke'ta (401/201 + dosya + sha256). */
 
 import { describe, expect, it } from "vitest";
+import { CD_VERSION } from "@tezgah/shared";
 import {
   RENDER_CONTRACT_V,
   RenderRequestV1Schema,
@@ -62,5 +63,25 @@ describe("Render Contract v1 — kanonik dize + HMAC", () => {
 
   it("sürüm sabiti = 1 (kırıcı değişiklik = MAJOR + iki-taraflı goal — direktif §2)", () => {
     expect(RENDER_CONTRACT_V).toBe(1);
+  });
+});
+
+describe("CD1-2 (P1) — cd_version meta'sı contract yüzeyini DEĞİŞTİRMEZ", () => {
+  it("RENDER_CONTRACT_V=1 KORUNDU (CD, contract sürümünü etkilemez — D-35)", () => {
+    expect(RENDER_CONTRACT_V).toBe(1);
+    expect(CD_VERSION).toBe(1);
+  });
+
+  it("istek şemasında cd_version ALANI YOK — gönderilirse strip edilir, imza yüzeyine giremez", () => {
+    const r = RenderRequestV1Schema.parse({ ...base, cd_version: 1 } as Record<string, unknown>);
+    expect("cd_version" in r).toBe(false);
+    expect(r).toEqual({ doc: "doc_abc", variant: "preview", watermark: false, target: "pdf" });
+  });
+
+  it("kanonik imza dizesi CD1 sonrası BİREBİR v1 biçiminde (bayt-bayt sabit)", () => {
+    const req = RenderRequestV1Schema.parse({ ...base, watermark: true });
+    expect(canonicalRenderString(req)).toBe(
+      "render.v1|doc=doc_abc|variant=preview|watermark=true|target=pdf"
+    );
   });
 });
