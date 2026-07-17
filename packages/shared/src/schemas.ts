@@ -172,7 +172,18 @@ export const OverrideSchema = z.object({
   detached: z.boolean().default(true),
 });
 
+/* P1 CAP-CD-01 — Creative Document v1 (D-34/D-35): belge modelinin SÜRÜMLÜ kimliği.
+   CD v1 = bugünkü DocumentDTO + cd_version damgası (yeni zorunlu içerik alanı YOK).
+   z.literal(1).default(1) → ESKİ belgeler ve ESKİ snapshot'lar parse anında
+   default'la dolar; DB kolonu/migration YOK (rowToDocument'ın Zod-default deseni —
+   SceneSettings/F8-D emsali). UYUM KURALI: additive-only — alan silme / yeniden
+   adlandırma YASAK; CD v2 yalnız kırıcı değişiklikte açılır; bilinmeyen alan
+   toleransı (Zod strip) korunur. Ayrıntı + ÇIKAR/ÇIKMAZ sınırı:
+   docs/creative-document-v1.md */
+export const CD_VERSION = 1;
+
 export const DocumentStateSchema = z.object({
+  cd_version: z.literal(CD_VERSION).default(CD_VERSION),
   template_id: z.string(),
   params: z.record(z.unknown()).default({}),
   theme_id: z.string().default("brand"),
