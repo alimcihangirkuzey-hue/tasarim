@@ -5,6 +5,15 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
 
 ## [Unreleased]
 ### Added
+- **F8-E:** çok-yüzey kurumsal sunum — `POST /api/projects/:id/present` additive
+  `mockup_mode:"per_scene_kind"` (belge×sahne-türü EN SON mockup sayfaları + tür
+  etiketi + yüzey etiket/cm + kapak "N tasarım · M yüzey" + BAT Surfaces; default
+  `"last"` birebir eski davranış) + **kapılı yüksek-çöz (EKRAN) mockup**:
+  `POST /api/documents/:id/mockup-hires` (zorunlu re-onay literal'i "baskı için
+  değildir", damga koşulsuz, kind `mockup_hires`, tavan `MOCKUP_HIRES_MAX_W=3200`;
+  varsayılan yol 1600 AYNEN — ADR-005 tadili + docs/export-kinds.md sözlüğü).
+  `surfaceToSceneKind` eşlemesi (F8-A borcu kapandı). Canlı smoke 31/31; test
+  tabanı 391→412.
 - **PART-B adım-1:** Render Contract v1 engine şimi — `POST /render {doc, variant,
   watermark, target} → {file, meta}` (MULTI_REPO v1.2 §2); HMAC-SHA256 imza
   (kanonik dize, `x-render-signature`); kapı varsayılan KAPALI
