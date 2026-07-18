@@ -155,7 +155,15 @@ export function BriefPage() {
     setSizeError((p) => ({ ...p, [size]: "" }));
     await run(async () => {
       setView(await api.patchBrief(view.brief.id, { spec_values: { size_distribution: next } }));
-      setSizeText((p) => ({ ...p, [size]: "" })); /* taslak temizlenir → kayıt gösterilir */
+      /* BULGU-4 kökü: taslağı BOŞ DİZE ile temizlemek kutuyu kalıcı boş
+         bırakıyordu — `sizeText[size] ?? ...` (nullish) "" için fallback'e
+         DÜŞMEZ. Ayrıca sonraki blur'da text="" okunup bedeni SİLİYORDU.
+         Doğrusu: taslak anahtarını KALDIR → kayıt değeri görünür. */
+      setSizeText((p) => {
+        const next = { ...p };
+        delete next[size];
+        return next;
+      });
     });
   };
   const garmentKind = (str("garment_type") || "tshirt") as GarmentKind;
