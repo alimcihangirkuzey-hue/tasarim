@@ -420,13 +420,17 @@ export default function AtolyePage() {
         </Layer>
       </Stage>
 
-      {/* LY3: KATMAN PANELİ — klavyesiz tam kullanım; üstteki katman listede üstte */}
+      {/* LY3: KATMAN PANELİ — klavyesiz tam kullanım; üstteki katman listede üstte.
+          LY2c (BULGU-1 kökü): eski ✕ satır TAŞMASIYLA viewport dışına kırpılıyordu
+          (210px panel + browser-default düğme padding'i; kök div overflow:hidden →
+          GT-1'de 5 yol da kapalı). Çözüm: geniş panel + sıkı sabit-en ikonlar + ad
+          kırpılır (minWidth:0) + GÖRÜNÜR çerçeveli çöp düğmesi (hover-gizli DEĞİL). */}
       <div
         style={{
           position: "absolute",
           top: BAR_H + (editable ? 8 : 40),
           right: 8,
-          width: 210,
+          width: 252,
           background: "#141416ee",
           color: "#EDEBE6",
           fontFamily: "system-ui, sans-serif",
@@ -447,78 +451,107 @@ export default function AtolyePage() {
             + Katman
           </button>
         </div>
-        {[...canvas.layers].reverse().map((l) => (
-          <div
-            key={l.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "4px 6px",
-              borderRadius: 6,
-              background: l.id === canvas.activeLayerId ? "#C8102E33" : "transparent",
-              border: l.id === canvas.activeLayerId ? "1px solid #C8102E" : "1px solid transparent",
-              marginBottom: 2,
-            }}
-          >
-            <button
-              onClick={() => dispatch({ type: "layer_activate", id: l.id })}
+        {[...canvas.layers].reverse().map((l) => {
+          /* LY2c speci (ürün sahibi): son katman + kilitli katman silinemez — sönük */
+          const removable = canvas.layers.length > 1 && !l.locked;
+          const iconBtn: React.CSSProperties = {
+            flexShrink: 0,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: "2px 3px",
+            fontSize: 12,
+            lineHeight: "1.2",
+          };
+          return (
+            <div
+              key={l.id}
               style={{
-                background: "transparent",
-                border: "none",
-                color: "#EDEBE6",
-                cursor: "pointer",
-                textAlign: "left",
-                flex: 1,
-                padding: "4px 2px",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+                padding: "4px 6px",
+                borderRadius: 6,
+                background: l.id === canvas.activeLayerId ? "#C8102E33" : "transparent",
+                border: l.id === canvas.activeLayerId ? "1px solid #C8102E" : "1px solid transparent",
+                marginBottom: 2,
               }}
-              title="Aktif katman yap"
             >
-              {l.name} <span style={{ opacity: 0.5 }}>({l.shapes.length})</span>
-            </button>
-            <button
-              onClick={() => dispatch({ type: "layer_visible", id: l.id, visible: !l.visible })}
-              style={{ background: "transparent", border: "none", cursor: "pointer", opacity: l.visible ? 1 : 0.4 }}
-              title={l.visible ? "Gizle" : "Göster"}
-            >
-              👁
-            </button>
-            <button
-              onClick={() => dispatch({ type: "layer_lock", id: l.id, locked: !l.locked })}
-              style={{ background: "transparent", border: "none", cursor: "pointer", opacity: l.locked ? 1 : 0.4 }}
-              title={l.locked ? "Kilidi aç" : "Kilitle"}
-            >
-              {l.locked ? "🔒" : "🔓"}
-            </button>
-            <button
-              onClick={() => dispatch({ type: "layer_reorder", id: l.id, dir: 1 })}
-              style={{ background: "transparent", border: "none", color: "#EDEBE6", cursor: "pointer" }}
-              title="Üste taşı"
-            >
-              ↑
-            </button>
-            <button
-              onClick={() => dispatch({ type: "layer_reorder", id: l.id, dir: -1 })}
-              style={{ background: "transparent", border: "none", color: "#EDEBE6", cursor: "pointer" }}
-              title="Alta taşı"
-            >
-              ↓
-            </button>
-            <button
-              onClick={() => dispatch({ type: "layer_remove", id: l.id })}
-              disabled={canvas.layers.length <= 1}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: canvas.layers.length <= 1 ? "#555" : "#ff8a96",
-                cursor: canvas.layers.length <= 1 ? "default" : "pointer",
-              }}
-              title={canvas.layers.length <= 1 ? "Son katman silinemez" : "Katmanı sil (Geri al 5sn)"}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
+              <button
+                onClick={() => dispatch({ type: "layer_activate", id: l.id })}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#EDEBE6",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  padding: "4px 2px",
+                }}
+                title="Aktif katman yap"
+              >
+                {l.name} <span style={{ opacity: 0.5 }}>({l.shapes.length})</span>
+              </button>
+              <button
+                onClick={() => dispatch({ type: "layer_visible", id: l.id, visible: !l.visible })}
+                style={{ ...iconBtn, opacity: l.visible ? 1 : 0.4 }}
+                title={l.visible ? "Gizle" : "Göster"}
+              >
+                👁
+              </button>
+              <button
+                onClick={() => dispatch({ type: "layer_lock", id: l.id, locked: !l.locked })}
+                style={{ ...iconBtn, opacity: l.locked ? 1 : 0.4 }}
+                title={l.locked ? "Kilidi aç" : "Kilitle"}
+              >
+                {l.locked ? "🔒" : "🔓"}
+              </button>
+              <button
+                onClick={() => dispatch({ type: "layer_reorder", id: l.id, dir: 1 })}
+                style={{ ...iconBtn, color: "#EDEBE6" }}
+                title="Üste taşı"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => dispatch({ type: "layer_reorder", id: l.id, dir: -1 })}
+                style={{ ...iconBtn, color: "#EDEBE6" }}
+                title="Alta taşı"
+              >
+                ↓
+              </button>
+              {/* LY2c: GÖRÜNÜR sil düğmesi — çerçeveli çip; hover'a gizlenmez */}
+              <button
+                onClick={() => dispatch({ type: "layer_remove", id: l.id })}
+                disabled={!removable}
+                style={{
+                  flexShrink: 0,
+                  background: removable ? "#3a1218" : "#232326",
+                  border: `1px solid ${removable ? "#C8102E" : "#3a3a3e"}`,
+                  color: removable ? "#ff8a96" : "#555",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  fontSize: 12,
+                  lineHeight: "1.2",
+                  cursor: removable ? "pointer" : "default",
+                }}
+                title={
+                  canvas.layers.length <= 1
+                    ? "Son katman silinemez"
+                    : l.locked
+                      ? "Kilitli katman silinemez — önce kilidi açın"
+                      : "Katmanı sil (5 sn Geri al)"
+                }
+              >
+                🗑
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* D-46: katman-silme Geri-al tostu (FIX-1 deseni; Geri-al = undo) */}

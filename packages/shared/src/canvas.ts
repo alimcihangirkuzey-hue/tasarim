@@ -285,6 +285,9 @@ export function canvasReduce(
       if (state.layers.length <= 1) return state; /* SON katman silinemez (korkuluk) */
       const idx = state.layers.findIndex((l) => l.id === action.id);
       if (idx === -1) return state;
+      /* LY2c (BULGU-1 speci, ürün sahibi): KİLİTLİ katman silinemez — önce kilit açılır.
+         No-op → geçmişe girmez, tost çıkmaz (dispatch next===cur filtresi). */
+      if (state.layers[idx].locked) return state;
       const layers = state.layers.filter((l) => l.id !== action.id);
       const activeLayerId =
         state.activeLayerId === action.id ? layers[Math.max(0, idx - 1)].id : state.activeLayerId;

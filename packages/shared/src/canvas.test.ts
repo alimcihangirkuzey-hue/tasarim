@@ -266,6 +266,50 @@ describe("LY1 — katman aksiyonları (tek-kapı genişledi)", () => {
   });
 });
 
+/* ============ P3 LY2c — BULGU-1 speci: katman silme (ürün sahibi) ============ */
+
+describe("LY2c — katman silme: transaction + kenar durumları", () => {
+  /* ly_2 aktif ve 2 şekilli; ly_1'de 1 şekil */
+  const base = (() => {
+    let s = canvasReduce(EMPTY_CANVAS, add("a1", "rect"), B);
+    s = canvasReduce(s, { type: "layer_add", id: "ly_2" }, B);
+    s = canvasReduce(s, add("b1", "rect"), B);
+    s = canvasReduce(s, add("b2", "ellipse", { x: 300, y: 200 }), B);
+    return s;
+  })();
+
+  it("TRANSACTION: katman TÜM şekilleriyle TEK reduce'ta gider; diğer katman aynen", () => {
+    const s = canvasReduce(base, { type: "layer_remove", id: "ly_2" }, B);
+    expect(s.layers.map((l) => l.id)).toEqual(["ly_1"]);
+    expect(s.layers.flatMap((l) => l.shapes.map((x) => x.id))).toEqual(["a1"]);
+    expect(s.activeLayerId).toBe("ly_1");
+  });
+
+  it("undo/redo TEK-girdilik zincir: girdi state bozulmaz (undo snapshot'ı sağlam) + reduce deterministik (redo eşdeğeri)", () => {
+    /* Store geçmişi snapshot-temellidir (1 dispatch = 1 past girdisi): silme tek
+       aksiyon olduğundan undo = base'i TEK adımda geri getirir, redo = TEK adımda
+       yeniden siler. Saf katmandaki karşılığı: girdi değişmezliği + determinizm. */
+    const snap = JSON.stringify(base);
+    const s1 = canvasReduce(base, { type: "layer_remove", id: "ly_2" }, B);
+    expect(JSON.stringify(base)).toBe(snap);
+    const s2 = canvasReduce(base, { type: "layer_remove", id: "ly_2" }, B);
+    expect(JSON.stringify(s2)).toBe(JSON.stringify(s1));
+  });
+
+  it("KENAR: kilitli katman silinemez — no-op (geçmişe girmez, tost çıkmaz)", () => {
+    const locked = canvasReduce(base, { type: "layer_lock", id: "ly_2", locked: true }, B);
+    expect(canvasReduce(locked, { type: "layer_remove", id: "ly_2" }, B)).toBe(locked);
+  });
+
+  it("KENAR: kilit açılınca silinebilir; son-katman guard'ı yaşıyor", () => {
+    const locked = canvasReduce(base, { type: "layer_lock", id: "ly_2", locked: true }, B);
+    const unlocked = canvasReduce(locked, { type: "layer_lock", id: "ly_2", locked: false }, B);
+    const s = canvasReduce(unlocked, { type: "layer_remove", id: "ly_2" }, B);
+    expect(s.layers).toHaveLength(1);
+    expect(canvasReduce(s, { type: "layer_remove", id: "ly_1" }, B)).toBe(s);
+  });
+});
+
 describe("LY1 — kilit/görünürlük korkulukları (m.13a dersi: no-op + görünür durum)", () => {
   const withShape = canvasReduce(EMPTY_CANVAS, add("r1", "rect", { x: 100, y: 100 }), B);
   const locked = canvasReduce(withShape, { type: "layer_lock", id: "ly_1", locked: true }, B);

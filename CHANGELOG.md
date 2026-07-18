@@ -14,7 +14,11 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   Kalıcılık GERÇEK (LY2b, D-48 — programın İLK ONAYLI migration'ı): v11
   `documents.canvas_json TEXT` (additive tek kolon; eski satır NULL=yokluk,
   veri dönüşümü YOK) + rowToDocument/PUT bağı → kaydet→yenile→geri-geldi
-  canlı; smoke 24/24.
+  canlı; smoke 24/24. LY2c (K3 GT-1 BULGU-1): katman-sil ✕'i satır TAŞMASIYLA
+  viewport dışında kalıyordu (5 kapalı yol — fiziksel kırpılma, ölçülü kök) →
+  252px panel + sıkı ikonlar + ad-ellipsis + GÖRÜNÜR çerçeveli 🗑 (hover-gizli
+  değil; son-katman/kilitli sönük+açıklamalı) + reducer'a KİLİTLİ-katman
+  silme guard'ı; sil/undo/redo TEK-girdilik headless zincir kanıtlı.
 
 ### Fixed
 - **HF-TRIO-01 (GT m.1/m.4/m.10):** /siparis onaysız Kaldır'a 5sn "Geri al"
