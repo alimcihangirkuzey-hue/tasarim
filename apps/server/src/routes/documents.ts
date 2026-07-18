@@ -24,6 +24,8 @@ type DocumentRow = {
   selection_json: string;
   overrides_json: string;
   status: string;
+  /* LY2b (D-48, v11): NULL = canvas alanı yok (eski belge davranışı aynen) */
+  canvas_json: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -36,6 +38,7 @@ export function rowToDocument(row: DocumentRow, clientId: string): DocumentDTO {
     selection: JSON.parse(row.selection_json),
     overrides: JSON.parse(row.overrides_json),
     status: row.status,
+    canvas: row.canvas_json == null ? undefined : JSON.parse(row.canvas_json),
   });
   return {
     ...state,
@@ -127,6 +130,7 @@ export function documentRoutes(app: FastifyInstance): void {
       selection_json: JSON.stringify(state.selection),
       overrides_json: JSON.stringify(state.overrides),
       status: state.status,
+      canvas_json: null,
       created_at: now,
       updated_at: now,
     };
@@ -164,12 +168,13 @@ export function documentRoutes(app: FastifyInstance): void {
       overrides_json:
         patch.overrides !== undefined ? JSON.stringify(patch.overrides) : row.overrides_json,
       status: patch.status ?? row.status,
+      canvas_json: patch.canvas !== undefined ? JSON.stringify(patch.canvas) : row.canvas_json,
       updated_at: nowISO(),
     };
     db.prepare(
       `UPDATE documents SET template_id=@template_id, params_json=@params_json,
         theme_id=@theme_id, selection_json=@selection_json, overrides_json=@overrides_json,
-        status=@status, updated_at=@updated_at WHERE id=@id`
+        status=@status, canvas_json=@canvas_json, updated_at=@updated_at WHERE id=@id`
     ).run(next);
     return rowToDocument(next, found.clientId);
   });

@@ -3,6 +3,7 @@
 
 import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
+import { CanvasDocSchema } from "@tezgah/shared";
 import { MIGRATIONS } from "./migrations.js";
 
 function seedV2(db: Database.Database): void {
@@ -400,6 +401,66 @@ describe("migration v9 (Faz 7 — intake_records)", () => {
       "SELECT id, usage_count, source FROM ingredient_library LIMIT 1",
       "SELECT menu_language FROM clients LIMIT 1",
       "SELECT catalog_json FROM catalog_history LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});
+
+describe("migration v11 (P3 CAP-LAYER-01 / D-48 — documents.canvas_json)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 10; i++) db.exec(MIGRATIONS[i]);
+  });
+
+  it("eski satır (doc1) NULL kalır — yokluk = eski davranış; veri dönüşümü yok", () => {
+    expect(db.prepare("SELECT canvas_json FROM documents WHERE id='doc1'").get()).toEqual({
+      canvas_json: null,
+    });
+  });
+
+  it("canvas_json yazılır-okunur; içerik CanvasDocSchema'dan geçer (rowToDocument köprüsünün DB yarısı)", () => {
+    const canvasDoc = {
+      v: 1,
+      layers: [
+        {
+          id: "ly_1",
+          name: "Katman 1",
+          locked: false,
+          visible: true,
+          shapes: [{ id: "sh1", kind: "rect", x: 10, y: 20, w: 100, h: 50 }],
+        },
+      ],
+    };
+    db.prepare("UPDATE documents SET canvas_json = ? WHERE id='doc1'").run(
+      JSON.stringify(canvasDoc)
+    );
+    const row = db.prepare("SELECT canvas_json FROM documents WHERE id='doc1'").get() as {
+      canvas_json: string;
+    };
+    expect(CanvasDocSchema.parse(JSON.parse(row.canvas_json))).toEqual(canvasDoc);
+  });
+
+  it("canvas_json'suz INSERT NULL alır (yeni belge canvas'sız doğar — create şemasında alan yok)", () => {
+    db.prepare(
+      `INSERT INTO documents (id, project_id, template_id, created_at, updated_at)
+       VALUES ('doc2', 'prj1', 'menu-grid-cells', 't', 't')`
+    ).run();
+    expect(db.prepare("SELECT canvas_json FROM documents WHERE id='doc2'").get()).toEqual({
+      canvas_json: null,
+    });
+  });
+
+  it("Faz 1-8 akışları kırılmadı: documents JSON kolonları + önceki tablolar okunabilir", () => {
+    for (const q of [
+      "SELECT params_json, selection_json, overrides_json, status FROM documents LIMIT 1",
+      "SELECT client_id, kind, label, w_cm, h_cm FROM client_surfaces LIMIT 1",
+      "SELECT client_id, answers_json FROM intake_records LIMIT 1",
+      "SELECT menu_language, currency FROM clients LIMIT 1",
+      "SELECT document_id, project_id, client_id FROM export_records LIMIT 1",
     ]) {
       expect(() => db.prepare(q).all(), q).not.toThrow();
     }

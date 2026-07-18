@@ -11,8 +11,10 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   katman paneli (klavyesiz tam kullanım; kilitli/gizli GÖRÜNÜR uyarı) ·
   katman-silme FIX-1 deseniyle 5sn Geri-al (D-46) · görünür ↺/↻ + Ctrl+Z/Y
   (derinlik 50) · Kaydet → MEVCUT PUT; `/atolye?doc=<id>` bağlı mod.
-  ⚠ Kalıcılık ASKIDA: sunucuda canvas depolaması yok (kolon-temelli tablo;
-  migration bu pakette yasak) — karar yönetişimde, smoke bilerek 22/24.
+  Kalıcılık GERÇEK (LY2b, D-48 — programın İLK ONAYLI migration'ı): v11
+  `documents.canvas_json TEXT` (additive tek kolon; eski satır NULL=yokluk,
+  veri dönüşümü YOK) + rowToDocument/PUT bağı → kaydet→yenile→geri-geldi
+  canlı; smoke 24/24.
 
 ### Fixed
 - **HF-TRIO-01 (GT m.1/m.4/m.10):** /siparis onaysız Kaldır'a 5sn "Geri al"
