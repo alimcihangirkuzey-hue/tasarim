@@ -12,6 +12,7 @@ import type {
   PresentMockupMode,
   ProjectDTO,
 } from "@tezgah/shared";
+import { apiErrorMessage } from "@tezgah/shared";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   /* TUR-FIX-1: Content-Type YALNIZ gövde varsa (ve FormData değilse). Eski hali
@@ -23,10 +24,13 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
-    let msg = `${res.status}`;
+    /* P5 GT bulgusu (BULGU-P5-1): eskiden yalnız `error` kodu okunuyordu →
+       operatör ekranda "policy_reject" / "transition_blocked" görüp NEDENİ
+       göremiyordu. Artık gerekçe (rejects[].detail_tr · detail · Zod mesajı)
+       öne çıkar; biçimlendirme saf+testli (shared/api-error.ts). */
+    let msg = `Sunucu hatası (${res.status})`;
     try {
-      const body = (await res.json()) as { message?: string; error?: string; issues?: Array<{ message: string }> };
-      msg = body.issues?.[0]?.message ?? body.message ?? body.error ?? msg;
+      msg = apiErrorMessage(await res.json(), res.status);
     } catch {
       /* gövde json değilse durum kodu yeter */
     }

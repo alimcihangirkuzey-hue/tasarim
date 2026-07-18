@@ -21,3 +21,4 @@ export * from "./f1-state.js"; // F1 pilot P1: Brief durum makinesi (saf çekird
 export * from "./f1-spec.js"; // F1 pilot P2: Spec-referans (manifest'e referans; DB tablosu yok)
 export * from "./f1-completeness.js"; // F1 pilot P2: eksiksizlik motoru (saf)
 export * from "./file-policy.js"; // F1 pilot P3: dosya politikası (saf sınıflandırma)
+export * from "./api-error.js"; // P5 GT bulgusu: hata gövdesi → operatör mesajı
