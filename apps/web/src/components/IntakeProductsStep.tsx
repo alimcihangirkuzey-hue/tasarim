@@ -19,7 +19,7 @@
    category_note store'da HAM LocalizedName olarak saklanır, menu_language'e
    çözme İŞLEMİ YALNIZ commit anında (IntakeSummaryStep) yapılır. */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { foldTr, type Question, type SectorPack } from "@tezgah/shared";
 import { api } from "../api";
@@ -88,6 +88,16 @@ export function IntakeProductsStep() {
      (taslaktan dönüşte hepsi kapalı gelir). */
   const [expandedUid, setExpandedUid] = useState<string | null>(null);
   const toggle = (uid: string) => setExpandedUid(expandedUid === uid ? null : uid);
+
+  /* HF-TRIO-01/FIX-1 (m.1, çip:a): onaysız kaldırmada 5sn GERİ-AL tostu.
+     Zamanlayıcı pencereyi kapatır; Geri al → ürün ESKİ sırasına döner. */
+  const lastRemoved = s.lastRemoved;
+  useEffect(() => {
+    if (!lastRemoved) return;
+    const timer = setTimeout(() => s.clearUndo(), 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastRemoved]);
 
   /* CILA5: kategori bazında "diğer ürünler (seçilmeyenler)" daralt/genişlet durumu
      (YEREL UI, taslağa yazılmaz). Seçim varken varsayılan DARALIK; kullanıcı açar. */
@@ -317,6 +327,44 @@ export function IntakeProductsStep() {
       )}
 
       <NavBar canNext={s.products.length > 0} />
+
+      {/* FIX-1: Geri-al tostu — yalnız ONAYSIZ kaldırmada görünür (5sn) */}
+      {lastRemoved && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 76,
+            transform: "translateX(-50%)",
+            background: "#1A1A1A",
+            color: "#fff",
+            padding: "10px 14px",
+            borderRadius: 8,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            zIndex: 60,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+            fontSize: 14,
+          }}
+        >
+          <span>{tf("intake.removed_toast", { name: pickDisplay(lastRemoved.product.name) })}</span>
+          <button
+            onClick={() => s.undoRemove()}
+            style={{
+              background: "transparent",
+              border: "1px solid #C8102E",
+              color: "#ff8a96",
+              padding: "6px 12px",
+              borderRadius: 6,
+              cursor: "pointer",
+              minHeight: 44,
+            }}
+          >
+            {t("intake.undo")}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -370,11 +418,16 @@ function ProductRow({
     product.chips.length !== defaultChipIds.length ||
     product.chips.map(chipKey).sort().join("|") !== [...defaultChipIds].sort().join("|");
   const hasUserData = product.variants.some((v) => v.value !== null) || chipsDiffer;
+  /* HF-TRIO-01/FIX-1 (çip:a — ürün sahibi kararı): onay-koşulu AYNEN; onaysız
+     yol artık 5sn GERİ-AL kazanır (tek tıkla veri kaybı biter). Onaylı yol
+     eskisi gibi kesin siler (kullanıcı zaten açıkça onayladı). */
   const handleRemove = () => {
-    if (hasUserData && !window.confirm(tf("intake.remove_confirm", { name: pickDisplay(product.name) }))) {
-      return;
+    if (hasUserData) {
+      if (!window.confirm(tf("intake.remove_confirm", { name: pickDisplay(product.name) }))) return;
+      s.removeProduct(product.uid);
+    } else {
+      s.removeProductWithUndo(product.uid);
     }
-    s.removeProduct(product.uid);
     onRemoved();
   };
 

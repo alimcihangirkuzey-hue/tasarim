@@ -781,6 +781,17 @@ export function EditorPage() {
                         <div style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {s.name}
                         </div>
+                        {/* HF-TRIO-01/FIX-3 (m.10): canlı önizlemeye GÖRÜNÜR yol —
+                            hires eylemi bu sayfada yaşıyor, kapısı yoktu (URL-only) */}
+                        <a
+                          href={`/mockup/${id}?scene=${s.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontSize: 10, display: "inline-block", marginTop: 2 }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {t("editor.mockup_live")}
+                        </a>
                       </div>
                     ))}
                   </div>

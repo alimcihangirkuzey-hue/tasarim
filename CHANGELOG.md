@@ -5,6 +5,10 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
 
 ## [Unreleased]
 ### Fixed
+- **HF-TRIO-01 (GT m.1/m.4/m.10):** /siparis onaysız Kaldır'a 5sn "Geri al"
+  (çip:a — onay koşulu aynen; tek tıkla veri kaybı bitti) · özet gap listesi AD
+  fallback'lerini de basar (`intakeNameGaps` + otomatik repro-test) · EditorPage
+  mockup modalına "Canlı önizleme ↗" bağlantısı (hires eyleminin kapısı açıldı).
 - **CV1-FIX-01 (GT m.13):** /atolye — add-mode'da mevcut şekle tıklama artık
   SEÇİM (çoğalma bitti; `shapeAtPoint` reducer kemeri + stage tek-kaynak seçim) ·
   araç çubuğuna görünür **Sil** düğmesi (Del tuşuna mahkûmiyet bitti). +4 test;

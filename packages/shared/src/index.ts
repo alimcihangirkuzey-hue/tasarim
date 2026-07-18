@@ -11,6 +11,7 @@ export * from "./parse.js";
 export * from "./homography.js";
 export * from "./mockup.js";
 export * from "./canvas.js";
+export * from "./intake-ux.js";
 export * from "./bulk-price.js";
 export * from "./photo-suggest.js";
 export * from "./catalog-import.js";

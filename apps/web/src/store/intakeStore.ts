@@ -12,7 +12,13 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { migrateIntakeDraftV2toV3, type LocalizedName, type SurfaceKind } from "@tezgah/shared";
+import {
+  captureRemoval,
+  migrateIntakeDraftV2toV3,
+  restoreRemoval,
+  type LocalizedName,
+  type SurfaceKind,
+} from "@tezgah/shared";
 
 export type Currency = "EUR" | "CHF";
 export type MenuLang = "fr" | "de" | "tr"; // CILA4/EK-1: tr eklendi
@@ -108,6 +114,9 @@ const INITIAL: IntakeData = {
 };
 
 interface IntakeStore extends IntakeData {
+  /* HF-TRIO-01/FIX-1 (m.1, çip:a): onaysız kaldırmanın 5sn GERİ-AL penceresi.
+     GEÇİCİ state — partialize DIŞINDA, taslağa YAZILMAZ (yenilemede uçar). */
+  lastRemoved: { product: IntakeProduct; index: number } | null;
   setStep: (s: number) => void;
   next: () => void;
   back: () => void;
@@ -119,6 +128,10 @@ interface IntakeStore extends IntakeData {
   addProduct: (p: IntakeProduct) => void;
   updateProduct: (uid: string, patch: Partial<IntakeProduct>) => void;
   removeProduct: (uid: string) => void;
+  /** FIX-1: onaysız yol — kaldırır + Geri-al penceresi açar (onaylı yol removeProduct kalır) */
+  removeProductWithUndo: (uid: string) => void;
+  undoRemove: () => void;
+  clearUndo: () => void;
   setChecklist: (p: Partial<Checklist>) => void;
   addSurface: () => void;
   updateSurface: (i: number, patch: Partial<SurfaceDraft>) => void;
@@ -156,6 +169,7 @@ export const useIntake = create<IntakeStore>()(
   persist(
     (set, get) => ({
       ...INITIAL,
+      lastRemoved: null,
 
       setStep: (s) => set({ step: s, ...touch() }),
       next: () => set({ step: Math.min(5, get().step + 1), ...touch() }),
@@ -181,7 +195,25 @@ export const useIntake = create<IntakeStore>()(
           products: get().products.map((p) => (p.uid === uid ? { ...p, ...patch } : p)),
           ...touch(),
         }),
-      removeProduct: (uid) => set({ products: get().products.filter((p) => p.uid !== uid), ...touch() }),
+      removeProduct: (uid) =>
+        set({ products: get().products.filter((p) => p.uid !== uid), lastRemoved: null, ...touch() }),
+
+      /* FIX-1 (m.1): shared captureRemoval — sıra bilgisiyle yakala, 5sn Geri-al */
+      removeProductWithUndo: (uid) => {
+        const cap = captureRemoval(get().products, uid);
+        if (!cap) return;
+        set({ products: cap.next, lastRemoved: { product: cap.removed, index: cap.index }, ...touch() });
+      },
+      undoRemove: () => {
+        const lr = get().lastRemoved;
+        if (!lr) return;
+        set({
+          products: restoreRemoval(get().products, lr.product, lr.index),
+          lastRemoved: null,
+          ...touch(),
+        });
+      },
+      clearUndo: () => set({ lastRemoved: null }),
 
       setChecklist: (p) => set({ checklist: { ...get().checklist, ...p }, ...touch() }),
 
@@ -200,7 +232,7 @@ export const useIntake = create<IntakeStore>()(
       removeSurface: (i) =>
         set({ checklist: { ...get().checklist, surfaces: get().checklist.surfaces.filter((_, j) => j !== i) }, ...touch() }),
 
-      reset: () => set({ ...INITIAL }),
+      reset: () => set({ ...INITIAL, lastRemoved: null }),
 
       /* HF3: mevcut müşteride artık GERÇEK dil (existingClientLang, ClientStep
          fetch'inden). Eski "fr" sabiti → ad çözümü Fransızca, çipler sunucuda tr

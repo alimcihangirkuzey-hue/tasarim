@@ -18,7 +18,7 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { IntakeAnswersSchema, foldTr, projectIntake, type ProjectionResult } from "@tezgah/shared";
+import { IntakeAnswersSchema, foldTr, intakeNameGaps, projectIntake, type ProjectionResult } from "@tezgah/shared";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { pickDisplay, pickML } from "./IntakeNav";
@@ -79,6 +79,15 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
   );
 
   const preview = useMemo(() => projectIntake(answers, "PREVIEW", lang), [answers, lang]);
+  /* HF-TRIO-01/FIX-2 (m.4): AD fallback'i artık işaretli — pickML özet'te sessizce
+     tr'ye düşüyordu, gap listesi yalnız ÇİP çözümünü izliyordu. Ürün/kategori ad
+     boşlukları (shared intakeNameGaps, pickML zinciriyle aynı sıra) çip
+     gap'leriyle BİRLEŞİK basılır. */
+  const nameGaps = useMemo(() => intakeNameGaps(s.products, lang), [s.products, lang]);
+  const allGaps = useMemo(
+    () => [...nameGaps, ...preview.translationGaps],
+    [nameGaps, preview.translationGaps]
+  );
   const catalogFull = s.clientMode === "existing" && (existingQ.data?.catalog.categories.length ?? 0) > 0;
 
   /* T1b/FIX-3 ÖN-GÖRÜNÜRLÜK: hangi projeksiyon kategorileri MEVCUT kataloğa
@@ -170,7 +179,7 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
     },
   });
 
-  const clean = pendingTr.length === 0 && preview.translationGaps.length === 0;
+  const clean = pendingTr.length === 0 && allGaps.length === 0;
 
   return (
     <section className="intake-step">
@@ -202,11 +211,11 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
           </ul>
         </div>
       )}
-      {preview.translationGaps.length > 0 && (
+      {allGaps.length > 0 && (
         <div className="intake-warn gaps">
           {t("intake.summary_gaps")}:
           <ul>
-            {preview.translationGaps.map((g, i) => (
+            {allGaps.map((g, i) => (
               <li key={i}>
                 {g.item}: {g.label} ({g.usedLang})
               </li>
