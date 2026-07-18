@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CanvasDocSchema } from "./canvas.js"; // LY1: CD `canvas` alanı (tek yönlü — cycle yok)
 
 /* ------------------------------------------------------------------ */
 /* Temel tipler — CONSTITUTION §4                                      */
@@ -190,6 +191,11 @@ export const DocumentStateSchema = z.object({
   selection: SelectionSchema.default({}),
   overrides: z.record(OverrideSchema).default({}),
   status: z.enum(["draft", "sent", "approved", "printed"]).default("draft"),
+  /* P3 CAP-LAYER-01 (LY1): CD v1'in İLK additive-OPSİYONEL alanı — D-35(c) kapısı
+     burada açıldı. Yokluk = eski davranış (default YOK — bilinçli); cd_version 1
+     KALIR (additive-only kuralı tam bu vaka için kuruldu). Restore patch'i bu
+     alanı TAŞIMAZ → geri-yüklemede canvas KORUNUR (testli). */
+  canvas: CanvasDocSchema.optional(),
 });
 export type DocumentState = z.infer<typeof DocumentStateSchema>;
 

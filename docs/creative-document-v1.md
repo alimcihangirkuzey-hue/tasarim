@@ -20,6 +20,7 @@ değişirse İKİSİ birlikte güncellenir.
 | `overrides` | zorunlu, default `{}` | state | slot override'ları `{value, detached}` |
 | `status` | zorunlu, default `"draft"` | state | draft → sent → approved → printed |
 | `created_at` / `updated_at` | zorunlu | DB satırı | ISO damgalar |
+| `canvas` | **opsiyonel** (default YOK — yokluk anlamlı) | state (P3/LY1) | `{v:1, layers[{id,name,locked,visible,shapes[]}]}` — CD'nin İLK additive alanı (D-35(c) kapısı); eski belgede alan hiç yoktur, davranış aynen; restore patch'i taşımaz → geri-yüklemede KORUNUR; kaydetme MEVCUT PUT ile (`DocumentUpdateSchema` partial taşır); sunucu evi: v11 `documents.canvas_json TEXT` (LY2b, D-48 — İLK onaylı migration; NULL=yokluk) |
 
 Render girdisinin belge-DIŞI yarısı (CD'ye YAZILMAZ, render anında okunur):
 `client.brandkit` + `client.catalog` (şablon slot bind'ları `brand.*` / `catalog.*` /

@@ -219,4 +219,8 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_client_surfaces_client ON client_surfaces(client_id);
   `,
+  /* v11 — P3 CAP-LAYER-01 (LY2b): programın İLK ONAYLI migration'ı (ürün sahibi,
+     D-48). CD `canvas` alanının sunucu evi — additive TEK kolon; eski satırlarda
+     NULL = alan yokluğu (eski davranış aynen), veri dönüşümü YOK. */
+  `ALTER TABLE documents ADD COLUMN canvas_json TEXT;`,
 ];
