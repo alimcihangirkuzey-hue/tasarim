@@ -10,6 +10,17 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
   (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
   davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P3 — dosya politikası + audit bağı:** `file-policy.ts` (saf
+  sınıflandırma; REDDET/UYAR+onay/BİLGİLENDİR üçlüsü + warning_code sözlüğü —
+  kodlar `brief_audit.warning_code` ile birebir) · **genel `/api/assets`
+  sertleştirmesi** (bozuk dosya artık kaba 500 değil yapılandırılmış 400
+  policy-red; kabul-tür listesi DEĞİŞMEDİ, webp korunur; türevler önce
+  hesaplanır → yarım işlemde artık dosya kalmaz) · **yeni brief sınırı**
+  (`POST /api/briefs/:id/files` spec v1 tür listesiyle [webp burada red],
+  PDF yalnız-sakla + derin-doğrulama BİLGİ notu, aynı rolde version++ ·
+  `POST .../warnings/:code/ack` audit beşlisini doldurur, REDDET koduna
+  istisna verilemez [F1.5] · `PATCH .../files/:fileId/invalidate` F1.7
+  zemini). brief_audit'e YALNIZ INSERT (append-only korunur).
 - **F1 pilot P2 — Spec-referans + completeness engine:** `f1-spec.ts` (DB tablosu
   YOK — `template_id+format` ile mevcut TemplateManifest'e REFERANS; iki aile
   matrisi VERİ olarak: menü/garment · design_pre|production_pre iki katman ·

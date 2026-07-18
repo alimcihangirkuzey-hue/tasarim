@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 /* Repo kökü: apps/server/src -> ../../..  (M7: her şey diskte, data/ altında) */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT_DIR = path.resolve(HERE, "..", "..", "..");
-export const DATA_DIR = path.join(ROOT_DIR, "data");
+/* P3: veri kökü enjekte edilebilir (P0'ın TEZGAH_DB_PATH deseni) — route
+   testleri yüklemeleri geçici dizine yazar, repo data/ KİRLENMEZ. Env yoksa
+   üretim yolu birebir eskisi. */
+export const DATA_DIR = process.env.TEZGAH_DATA_DIR ?? path.join(ROOT_DIR, "data");
 export const DB_PATH = path.join(DATA_DIR, "app.db");
 export const ASSETS_DIR = path.join(DATA_DIR, "assets");
 export const EXPORTS_DIR = path.join(DATA_DIR, "exports");

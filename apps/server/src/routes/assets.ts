@@ -16,11 +16,46 @@ const ALLOWED: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 
+/** Türevleri hesaplar (dosya YAZMAZ); bozuk dosyada fırlatır → çağıran 400 policy-red döner */
+async function processUpload(
+  buf: Buffer,
+  isSvg: boolean
+): Promise<{ width: number; height: number; master: Buffer; thumb: Buffer }> {
+  /* SVG: raster işleme için density verilir, orig+master aynı dosyadır */
+  const meta = await (isSvg ? sharp(buf, { density: 150 }) : sharp(buf).rotate()).metadata();
+  let width = meta.width ?? 0;
+  let height = meta.height ?? 0;
+  let master = buf;
+  if (!isSvg) {
+    const out = await sharp(buf)
+      .rotate()
+      .resize(4000, 4000, { fit: "inside", withoutEnlargement: true })
+      .toBuffer({ resolveWithObject: true });
+    master = out.data;
+    width = out.info.width;
+    height = out.info.height;
+  }
+  const thumb = await (isSvg ? sharp(buf, { density: 150 }) : sharp(buf).rotate())
+    .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+  return { width, height, master, thumb };
+}
+
 export function assetRoutes(app: FastifyInstance): void {
-  /* Ortak havuz listesi (§4) */
+  /* Ortak havuz listesi (§4).
+     P3 şerhi: brief'e bağlı yüklemeler ortak havuza SIZMAZ — brief dosyası
+     üretim girdisidir, galeri varlığı değil (müşterisiz brief'te client_id
+     NULL kalabilir; filtre olmasa başka müşterinin seçicisine düşerdi).
+     brief_files boş olduğu sürece sonuç birebir eskisi. */
   app.get("/api/assets/common", async () => {
     const rows = db
-      .prepare("SELECT * FROM assets WHERE client_id IS NULL ORDER BY created_at DESC")
+      .prepare(
+        `SELECT * FROM assets WHERE client_id IS NULL
+           AND id NOT IN (SELECT asset_id FROM brief_files)
+         ORDER BY created_at DESC`
+      )
       .all() as Parameters<typeof assetToDTO>[0][];
     return rows.map(assetToDTO);
   });
@@ -59,32 +94,24 @@ export function assetRoutes(app: FastifyInstance): void {
       const filename = `${id}.${ext}`;
       const isSvg = ext === "svg";
 
-      /* SVG: raster işleme için density verilir, orig+master aynı dosyadır */
-      const src = isSvg ? sharp(buf, { density: 150 }) : sharp(buf).rotate();
-      const meta = await src.metadata();
+      /* P3 (F1 dosya politikası, B1 — GENEL uç sertleştirmesi): bozuk/açılamayan
+         dosya artık kaba 500 DEĞİL, yapılandırılmış 400 policy-red (bozuk_dosya).
+         Kabul-tür listesi DEĞİŞMEDİ (webp korunur — mevcut tüketiciler). Burada
+         brief bağlamı YOK → brief_audit satırı yazılmaz (denetim izi brief
+         sınırındadır). Türevler ÖNCE hesaplanır, dosyalar SONRA yazılır →
+         yarım işlemde artık dosya kalmaz. */
+      const processed = await processUpload(buf, isSvg).catch(() => null);
+      if (!processed) {
+        return reply.code(400).send({
+          error: "policy_reject",
+          code: "bozuk_dosya",
+          detail: "Dosya açılamadı / okunamadı",
+        });
+      }
+      const { width, height, master, thumb } = processed;
 
       await fs.writeFile(path.join(ASSETS_DIR, "orig", filename), buf);
-
-      let width = meta.width ?? 0;
-      let height = meta.height ?? 0;
-
-      if (isSvg) {
-        await fs.writeFile(path.join(ASSETS_DIR, "master", filename), buf);
-      } else {
-        const master = await sharp(buf)
-          .rotate()
-          .resize(4000, 4000, { fit: "inside", withoutEnlargement: true })
-          .toBuffer({ resolveWithObject: true });
-        await fs.writeFile(path.join(ASSETS_DIR, "master", filename), master.data);
-        width = master.info.width;
-        height = master.info.height;
-      }
-
-      const thumb = await (isSvg ? sharp(buf, { density: 150 }) : sharp(buf).rotate())
-        .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-        .flatten({ background: "#ffffff" })
-        .jpeg({ quality: 82 })
-        .toBuffer();
+      await fs.writeFile(path.join(ASSETS_DIR, "master", filename), master);
       await fs.writeFile(path.join(ASSETS_DIR, "thumb", `${id}.jpg`), thumb);
 
       const row = {

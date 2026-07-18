@@ -38,6 +38,7 @@ import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
 import { surfaceRoutes } from "./routes/surfaces.js";
 import { renderRoutes } from "./routes/render.js";
+import { briefFileRoutes } from "./routes/brief-files.js";
 
 export async function buildApp(
   opts: { logger?: FastifyServerOptions["logger"] } = {}
@@ -93,6 +94,7 @@ export async function buildApp(
   intakeRoutes(app);
   surfaceRoutes(app);
   renderRoutes(app); // T3 PART-B: Render Contract v1 kapısı (env'siz 503 — kapalı)
+  briefFileRoutes(app); // F1 P3: brief dosya kabul + istisna-audit uçları
 
   /* Zod hataları 400 + okunur mesaj; geri kalanı 500 (M4: hatalar görünür olur) */
   app.setErrorHandler((err, _req, reply) => {
