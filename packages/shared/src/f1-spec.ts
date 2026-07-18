@@ -178,7 +178,9 @@ export const F1_GARMENT_SPEC: F1Spec = {
     /* --- production_pre --- */
     { id: "fabric_color", label_tr: "Ürün rengi", layer: "production_pre", trigger: { kind: "always" } },
     {
-      id: "size_quantity",
+      /* P5: kanonik ad `size_distribution` — spec_values anahtarıyla BİREBİR
+         (toplam adet HESAPLANIR: f1TotalQuantity, ayrı alan değildir) */
+      id: "size_distribution",
       label_tr: "Beden×adet dağılımı",
       layer: "production_pre",
       trigger: { kind: "always" },
@@ -211,6 +213,40 @@ export const F1_SPECS: Readonly<Record<F1Family, F1Spec>> = {
 
 export function f1SpecFor(family: F1Family): F1Spec {
   return F1_SPECS[family];
+}
+
+/* ---- spec_values YAZMA BEKÇİSİ (P5) ------------------------------------ */
+
+/** Kolon ya da türetme kaynaklı alanlar — spec_values'a YAZILMAZ (çift kaynak yasağı) */
+export const F1_COLUMN_SOURCED_FIELDS = [
+  "languages",
+  "requested_publications",
+  "content_skeleton",
+  "delivery_deadline",
+  "prices",
+] as const;
+
+/** Alan olmayan ama spec_values'ta yaşayan yardımcı anahtarlar (belgeli) */
+export const F1_SPEC_HELPER_KEYS = ["format_template", "format_free_choice"] as const;
+
+/** spec_values'a yazılabilecek anahtar kümesi — bunun dışı REDDEDİLİR */
+export function f1WritableSpecKeys(family: F1Family): string[] {
+  const excluded = new Set<string>(F1_COLUMN_SOURCED_FIELDS);
+  return [
+    ...F1_SPECS[family].fields.filter((f) => !excluded.has(f.id)).map((f) => f.id),
+    ...F1_SPEC_HELPER_KEYS,
+  ];
+}
+
+/** Beden×adet dağılımını normalize eder: yalnız POZİTİF adetler kalır (0/negatif düşer) */
+export function normalizeSizeDistribution(input: unknown): Record<string, number> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, number> = {};
+  for (const [size, raw] of Object.entries(input as Record<string, unknown>)) {
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n) && n > 0) out[size.trim()] = Math.floor(n);
+  }
+  return out;
 }
 
 /** Toplam adet HESAPLANAN değerdir (beden×adet dağılımından) — ayrı alan değil */

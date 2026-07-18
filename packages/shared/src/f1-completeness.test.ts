@@ -42,7 +42,7 @@ const GARMENT_FULL: F1BriefInput = {
     garment_type: "tshirt",
     placements: ["chest_center"],
     fabric_color: "black",
-    size_quantity: { S: 10, M: 20, L: 5 },
+    size_distribution: { S: 10, M: 20, L: 5 },
     technique: "broderie",
     delivery_deadline: "2026-08-01",
     print_size_position: { chest_center: { w_cm: 25, h_cm: 30 } },
@@ -198,9 +198,9 @@ describe("GARMENT ailesi — eksiksizlik", () => {
   });
 
   it("beden×adet eksikse üretim tamlığı düşer, tasarım etkilenmez", () => {
-    const r = computeF1Completeness(drop(GARMENT_FULL, "size_quantity"));
+    const r = computeF1Completeness(drop(GARMENT_FULL, "size_distribution"));
     expect(r.designReady).toBe(true);
-    expect(r.missing.map((m) => m.id)).toEqual(["size_quantity"]);
+    expect(r.missing.map((m) => m.id)).toEqual(["size_distribution"]);
   });
 
   it("DTF seçimi REDDEDİLMEZ — YALNIZ BİLGİLENDİRİR (keşif düzeltmesi)", () => {

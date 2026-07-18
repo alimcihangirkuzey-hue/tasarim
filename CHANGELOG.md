@@ -10,6 +10,15 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
   (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
   davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P5 — garment/tekstil intake + beden×adet matrisi:** menü ile AYNI
+  yaşam döngüsü/durum makinesi/dosya politikası; fark yalnız alan matrisi.
+  **Beden×adet** `spec_values.size_distribution` (v13 kolonu — yeni migration
+  YOK); toplam adet **hesaplanır** (`f1TotalQuantity`), 0/negatif adetler
+  düşer, boş dağılım eksik sayılır. **spec_values YAZMA BEKÇİSİ:** yalnız
+  SpecRef'te tanımlı (kolon/türetme kaynaklı olmayan) anahtarlar yazılabilir →
+  tanımsız/yabancı-aile alanı **400**. `/brief` sayfası iki aileyi de taşır
+  (ürün tipi · baskı yeri · renk · teknik [DTF → bilgi notu] · beden×adet canlı
+  toplam · tasarım dosyası).
 - **F1 pilot P4 — menü intake + brief yaşam döngüsü (v13):** additive
   `briefs.spec_values_json` (ürün sahibi onayı `spec-values: 1`; BLOCKER-3'ün
   evi — spec alan değerleri SWISS sözleşme kolonlarına gömülmedi) · brief

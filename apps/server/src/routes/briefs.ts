@@ -16,10 +16,13 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   canTransitionF1,
+  f1WritableSpecKeys,
   isF1State,
   newId,
+  normalizeSizeDistribution,
   nowISO,
   toF1Readiness,
+  type F1Family,
   type F1State,
 } from "@tezgah/shared";
 import { db } from "../db.js";
@@ -67,6 +70,38 @@ const TransitionSchema = z.object({
 
 function findBrief(id: string): BriefRow | null {
   return (db.prepare("SELECT * FROM briefs WHERE id = ?").get(id) as BriefRow | undefined) ?? null;
+}
+
+const familyOf = (requestType: string): F1Family => (requestType === "garment" ? "garment" : "menu");
+
+/**
+ * spec_values YAZMA BEKÇİSİ (P5): yalnız SpecRef'te tanımlı (kolon/türetme
+ * kaynaklı OLMAYAN) anahtarlar yazılabilir → çift kaynak ve çöp alan yok.
+ * Beden×adet dağılımı normalize edilir: 0/negatif adetler DÜŞER (boş dağılım
+ * = eksik; rozette görünür).
+ */
+function sanitizeSpecValues(
+  family: F1Family,
+  input: Record<string, unknown>
+): { values: Record<string, unknown>; unknown: string[] } {
+  const allowed = new Set(f1WritableSpecKeys(family));
+  const values: Record<string, unknown> = {};
+  const unknownKeys: string[] = [];
+  for (const [key, raw] of Object.entries(input)) {
+    if (!allowed.has(key)) {
+      unknownKeys.push(key);
+      continue;
+    }
+    if (key === "size_distribution") {
+      values[key] = normalizeSizeDistribution(raw);
+      continue;
+    }
+    /* boş dize = alanı TEMİZLE (eksik olarak görünsün) */
+    if (typeof raw === "string" && raw.trim() === "") continue;
+    if (raw === null || raw === undefined) continue;
+    values[key] = raw;
+  }
+  return { values, unknown: unknownKeys };
 }
 
 function writeAudit(input: {
@@ -126,6 +161,12 @@ export function briefRoutes(app: FastifyInstance): void {
       const client = db.prepare("SELECT id FROM clients WHERE id = ?").get(body.customer_ref);
       if (!client) return reply.code(404).send({ error: "client_not_found" });
     }
+    const specIn = sanitizeSpecValues(familyOf(body.request_type), body.spec_values);
+    if (specIn.unknown.length > 0) {
+      return reply
+        .code(400)
+        .send({ error: "unknown_spec_keys", keys: specIn.unknown, detail: "Spec'te tanımsız alan" });
+    }
     const now = nowISO();
     const row: BriefRow = {
       id: newId("brf"),
@@ -143,7 +184,7 @@ export function briefRoutes(app: FastifyInstance): void {
       callback_reference: body.callback_reference ?? null,
       idempotency_key: body.idempotency_key ?? `manual:${newId("idm")}`,
       status: "DRAFT",
-      spec_values_json: JSON.stringify(body.spec_values),
+      spec_values_json: JSON.stringify(specIn.values),
       created_at: now,
       updated_at: now,
     };
@@ -198,10 +239,19 @@ export function briefRoutes(app: FastifyInstance): void {
       if (!client) return reply.code(404).send({ error: "client_not_found" });
     }
 
-    const specNext = {
-      ...(JSON.parse(brief.spec_values_json || "{}") as Record<string, unknown>),
-      ...(patch.spec_values ?? {}),
-    };
+    /* Yazma bekçisi: tanımsız anahtar REDDEDİLİR; verilen anahtarlar BİRLEŞİR */
+    const incoming = sanitizeSpecValues(familyOf(brief.request_type), patch.spec_values ?? {});
+    if (incoming.unknown.length > 0) {
+      return reply
+        .code(400)
+        .send({ error: "unknown_spec_keys", keys: incoming.unknown, detail: "Spec'te tanımsız alan" });
+    }
+    const specCurrent = JSON.parse(brief.spec_values_json || "{}") as Record<string, unknown>;
+    /* Boş dize/null gelen alanlar TEMİZLENİR (eksik olarak görünsünler) */
+    for (const key of Object.keys(patch.spec_values ?? {})) {
+      if (!(key in incoming.values)) delete specCurrent[key];
+    }
+    const specNext = { ...specCurrent, ...incoming.values };
     const next: BriefRow = {
       ...brief,
       customer_ref: patch.customer_ref === undefined ? brief.customer_ref : patch.customer_ref,

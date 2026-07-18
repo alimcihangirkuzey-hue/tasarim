@@ -27,7 +27,11 @@ interface ViewLike {
     language_requirements: string[];
     requested_publications: string[];
   };
-  completeness: { designReady: boolean; productionCompleteness: number };
+  completeness: {
+    designReady: boolean;
+    productionCompleteness: number;
+    notices: Array<{ code: string; message_tr: string }>;
+  };
   missing: Array<{ id: string; label_tr: string; layer: string; reject_class: boolean }>;
   next_states: string[];
   locked_states: string[];
@@ -297,6 +301,119 @@ describe("F1.7 — dosya geçersizleşince iş GERİ DÜŞER (P3'ün açık ucu 
     });
     expect((inv.json() as { regressed_to: string | null }).regressed_to).toBeNull();
     expect(db.prepare("SELECT status FROM briefs WHERE id = ?").get(id)).toEqual({ status: "DRAFT" });
+  });
+});
+
+describe("P5 — GARMENT ailesi", () => {
+  /** tasarım-önkoşulları tam, üretim eksik garment brief'i */
+  async function garmentBrief() {
+    const res = await create({
+      request_type: "garment",
+      customer_ref: "cli1",
+      spec_values: { garment_type: "tshirt", placements: ["chest_center"] },
+    });
+    return json(res).brief.id;
+  }
+
+  it("garment brief: aile matrisi menüden FARKLI (isimli eksikler garment alanları)", async () => {
+    const id = await garmentBrief();
+    const view = json(await get(id));
+    const ids = view.missing.map((m) => m.id);
+    expect(ids).toContain("fabric_color");
+    expect(ids).toContain("size_distribution");
+    expect(ids).toContain("technique");
+    expect(ids).toContain("file:tasarim");
+    /* menü alanları garment'ta SORULMAZ */
+    expect(ids).not.toContain("format");
+    expect(ids).not.toContain("languages");
+    expect(view.completeness.designReady).toBe(true);
+  });
+
+  it("tasarım önkoşulu (ürün tipi + baskı yeri) eksikse tasarıma GEÇİLEMEZ", async () => {
+    const bos = json(await create({ request_type: "garment", customer_ref: "cli1" }));
+    expect(bos.completeness.designReady).toBe(false);
+    expect(bos.missing.map((m) => m.id)).toEqual(
+      expect.arrayContaining(["garment_type", "placements"])
+    );
+    await transition(bos.brief.id, { to: "INCOMPLETE" });
+    const res = await transition(bos.brief.id, { to: "READY_FOR_DESIGN" });
+    expect(res.statusCode).toBe(409);
+    expect(json(res).code).toBe("design_not_ready");
+  });
+
+  it("BEDEN×ADET: toplam HESAPLANIR; 0/negatif adetler DÜŞER; boş dağılım EKSİK sayılır", async () => {
+    const id = await garmentBrief();
+    await patch(id, { spec_values: { size_distribution: { S: 10, M: 20, L: 0, XL: -3 } } });
+    const view = json(await get(id));
+    expect(view.brief.spec_values.size_distribution).toEqual({ S: 10, M: 20 });
+    expect(view.missing.map((m) => m.id)).not.toContain("size_distribution");
+
+    await patch(id, { spec_values: { size_distribution: { S: 0 } } });
+    const bosDagilim = json(await get(id));
+    expect(bosDagilim.brief.spec_values.size_distribution).toEqual({});
+    expect(bosDagilim.missing.map((m) => m.id)).toContain("size_distribution");
+  });
+
+  it("DTF seçimi REDDEDİLMEZ — bilgi notu üretir (keşif E düzeltmesi)", async () => {
+    const id = await garmentBrief();
+    await patch(id, { spec_values: { technique: "dtf" } });
+    const view = json(await get(id));
+    expect(view.missing.map((m) => m.id)).not.toContain("technique");
+    expect(view.completeness.notices.map((n) => n.code)).toContain("technique_info:dtf");
+    expect(view.completeness.notices[0].message_tr).toMatch(/alfa-PNG/i);
+  });
+
+  it("YAZMA BEKÇİSİ: Spec'te tanımsız anahtar 400; menü alanı garment'a yazılamaz", async () => {
+    const id = await garmentBrief();
+    const uydurma = await patch(id, { spec_values: { uydurma_alan: "x" } });
+    expect(uydurma.statusCode).toBe(400);
+    expect(json(uydurma).error).toBe("unknown_spec_keys");
+
+    const menuAlani = await patch(id, { spec_values: { qr_target_url: "https://x" } });
+    expect(menuAlani.statusCode).toBe(400);
+
+    /* kolon/türetme kaynaklı alanlar da spec_values'a yazılamaz (çift kaynak yasağı) */
+    const kolon = await patch(id, { spec_values: { delivery_deadline: "2026-09-01" } });
+    expect(kolon.statusCode).toBe(400);
+  });
+
+  it("garment üretim tamlığı %100 olunca tasarım zinciri yürür (dosya dahil)", async () => {
+    const id = await garmentBrief();
+    await patch(id, {
+      delivery_deadline: "2026-09-01",
+      spec_values: {
+        fabric_color: "siyah",
+        technique: "broderie",
+        size_distribution: { S: 5, M: 5 },
+        print_size_position: "göğüs merkez 25×30",
+      },
+    });
+    const upload = await app.inject({
+      method: "POST",
+      url: `/api/briefs/${id}/files`,
+      payload: Buffer.concat([
+        Buffer.from(
+          `--${BOUNDARY}\r\nContent-Disposition: form-data; name="role"\r\n\r\ntasarim\r\n` +
+            `--${BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="t.png"\r\n` +
+            `Content-Type: image/png\r\n\r\n`
+        ),
+        PNG,
+        Buffer.from(`\r\n--${BOUNDARY}--\r\n`),
+      ]),
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+    });
+    expect(upload.statusCode).toBe(201);
+
+    const view = json(await get(id));
+    expect(view.missing).toEqual([]);
+    expect(view.completeness.productionCompleteness).toBe(100);
+
+    await transition(id, { to: "INCOMPLETE" });
+    await transition(id, { to: "READY_FOR_DESIGN" });
+    const design = await transition(id, { to: "DESIGN_IN_PROGRESS" });
+    expect(design.statusCode).toBe(200);
+    /* üretim incelemesi hâlâ P7'ye kilitli */
+    expect((await transition(id, { to: "READY_FOR_PRODUCTION_REVIEW" })).statusCode).toBe(501);
   });
 });
 
