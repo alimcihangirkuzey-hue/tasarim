@@ -6,21 +6,26 @@
      DRAFT → INCOMPLETE → READY_FOR_DESIGN → DESIGN_IN_PROGRESS
            → READY_FOR_PRODUCTION_REVIEW → PRODUCTION_READY
 
-   İKİ AYRI EŞİK (spec'in çekirdeği — karıştırılmamalı):
-   · design_readiness = TASARIMIN başlayabilmesi için asgari bilgi (format/ölçü/
-     yön belirlenebiliyor). Spec: "Eksik brief ile tasarım BAŞLAYABİLİR" →
-     INCOMPLETE bir engel DEĞİLDİR, yalnız eksik-bilgi işaretidir.
-   · production_completeness = ÜRETİM kapısının eşiği; PRODUCTION_READY yalnız
-     %100'de açılır (Pack mühürleme · üretime-hazır işaretleme · üretim işi ·
-     operatör kuyruğu bu kapının arkasında).
+   İKİ-KATMAN KURALI (spec §4) — eşikler karıştırılmamalı:
+   · design_readiness = TASARIM-ÖNKOŞULU (design_pre) katmanı. Eksikse iş
+     TASARIMA GİREMEZ. K4 "eksik brief'le tasarım başlar" YALNIZ ÜRETİM-katmanı
+     eksikleri içindir — bu yüzden K4 bir KISAYOL KENARI değil, INCOMPLETE→
+     READY_FOR_DESIGN geçişinin guard'ıdır.
+   · production_completeness = ÜRETİM-önkoşulu katmanı; %100 + AÇIK REDDET YOK
+     olmadan üretim İNCELEMESİNE geçilmez (§7).
+   · PRODUCTION_READY'nin şartı İNSAN ONAYIDIR (§7 son adım); Pack mühürleme ·
+     üretime-hazır işaretleme · üretim işi · operatör kuyruğu bunun arkasındadır.
 
    GERİLEME (ileriden geriye) YALNIZ meşru + KAYITLI sebeple olur (F1.7: dosya
    geçersizleşince durum geriler) — sebep + kaydeden zorunlu, çağıran audit satırı
    yazar.
 
-   YORUM ŞERHİ (yönetişim tasdikine): geçiş haritası VERİ olarak aşağıdadır
-   (F1_FORWARD) — spec §7 metni pakette birebir gelmediğinden kural tablosu tek
-   yerde ve gözden geçirilebilir tutuldu; değişiklik = tabloyu düzenlemek. */
+   §7 HİZALAMA (P2): geçiş haritası spec §7 metnine karşı DOĞRULANDI ve üç sapma
+   düzeltildi — (1) INCOMPLETE→DESIGN_IN_PROGRESS kısayolu KALDIRILDI, (2) DRAFT→
+   READY_FOR_DESIGN kısayolu KALDIRILDI (zincir doğrusal), (3) %100 guard'ı
+   PRODUCTION_READY'den READY_FOR_PRODUCTION_REVIEW girişine TAŞINDI + "açık
+   REDDET yok" ve "insan onayı" şartları eklendi. Kural tablosu VERİ olarak
+   aşağıdadır; değişiklik = tabloyu düzenlemek. */
 
 import { z } from "zod";
 
@@ -36,29 +41,41 @@ export const F1_STATES = [
 export const F1StateSchema = z.enum(F1_STATES);
 export type F1State = z.infer<typeof F1StateSchema>;
 
-/** İzinli İLERİ geçişler (gerileme ayrı kuralla — bkz. canTransitionF1). */
+/** İzinli İLERİ geçişler — spec §7 kanonik zinciri BİREBİR (P2'de hizalandı).
+    Zincir DOĞRUSALDIR: kısayol/atlama YOK. K4 ("eksik brief'le tasarım başlar")
+    bir KENAR değil, INCOMPLETE→READY_FOR_DESIGN'ın design_readiness guard'ıdır:
+    üretim-katmanı eksikleri tasarımı engellemez, tasarım-katmanı eksikleri
+    engeller (İKİ-KATMAN KURALI, spec §4). */
 export const F1_FORWARD: Readonly<Record<F1State, readonly F1State[]>> = {
-  /* Gelen brief tam da olabilir: INCOMPLETE zorunlu durak DEĞİL */
-  DRAFT: ["INCOMPLETE", "READY_FOR_DESIGN"],
-  /* Spec: eksik brief ile tasarım başlayabilir → INCOMPLETE'ten doğrudan tasarım */
-  INCOMPLETE: ["READY_FOR_DESIGN", "DESIGN_IN_PROGRESS"],
+  DRAFT: ["INCOMPLETE"],
+  INCOMPLETE: ["READY_FOR_DESIGN"],
   READY_FOR_DESIGN: ["DESIGN_IN_PROGRESS"],
   DESIGN_IN_PROGRESS: ["READY_FOR_PRODUCTION_REVIEW"],
   READY_FOR_PRODUCTION_REVIEW: ["PRODUCTION_READY"],
   PRODUCTION_READY: [],
 };
 
-/** Tasarım eşiği isteyen durumlar (design_readiness kapısı) */
+/** Tasarım eşiği isteyen durumlar (design_readiness kapısı — §4 iki-katman) */
 export const F1_DESIGN_GATED: readonly F1State[] = ["READY_FOR_DESIGN", "DESIGN_IN_PROGRESS"];
 
-/** Üretim tamlığı %100 isteyen durum (üretim kapısı) */
-export const F1_PRODUCTION_GATED: readonly F1State[] = ["PRODUCTION_READY"];
+/** Üretim tamlığı %100 + açık REDDET yok isteyen durum (§7: üretim İNCELEMESİ girişi) */
+export const F1_PRODUCTION_GATED: readonly F1State[] = ["READY_FOR_PRODUCTION_REVIEW"];
+
+/** İnsan onayı isteyen durum (§7: son adım) */
+export const F1_APPROVAL_GATED: readonly F1State[] = ["PRODUCTION_READY"];
 
 export interface F1Readiness {
-  /** Tasarımın başlayabilmesi için asgari bilgi tamam mı? */
+  /** Tasarımın başlayabilmesi için asgari bilgi tamam mı? (design_pre katmanı) */
   designReady: boolean;
-  /** Üretim tamlığı yüzdesi (0-100); üretim kapısı YALNIZ 100'de açılır */
+  /** Üretim tamlığı yüzdesi (0-100) — completeness engine üretir */
   productionCompleteness: number;
+  /** Açık REDDET-sınıfı kalem sayısı; üretim incelemesine geçiş için 0 ŞART */
+  openRejects: number;
+}
+
+/** İnsan onayı kaydı (§7: READY_FOR_PRODUCTION_REVIEW → PRODUCTION_READY) */
+export interface F1Approval {
+  approvedBy: string;
 }
 
 /** Gerileme gerekçesi — meşru VE kayıtlı olmak zorunda (boş metin geçmez) */
@@ -73,6 +90,8 @@ export type F1BlockCode =
   | "not_allowed"
   | "design_not_ready"
   | "production_incomplete"
+  | "open_rejects"
+  | "approval_required"
   | "regression_unrecorded";
 
 export type F1TransitionResult =
@@ -85,6 +104,8 @@ export interface F1TransitionInput {
   readiness: F1Readiness;
   /** ileriden geriye geçişte ZORUNLU */
   regression?: F1Regression | null;
+  /** PRODUCTION_READY'ye geçişte ZORUNLU (insan onayı) */
+  approval?: F1Approval | null;
 }
 
 export function isF1State(value: unknown): value is F1State {
@@ -101,7 +122,7 @@ export function f1StateIndex(state: F1State): number {
  * Çağıran, ok:false ise durumu DEĞİŞTİRMEZ; ok:true ise audit satırını yazar.
  */
 export function canTransitionF1(input: F1TransitionInput): F1TransitionResult {
-  const { from, to, readiness, regression } = input;
+  const { from, to, readiness, regression, approval } = input;
 
   if (!isF1State(from) || !isF1State(to)) {
     return { ok: false, code: "unknown_state", detail: `Bilinmeyen durum: ${String(from)} → ${String(to)}` };
@@ -142,11 +163,30 @@ export function canTransitionF1(input: F1TransitionInput): F1TransitionResult {
     };
   }
 
-  if (F1_PRODUCTION_GATED.includes(to) && readiness.productionCompleteness < 100) {
+  if (F1_PRODUCTION_GATED.includes(to)) {
+    if (readiness.productionCompleteness < 100) {
+      return {
+        ok: false,
+        code: "production_incomplete",
+        detail: `Üretim tamlığı %${readiness.productionCompleteness} — %100 şart`,
+      };
+    }
+    /* §7: "production_completeness=100 + açık REDDET yok". REDDET-sınıfı kalem
+       istisnayla kapatılamaz (F1.5) → tamlık %100 olsa bile kapı kapalıdır. */
+    if (readiness.openRejects > 0) {
+      return {
+        ok: false,
+        code: "open_rejects",
+        detail: `${readiness.openRejects} açık REDDET-sınıfı kalem var — istisnayla kapatılamaz`,
+      };
+    }
+  }
+
+  if (F1_APPROVAL_GATED.includes(to) && (approval?.approvedBy?.trim() ?? "") === "") {
     return {
       ok: false,
-      code: "production_incomplete",
-      detail: `Üretim tamlığı %${readiness.productionCompleteness} — %100 şart`,
+      code: "approval_required",
+      detail: "PRODUCTION_READY yalnız İNSAN ONAYIYLA: approvedBy zorunlu",
     };
   }
 

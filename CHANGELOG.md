@@ -10,6 +10,16 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
   (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
   davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P2 — Spec-referans + completeness engine:** `f1-spec.ts` (DB tablosu
+  YOK — `template_id+format` ile mevcut TemplateManifest'e REFERANS; iki aile
+  matrisi VERİ olarak: menü/garment · design_pre|production_pre iki katman ·
+  koşullu kurallar · `brief_files.role` ile hizalı dosya şartları) +
+  `f1-completeness.ts` (saf motor: design_readiness · production_completeness
+  [payda yalnız AKTİF koşullularla büyür, opsiyoneller hiç girmez] · kayıtlı
+  istisna taşınır · **REDDET-sınıfı istisnayla karşılanamaz — F1.5** · isimli
+  eksik listesi). §7 HİZALAMASI: durum zinciri kanonik metne göre düzeltildi
+  (kısayol kenarları kaldırıldı; %100 kapısı üretim incelemesine taşındı;
+  "açık REDDET yok" + "insan onayı" şartları eklendi). Rota/davranış YOK.
 - **F1 pilot P1 — Brief domain (D-61 onaylı, v12):** additive `briefs`
   (13 alanlık SWISS sözleşmesi + `idempotency_key UNIQUE` = F1.6'nın DB
   garantisi + 6 F1 durumu CHECK) · `brief_audit` (istisna-audit alanları,
