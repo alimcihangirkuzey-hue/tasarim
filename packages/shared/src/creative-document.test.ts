@@ -92,6 +92,34 @@ describe("additive tolerans (Zod strip — yarının alanları bugünü kırmaz)
   });
 });
 
+describe("LY2 — CD `canvas` alanı (İLK additive-opsiyonel alan; D-35(c) kapısı)", () => {
+  it("yokluk = eski davranış: alan hiç yoksa çıktıda da YOK (default üretilmez)", () => {
+    const state = DocumentStateSchema.parse({ template_id: "x" });
+    expect("canvas" in state && state.canvas !== undefined).toBe(false);
+  });
+
+  it("cd_version 1 KALIR — canvas'lı belge de literal-1 ile geçer (v2 gerekmedi)", () => {
+    const state = DocumentStateSchema.parse({
+      template_id: "x",
+      canvas: { v: 1, layers: [{ id: "ly_1", name: "Katman 1" }] },
+    });
+    expect(state.cd_version).toBe(1);
+    expect(state.canvas?.layers[0]).toMatchObject({ locked: false, visible: true, shapes: [] });
+  });
+
+  it("DocumentUpdateSchema (partial) canvas'ı TAŞIR — kaydet köprüsü MEVCUT PUT'la (yeni uç yok)", () => {
+    const patch = DocumentUpdateSchema.parse({ canvas: { v: 1, layers: [] } });
+    expect(patch.canvas).toEqual({ v: 1, layers: [] });
+  });
+
+  it("restore-partial canvas TAŞIMAZ → geri-yüklemede canvas KORUNUR (belgelenen davranış)", () => {
+    /* documents.ts restore'u patch'i 5 içerik alanından kurar (canvas dahil değil);
+       partial'da yokluk = dokunma. */
+    const patch = DocumentUpdateSchema.parse({ template_id: "x", params: {} });
+    expect("canvas" in patch && patch.canvas !== undefined).toBe(false);
+  });
+});
+
 describe("DTO yüzeyi (CD v1 = DocumentDTO + damga)", () => {
   it("tam parse çıktısı CD v1 alan setini taşır — yeni zorunlu içerik alanı YOK", () => {
     const state = DocumentStateSchema.parse({ template_id: "x" });
