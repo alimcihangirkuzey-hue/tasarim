@@ -19,6 +19,15 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
   (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
   davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P5 (D-63 katılaştırma) — sessiz düzeltme kaldırıldı:** beden×adet
+  girdisinde ondalık/negatif/metin/NaN/bilinmeyen beden ve **üst sınır aşımı**
+  artık REDDEDİLİR (400 + gerekçe + audit); 0 adet meşru ama **toplam 0 → alan
+  eksik**. `F1FieldRule.validate` ile **alan tip/değer denetimi**: çöp veri
+  REDDET-sınıfı tasarım kapısını açamaz; ilan edilen **teknik listesi zorlanır**
+  (garment'ta `decoupe` reddedilir, DTF kabul + bilgi notu). UI'da beden hücresi
+  **kontrollü** — ayrıştırılamayan girdi sessizce silinmez, hücre altında
+  gerekçe belirir; red sonrası ekran ile kayıt ayrışmaz. (Bulgular bağımsız
+  şüpheci doğrulama turundan: B-1…B-10.)
 - **F1 pilot P5 — garment/tekstil intake + beden×adet matrisi:** menü ile AYNI
   yaşam döngüsü/durum makinesi/dosya politikası; fark yalnız alan matrisi.
   **Beden×adet** `spec_values.size_distribution` (v13 kolonu — yeni migration
