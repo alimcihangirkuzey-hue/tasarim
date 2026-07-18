@@ -189,7 +189,6 @@ export function useDragReorder(ids: string[], onCommit: (next: string[]) => void
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

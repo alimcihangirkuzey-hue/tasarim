@@ -30,8 +30,6 @@ import { SlotPanel } from "../components/SlotPanel";
 import { SelectionPanel } from "../components/SelectionPanel";
 import { useEditor } from "../store/editorStore";
 
-const MM_PX = 96 / 25.4;
-
 function warnText(w: LayoutWarning): string {
   switch (w.type) {
     case "overflow-items":

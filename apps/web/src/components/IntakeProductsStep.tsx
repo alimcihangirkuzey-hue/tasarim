@@ -96,7 +96,6 @@ export function IntakeProductsStep() {
     if (!lastRemoved) return;
     const timer = setTimeout(() => s.clearUndo(), 5000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRemoved]);
 
   /* CILA5: kategori bazında "diğer ürünler (seçilmeyenler)" daralt/genişlet durumu
@@ -109,9 +108,6 @@ export function IntakeProductsStep() {
       else next.add(key);
       return next;
     });
-
-  const findProduct = (catTr: string, itemTr: string): IntakeProduct | undefined =>
-    s.products.find((p) => p.category_name.tr === catTr && p.name.tr === itemTr);
 
   /* TEK ekleme yolu: sade satır tıkı. Satır zaten seçiliyse bu dal hiç render
      edilmez (ProductRow render edilir) → mükerrer yapısal imkânsız. */

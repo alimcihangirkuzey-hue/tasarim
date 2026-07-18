@@ -305,7 +305,7 @@ ${slotBlocks.join("\n")}${protoRender}
 `;
 }
 
-export function generateIndexTs(input: FactoryInput): string {
+export function generateIndexTs(): string {
   return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12) */
 import type { TemplateEntry } from "../../types.js";
 import { manifest } from "./manifest.js";

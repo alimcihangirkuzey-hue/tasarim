@@ -92,7 +92,13 @@ describe("migrateIntakeDraftV2toV3 (F8-A / D4 — additive migrate)", () => {
       checklist: { logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" },
       savedAt: 123,
     };
-    const v3 = migrateIntakeDraftV2toV3(v2) as Record<string, any>;
+    /* dar tip (any yok — D-50): yalnız assert edilen alanlar; davranış aynen */
+    const v3 = migrateIntakeDraftV2toV3(v2) as {
+      step: unknown;
+      products: unknown;
+      savedAt: unknown;
+      checklist: { surfaces: unknown } & Record<string, unknown>;
+    };
     expect(v3.checklist.surfaces).toEqual([]); // additive
     expect(v3.checklist).toMatchObject({ logo: "var", contact_confirmed: true, size_note: "not", photo_policy: "musteri" }); // kalan aynen
     expect(v3.step).toBe(3);
@@ -101,7 +107,7 @@ describe("migrateIntakeDraftV2toV3 (F8-A / D4 — additive migrate)", () => {
   });
 
   it("checklist yoksa da güvenli (surfaces:[] ile kurar)", () => {
-    const out = migrateIntakeDraftV2toV3({ step: 1 } as Record<string, unknown>) as Record<string, any>;
+    const out = migrateIntakeDraftV2toV3({ step: 1 } as Record<string, unknown>) as { checklist: unknown };
     expect(out.checklist).toEqual({ surfaces: [] });
   });
 

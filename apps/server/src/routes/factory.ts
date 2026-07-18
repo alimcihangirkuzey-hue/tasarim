@@ -107,7 +107,7 @@ export function factoryRoutes(app: FastifyInstance): void {
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "manifest.ts"), generateManifestTs(input), "utf8");
     await fs.writeFile(path.join(dir, "Template.tsx"), generateTemplateTsx(input), "utf8");
-    await fs.writeFile(path.join(dir, "index.ts"), generateIndexTs(input), "utf8");
+    await fs.writeFile(path.join(dir, "index.ts"), generateIndexTs(), "utf8");
 
     const ids = await generatedIds();
     await fs.writeFile(path.join(GENERATED_DIR, "index.ts"), generateBarrel(ids), "utf8");
