@@ -223,4 +223,72 @@ export const MIGRATIONS: string[] = [
      D-48). CD `canvas` alanının sunucu evi — additive TEK kolon; eski satırlarda
      NULL = alan yokluğu (eski davranış aynen), veri dönüşümü YOK. */
   `ALTER TABLE documents ADD COLUMN canvas_json TEXT;`,
+  /* v12 — F1 pilot P1 (D-61 onaylı): Brief domain'i. TEK amaç, TAMAMEN ADDITIVE —
+     mevcut tablolara DOKUNULMAZ (documents'a F1 durumu EKLENMEZ; Product Spec
+     tablosu AÇILMAZ — P2 kararı). Üç tablo tek migration'da (14b: Brief ve Audit
+     aynı pakette doğar).
+
+     briefs: SWISS'ten gelen dar sözleşmenin 13 alanı + F1 durumu.
+       · customer_ref → clients FK ON DELETE **SET NULL** (CASCADE DEĞİL, şerhli
+         sapma): brief bir DIŞ kayıttır ve brief_audit değişmez-tarihçedir; müşteri
+         silmek F1 denetim izini yok etmemeli, yalnız bağı koparmalı. (Repo'nun
+         intake_records CASCADE emsalinden bilinçli ayrılma — yönetişim tasdikine.)
+       · idempotency_key UNIQUE = F1.6'nın DB garantisi (çift gönderim → tek Brief).
+       · status CHECK = 6 F1 durumu; geçiş KURALLARI shared/f1-state.ts'te (tek kapı).
+     brief_audit: istisna-audit alanları (warning_code · acknowledged_by ·
+       acknowledged_at · reason · source_file_version) + APPEND-ONLY (uygulama-
+       katmanı sözleşmesi; update/delete yolu yazılmaz — repo taramalı testle korunur).
+     brief_files: brief ↔ asset köprüsü + dosya versiyonu/geçerliliği (F1.7 zemini);
+       assets tablosuna DOKUNULMAZ. */
+  `
+  CREATE TABLE IF NOT EXISTS briefs (
+    id                          TEXT PRIMARY KEY,
+    source_system               TEXT NOT NULL,
+    source_tenant_ref           TEXT,
+    source_request_ref          TEXT,
+    customer_ref                TEXT REFERENCES clients(id) ON DELETE SET NULL,
+    brand_ref                   TEXT,
+    request_type                TEXT NOT NULL,
+    requested_publications_json TEXT NOT NULL DEFAULT '[]',
+    content_reference           TEXT,
+    language_requirements_json  TEXT NOT NULL DEFAULT '[]',
+    delivery_deadline           TEXT,
+    requester_notes             TEXT NOT NULL DEFAULT '',
+    callback_reference          TEXT,
+    idempotency_key             TEXT NOT NULL UNIQUE,
+    status                      TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN
+      ('DRAFT','INCOMPLETE','READY_FOR_DESIGN','DESIGN_IN_PROGRESS',
+       'READY_FOR_PRODUCTION_REVIEW','PRODUCTION_READY')),
+    created_at                  TEXT NOT NULL,
+    updated_at                  TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_briefs_status ON briefs(status);
+  CREATE INDEX IF NOT EXISTS idx_briefs_customer ON briefs(customer_ref);
+
+  CREATE TABLE IF NOT EXISTS brief_audit (
+    id                  TEXT PRIMARY KEY,
+    brief_id            TEXT NOT NULL REFERENCES briefs(id) ON DELETE CASCADE,
+    event_type          TEXT NOT NULL,
+    warning_code        TEXT,
+    acknowledged_by     TEXT,
+    acknowledged_at     TEXT,
+    reason              TEXT,
+    source_file_version INTEGER,
+    payload_json        TEXT NOT NULL DEFAULT '{}',
+    created_at          TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_brief_audit_brief ON brief_audit(brief_id);
+
+  CREATE TABLE IF NOT EXISTS brief_files (
+    id         TEXT PRIMARY KEY,
+    brief_id   TEXT NOT NULL REFERENCES briefs(id) ON DELETE CASCADE,
+    asset_id   TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    role       TEXT NOT NULL,
+    version    INTEGER NOT NULL DEFAULT 1,
+    status     TEXT NOT NULL DEFAULT 'valid' CHECK(status IN ('valid','invalid')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_brief_files_brief ON brief_files(brief_id);
+  `,
 ];

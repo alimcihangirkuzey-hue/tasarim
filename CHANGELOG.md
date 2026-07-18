@@ -5,6 +5,19 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
 
 ## [Unreleased]
 ### Added
+- **F1 pilot P0 — route-test harness:** `buildApp()` (apps/server/src/app.ts)
+  kuruluşu dinlemeden döndürür → route testleri `app.inject()` ile gerçek uç
+  üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
+  (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
+  davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P1 — Brief domain (D-61 onaylı, v12):** additive `briefs`
+  (13 alanlık SWISS sözleşmesi + `idempotency_key UNIQUE` = F1.6'nın DB
+  garantisi + 6 F1 durumu CHECK) · `brief_audit` (istisna-audit alanları,
+  APPEND-ONLY — repo taramalı testle korunur) · `brief_files` (dosya
+  versiyon/geçerlilik köprüsü, F1.7 zemini; assets'e dokunulmadı) +
+  shared `f1-state.ts` durum makinesi (tasarım eşiği ile üretim eşiği AYRI;
+  gerileme yalnız meşru-kayıtlı; üretim kapısı yalnız PRODUCTION_READY).
+  Rota/davranış YOK — tüketiciler P2+.
 - **P3 CAP-LAYER-01 — katman sistemi + undo/redo + kalıcılık:** CD v1'in İLK
   additive alanı `canvas?` (cd_version 1 KALDI; yokluk=eski davranış) · katmanlı
   canvasReduce (kilit/görünürlük korkulukları; son-katman-silinemez) · /atolye

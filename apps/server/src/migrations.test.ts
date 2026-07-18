@@ -1,6 +1,9 @@
 /* Mimar kararı #3 kanıtı: export_records yeniden kurulurken Faz 1 verisi ve
    akışı KIRILMAZ; proje bazlı sunum kayıtları mümkün olur; CHECK kapısı çalışır. */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CanvasDocSchema } from "@tezgah/shared";
@@ -464,5 +467,195 @@ describe("migration v11 (P3 CAP-LAYER-01 / D-48 — documents.canvas_json)", () 
     ]) {
       expect(() => db.prepare(q).all(), q).not.toThrow();
     }
+  });
+});
+
+describe("migration v12 (F1 pilot P1 / D-61 — briefs + brief_audit + brief_files)", () => {
+  let db: Database.Database;
+
+  const insertBrief = (d: Database.Database, id: string, key: string, extra = "NULL") =>
+    d.prepare(
+      `INSERT INTO briefs (id, source_system, request_type, idempotency_key, customer_ref, created_at, updated_at)
+       VALUES (?, 'swiss_restoran', 'menu_refresh', ?, ${extra}, 't', 't')`
+    ).run(id, key);
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 11; i++) db.exec(MIGRATIONS[i]);
+    db.exec(`INSERT INTO assets (id, client_id, kind, filename, created_at)
+             VALUES ('ast1', 'cli1', 'logo', 'ast1.svg', 't')`);
+  });
+
+  it("üç tablo + indeksler açıldı; default'lar spec'e uygun", () => {
+    insertBrief(db, "brf1", "idem-1");
+    const row = db.prepare("SELECT * FROM briefs WHERE id='brf1'").get() as Record<string, unknown>;
+    expect(row).toMatchObject({
+      status: "DRAFT",
+      requested_publications_json: "[]",
+      language_requirements_json: "[]",
+      requester_notes: "",
+      customer_ref: null,
+    });
+    const idx = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_brief%' ORDER BY name")
+      .all() as Array<{ name: string }>;
+    expect(idx.map((i) => i.name)).toEqual([
+      "idx_brief_audit_brief",
+      "idx_brief_files_brief",
+      "idx_briefs_customer",
+      "idx_briefs_status",
+    ]);
+  });
+
+  it("v12 TEKRAR koşulabilir (idempotent — IF NOT EXISTS); veri kaybolmaz", () => {
+    insertBrief(db, "brf1", "idem-1");
+    expect(() => db.exec(MIGRATIONS[11])).not.toThrow();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM briefs").get()).toMatchObject({ c: 1 });
+  });
+
+  it("F1.6 DB GARANTİSİ: aynı idempotency_key İKİNCİ kez giremez (çift gönderim → tek Brief)", () => {
+    insertBrief(db, "brf1", "idem-1");
+    expect(() => insertBrief(db, "brf2", "idem-1")).toThrow(/UNIQUE/i);
+    expect(db.prepare("SELECT COUNT(*) AS c FROM briefs").get()).toMatchObject({ c: 1 });
+  });
+
+  it("idempotency_key NOT NULL: anahtarsız brief açılamaz", () => {
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, created_at, updated_at)
+           VALUES ('brfX', 'swiss_restoran', 'menu_refresh', 't', 't')`
+        )
+        .run()
+    ).toThrow(/NOT NULL/i);
+  });
+
+  it("status CHECK: yalnız 6 F1 durumu; uydurma durum reddedilir", () => {
+    for (const s of [
+      "DRAFT",
+      "INCOMPLETE",
+      "READY_FOR_DESIGN",
+      "DESIGN_IN_PROGRESS",
+      "READY_FOR_PRODUCTION_REVIEW",
+      "PRODUCTION_READY",
+    ]) {
+      db.prepare("UPDATE briefs SET status = ? WHERE id = 'brf1'").run(s); // satır yoksa no-op
+      expect(() =>
+        db
+          .prepare(
+            `INSERT INTO briefs (id, source_system, request_type, idempotency_key, status, created_at, updated_at)
+             VALUES (?, 's', 'r', ?, ?, 't', 't')`
+          )
+          .run(`b_${s}`, `k_${s}`, s)
+      ).not.toThrow();
+    }
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, idempotency_key, status, created_at, updated_at)
+           VALUES ('bad', 's', 'r', 'k_bad', 'ARCHIVED', 't', 't')`
+        )
+        .run()
+    ).toThrow(/CHECK/i);
+  });
+
+  it("brief silinince audit + files CASCADE düşer", () => {
+    insertBrief(db, "brf1", "idem-1");
+    db.prepare(
+      `INSERT INTO brief_audit (id, brief_id, event_type, warning_code, acknowledged_by, acknowledged_at, reason, source_file_version, created_at)
+       VALUES ('aud1', 'brf1', 'warning_acknowledged', 'low_dpi', 'operator:ayse', 't', 'müşteri onayladı', 2, 't')`
+    ).run();
+    db.prepare(
+      `INSERT INTO brief_files (id, brief_id, asset_id, role, version, status, created_at, updated_at)
+       VALUES ('bf1', 'brf1', 'ast1', 'logo', 1, 'valid', 't', 't')`
+    ).run();
+    db.prepare("DELETE FROM briefs WHERE id='brf1'").run();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM brief_audit").get()).toMatchObject({ c: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS c FROM brief_files").get()).toMatchObject({ c: 0 });
+  });
+
+  it("ŞERHLİ SAPMA: müşteri silinince brief KALIR, customer_ref NULL olur (denetim izi korunur)", () => {
+    insertBrief(db, "brf1", "idem-1", "'cli1'");
+    expect(db.prepare("SELECT customer_ref FROM briefs WHERE id='brf1'").get()).toEqual({
+      customer_ref: "cli1",
+    });
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(db.prepare("SELECT id, customer_ref FROM briefs WHERE id='brf1'").get()).toEqual({
+      id: "brf1",
+      customer_ref: null,
+    });
+  });
+
+  it("brief_files: status CHECK valid|invalid (F1.7 zemini) + varsayılan version 1/valid", () => {
+    insertBrief(db, "brf1", "idem-1");
+    db.prepare(
+      `INSERT INTO brief_files (id, brief_id, asset_id, role, created_at, updated_at)
+       VALUES ('bf1', 'brf1', 'ast1', 'logo', 't', 't')`
+    ).run();
+    expect(db.prepare("SELECT version, status FROM brief_files WHERE id='bf1'").get()).toEqual({
+      version: 1,
+      status: "valid",
+    });
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO brief_files (id, brief_id, asset_id, role, status, created_at, updated_at)
+           VALUES ('bf2', 'brf1', 'ast1', 'logo', 'bozuk', 't', 't')`
+        )
+        .run()
+    ).toThrow(/CHECK/i);
+  });
+
+  it("assets tablosuna DOKUNULMADI: köprü FK'sı çalışır, asset silinince köprü düşer", () => {
+    insertBrief(db, "brf1", "idem-1");
+    db.prepare(
+      `INSERT INTO brief_files (id, brief_id, asset_id, role, created_at, updated_at)
+       VALUES ('bf1', 'brf1', 'ast1', 'logo', 't', 't')`
+    ).run();
+    expect(() => db.prepare("SELECT tags, kind, filename FROM assets WHERE id='ast1'").all()).not.toThrow();
+    db.prepare("DELETE FROM assets WHERE id='ast1'").run();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM brief_files").get()).toMatchObject({ c: 0 });
+  });
+
+  it("Faz 1-P3 akışları kırılmadı: documents.canvas_json + önceki tablolar aynen okunur", () => {
+    for (const q of [
+      "SELECT canvas_json, params_json, status FROM documents LIMIT 1",
+      "SELECT client_id, kind, label FROM client_surfaces LIMIT 1",
+      "SELECT client_id, answers_json FROM intake_records LIMIT 1",
+      "SELECT menu_language, currency FROM clients LIMIT 1",
+      "SELECT id, family FROM custom_fonts LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+  });
+});
+
+describe("brief_audit APPEND-ONLY sözleşmesi (uygulama katmanı — repo taraması)", () => {
+  /* Sözleşme: tarihçe yerinde DEĞİŞTİRİLMEZ. Kod tabanında brief_audit'e UPDATE
+     ya da DELETE yazan bir yol BULUNMAMALI (üst kaydın CASCADE temizliği hariç —
+     o ebeveyn silmenin sonucudur, tarihçe mutasyonu değil). */
+  const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
+
+  function sourceFiles(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...sourceFiles(full));
+      else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) out.push(full);
+    }
+    return out;
+  }
+
+  it("sunucu kaynağında brief_audit'e UPDATE/DELETE yolu YOK", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(SRC)) {
+      const text = fs.readFileSync(file, "utf8");
+      if (/\bUPDATE\s+brief_audit\b/i.test(text) || /\bDELETE\s+FROM\s+brief_audit\b/i.test(text)) {
+        offenders.push(path.relative(SRC, file));
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

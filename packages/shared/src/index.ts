@@ -17,3 +17,4 @@ export * from "./photo-suggest.js";
 export * from "./catalog-import.js";
 export * from "./fonts.js";
 export * from "./digital-menu.js";
+export * from "./f1-state.js"; // F1 pilot P1: Brief durum makinesi (saf çekirdek)
