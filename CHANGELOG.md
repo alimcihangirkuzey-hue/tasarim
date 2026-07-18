@@ -10,6 +10,18 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir
   (`TEZGAH_DB_PATH` + `setDatabase`) — 24 rota dosyasının imzası DEĞİŞMEDİ,
   davranış birebir. TODO'daki kayıtlı test-altyapısı borcu ödendi.
+- **F1 pilot P4 — menü intake + brief yaşam döngüsü (v13):** additive
+  `briefs.spec_values_json` (ürün sahibi onayı `spec-values: 1`; BLOCKER-3'ün
+  evi — spec alan değerleri SWISS sözleşme kolonlarına gömülmedi) · brief
+  uçları (oluştur/oku/güncelle/**guard'lı durum geçişi**; REVIEW/READY kenarları
+  P7'ye kilitli, `501 not_yet_available`) · **F1.7 bağlandı**: dosya invalidate
+  → iş kayıtlı gerilemeyle INCOMPLETE'e düşer · fiyat eksiksizliği **katalogdan
+  okunur** (14e) · web `lib/specJoin.ts` (SpecRef↔manifest TEK modül) +
+  **kapasite uyarısı** (format seçiminde "N ürün sığmıyor" — P4/D ölçümünün
+  doğrudan sonucu) · `/brief` menü akışı: kalıcı eksik-bilgi rozeti (F1.2),
+  logo yükleme, uyarı onayı, durum düğmeleri. Mevcut `/siparis` akışına ve
+  `intakeStore`'a DOKUNULMADI (taslak sürümü bump edilmedi → kullanıcı
+  taslakları atılmaz).
 - **F1 pilot P3 — dosya politikası + audit bağı:** `file-policy.ts` (saf
   sınıflandırma; REDDET/UYAR+onay/BİLGİLENDİR üçlüsü + warning_code sözlüğü —
   kodlar `brief_audit.warning_code` ile birebir) · **genel `/api/assets`

@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { consumeDraftDiscardedNotice, useIntake, type MenuLang } from "../store/intakeStore";
@@ -92,6 +92,12 @@ export function SiparisPage() {
         <div className="intake-warn full" style={{ marginBottom: 8 }}>
           {t("intake.draft_incompatible")}
         </div>
+      )}
+      {/* F1 P4: menü brief yolu — ayrı yaşam döngüsü (bu akışa dokunulmadı) */}
+      {s.step === 1 && (
+        <p style={{ margin: "0 0 10px", fontSize: 14 }}>
+          <Link to="/brief">Menü briefi (F1) →</Link>
+        </p>
       )}
       <ol className="intake-stepper">
         {STEP_KEYS.map((k, i) => (

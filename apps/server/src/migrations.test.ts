@@ -632,6 +632,77 @@ describe("migration v12 (F1 pilot P1 / D-61 — briefs + brief_audit + brief_fil
   });
 });
 
+describe("migration v13 (F1 pilot P4 — briefs.spec_values_json)", () => {
+  let db: Database.Database;
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 11; i++) db.exec(MIGRATIONS[i]);
+    db.prepare(
+      `INSERT INTO briefs (id, source_system, request_type, idempotency_key, created_at, updated_at)
+       VALUES ('brf_eski', 's', 'menu', 'k1', 't', 't')`
+    ).run();
+    db.exec(MIGRATIONS[12]);
+  });
+
+  it("eski satır '{}' alır (yokluk); veri dönüşümü yok", () => {
+    expect(db.prepare("SELECT spec_values_json FROM briefs WHERE id='brf_eski'").get()).toEqual({
+      spec_values_json: "{}",
+    });
+  });
+
+  it("spec değerleri yazılır-okunur (BLOCKER-3'ün evi)", () => {
+    const values = {
+      format: "a4-portrait",
+      orientation: "portrait",
+      qr_target_url: "https://ornek",
+      print_quantity: 500,
+      print_material: "kuşe 170gr",
+      color_font_choice: "marka kiti",
+    };
+    db.prepare("UPDATE briefs SET spec_values_json = ? WHERE id='brf_eski'").run(
+      JSON.stringify(values)
+    );
+    const row = db.prepare("SELECT spec_values_json FROM briefs WHERE id='brf_eski'").get() as {
+      spec_values_json: string;
+    };
+    expect(JSON.parse(row.spec_values_json)).toEqual(values);
+  });
+
+  it("13 sözleşme alanı + status DEĞİŞMEDİ (additive: 17 → 18 kolon)", () => {
+    const cols = (db.prepare("PRAGMA table_info(briefs)").all() as Array<{ name: string }>).map(
+      (c) => c.name
+    );
+    expect(cols).toHaveLength(18);
+    expect(cols.at(-1)).toBe("spec_values_json");
+    for (const c of ["idempotency_key", "status", "customer_ref", "requested_publications_json"]) {
+      expect(cols, c).toContain(c);
+    }
+  });
+
+  it("v12 akışları kırılmadı: audit + files + UNIQUE + CHECK yerinde", () => {
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, idempotency_key, status, created_at, updated_at)
+           VALUES ('b2', 's', 'menu', 'k1', 'DRAFT', 't', 't')`
+        )
+        .run()
+    ).toThrow(/UNIQUE/i);
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, idempotency_key, status, created_at, updated_at)
+           VALUES ('b3', 's', 'menu', 'k3', 'ARCHIVED', 't', 't')`
+        )
+        .run()
+    ).toThrow(/CHECK/i);
+    expect(() => db.prepare("SELECT warning_code FROM brief_audit LIMIT 1").all()).not.toThrow();
+    expect(() => db.prepare("SELECT version, status FROM brief_files LIMIT 1").all()).not.toThrow();
+  });
+});
+
 describe("brief_audit APPEND-ONLY sözleşmesi (uygulama katmanı — repo taraması)", () => {
   /* Sözleşme: tarihçe yerinde DEĞİŞTİRİLMEZ. Kod tabanında brief_audit'e UPDATE
      ya da DELETE yazan bir yol BULUNMAMALI (üst kaydın CASCADE temizliği hariç —

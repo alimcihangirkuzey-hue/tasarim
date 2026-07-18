@@ -7,6 +7,7 @@ import type {
   DocumentState,
   DocumentSummaryDTO,
   ExportRecordDTO,
+  F1CompletenessResult,
   OrderItemDTO,
   PresentMockupMode,
   ProjectDTO,
@@ -32,6 +33,40 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(msg);
   }
   return (await res.json()) as T;
+}
+
+/* F1 P4 — brief uçlarının yanıt biçimi (sunucu briefView'i) */
+export interface BriefView {
+  brief: {
+    id: string;
+    request_type: string;
+    customer_ref: string | null;
+    brand_ref: string | null;
+    content_reference: string | null;
+    delivery_deadline: string | null;
+    status: string;
+    idempotency_key: string;
+    requested_publications: string[];
+    language_requirements: string[];
+    spec_values: Record<string, unknown>;
+  };
+  completeness: F1CompletenessResult;
+  missing: F1CompletenessResult["missing"];
+  next_states: string[];
+  locked_states: string[];
+  price_coverage: { items: number; missing: number } | null;
+  acknowledged: Array<{
+    warning_code: string;
+    acknowledged_by: string;
+    acknowledged_at: string;
+    reason: string;
+  }>;
+}
+
+export interface BriefFileResult {
+  file: { id: string; role: string; version: number; status: string; asset_id: string };
+  warnings: Array<{ code: string; detail_tr: string }>;
+  infos: Array<{ code: string; detail_tr: string }>;
 }
 
 export const api = {
@@ -72,6 +107,35 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ template_id, project_id }),
     }),
+  /* ---- F1 P4: brief yaşam döngüsü + P3 dosya/onay uçları ---- */
+  createBrief: (body: Record<string, unknown>) =>
+    http<BriefView>("/api/briefs", { method: "POST", body: JSON.stringify(body) }),
+  brief: (id: string) => http<BriefView>(`/api/briefs/${id}`),
+  patchBrief: (id: string, patch: Record<string, unknown>) =>
+    http<BriefView>(`/api/briefs/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  transitionBrief: (id: string, body: { to: string; reason?: string; recordedBy?: string }) =>
+    http<BriefView>(`/api/briefs/${id}/transition`, { method: "POST", body: JSON.stringify(body) }),
+  uploadBriefFile: (id: string, role: string, file: File) => {
+    const fd = new FormData();
+    fd.append("role", role);
+    fd.append("file", file);
+    return http<BriefFileResult>(`/api/briefs/${id}/files`, { method: "POST", body: fd });
+  },
+  ackBriefWarning: (
+    id: string,
+    code: string,
+    body: { acknowledged_by: string; reason: string; source_file_version?: number }
+  ) =>
+    http<Record<string, unknown>>(`/api/briefs/${id}/warnings/${code}/ack`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  invalidateBriefFile: (id: string, fileId: string, body: { reason: string; recordedBy: string }) =>
+    http<{ file: { status: string }; regressed_to: string | null }>(
+      `/api/briefs/${id}/files/${fileId}/invalidate`,
+      { method: "PATCH", body: JSON.stringify(body) }
+    ),
+
   document: (id: string) => http<DocumentDTO>(`/api/documents/${id}`),
   updateDocument: (id: string, patch: Partial<DocumentState>) =>
     http<DocumentDTO>(`/api/documents/${id}`, { method: "PUT", body: JSON.stringify(patch) }),

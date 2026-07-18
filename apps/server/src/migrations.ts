@@ -291,4 +291,12 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_brief_files_brief ON brief_files(brief_id);
   `,
+  /* v13 — F1 pilot P4 (ürün sahibi onayı: `spec-values: 1`; programın 3. onaylı
+     migration'ı). BLOCKER-3'ün evi: Product Spec alan DEĞERLERİ (format ·
+     orientation · qr_target_url · print_quantity · print_material ·
+     color_font_choice …) 13 sözleşme kolonunun HİÇBİRİNE ait değil ve SWISS
+     sözleşme alanlarına GÖMÜLEMEZ (D-48'de "params'a gömme" reddedilmişti).
+     v11 canvas_json emsali birebir: ADDITIVE tek kolon, veri dönüşümü YOK,
+     eski satırlar '{}' (yokluk) alır. İçerik şeması shared/f1-spec.ts'te. */
+  `ALTER TABLE briefs ADD COLUMN spec_values_json TEXT NOT NULL DEFAULT '{}';`,
 ];

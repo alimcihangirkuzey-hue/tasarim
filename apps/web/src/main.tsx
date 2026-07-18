@@ -16,6 +16,7 @@ import { ParseDictPage } from "./pages/ParseDictPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { FactoryGuidePage } from "./pages/FactoryGuidePage";
 import { SiparisPage } from "./pages/SiparisPage";
+import { MenuBriefPage } from "./pages/MenuBriefPage";
 /* P2 CAP-CANVAS-01: /atolye LAZY — konva chunk'ı YALNIZ bu rotada iner (ana bundle Δ=0) */
 const AtolyePage = React.lazy(() => import("./pages/AtolyePage"));
 import { api } from "./api";
@@ -107,6 +108,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Routes>
                     <Route path="/" element={<ClientListPage />} />
                     <Route path="/siparis" element={<SiparisPage />} />
+                    {/* F1 P4: menü brief akışı (ayrı yaşam döngüsü — /siparis'e dokunulmadı) */}
+                    <Route path="/brief" element={<MenuBriefPage />} />
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
                     <Route path="/editor/:id" element={<EditorPage />} />
                     <Route path="/settings/themes" element={<ThemesPage />} />

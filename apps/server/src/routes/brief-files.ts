@@ -21,18 +21,20 @@ import path from "node:path";
 import sharp from "sharp";
 import { z } from "zod";
 import {
+  canTransitionF1,
   classifyF1File,
   f1PolicyClassOf,
   f1UploadTypeFromMime,
   isF1Acknowledgeable,
   newId,
   nowISO,
+  toF1Readiness,
   type F1PolicyVerdict,
+  type F1State,
 } from "@tezgah/shared";
 import { db } from "../db.js";
 import { ASSETS_DIR } from "../paths.js";
-
-type BriefRow = { id: string; customer_ref: string | null; status: string };
+import { briefCompleteness, type BriefRow } from "../brief-view.js";
 type BriefFileRow = {
   id: string;
   brief_id: string;
@@ -94,11 +96,7 @@ function writeAudit(input: AuditInput): string {
 }
 
 function findBrief(id: string): BriefRow | null {
-  return (
-    (db.prepare("SELECT id, customer_ref, status FROM briefs WHERE id = ?").get(id) as
-      | BriefRow
-      | undefined) ?? null
-  );
+  return (db.prepare("SELECT * FROM briefs WHERE id = ?").get(id) as BriefRow | undefined) ?? null;
 }
 
 const notesOf = (v: F1PolicyVerdict) => ({
@@ -290,7 +288,40 @@ export function briefFileRoutes(app: FastifyInstance): void {
         payload: { file_id: file.id, role: file.role, previous_status: file.status },
       });
 
-      return { file: { ...file, status: "invalid", updated_at: now } };
+      /* F1.7 BAĞI (P4 — P3'ün açık ucu): dosya geçersizleşince iş GERİ DÜŞER.
+         Guard'dan GEÇEREK (kayıtlı gerileme: sebep + kaydeden); zaten DRAFT/
+         INCOMPLETE ise ya da açık REDDET doğmadıysa durum değişmez. */
+      const completeness = briefCompleteness(db, brief);
+      const from = brief.status as F1State;
+      let regressedTo: F1State | null = null;
+      if (from !== "DRAFT" && from !== "INCOMPLETE" && completeness.openRejects > 0) {
+        const verdict = canTransitionF1({
+          from,
+          to: "INCOMPLETE",
+          readiness: toF1Readiness(completeness),
+          regression: {
+            reason: `dosya geçersizleşti (${file.role} v${file.version}): ${body.reason}`,
+            recordedBy: body.recordedBy,
+          },
+        });
+        if (verdict.ok) {
+          db.prepare("UPDATE briefs SET status = 'INCOMPLETE', updated_at = ? WHERE id = ?").run(
+            now,
+            brief.id
+          );
+          writeAudit({
+            brief_id: brief.id,
+            event_type: "state_changed",
+            acknowledged_by: body.recordedBy,
+            acknowledged_at: now,
+            reason: `dosya geçersizleşti (${file.role} v${file.version}): ${body.reason}`,
+            payload: { from, to: "INCOMPLETE", direction: "backward", trigger: "file_invalidated" },
+          });
+          regressedTo = "INCOMPLETE";
+        }
+      }
+
+      return { file: { ...file, status: "invalid", updated_at: now }, regressed_to: regressedTo };
     }
   );
 }
