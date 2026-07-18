@@ -38,6 +38,8 @@
     "item": "ürün",
     "add_product": "+ Ürün ekle",
     "remove": "Kaldır",
+    "removed_toast": "'{name}' kaldırıldı",
+    "undo": "Geri al",
     "remove_confirm": "{name} kaldırılsın mı? Girilen fiyat/içerik silinecek.",
     "orphan_group": "Eklenmiş — paketi kapatılmış ürünler (düzenlenebilir)",
     "custom_add_ph": "Pakette yok mu? Ürün adı yaz + Enter",
