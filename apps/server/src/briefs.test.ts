@@ -40,6 +40,9 @@ interface ViewLike {
   idempotent_hit?: boolean;
   error?: string;
   code?: string;
+  detail?: string;
+  keys?: string[];
+  issues?: Array<{ size: string; reason: string; detail_tr: string }>;
 }
 const json = (res: { json: () => unknown }) => res.json() as ViewLike;
 const create = (body: Record<string, unknown>) =>
@@ -341,17 +344,106 @@ describe("P5 — GARMENT ailesi", () => {
     expect(json(res).code).toBe("design_not_ready");
   });
 
-  it("BEDEN×ADET: toplam HESAPLANIR; 0/negatif adetler DÜŞER; boş dağılım EKSİK sayılır", async () => {
+  it("BEDEN×ADET: geçerli yazım + toplam HESAPLANIR (0 adet MEŞRU, korunur)", async () => {
     const id = await garmentBrief();
-    await patch(id, { spec_values: { size_distribution: { S: 10, M: 20, L: 0, XL: -3 } } });
+    await patch(id, { spec_values: { size_distribution: { XS: 0, S: 10, M: 20, L: 15 } } });
     const view = json(await get(id));
-    expect(view.brief.spec_values.size_distribution).toEqual({ S: 10, M: 20 });
+    expect(view.brief.spec_values.size_distribution).toEqual({ XS: 0, S: 10, M: 20, L: 15 });
     expect(view.missing.map((m) => m.id)).not.toContain("size_distribution");
+  });
 
-    await patch(id, { spec_values: { size_distribution: { S: 0 } } });
-    const bosDagilim = json(await get(id));
-    expect(bosDagilim.brief.spec_values.size_distribution).toEqual({});
-    expect(bosDagilim.missing.map((m) => m.id)).toContain("size_distribution");
+  it("D-63 KATI DOĞRULAMA: negatif · ondalık · metin · NaN · bilinmeyen beden → 400 (sessiz düzeltme YOK)", async () => {
+    const id = await garmentBrief();
+    const cases: Array<[string, unknown]> = [
+      ["negatif", { S: -3 }],
+      ["ondalık", { S: 2.5 }],
+      ["metin", { S: "10" }],
+      ["NaN", { S: Number.NaN }],
+      ["bilinmeyen beden", { XXXL: 5 }],
+      ["dizi", [1, 2]],
+    ];
+    /* AJAN-5/B-7: fixture ÖNCE geçerli değer yazar — böylece "red mevcut veriyi
+       KORUR" iddiası gerçekten sınanır (boş fixture'da assertion boşta geçerdi) */
+    await patch(id, { spec_values: { size_distribution: { S: 10, M: 5 } } });
+
+    for (const [ad, dist] of cases) {
+      const res = await patch(id, { spec_values: { size_distribution: dist } });
+      expect(res.statusCode, ad).toBe(400);
+      expect(json(res).error, ad).toBe("invalid_size_distribution");
+      /* AJAN-5/B-8: gerekçe GERÇEKTEN dolu bir metin olmalı (undefined geçmesin) */
+      const detail = json(res).detail;
+      expect(typeof detail, ad).toBe("string");
+      expect((detail as string).length, ad).toBeGreaterThan(5);
+      /* reddedilen yazım MEVCUT GEÇERLİ DEĞERİ EZMEZ */
+      expect(json(await get(id)).brief.spec_values.size_distribution, ad).toEqual({ S: 10, M: 5 });
+    }
+  });
+
+  it("AJAN-5/B-1: üst sınır — 1e21 · MAX_VALUE · güvensiz tam sayı reddedilir (toplam Infinity olamaz)", async () => {
+    const id = await garmentBrief();
+    for (const dist of [{ S: 1e21 }, { S: Number.MAX_VALUE }, { S: Number.MAX_SAFE_INTEGER + 1 }, { S: 1_000_001 }]) {
+      const res = await patch(id, { spec_values: { size_distribution: dist } });
+      expect(res.statusCode, JSON.stringify(dist)).toBe(400);
+      expect(json(res).error).toBe("invalid_size_distribution");
+    }
+    /* sınır İÇİ değer geçer */
+    expect((await patch(id, { spec_values: { size_distribution: { S: 1_000_000 } } })).statusCode).toBe(200);
+  });
+
+  it("AJAN-5/B-2: ilan edilen teknik listesi ZORLANIR — decoupe garment'ta reddedilir", async () => {
+    const id = await garmentBrief();
+    const res = await patch(id, { spec_values: { technique: "decoupe" } });
+    expect(res.statusCode).toBe(400);
+    expect(json(res).error).toBe("invalid_spec_value");
+    expect(String(json(res).detail)).toContain("broderie");
+    /* DTF bilinçli olarak KABUL (bilgi notu üretir) */
+    expect((await patch(id, { spec_values: { technique: "dtf" } })).statusCode).toBe(200);
+  });
+
+  it("AJAN-5/B-3: çöp veri REDDET-sınıfı tasarım kapısını AÇAMAZ (tip denetimi)", async () => {
+    const id = json(await create({ request_type: "garment", customer_ref: "cli1" })).brief.id;
+    for (const bad of [
+      { placements: "duz-metin" },
+      { placements: [] },
+      { placements: ["olmayan_alan"] },
+      { garment_type: { a: 1 } },
+      { garment_type: "uydurma_tip" },
+      { fabric_color: 42 },
+      { print_size_position: 42 },
+    ]) {
+      const res = await patch(id, { spec_values: bad });
+      expect(res.statusCode, JSON.stringify(bad)).toBe(400);
+      expect(json(res).error, JSON.stringify(bad)).toBe("invalid_spec_value");
+    }
+    /* hiçbiri yazılmadı → tasarım kapısı hâlâ KAPALI */
+    const view = json(await get(id));
+    expect(view.completeness.designReady).toBe(false);
+    expect(view.missing.map((m) => m.id)).toEqual(
+      expect.arrayContaining(["garment_type", "placements"])
+    );
+  });
+
+  it("boş harita ve TOPLAM=0 → üretim önkoşulu EKSİK (0'lar meşru ama toplam sıfır)", async () => {
+    const id = await garmentBrief();
+    await patch(id, { spec_values: { size_distribution: {} } });
+    expect(json(await get(id)).missing.map((m) => m.id)).toContain("size_distribution");
+
+    await patch(id, { spec_values: { size_distribution: { S: 0, M: 0 } } });
+    const sifir = json(await get(id));
+    expect(sifir.brief.spec_values.size_distribution).toEqual({ S: 0, M: 0 });
+    expect(sifir.missing.map((m) => m.id)).toContain("size_distribution");
+    expect(sifir.completeness.productionCompleteness).toBeLessThan(100);
+  });
+
+  it("İSTEMCİ TOPLAMI güvenilir kaynak DEĞİL: total_quantity yazılamaz (400) — toplam hep hesaplanır", async () => {
+    const id = await garmentBrief();
+    const res = await patch(id, {
+      spec_values: { size_distribution: { S: 1 }, total_quantity: 9999 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(json(res).error).toBe("unknown_spec_keys");
+    const view = json(await get(id));
+    expect(view.brief.spec_values.total_quantity).toBeUndefined();
   });
 
   it("DTF seçimi REDDEDİLMEZ — bilgi notu üretir (keşif E düzeltmesi)", async () => {
@@ -363,11 +455,20 @@ describe("P5 — GARMENT ailesi", () => {
     expect(view.completeness.notices[0].message_tr).toMatch(/alfa-PNG/i);
   });
 
-  it("YAZMA BEKÇİSİ: Spec'te tanımsız anahtar 400; menü alanı garment'a yazılamaz", async () => {
+  it("YAZMA BEKÇİSİ: tanımsız anahtar 400 + AUDIT satırı; menü alanı garment'a yazılamaz", async () => {
     const id = await garmentBrief();
     const uydurma = await patch(id, { spec_values: { uydurma_alan: "x" } });
     expect(uydurma.statusCode).toBe(400);
     expect(json(uydurma).error).toBe("unknown_spec_keys");
+    expect(String(json(uydurma).detail)).toContain("uydurma_alan");
+
+    /* D-63: red SESSİZ değil — denetim izi kalır */
+    const audit = db
+      .prepare("SELECT event_type, reason, payload_json FROM brief_audit WHERE brief_id = ? AND event_type = 'spec_write_rejected'")
+      .all(id) as Array<{ event_type: string; reason: string; payload_json: string }>;
+    expect(audit).toHaveLength(1);
+    expect(audit[0].reason).toContain("uydurma_alan");
+    expect(JSON.parse(audit[0].payload_json).unknown_keys).toEqual(["uydurma_alan"]);
 
     const menuAlani = await patch(id, { spec_values: { qr_target_url: "https://x" } });
     expect(menuAlani.statusCode).toBe(400);
@@ -414,6 +515,64 @@ describe("P5 — GARMENT ailesi", () => {
     expect(design.statusCode).toBe(200);
     /* üretim incelemesi hâlâ P7'ye kilitli */
     expect((await transition(id, { to: "READY_FOR_PRODUCTION_REVIEW" })).statusCode).toBe(501);
+  });
+});
+
+describe("REGRESYON — P4 menü yolu ve genel intake yüzeyi (D-63 gate kalemi)", () => {
+  it("P4 MENÜ yolu bozulmadı: menü alan matrisi + kapasite/fiyat görünümü aynen", async () => {
+    const res = await create({
+      request_type: "menu",
+      customer_ref: "cli1",
+      language_requirements: ["tr"],
+      requested_publications: ["a4_print"],
+      content_reference: "catalog:cli1",
+      spec_values: { format: "a4-portrait", format_template: "menu-liste-premium" },
+    });
+    expect(res.statusCode).toBe(201);
+    const view = json(res);
+    const ids = view.missing.map((m) => m.id);
+    /* menü koşulluları canlı */
+    expect(ids).toEqual(expect.arrayContaining(["print_quantity", "print_material", "file:logo"]));
+    /* garment alanları menüde SORULMAZ */
+    expect(ids).not.toContain("size_distribution");
+    expect(ids).not.toContain("garment_type");
+    expect(view.price_coverage).toMatchObject({ items: 2, missing: 0 });
+    expect(view.completeness.designReady).toBe(true);
+  });
+
+  it("GENEL INTAKE yüzeyi ayakta: /api/sectors · /api/ingredients · /api/intake doğrulaması", async () => {
+    const sectors = await app.inject({ method: "GET", url: "/api/sectors" });
+    expect(sectors.statusCode).toBe(200);
+    const ingredients = await app.inject({ method: "GET", url: "/api/ingredients" });
+    expect(ingredients.statusCode).toBe(200);
+    expect((ingredients.json() as unknown[]).length).toBeGreaterThan(0);
+    /* intake commit ucu şemasıyla ayakta (boş gövde → Zod 400, çökme değil) */
+    const intake = await app.inject({ method: "POST", url: "/api/intake", payload: {} });
+    expect(intake.statusCode).toBe(400);
+    expect((intake.json() as { error: string }).error).toBe("validation");
+  });
+
+  it("APPEND-ONLY: MEVCUT satırların İÇERİĞİ değişmez (yalnız yeni satır eklenir)", async () => {
+    const id = await create({ request_type: "menu", customer_ref: "cli1" }).then((r) => json(r).brief.id);
+    /* id'ler rastgele → kronolojik sıra YOK; kimlik bazlı karşılaştırma yapılır */
+    const byId = () => {
+      const rows = db
+        .prepare("SELECT id, event_type, reason, payload_json, created_at FROM brief_audit WHERE brief_id = ?")
+        .all(id) as Array<Record<string, unknown>>;
+      return new Map(rows.map((r) => [String(r.id), JSON.stringify(r)]));
+    };
+
+    const before = byId();
+    await patch(id, { requester_notes: "not-1" });
+    await patch(id, { requester_notes: "not-2" });
+    await patch(id, { spec_values: { uydurma: 1 } }); /* reddedilen yazım da satır açar */
+    const after = byId();
+
+    expect(after.size).toBe(before.size + 3);
+    /* AJAN-5/B-9: eski satırların İÇERİĞİ birebir aynı mı? (sayı+id tekilliği bunu ölçmezdi) */
+    for (const [rowId, content] of before) {
+      expect(after.get(rowId), `audit satırı değişmiş: ${rowId}`).toBe(content);
+    }
   });
 });
 

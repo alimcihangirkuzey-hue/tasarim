@@ -50,6 +50,7 @@ export interface BriefView {
     delivery_deadline: string | null;
     status: string;
     idempotency_key: string;
+    requester_notes: string;
     requested_publications: string[];
     language_requirements: string[];
     spec_values: Record<string, unknown>;

@@ -165,7 +165,10 @@ export function computeF1Completeness(input: F1BriefInput): F1CompletenessResult
     const isProduction = rule.layer === "production_pre";
     if (isProduction) denominator += 1;
 
-    if (f1HasValue(values[rule.id])) {
+    /* Alanın kendi doluluk kuralı varsa o geçerlidir (ör. beden dağılımı:
+       varlık YETMEZ, TOPLAM>0 şarttır — 0'lar meşru veri olduğu için) */
+    const filled = rule.satisfied ? rule.satisfied(values[rule.id]) : f1HasValue(values[rule.id]);
+    if (filled) {
       if (isProduction) satisfied += 1;
       continue;
     }
