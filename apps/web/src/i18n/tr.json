@@ -243,6 +243,7 @@
     "off": "Kapalı",
     "mockup": "Mockup",
     "mockup_pick": "Sahne seç",
+    "mockup_live": "Canlı önizleme ↗",
     "mockup_none_title": "Önce sahne kur",
     "mockup_none_body": "Bu müşteride uygun sahne yok. Müşteri sayfasındaki \"Sahneler\" sekmesinden vitrin/cephe/tişört fotoğrafı yükleyip 4 köşeyi işaretle.",
     "mockup_go_scenes": "Sahneler sekmesine git",
