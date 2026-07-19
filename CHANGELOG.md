@@ -14,6 +14,41 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   — Dosya açılamadı / okunamadı"; "Geçiş engellendi — Tasarım eşiği kapalı…").
 
 ### Added
+- **Canonical v4.1.0 — Bölüm 11 "Geliştirme Operasyonu" (Package Journal +
+  Developer Cockpit):** modül mimarisi kayda geçti; **kod yazılmadı.** Package
+  Journal geliştirme sürecinin **ölçüm** verisinde tek doğruluk kaynağı ilan
+  edildi (iki kayıt türü: paket + olay; append-only, ölçüm dürüstlüğü şartlı:
+  koşulmayan kapı "geçti" yazılamaz). İki sınırlı istisna, ikisi de **işaretli**:
+  dış sistemlerin canlı okuması ve yol haritası gibi niyet bilgisinin plan
+  sınıfı — hiçbiri ölçüm gibi sunulamaz. Modül dört
+  **modül fazına** ayrıldı (Bölüm 10.2'nin program fazlarından ayrı) — 0 Journal ·
+  1 salt-okunur yüzey · 2 canlı gözlem + olay akışı · 3 kapı-içi operasyon;
+  *merge başlat* ve *dağıtım başlat* bu fazın **kapalı kalemleri** olarak kayıtlı.
+  **11.6: Cockpit icra yüzeyidir, yetki kaynağı
+  değildir** — panelden yapılabilen hiçbir işlem panel dışındaki kapısından muaf
+  değil. Yetkilendirme sözleşmede yer ayırdı, uygulaması ertelendi (K-16..K-20).
+  Faz 0 şartının gerekçesi ölçüldü: gate sonuçları bugün **hiçbir makine-okunur
+  yerde saklanmıyor** (CI yok · git hook yok · vitest reporter yok · gate tablosu
+  yok); tek kalıcı iz TODO.md'ye düzyazı olarak düşen, ayrıştırılamayan ve hiçbir
+  mekanizmayla doğrulanmayan cümleler.
+- **ADR-007 (AÇIK) — panelden otomatik merge yetkisi:** serideki ilk
+  KABUL-olmayan kayıt. Dağıtım yarısı koşulsuz kapalı (canlı ortama geçiş ürün
+  sahibine rezerve). Merge yarısı, önce bir **otorite boşluğunun** çözülmesini
+  bekliyor: merge yasağının yaşadığı `docs/00_READ_FIRST.md`, Canonical §0.2
+  çelişki sıralamasının altı kademesinden hiçbirine karşılık gelmiyor — yasak
+  geçersiz değil, *rütbesi tanımsız* (yeni **EK-C/A-07**).
+- **EK-C/A-08 — ADR numaralandırma çakışması izlemeye geri alındı:** K-04
+  çakışmanın giderildiğini ilan etmişti; ölçüm ilkenin icra edilmediğini
+  gösterdi (hiçbir dosya yeniden adlandırılmadı, tek TDR kaydı yok, canlı
+  `TODO.md` hâlâ `ADR-7` diye teknoloji ADR'sine atıf yapıyor; canlı kodda da
+  atıf var — `apps/server/src/routes/assets.ts:10`). Madde DEVIR_RAPORU'nda
+  duruyor (`:101`, açık soru 7) ama EK-C'ye taşınırken düşmüştü.
+  **Şerh:** çakışma dizinde değil *kullanımdadır* — `docs/adr/` bugün 001-007
+  içerir, **ADR-008 slotu boştur**; çakışan, arşivdeki tek haneli `ADR-1..8`
+  teknoloji serisidir. Numara kaydırmak çözmez (iki seri paralel yaşadıkça her
+  numara iki anlama gelir); çözüm A-08'in icrasıdır. Adlandırmada iki aday var
+  ve seçim de A-08'e dahil: DEVIR_RAPORU'nun `ADR-T-*` önerisi ile Canonical
+  0.3'ün `TDR-nnn` kararı.
 - **F1 pilot P0 — route-test harness:** `buildApp()` (apps/server/src/app.ts)
   kuruluşu dinlemeden döndürür → route testleri `app.inject()` ile gerçek uç
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir

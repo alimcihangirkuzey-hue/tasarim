@@ -56,6 +56,7 @@ Materyalizasyon = ilgili repodaki İLK goal commit'i (styva'da GOAL-FLYER M2-ad�
 | /docs/EXECUTION_DIRECTIVE.md | EXECUTION DIRECTIVE metni (CODE EXECUTION BOOTSTRAP'ı 00_READ_FIRST devraldı) |
 | /docs/MULTI_REPOSITORY_EVOLUTION_DIRECTIVE.md | BU BELGE (üç repoda kopya) |
 | /docs/adr/ADR-001..006.md | Faz 0 §14-19 (001/004 D-9 tadil şerhli) |
+| /docs/adr/ADR-007.md | Canonical v4.1.0 Bölüm 11 kökenli (Faz 0 karşılığı yok); durumu AÇIK |
 | /docs/** | Diğer teknik/yönetişim belgeleri |
 | CHANGELOG.md · VERSION.md · RELEASE_NOTES.md (repo kökü) | Yeni, repo-başına (endüstri standardı konum) |
 | README (repo kökü) | Tek satır işaret eklenir: "Başlamadan önce: /docs/00_READ_FIRST.md" |

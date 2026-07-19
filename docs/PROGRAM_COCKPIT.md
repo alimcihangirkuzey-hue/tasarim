@@ -1,4 +1,6 @@
 > **C-repo kopyası (pointer şerhi):** Master kokpit styva reposunda yaşar (direktif v1.2 §6); bu dosya PART-B adım-0 materyalizasyonu anındaki v14 anlık görüntüsüdür. Güncel sürüm için styva /docs esastır.
+>
+> **YEREL EK (2026-07-19, sürüm ATLAMADI):** §3 ADR endeksine ADR-007 satırı eklendi. Sürüm atlanmadı çünkü sürüm atlama yetkisi master kopyadadır (yönetişim hattı); bu yalnız yerel endeks tazelemesidir. Master styva kopyası bu satırı henüz taşımıyor — senkron yönetişimin işidir.
 
 # STYVA PROGRAM COCKPIT v14 — 2026-07-14 (F8-D AUDIT PASS — MERGE KUTUSU + T3 PAKETİ VERİLDİ)
 **Programın yaşayan hafızası. Her yönetişim (Fable) oturumu bununla açılır; her kayda
@@ -59,7 +61,9 @@ beyanları komut-doğrulamalı (D-20 pratiği).
 001 styva çatı **(D-9 tadil: üç yaşayan ürün + contract entegrasyonu)** · 002 korkuluklu
 Konva · 003 Store-tenant, atölye=Agency · 004 katalog **(D-9 tadil: restoran verisi
 SWISS'te yaşar, bağ=contract)**, BrandKit styva · 005 üretim=creative-engine, mockup≠prova ·
-006 kredi çerçevesi, manuel v1 — hepsi KABUL (PSP = kullanıcı kararı, park).
+006 kredi çerçevesi, manuel v1 — 001-006 hepsi KABUL (PSP = kullanıcı kararı, park) ·
+**007 panelden otomatik merge yetkisi — AÇIK, karara bağlanmadı** (Canonical 11.6 + EK-C/A-04 +
+**EK-C/A-07'ye bağlı — tıkayıcı olan A-07'dir**; serideki ilk KABUL-olmayan kayıt).
 
 ## 4. Karar günlüğü (D-log)
 D-1 queue ticari öncelikle sıralandı · D-2 PA-1/PA-2 · D-3 swiss Vercel=fixture vitrin ·
