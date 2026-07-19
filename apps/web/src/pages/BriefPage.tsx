@@ -365,9 +365,17 @@ export function BriefPage() {
                 <select
                   style={input}
                   value={str("garment_type")}
-                  onChange={(e) =>
-                    void patch({ spec_values: { garment_type: e.target.value, placements: [] } })
-                  }
+                  onChange={(e) => {
+                    /* Ürün tipi değişince baskı yerlerini KÖRÜ KÖRÜNE silme:
+                       yeni tipte geçerli olanlar korunur (BULGU-5 dersi). */
+                    const gecerli = areasForKind(e.target.value as GarmentKind);
+                    void patch({
+                      spec_values: {
+                        garment_type: e.target.value,
+                        placements: placements.filter((p) => gecerli.includes(p)),
+                      },
+                    });
+                  }}
                 >
                   <option value="">— seçin —</option>
                   {GARMENT_KINDS.map((g) => (

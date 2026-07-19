@@ -115,8 +115,13 @@ function sanitizeSpecValues(
       values[key] = check.value;
       continue;
     }
-    /* boş dize = alanı TEMİZLE (eksik olarak görünsün) */
+    /* TEMİZLEME yolu: boş dize ya da BOŞ DİZİ = alanı sil (eksik görünsün).
+       BULGU-5 (GT-F1/P5 otomatik tur): boş dizi doğrulayıcıya düşünce
+       "en az 1 seçim" kuralına takılıyor, istek atomik olduğu için AYNI
+       gövdedeki geçerli alanlar da yazılamıyordu → ürün tipi hiç
+       seçilemiyordu. Temizleme, doğrulamadan ÖNCE ele alınır. */
     if (typeof raw === "string" && raw.trim() === "") continue;
+    if (Array.isArray(raw) && raw.length === 0) continue;
     if (raw === null || raw === undefined) continue;
 
     /* AJAN-5/B-2,B-3: alan TİP/DEĞER denetimi — çöp veri REDDET-sınıfı kapıyı

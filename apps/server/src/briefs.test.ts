@@ -400,12 +400,28 @@ describe("P5 — GARMENT ailesi", () => {
     expect((await patch(id, { spec_values: { technique: "dtf" } })).statusCode).toBe(200);
   });
 
+  it("BULGU-5: BOŞ DİZİ alanı TEMİZLER — aynı gövdedeki geçerli alanları ENGELLEMEZ", async () => {
+    const id = json(await create({ request_type: "garment", customer_ref: "cli1" })).brief.id;
+    /* UI ürün tipi değişiminde placements'ı boşaltabilir; bu istek REDDEDİLMEMELİ */
+    const res = await patch(id, { spec_values: { garment_type: "tshirt", placements: [] } });
+    expect(res.statusCode).toBe(200);
+    expect(json(res).brief.spec_values.garment_type).toBe("tshirt");
+    expect(json(res).brief.spec_values.placements).toBeUndefined();
+    /* ve alan gerçekten EKSİK sayılır (temizlendi) */
+    expect(json(res).missing.map((m) => m.id)).toContain("placements");
+
+    /* dolu yazım hâlâ çalışır, sonra boşaltma temizler */
+    await patch(id, { spec_values: { placements: ["chest_center"] } });
+    expect(json(await get(id)).brief.spec_values.placements).toEqual(["chest_center"]);
+    await patch(id, { spec_values: { placements: [] } });
+    expect(json(await get(id)).brief.spec_values.placements).toBeUndefined();
+  });
+
   it("AJAN-5/B-3: çöp veri REDDET-sınıfı tasarım kapısını AÇAMAZ (tip denetimi)", async () => {
     const id = json(await create({ request_type: "garment", customer_ref: "cli1" })).brief.id;
     for (const bad of [
       { placements: "duz-metin" },
-      { placements: [] },
-      { placements: ["olmayan_alan"] },
+            { placements: ["olmayan_alan"] },
       { garment_type: { a: 1 } },
       { garment_type: "uydurma_tip" },
       { fabric_color: 42 },
