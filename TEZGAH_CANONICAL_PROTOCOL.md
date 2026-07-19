@@ -1,121 +1,179 @@
-# TEZGÂH — DİNAMİK TASARIM VE EŞGÜDÜMLÜ ÜRETİM SaaS KANONİK PROTOKOLÜ
+# TEZGÂH — KANONİK MİMARİ PROTOKOLÜ
 
-**Belge türü:** Ürün anayasası + mimari karar kaydı + geliştirme protokolü  
-**Durum:** Tek kanonik teknik ve ürün otoritesi  
-**Sürüm:** 3.1.0  
-**Tarih:** 19 Temmuz 2026  
-**Kanonik dosya adı:** `TEZGAH_CANONICAL_PROTOCOL.md`  
-**Yer:** Repo kök dizini  
-**Önceki protokoller:** Aktif otorite değildir; arşivlenir, analiz edilir, geçerli kararları bu dosyaya taşınır.
-
----
-
-# 0. KANONİK KARAR
-
-TEZGÂH; baskı, grafik, kişiselleştirme, reklam üretimi, tabela, ambalaj, tekstil, menü ve mimari görselleştirme gibi uzmanlık gerektiren karmaşık işleri kolaylaştırmak için geliştirilen, Türkiye’den başlayarak evrensel pazara açılabilen, çok kiracılı ve modüler bir **Creative Production SaaS** platformudur.
-
-Platform tek bir sektöre, tek bir kullanıcı tipine veya tek bir editör ekranına indirgenemez. Menü üreticisi, iş elbisesi firması, reklam ajansı, matbaa, ambalajcı, tabelacı, promosyoncu, çevrim içi kişiselleştirilmiş kıyafet satıcısı veya yalnızca cam giydirme yapan işletme aynı çekirdeği kullanabilir; ancak yalnızca kendi iş koluna ait çalışma alanlarını ve araçları görür.
-
-TEZGÂH’ın başarısı, kullanıcıya sınırsız tasarım kontrolü vermesiyle değil; farklı sektörlerin uzman bilgisini yazılıma dönüştürmesi, zor üretim süreçlerini sadeleştirmesi ve profesyonel sonucu mümkün olan en az kullanıcı kararıyla üretmesiyle ölçülür.
+**Belge türü:** Ürün anayasası + mimari referans (Software Architecture Document)
+**Durum:** Tek kanonik ürün ve mimari otoritesi
+**Sürüm:** 4.0.0
+**Tarih:** 19 Temmuz 2026
+**Kanonik dosya adı:** `TEZGAH_CANONICAL_PROTOCOL.md`
+**Yer:** Repo kök dizini
+**Önceki sürümler:** 3.1.0 ve öncesi bu belgede birleştirildi; arşiv `docs/archive/protocols/`
 
 ---
 
-# 1. BU BELGENİN OTORİTESİ
+# BÖLÜM 0 — BELGENİN OTORİTESİ
 
-## 1.1 Tek protokol ilkesi
+## 0.1 Tek protokol ilkesi
 
-- Repo kökünde yalnızca `TEZGAH_CANONICAL_PROTOCOL.md` ürün ve mimari anayasasıdır.
-- `FINAL`, `MASTER`, `LATEST`, `VISION`, `NEW_PROTOCOL`, `CONSTITUTION` veya benzeri paralel anayasa dosyaları açılamaz.
-- Yeni kararlar yeni protokol dosyası açılarak değil, bu dosyanın sürümü yükseltilerek işlenir.
-- Modül notları, ADR’ler ve uygulama raporları bu belgeyle çelişemez.
-- Çelişki halinde sıralama:
-  1. Kullanıcının güncel ve açık talimatı,
-  2. Bu kanonik protokol,
-  3. Kabul edilmiş ADR,
-  4. Aktif modül spesifikasyonu,
-  5. Görev talimatı.
+- Repo kökünde yalnızca bu dosya ürün ve mimari anayasasıdır.
+- `FINAL`, `MASTER`, `LATEST`, `VISION`, `NEW_PROTOCOL`, `CONSTITUTION` benzeri paralel anayasa dosyaları açılamaz.
+- Yeni kararlar yeni dosya açılarak değil, **bu dosyanın sürümü yükseltilerek** işlenir.
+- Modül notları, karar kayıtları ve uygulama raporları bu belgeyle çelişemez.
 
-## 1.2 Eski protokollerin ele alınması
+## 0.2 Çelişki sıralaması
 
-Eski protokoller silinmeden önce analiz edilir.
+1. Ürün sahibinin güncel ve açık talimatı
+2. Bu kanonik protokol
+3. Kabul edilmiş **ADR** (mimari karar kaydı)
+4. Kabul edilmiş **TDR** (teknoloji karar kaydı)
+5. Aktif modül/profil spesifikasyonu
+6. Görev talimatı
 
-Zorunlu süreç:
+## 0.3 Karar kaydı disiplini
 
-1. Repodaki tüm `.md` dosyaları listelenir.
-2. Ürün vizyonu, mimari, güvenlik, veri, baskı, test ve iş akışı kararları çıkarılır.
-3. Her karar şu sınıflardan biriyle işaretlenir:
-   - `KORUNDU`
-   - `REVİZE EDİLDİ`
-   - `BİRLEŞTİRİLDİ`
-   - `ÇELİŞKİLİ`
-   - `GEÇERSİZ`
-   - `BELİRSİZ`
-4. Unutulmuş veya bu belgede bulunmayan önemli kararlar kullanıcıya raporlanır.
-5. Kullanıcı kararı sonrası geçerli hükümler bu dosyaya işlenir.
-6. Eski belgeler `docs/archive/protocols/YYYY-MM/` altına taşınır.
-7. Arşiv dosyaları aktif geliştirme otoritesi olarak kullanılamaz.
+İki ayrı kayıt türü vardır ve numaraları çakışamaz:
 
-Eski protokoller erişilemiyorsa ajan bunu gizleyemez; açıkça:
+| Tür | Konu | Numara | Değişme sıklığı |
+|---|---|---|---|
+| **ADR** | Mimari karar (sınır, sözleşme, model, ilke) | `ADR-nnn` | Nadir; anayasa etkisi olabilir |
+| **TDR** | Teknoloji seçimi (kütüphane, servis, motor) | `TDR-nnn` | Sık; anayasayı etkilemez |
 
-> “Mevcut repo içinde şu eski protokoller bulunamadı veya içerikleri doğrulanamadı.”
+Bir teknolojinin değişmesi **TDR** ile olur ve bu belgenin gövdesini değiştirmez. Bir mimari sınırın değişmesi **ADR** ile olur ve bu belgeye işlenir.
 
-diye rapor verir.
+## 0.4 Eski protokollerin ele alınması
 
----
+Eski protokoller silinmeden önce analiz edilir: kararlar çıkarılır ve
+`KORUNDU / REVİZE EDİLDİ / BİRLEŞTİRİLDİ / ÇELİŞKİLİ / GEÇERSİZ / BELİRSİZ`
+olarak sınıflandırılır; karşılığı olmayan hükümler ürün sahibine raporlanır; ardından belgeler
+`docs/archive/protocols/YYYY-MM/` altına taşınır ve **aktif otorite olarak kullanılmaz**.
 
-# 2. ÜRÜNÜN GERÇEK AMACI
-
-## 2.1 TEZGÂH bir grafik editöründen fazlasıdır
-
-TEZGÂH’ın amacı yalnızca kullanıcının nesneleri sürükleyip bırakması değildir.
-
-Ana amaçlar:
-
-- pazarlamacının sipariş almasını kolaylaştırmak,
-- müşteriye sorulacak soru sayısını azaltmak,
-- müşteri verilerini standartlaştırmak,
-- grafik tasarım kararlarını kurallara dönüştürmek,
-- tasarım bilgisini yazılıma gömmek,
-- aynı projeden çok sayıda materyal üretmek,
-- tasarımlar arasında marka ve içerik tutarlılığı sağlamak,
-- grafikeri olmayan firmaların profesyonel çıktı almasını sağlamak,
-- grafiker varsa onun işini hızlandırmak ve son onay rolüne taşımak.
-
-## 2.2 Hedef kullanıcılar
-
-Birincil kullanıcılar:
-
-- saha pazarlamacısı,
-- müşteri temsilcisi,
-- reklam firması sahibi,
-- matbaa çalışanı,
-- promosyon firması,
-- restoran çözüm sağlayıcısı,
-- grafiker olmayan küçük işletme,
-- grafik tasarımcı,
-- baskı operatörü,
-- üretim sorumlusu,
-- menü üreticisi ve menü kaplama firması,
-- iş elbisesi ve tekstil baskı firması,
-- ambalaj üreticisi,
-- tabelacı,
-- cam ve folyo uygulama firması,
-- kişiselleştirilmiş ürün satıcısı,
-- çevrim içi baskılı kıyafet mağazası.
-
-## 2.3 Kullanıcıya az karar verdirme ilkesi
-
-Her yeni özellik şu soruyla değerlendirilir:
-
-> Bu özellik pazarlamacının müşteriye soracağı soruları azaltıyor mu, tasarım kararını otomatikleştiriyor mu veya üretim hatasını azaltıyor mu?
-
-Cevap hayırsa özellik yeniden değerlendirilir.
+> Bu süreç 2026-07 döneminde icra edilmiştir. Devir kaydı:
+> `docs/archive/protocols/2026-07/DEVIR_RAPORU.md` — sınıflandırma, taşınması gereken
+> hükümler ve açık sorular oradadır. Açık maddeler **EK-C**'de izlenir.
 
 ---
 
-# 3. PROJE MERKEZLİ MİMARİ
+# BÖLÜM 1 — ÜRÜN ANAYASASI
 
-TEZGÂH’ın merkezinde belge değil, **müşteri projesi** bulunur.
+## 1.1 Kanonik tanım
+
+> **TEZGÂH, karmaşık baskı, grafik, kişiselleştirme ve reklam üretimi işlerini kolaylaştıran; sektörlere göre modülerleşen, Türkiye'den başlayıp dünyaya açılan evrensel Creative Production SaaS platformudur.**
+
+**Slogan:** *Karmaşık işleri kolaylaştırır.* Bu, pazarlama cümlesi değil geliştirme filtresidir.
+
+Platform tek bir sektöre, tek kullanıcı tipine veya tek editör ekranına indirgenemez. Menü üreticisi, iş elbisesi firması, reklam ajansı, matbaa, ambalajcı, tabelacı, promosyoncu veya cam giydirme firması **aynı çekirdeği** kullanır; yalnızca kendi iş koluna ait çalışma alanını görür.
+
+TEZGÂH bir Canva kopyası değildir. TEZGÂH aynı anda: sipariş alma sistemi · müşteri proje sistemi · marka ve katalog merkezi · dinamik tasarım motoru · grafiker karar motoru · çok materyalli üretim sistemi · baskı öncesi kontrol sistemi · müşteri onay sistemi · sektör stüdyoları platformudur.
+
+## 1.2 Ürünün amacı ve değer ölçütü
+
+Başarı ölçütü, kullanıcıya sınırsız tasarım kontrolü vermek **değildir**; uzman bilgisini yazılıma dönüştürmek, zor üretim süreçlerini sadeleştirmek ve profesyonel sonucu **en az kullanıcı kararıyla** üretmektir.
+
+Ana amaçlar: pazarlamacının sipariş almasını kolaylaştırmak · müşteriye sorulacak soruyu azaltmak · müşteri verisini standartlaştırmak · tasarım kararlarını kurallara dönüştürmek · aynı projeden çok sayıda materyal üretmek · marka ve içerik tutarlılığı sağlamak · grafikeri olmayan firmaya profesyonel çıktı vermek · grafikeri varsa onu son onay rolüne taşımak.
+
+**Geliştirme filtresi** — her yeni özellik şu sorulardan geçer:
+
+1. Karmaşık bir işi gerçekten kolaylaştırıyor mu?
+2. Kullanıcının uzmanlık ihtiyacını azaltıyor mu?
+3. Sorulması gereken soru sayısını düşürüyor mu?
+4. Hata ihtimalini azaltıyor mu?
+5. Profesyonel kaliteyi koruyor veya yükseltiyor mu?
+6. Yalnızca ilgili sektörün kullanıcısına mı gösteriliyor?
+7. Evrensel çekirdek + yerel uyarlama modeline uyuyor mu?
+8. Yeni sektörlerin sonradan eklenmesini zorlaştırıyor mu?
+
+Bu filtreyi geçmeyen özellik yeniden tasarlanır veya reddedilir.
+
+## 1.3 Hedef kullanıcılar
+
+Saha pazarlamacısı · müşteri temsilcisi · reklam firması sahibi · matbaa çalışanı · promosyon firması · restoran çözüm sağlayıcısı · grafikeri olmayan küçük işletme · grafik tasarımcı · baskı operatörü · üretim sorumlusu · menü üreticisi ve menü kaplama firması · iş elbisesi ve tekstil baskı firması · ambalaj üreticisi · tabelacı · cam ve folyo uygulama firması · kişiselleştirilmiş ürün satıcısı · çevrim içi baskılı kıyafet mağazası.
+
+## 1.4 Değişmez ürün ilkeleri
+
+Bu liste ilkelerin **tek evidir**; belgenin başka yerinde tekrarlanmaz.
+
+1. TEZGÂH proje merkezlidir; belge merkezli değildir.
+2. Müşteriden minimum soruyla sipariş alınır.
+3. Grafik tasarım kararları yazılıma dönüştürülür.
+4. Flyer, layout zekâsının kalite referansı ve kırmızı çizgisidir.
+5. Seçili tüm materyaller aynı proje verisinden eşgüdümlü üretilir.
+6. Ürün sayısı değiştiğinde tasarım yeniden dengelenir; "sıkışmış" veya "eksik bırakılmış" görünmez.
+7. Simetri ve optik denge kalıcı kuraldır.
+8. Tipografi dinamiktir ama alt sınırları ihlal edilemez.
+9. Tasarımlar kontrollü biçimde benzersizdir; rastgele değildir.
+10. Müşteri varlıkları başka müşteriye açılamaz, önerilemez, eğitim verisi yapılamaz.
+11. Her varlığın kaynağı ve lisansı izlenir.
+12. SWISS_RESTORAN'ın olgun ürün/modifier yetenekleri yeniden yazılmaz.
+13. Repolar bağımsızdır; ortak veritabanı yoktur.
+14. Entegrasyon yalnızca sürümlü sözleşmelerle yapılır.
+15. Tek editör çekirdeği vardır; ürün başına ayrı editör yazılmaz.
+16. Render motoru değiştirilebilir; kanonik veri render'a bağlı değildir.
+17. Kanonik veri sürümlü domain belgesidir; tuval durumu kanonik veri değildir.
+18. Onaylanan sürüm değiştirilemez; değişiklik yeni sürüm açar.
+19. Baskı çıktısı kalite kapısından geçmeden üretilemez.
+20. Hiçbir teknoloji çekirdeğin değiştirilemez parçası değildir.
+21. Tek aktif protokol bu dosyadır.
+
+## 1.5 Kanonik sahiplik ve ürün sınırları
+
+| Alan | Kanonik sahip |
+|---|---|
+| Tasarım belgeleri, render, üretim çıktıları, sektör stüdyoları, AI üretimi | **TEZGÂH** |
+| QR/POS sipariş ürünleri, restoran menü operasyonu, modifier yetenekleri | **SWISS_RESTORAN** |
+| Abonelik, lisans, paket, ödeme, entitlement, kota, merkezî yönetim | **STYVA** |
+
+Repolar bağımsızdır. Kod, veritabanı ve migration **paylaşılmaz**. İletişim yalnızca sürümlü sözleşmelerle yapılır (Bölüm 9.3).
+
+---
+
+# BÖLÜM 2 — MİMARİ KARAR İLKELERİ
+
+## 2.1 Open Source First
+
+Platform, mümkün olan her katmanda **açık kaynak** teknolojiler üzerine kurulur.
+
+- Varsayılan tercih: izin verici lisanslı, aktif sürdürülen açık kaynak bileşen.
+- Kapalı kaynak, ücretli veya barındırılan servis **istisnadır** ve ürün sahibi onayı ister.
+- Her ücretli/kapalı bağımlılık için **çıkış planı** ve açık kaynak alternatifi kayda geçer.
+- Kopyalanamayan değer kütüphanelerde değil; sektör uzmanlığında, kurallarda, motorlarda, veri modelinde ve entegrasyonlardadır.
+
+**Ürün sahibi onayı gereken durumlar:** ücretli SDK/API · kapalı kaynak editör · GPU aboneliği · kullanıcı başı lisans · vendor lock-in yaratan bağımlılık · müşteriye ek maliyet çıkaran her kalem.
+
+## 2.2 Technology Independence Principle
+
+Çekirdek mimari **teknoloji isimlerine bağlı değildir**.
+
+- Çekirdek; domain modeli, sözleşmeler, kurallar ve motorların davranışıyla tanımlanır.
+- Her dış teknoloji bir **port/adapter** arkasında durur; domain katmanı kütüphane tipi taşımaz.
+- Bir teknolojinin kaldırılması kanonik veriyi, iş kurallarını veya sözleşmeleri değiştirmemelidir.
+- Teknoloji isimleri yalnızca **EK-A**'da yaşar; bu belgenin gövdesinde bağlayıcı teknoloji adı geçmez.
+- "Daha yeni olmak" seçim gerekçesi değildir; değişim TDR ile kanıtlanır.
+
+## 2.3 Technology Decision Record (TDR)
+
+Teknoloji benimseme/değiştirme kaydı. Zorunlu alanlar:
+
+```
+TDR-nnn  Başlık
+Bağlam            : hangi yetenek, hangi port
+Değerlendirilenler: en az 2 alternatif
+Karar             : seçilen + gerekçe
+Lisans            : tür + uyumluluk + yükümlülük
+Olgunluk          : bakım, topluluk, güvenlik geçmişi
+Ölçüm             : benchmark / PoC sonucu
+Çıkış maliyeti    : değiştirmek ne kadar sürer, neyi kırar
+Geri alma         : rollback yolu
+Onay              : ücretliyse ürün sahibi onayı
+```
+
+**Motor değiştirme kapısı** (renderer, layout, AI, depolama gibi ağır bileşenler): capability matrisi · lisans incelemesi · benchmark · proof of concept · belge uyumluluğu · görsel karşılaştırma · performans testi · migration · rollback · güvenlik incelemesi.
+
+---
+
+# BÖLÜM 3 — ALAN MODELİ
+
+## 3.1 Proje merkezli mimari
+
+Merkezde belge değil **müşteri projesi** vardır.
 
 ```text
 Tenant
@@ -134,782 +192,377 @@ Tenant
         └── Production Jobs
 ```
 
-## 3.1 Proje açılışı
+**Proje açılışında yalnız ticari bilgi toplanır:** işletme türü ve adı · logo · iletişim · adres · sosyal medya · QR gereksinimi · seçilen materyaller · ölçüler · ürün kataloğu · fiyatlar · ürün görselleri · kampanyalar · teslim tarihi · baskı veya montaj bilgileri. Sistem gereksiz tasarım sorusu sormaz.
 
-Pazarlamacı müşteriden yalnızca gerekli ticari bilgileri toplar:
+**Seçilebilir teslimatlar** (örnek küme, genişletilebilir): A4/A3 flyer · tek ve çift yüz menü · çok sayfalı menü · masa ve duvar menüsü · QR menü · tabela · cam uygulaması · iç mekân grafiği · araç giydirme · tişört · polo · önlük · şapka · sticker · ambalaj · kartvizit · roll-up · sosyal medya · dijital ekran.
 
-- işletme türü,
-- işletme adı,
-- logo,
-- iletişim bilgileri,
-- adres,
-- sosyal medya,
-- QR gereksinimi,
-- seçilen materyaller,
-- materyal ölçüleri,
-- ürün kataloğu,
-- ürün fiyatları,
-- ürün görselleri,
-- kampanyalar,
-- teslim tarihi,
-- baskı veya montaj bilgileri.
+**Paralel üretim:** materyaller birbirini beklemez; hepsi aynı BrandKit, katalog ve varlık kütüphanesini kullanır. Hiçbir materyal başkasının piksel kopyası değildir; her biri kendi fiziksel ve iletişim kurallarına göre yeniden kompoze edilir.
 
-Sistem gereksiz tasarım soruları sormaz.
+## 3.2 Kanonik veri modeli
 
-## 3.2 Seçilebilir teslimatlar
-
-Müşteri proje başında veya daha sonra şunları seçebilir:
-
-- A4 flyer,
-- A3 flyer,
-- tek yüz menü,
-- çift yüz menü,
-- çok sayfalı menü,
-- masa menüsü,
-- duvar menüsü,
-- QR menü,
-- tabela,
-- cam uygulaması,
-- iç mekân grafik,
-- araç giydirme,
-- tişört,
-- polo,
-- önlük,
-- şapka,
-- sticker,
-- ambalaj,
-- kartvizit,
-- roll-up,
-- sosyal medya,
-- dijital ekran,
-- diğer baskı ürünleri.
-
-## 3.3 Paralel üretim
-
-Flyer ilk tasarım referansı olabilir; ancak sistem diğer seçili materyalleri bekletmek zorunda değildir.
-
-Doğru akış:
-
-```text
-Project Data
-├── Flyer Composition
-├── Menu Composition
-├── QR Menu Mapping
-├── Signage Composition
-├── Glass Composition
-├── Textile Composition
-└── Social Composition
-```
-
-Tüm materyaller aynı BrandKit, ürün kataloğu ve varlık kütüphanesini kullanır.
-
----
-
-# 4. FLYER’IN ROLÜ
-
-## 4.1 Flyer kırmızı çizgidir
-
-Flyer, TEZGÂH’ın tasarım zekâsını test eden en zor ve en öncelikli üretim profilidir.
-
-Çünkü flyer aynı anda şunları sınar:
-
-- yoğun ürün verisi,
-- kategori hiyerarşisi,
-- değişken metin uzunluğu,
-- fiyat düzeni,
-- çok sayıda görsel,
-- sınırlı alan,
-- tipografi,
-- simetri,
-- baskı hazırlığı,
-- marka aktarımı,
-- QR,
-- kampanya,
-- farklı yoğunluk seviyeleri.
-
-## 4.2 Flyer tek ürün değildir
-
-Flyer:
-
-- projenin ilk görsel dili,
-- marka kompozisyon referansı,
-- ürün kartı dili,
-- renk dağılımı,
-- tipografik hiyerarşi,
-- görsel işleme standardı,
-- diğer materyallerin başlangıç tasarım sistemi
-
-olarak kullanılır.
-
-Ancak menü, tabela veya cam tasarımı flyer’ın piksel kopyası değildir. Her ürün kendi fiziksel ve iletişim kurallarına göre yeniden kompoze edilir.
-
----
-
-# 5. DİNAMİK TASARIM MOTORU
-
-## 5.1 Temel ilke
-
-TEZGÂH’ın merkezinde yalnızca Konva veya canvas bulunmaz.
-
-Merkez bileşen:
-
-> **Dynamic Layout and Composition Engine**
-
-Bu motor, içerik miktarı değiştiğinde tasarımın sırıtmadan yeniden dengelenmesini sağlar.
-
-## 5.2 Girdi değişkenleri
-
-Motor en az şunları değerlendirir:
-
-- sayfa ölçüsü,
-- bleed,
-- güvenli alan,
-- ürün sayısı,
-- kategori sayısı,
-- kategori başına ürün sayısı,
-- ürün adı uzunluğu,
-- açıklama uzunluğu,
-- fiyat karakter uzunluğu,
-- para birimi,
-- ürün görseli sayısı,
-- görsel oranları,
-- logo oranı,
-- QR alanı,
-- iletişim alanı,
-- kampanya alanı,
-- seçilen stil,
-- baskı tekniği,
-- hedef okunma mesafesi,
-- minimum font,
-- minimum görsel alanı.
-
-## 5.3 Dinamik tipografi
-
-Font boyutu sabit değildir.
-
-Örnek davranış:
-
-- 20 ürün: daha büyük tipografi ve geniş görseller,
-- 50 ürün: dengeli ürün kartları,
-- 100 ürün: daha yoğun ama okunabilir düzen,
-- 200 ürün: minimum baskı okunabilirliği sınırına yaklaşan yoğun düzen,
-- sınır aşılırsa A3 veya çok sayfa önerisi.
-
-Sistem yalnızca ürün sayısına göre doğrusal küçültme yapmaz.
-
-Hesaplamaya dahil edilir:
-
-- metin uzunluğu,
-- kategori dağılımı,
-- satır sayısı,
-- ürün önem derecesi,
-- fiyat uzunluğu,
-- görsel kullanımı,
-- boşluk dengesi.
-
-## 5.4 Tipografi kısıtları
-
-Her üretim profilinde:
-
-- önerilen font aralığı,
-- mutlak minimum font,
-- kategori başlığı minimumu,
-- fiyat minimumu,
-- açıklama minimumu,
-- satır aralığı,
-- harf aralığı,
-- kontrast oranı
-
-tanımlanır.
-
-Örneğin 200 ürün nedeniyle 6 punto gerekiyorsa sistem bunu gösterebilir; fakat daha küçük değere otomatik inemez. Alternatif sunar:
-
-- A3,
-- ikinci sayfa,
-- kategori azaltma,
-- görsel azaltma,
-- yoğun kart profili,
-- açıklama gizleme.
-
-## 5.5 Dinamik grid
-
-Grid sabit şablon değildir.
-
-Motor:
-
-- kolon sayısı,
-- satır sayısı,
-- kategori blokları,
-- kart boyutu,
-- görsel oranı,
-- boşluklar,
-- başlık alanları,
-- footer,
-- QR,
-- iletişim alanı
-
-için uygun çözümü hesaplar.
-
-## 5.6 Grid dışı kompozisyon
-
-Serbest tasarım desteklenir; ancak serbestlik simetri ve baskı kurallarını bozamaz.
-
-Sistem:
-
-- manyetik hizalama,
-- optik merkez,
-- eşit aralık,
-- kenar dengesi,
-- yoğunluk dengesi,
-- görsel ağırlık,
-- çakışma kontrolü,
-- taşma kontrolü
-
-uygular.
-
-## 5.7 Simetri sürekli kuraldır
-
-Simetri TEZGÂH’ın kalıcı tasarım ilkelerinden biridir.
-
-Simetri yalnızca geometrik eşitlik değildir:
-
-- eşit kenar boşluğu,
-- ritmik aralık,
-- hizalı fiyatlar,
-- dengeli kategori blokları,
-- tutarlı görsel oranları,
-- optik denge,
-- eşit kart yükseklikleri,
-- satır sonu dengeleme,
-- boş kalan son satırın bilinçli yerleşimi
-
-olarak değerlendirilir.
-
-## 5.8 İçerik değişiminde yeniden akış
-
-Ürün eklendiğinde veya çıkarıldığında:
-
-- kartlar yeniden akar,
-- fontlar gerekirse yeniden ölçeklenir,
-- kategori blokları yeniden dengelenir,
-- boşluklar yeniden hesaplanır,
-- son satır yeniden hizalanır,
-- görseller yeniden boyutlanır,
-- taşma kontrol edilir,
-- tasarımın karakteri korunur.
-
-Azalan veya çoğalan ürünler tasarımda “eksik bırakılmış” veya “sıkıştırılmış” görünmemelidir.
-
----
-
-# 6. TASARIM ZEKÂSI KATMANLARI
-
-## 6.1 Deterministik motor önce gelir
-
-Ana yerleşim motoru kural tabanlı ve deterministik olmalıdır.
-
-Neden:
-
-- aynı girdide öngörülebilir sonuç,
-- test edilebilirlik,
-- baskı güvenliği,
-- tekrar üretilebilirlik,
-- düşük maliyet,
-- AI servisinden bağımsızlık.
-
-## 6.2 Yapay zekâ yardımcıdır
-
-AI şu alanlarda kullanılabilir:
-
-- şablon önerisi,
-- ürün önceliklendirme,
-- görsel sınıflandırma,
-- metin kısaltma,
-- başlık önerisi,
-- arka plan üretme,
-- tasarım varyasyonu,
-- renk önerisi,
-- içerik etiketleme.
-
-AI hiçbir zaman:
-
-- baskı ölçüsünü,
-- bleed’i,
-- güvenli alanı,
-- minimum fontu,
-- müşteri izolasyonunu,
-- lisans kuralını,
-- kanonik veriyi
-
-tek başına belirleyemez.
-
-## 6.3 Tasarım puanlama
-
-Her tasarım için ölçülebilir kalite puanı üretilebilir:
-
-- okunabilirlik,
-- simetri,
-- taşma,
-- yoğunluk,
-- kontrast,
-- görsel kalite,
-- marka tutarlılığı,
-- baskı uygunluğu,
-- kategori dengesi,
-- boşluk dengesi.
-
----
-
-# 7. BENZERSİZ TASARIM ÜRETİMİ
-
-## 7.1 Şablon kopyası yasaktır
-
-Aynı şablon altyapısı kullanılabilir; ancak her müşteri tasarımı birebir kopya olmamalıdır.
-
-Varyasyon alanları:
-
-- grid düzeni,
-- kategori sırası,
-- görsel oranı,
-- dekoratif şekiller,
-- renk dağılımı,
-- arka plan,
-- başlık kompozisyonu,
-- ürün kartı varyasyonu,
-- vurgu ürünleri,
-- ikon kullanımı,
-- boşluk ritmi.
-
-## 7.2 Kontrollü benzersizlik
-
-Benzersizlik rastgelelik değildir.
-
-Her varyasyon:
-
-- marka kimliğine uygun,
-- baskı güvenli,
-- okunabilir,
-- simetrik,
-- tekrar üretilebilir,
-- kullanıcı tarafından kilitlenebilir
-
-olmalıdır.
-
-## 7.3 Tasarım tohumu
-
-Her proje veya belge için bir `designSeed` tutulabilir.
-
-Bu sayede:
-
-- tasarım yeniden üretilebilir,
-- varyasyonlar kontrollü olur,
-- aynı tasarım istemeden değişmez,
-- müşteri için benzersiz kombinasyon korunur.
-
----
-
-# 8. GÖRSEL ALANLARI VE GÖRSEL İŞLEME
-
-## 8.1 Image Slot sistemi
-
-Şablonlarda sabit resim değil, tanımlı `ImageSlot` bulunur.
-
-Her slot:
-
-- oran,
-- maske,
-- focus point,
-- fit/fill davranışı,
-- minimum DPI,
-- arka plan politikası,
-- gölge,
-- border,
-- radius,
-- crop,
-- güvenli alan
-
-tanımlar.
-
-## 8.2 Kullanıcı görseli yerleşimi
-
-Kullanıcı hangi uygun görseli verirse:
-
-- slot içine yerleşir,
-- oranına göre kırpılır,
-- ana nesne korunur,
-- gerekirse arka plan kaldırılır,
-- ortak stile uyarlanır,
-- düşük çözünürlük uyarılır.
-
-## 8.3 Arka plan silme
-
-Arka plan silme desteklenir.
-
-Katmanlar:
-
-1. yerel veya açık kaynak model,
-2. ücretli servis yalnızca onayla,
-3. manuel düzeltme,
-4. kenar yumuşatma,
-5. şeffaf PNG/WebP üretimi,
-6. orijinal dosyanın korunması.
-
-## 8.4 Görsel standardizasyon
-
-Aynı projedeki ürün görselleri:
-
-- benzer ışık,
-- benzer doygunluk,
-- ortak arka plan,
-- ortak gölge,
-- ortak perspektif hissi,
-- ortak kırpma standardı
-
-ile düzenlenebilir.
-
----
-
-# 9. VARLIK GİZLİLİĞİ VE LİSANS
-
-## 9.1 Müşteri görselleri
-
-Müşterinin yüklediği görseller varsayılan olarak:
-
-- yalnızca kendi tenant’ında,
-- kendi müşteri kaydında,
-- kendi projesinde,
-- yetkili kullanıcılarca
-
-görülebilir.
-
-Başka müşteriye:
-
-- önerilemez,
-- aramada gösterilemez,
-- örnek tasarımda kullanılamaz,
-- AI eğitim verisi olarak aktarılamaz,
-- ortak kütüphaneye taşınamaz.
-
-## 9.2 Proje sonrası kısıtlama
-
-Proje tamamlandığında müşteri görseli:
-
-- proje içinde kalır,
-- arşiv politikasına göre saklanır,
-- başka projede kullanılmaz,
-- yalnızca açık yetkiyle aynı müşterinin yeni projesine taşınır.
-
-## 9.3 Ortak stok kütüphanesi
-
-Ayrı bir `Shared Stock Library` bulunur.
-
-Bu varlıklar:
-
-- lisans durumu doğrulanmış,
-- telifsiz,
-- satın alınmış,
-- yeniden kullanım hakkı olan,
-- kaynak ve lisans metadata’sı tutulan
-
-görsellerdir.
-
-Kullanım inisiyatifi tenant yöneticisindedir.
-
-## 9.4 Stok görseli müşteriye özgü hissettirme
-
-Stok görsel:
-
-- crop,
-- renk eşleme,
-- arka plan temizleme,
-- kompozisyon,
-- gölge,
-- mask,
-- ışık düzenleme,
-- marka rengi,
-- yerleşim
-
-ile projeye özgü hale getirilebilir.
-
-Bu işlem lisans haklarını değiştirmez. Sistem görselin kaynak ve lisans kaydını korur.
-
----
-
-# 10. ÜRÜN KATALOĞU VE QR RESTORAN ENTEGRASYONU
-
-## 10.1 Mevcut olgun restoran sistemi korunur
-
-SWISS_RESTORAN içindeki mevcut ürün, kategori, seçenek ve içerik yetenekleri yeniden yazılmaz.
-
-Örnek:
-
-- zeytin ekleme/çıkarma,
-- peynir seçeneği,
-- ürün varyasyonu,
-- ek malzeme,
-- kategori,
-- fiyat,
-- açıklama,
-- görünürlük,
-- alerjen,
-- QR menü davranışı.
-
-TEZGÂH’ın görevi bunları daha kolay kullanmak ve görsel çıktılara bağlamaktır.
-
-## 10.2 Kanonik sahiplik
-
-- QR/POS sipariş ürünlerinin kanonik sahibi: `SWISS_RESTORAN`
-- Tasarım belge ve render’larının kanonik sahibi: `TEZGÂH`
-- Tenant, abonelik ve e-ticaret sahipliği: ilgili ürün sözleşmelerine göre `STYVA`
-- Repolar bağımsızdır.
-- Kod, veritabanı veya migration paylaşılmaz.
-- İletişim yalnızca sürümlü sözleşmelerle yapılır.
-
-## 10.3 Entegrasyon aşamaları
-
-### Aşama 1 — CSV/XLSX
-
-- dışa aktar,
-- içe aktar,
-- kolon eşleme,
-- önizleme,
-- hata raporu,
-- dry-run,
-- idempotent import,
-- SKU veya harici ID eşleme.
-
-### Aşama 2 — JSON sözleşmesi
-
-Sürümlü katalog sözleşmesi:
-
-```ts
-interface RestaurantCatalogContractV1 {
-  contractVersion: "1.0";
-  tenantExternalId: string;
-  restaurantExternalId: string;
-  categories: RestaurantCategory[];
-  products: RestaurantProduct[];
-  modifiers: ModifierGroup[];
-  assets: AssetReference[];
-  exportedAt: string;
-}
-```
-
-### Aşama 3 — API
-
-- pull catalog,
-- push approved changes,
-- sync status,
-- conflict report,
-- audit log.
-
-### Aşama 4 — Event tabanlı senkron
-
-Örnek olaylar:
-
-- `restaurant.product.created.v1`
-- `restaurant.product.updated.v1`
-- `restaurant.product.price_changed.v1`
-- `restaurant.product.visibility_changed.v1`
-- `restaurant.category.updated.v1`
-- `restaurant.asset.updated.v1`
-
-## 10.4 Tasarıma yansıma
-
-Ürün değiştiğinde TEZGÂH:
-
-- etkilenen belgeleri bulur,
-- farkı gösterir,
-- otomatik yeniden akış önizlemesi üretir,
-- kullanıcı veya grafiker onayı ister,
-- yeni belge sürümü oluşturur.
-
-Basılı dosya sessizce değiştirilmez.
-
----
-
-# 11. SİPARİŞ ALMA SİHİRBAZI
-
-## 11.1 Pazarlamacı modu
-
-Pazarlamacı grafik ayarları görmez.
-
-Ana ekranlar:
-
-1. müşteri,
-2. proje,
-3. istenen ürünler,
-4. ölçüler,
-5. logo ve marka,
-6. ürün kataloğu,
-7. görseller,
-8. iletişim ve QR,
-9. teslim tarihi,
-10. otomatik tasarım üretimi.
-
-## 11.2 Dinamik sorular
-
-Sorular seçilen ürüne göre açılır.
-
-Örnek:
-
-- tabela seçilmediyse tabela ölçüsü sorulmaz,
-- araç seçilmediyse araç modeli sorulmaz,
-- QR seçilmediyse QR URL sorulmaz,
-- tekstil seçilmediyse beden/konum sorulmaz,
-- cam seçilmediyse cam ölçüsü sorulmaz.
-
-## 11.3 Soru azaltma motoru
-
-Sistem mevcut veriden çıkarım yapar:
-
-- BrandKit varsa renk tekrar sorulmaz,
-- logo varsa yeniden istenmez,
-- restoran kataloğu bağlıysa ürünler tekrar girilmez,
-- adres proje veya müşteri kaydından gelir,
-- QR restoran entegrasyonu varsa QR otomatik bağlanır,
-- aynı müşteri geçmiş ölçüleri tekrar kullanabilir.
-
-## 11.4 Grafiker rolü
-
-Grafiker:
-
-- otomatik tasarımı inceler,
-- gerekirse kilitli kuralları aşmadan düzenler,
-- alternatif varyasyon üretir,
-- müşteri sunumunu onaylar,
-- baskı dosyasını serbest bırakır.
-
-Grafikeri olmayan firmada sistem, otomatik tasarım ve preflight ile bu rolün büyük kısmını üstlenir.
-
----
-
-# 12. MARKA VE TASARIM SİSTEMİ
-
-## 12.1 BrandKit
-
-Proje veya müşteri seviyesinde:
-
-- logo varyantları,
-- renkler,
-- fontlar,
-- slogan,
-- iletişim bilgileri,
-- sosyal hesaplar,
-- ikonlar,
-- desenler,
-- görsel stil,
-- kullanım kuralları
-
-saklanır.
-
-## 12.2 Design Tokens
-
-Ortak tokenlar:
-
-- `brand.primary`
-- `brand.secondary`
-- `brand.accent`
-- `text.heading`
-- `text.body`
-- `price.primary`
-- `spacing.xs...xl`
-- `radius`
-- `stroke`
-- `shadow`
-- `imageTreatment`
-- `categoryStyle`
-
-## 12.3 Materyal adaptasyonu
-
-Aynı tokenlar farklı üretim profillerinde farklı uygulanabilir.
-
-Örnek:
-
-- flyer: yüksek bilgi yoğunluğu,
-- tabela: uzaktan okunabilirlik,
-- cam: görüş mesafesi ve kesim,
-- tekstil: baskı alanı ve renk sayısı,
-- araç: panel ve eğrilik,
-- sosyal medya: ekran oranı,
-- menü: sayfa akışı.
-
----
-
-# 13. KANONİK VERİ MODELİ
-
-Canvas görüntüsü veya Konva state’i kanonik veri değildir.
+Tuval görüntüsü veya editör durumu kanonik veri **değildir**.
 
 ```ts
 interface Project {
-  id: string;
-  tenantId: string;
-  customerId: string;
-  title: string;
-  businessType: string;
-  brandKitId?: string;
-  catalogId?: string;
+  id: string; tenantId: string; customerId: string;
+  title: string; businessType: string;
+  brandKitId?: string; catalogId?: string;
   requestedDeliverables: DeliverableRequest[];
   measurements: MeasurementSet[];
   status: ProjectStatus;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; updatedAt: string;
 }
-```
 
-```ts
 interface CreativeDocument {
   schemaVersion: string;
-  id: string;
-  tenantId: string;
-  projectId: string;
+  id: string; tenantId: string; projectId: string;
   deliverableType: string;
   productionProfileId: string;
   designSeed: string;
-  brandKitId?: string;
-  catalogSnapshotId?: string;
+  brandKitId?: string; catalogSnapshotId?: string;
   pages: CreativePage[];
   bindings: DataBinding[];
   layoutRules: LayoutRuleSet;
   overrides: DocumentOverride[];
   revision: number;
 }
-```
 
-```ts
 interface ProductRecord {
-  id: string;
-  externalId?: string;
-  sku?: string;
-  name: string;
-  description?: string;
-  price?: number;
-  oldPrice?: number;
-  currency?: string;
-  categoryId?: string;
-  imageAssetId?: string;
-  allergens?: string[];
-  modifierGroups?: string[];
-  badge?: string;
-  priority?: number;
-  isVisible: boolean;
+  id: string; externalId?: string; sku?: string;
+  name: string; description?: string;
+  price?: number; oldPrice?: number; currency?: string;
+  categoryId?: string; imageAssetId?: string;
+  allergens?: string[]; modifierGroups?: string[];
+  badge?: string; priority?: number; isVisible: boolean;
 }
 ```
 
-## 13.1 Snapshot ilkesi
+**Şema evrimi (additive-only):** alan silinmez ve yeniden adlandırılmaz; yalnız opsiyonel alan eklenir; `schemaVersion` yalnız kırıcı değişimde artar; bilinmeyen alanlar tolere edilir.
 
-Tasarım:
+**Migration disiplini:** additive migration · geri alınabilirlik · replay testi · idempotent tekrar-koşum. Destructive migration yasaktır.
 
-- canlı kataloğa bağlanabilir,
-- ancak onaylanan her sürüm katalog snapshot’ı taşır,
-- geçmiş baskı dosyası yeniden üretilebilir,
-- sonradan değişen fiyat eski onayı değiştirmez.
+## 3.3 Snapshot ilkesi
+
+Tasarım canlı kataloğa bağlanabilir; ancak **onaylanan her sürüm katalog snapshot'ı taşır**. Geçmiş baskı dosyası yeniden üretilebilir olmalıdır; sonradan değişen fiyat eski onayı değiştirmez.
+
+Ürün değiştiğinde sistem: etkilenen belgeleri bulur → farkı gösterir → yeniden akış önizlemesi üretir → onay ister → yeni belge sürümü açar. **Basılı dosya sessizce değişmez.**
+
+## 3.4 Yaşam döngüsü ve onay akışı
+
+Kanonik yaşam döngüsü:
+
+```text
+DRAFT
+AUTO_GENERATED
+DESIGN_REVIEW
+CLIENT_REVIEW
+CHANGES_REQUESTED
+APPROVED
+PRODUCTION_READY
+ARCHIVED
+```
+
+Kurallar:
+
+- **Durum yalnız geçiş kapısından yazılır**; doğrudan alan güncellemesiyle durum değiştirilemez.
+- Her geçişin koşulu tanımlıdır; koşul sağlanmazsa geçiş **isimli gerekçe listesiyle** reddedilir.
+- Eksik bilgiyle tasarım **başlayabilir**; üretim kapısı (Bölüm 4.7) eksiksiz olmadan açılmaz.
+- Geriye dönüş yalnız **sebep + kaydeden** ile ve denetim izine yazılarak yapılır.
+- `APPROVED` ve sonrası **değiştirilemez**; değişiklik yeni revision açar. Onay; belge revision'ına, proof dosyasına, tarihe ve kullanıcıya bağlıdır.
+- Sistem gerektiğinde aynı proje verisinden **Seçenek A / Seçenek B** üretebilir.
+
+> **Uyum notu:** Uygulamada farklı yaşam döngüsü sözlükleri kullanılıyorsa bunlar bu tabloya eşlenir ve tek sözlüğe yakınsar. Eşleme ve göç planı EK-C'de izlenir.
 
 ---
 
-# 14. EDİTÖR MİMARİSİ
+# BÖLÜM 4 — ÜRETİM ZEKÂSI MOTORLARI
 
-## 14.1 Tek editör çekirdeği
+## 4.1 Dynamic Composition Engine
+
+Platformun merkezinde tuval değil, **dinamik yerleşim ve kompozisyon motoru** vardır. Motor, içerik miktarı değiştiğinde tasarımın sırıtmadan yeniden dengelenmesini sağlar.
+
+**Motor deterministiktir.** Aynı girdi aynı sonucu üretir; test edilebilir, tekrar üretilebilir, baskı güvenlidir ve AI servisinden bağımsız çalışır.
+
+**Girdi değişkenleri:** sayfa ölçüsü · bleed · güvenli alan · ürün ve kategori sayısı · kategori başına ürün · ad, açıklama ve fiyat uzunlukları · para birimi · görsel sayısı ve oranları · logo oranı · QR, iletişim ve kampanya alanları · seçilen stil · baskı tekniği · hedef okunma mesafesi · minimum font · minimum görsel alanı.
+
+**Dinamik grid:** kolon ve satır sayısı, kategori blokları, kart boyutu, görsel oranı, boşluklar, başlık/footer/QR alanları **hesaplanır**; sabit şablon dayatılmaz. Şablon yalnızca başlangıç kural setidir.
+
+**Yeniden akış (reflow):** ürün eklenip çıkarıldığında kartlar yeniden akar, fontlar gerekirse ölçeklenir, kategori blokları dengelenir, boşluklar ve son satır yeniden hesaplanır, taşma kontrol edilir, tasarımın karakteri korunur.
+
+**Taşma sözleşmesi:** her üretim profili taşma stratejisini **açıkça ilan eder** ve motor bu ilanı uygular. İlan ile davranış ayrışamaz. Sessiz kırpma yasaktır: taşan içerik ya akar, ya görünür uyarı üretir, ya da alternatif önerilir (daha büyük format, ikinci sayfa, yoğun kart profili, açıklama gizleme, kategori veya görsel azaltma).
+
+## 4.2 Tipografi ve okunabilirlik kısıtları
+
+Font boyutu sabit değildir; ürün sayısı, metin uzunluğu, kategori dağılımı, satır sayısı, fiyat uzunluğu, görsel kullanımı ve boşluk dengesi birlikte değerlendirilir. Doğrusal küçültme yeterli değildir.
+
+Her üretim profilinde tanımlıdır: önerilen font aralığı · **mutlak minimum font** · kategori başlığı, fiyat ve açıklama minimumları · satır ve harf aralığı · kontrast oranı.
+
+Minimum sınır **aşılamaz**. Sistem sınırın altına inmek yerine alternatif sunar.
+
+## 4.3 Simetri ve kompozisyon dengesi
+
+Simetri kalıcı kuraldır ve yalnız geometrik eşitlik değildir: eşit kenar boşluğu · ritmik aralık · hizalı fiyatlar · dengeli kategori blokları · tutarlı görsel oranları · optik denge · eşit kart yükseklikleri · satır sonu dengeleme · boş kalan son satırın bilinçli yerleşimi.
+
+Serbest (grid dışı) kompozisyon desteklenir; ancak serbestlik baskı ve denge kurallarını bozamaz: manyetik hizalama · optik merkez · eşit aralık · kenar dengesi · yoğunluk dengesi · görsel ağırlık · çakışma ve taşma kontrolü.
+
+## 4.4 Kontrollü benzersizlik ve `designSeed`
+
+Aynı altyapı kullanılır; ancak her müşteri tasarımı birebir kopya olmaz. Varyasyon alanları: grid düzeni · kategori sırası · görsel oranı · dekoratif şekiller · renk dağılımı · arka plan · başlık kompozisyonu · ürün kartı varyasyonu · vurgu ürünleri · ikon kullanımı · boşluk ritmi.
+
+Benzersizlik rastgelelik değildir: her varyasyon marka kimliğine uygun, baskı güvenli, okunabilir, simetrik, **tekrar üretilebilir** ve kullanıcı tarafından kilitlenebilir olmalıdır. Her proje veya belge bir `designSeed` taşır; böylece tasarım yeniden üretilebilir ve istemeden değişmez.
+
+## 4.5 Rule Engine
+
+Tasarım ve üretim kuralları koda gömülmez; **bildirimsel kural setleri** olarak yaşar.
+
+- Kural kümeleri katmanlanır: çekirdek → profil → ülke → tenant.
+- Kurallar sürümlüdür ve değerlendirmesi deterministiktir.
+- Kural türleri: geometri (bleed, güvenli alan, panel, katlama) · tipografi minimumları · teknik uygunluk (hangi teknik hangi malzemede) · içerik zorunlulukları · fiyat ve adet girdileri · yasal ve yerel zorunluluklar.
+- Her kural test edilebilir olmalı; kural değişimi kayda geçmelidir.
+
+## 4.6 Workflow Automation Engine
+
+Sipariş → tasarım → inceleme → onay → üretim zinciri **yönetilen iş akışı** olarak çalışır.
+
+- Adımlar, tetikleyiciler ve eylemler bildirimsel tanımlanır; koda dağıtılmaz.
+- İnsan görevleri (inceleme, onay, saha bilgisi) akışın birinci sınıf adımlarıdır.
+- Uzun süren işler kuyruğa alınır; yeniden deneme, zaman aşımı ve **idempotency** zorunludur.
+- Teslim tarihi ve SLA izlenir; gecikme riski görünür olur.
+- Her adım denetim izine yazılır.
+
+## 4.7 Quality Gate Engine
+
+Kalite kontrolü tek bir modelle yürür ve **tüm sınırlarda aynı sözlüğü** kullanır: dosya kabulü · tasarım · baskı öncesi kontrol · üretim serbest bırakma.
+
+| Seviye | Anlam | Davranış |
+|---|---|---|
+| **INFO** | Bilgilendirme | Görünür not; sessiz yokluk yasaktır |
+| **WARNING** | Riskli ama kabul edilebilir | **Kayıtlı onay** ile geçilebilir (kim, ne zaman, neden, hangi dosya sürümü) |
+| **BLOCKER** | Kabul edilemez | İstisna verilemez; çözülmeden üretim serbest bırakılamaz |
+
+**Tipik kontroller:** düşük efektif DPI · eksik veya gömülmemiş font · bleed ve güvenli alan · metin taşması · çok küçük font · ince çizgi · bozuk veya açılamayan dosya · desteklenmeyen tür · ölçü ve yön belirlenememesi · şeffaflık ve overprint · RGB/CMYK · renk profili doğrulanamaması · QR ve barkod okunabilirliği · kırpılmış fiyat · eksik görsel · görünmeyen ürün · çakışan kart · kesilmiş logo · yanlış para birimi · lisansı belirsiz varlık.
+
+**Tasarım kalite puanı:** okunabilirlik · simetri · taşma · yoğunluk · kontrast · görsel kalite · marka tutarlılığı · baskı uygunluğu · kategori dengesi · boşluk dengesi.
+
+**Denetim izi değişmezdir (append-only):** kalite kararları ve kayıtlı onaylar sonradan düzenlenemez veya silinemez.
+
+## 4.8 Flyer'ın rolü
+
+Flyer, layout zekâsının **kırmızı çizgisi** ve ilk kalite referansıdır; çünkü aynı anda yoğun ürün verisi, kategori hiyerarşisi, değişken metin uzunluğu, fiyat düzeni, çok sayıda görsel, sınırlı alan, tipografi, simetri, baskı hazırlığı, marka aktarımı, QR ve kampanyayı sınar.
+
+Flyer aynı zamanda projenin ilk görsel dili, ürün kartı dili, renk dağılımı, tipografik hiyerarşi ve diğer materyallerin başlangıç tasarım sistemidir. Ancak diğer materyaller flyer'ın piksel kopyası değildir.
+
+Motorun olgunluğu **20 / 50 / 100 / 200 ürün** ölçeklerinde ölçülür.
+
+---
+
+# BÖLÜM 5 — YAPAY ZEKÂ MİMARİSİ
+
+## 5.1 AI yardımcıdır, otorite değildir
+
+AI şu alanlarda kullanılabilir: şablon önerisi · ürün önceliklendirme · görsel sınıflandırma · metin kısaltma · başlık önerisi · arka plan üretme · tasarım varyasyonu · renk önerisi · içerik etiketleme.
+
+AI **tek başına** şunları belirleyemez: baskı ölçüsü · bleed · güvenli alan · minimum font · müşteri izolasyonu · lisans kuralı · kanonik veri · üretim serbest bırakma kararı.
+
+Deterministik motor her zaman önce gelir; AI onun üstünde çalışır.
+
+## 5.2 AI Orchestrator
+
+AI çağrıları koda serpiştirilmez; tek bir **orkestratör** üzerinden yürür.
+
+Sorumlulukları: görev sınıflandırma · uygun ajan ve model seçimi · yerel–uzak yürütme kararı · kota ve maliyet kontrolü · paralel yürütme · sonuç birleştirme · kalite puanlama · geri düşüş (fallback) · insan onay kapıları · tüm çağrıların denetimi.
+
+## 5.3 Multi-Agent Expert Architecture
+
+TEZGÂH **tek bir yapay zekâ ajanı üzerine kurulmaz.** Platform, gerektiğinde onlarca uzman ajanın birlikte çalışabileceği çok-ajanlı uzman mimarisi üzerine tasarlanır.
+
+**Temel bileşenler:** AI Orchestrator · Domain Expert Agents · Dynamic Agent Selection · Parallel Execution · Result Aggregation · Quality Scoring · Human Approval Gates · Cost Optimization · Agent Registry · Versioned Agents · Plugin-based Agents · Tenant-specific Agents.
+
+**Örnek uzmanlık alanları** (bağlayıcı değil, genişletilebilir): Layout · Typography · Print · Menu · Flyer · Packaging · Textile · Signage · Marketing · SEO · Production · Quality Assurance · Localization · Accessibility · Desktop Automation.
+
+Hiçbir uzman ajan çekirdeğin değiştirilemez parçası değildir.
+
+> Çalıştırılacak ajanlar; **görevin niteliği, tenant özellikleri, lisans paketi, performans hedefleri, kalite gereksinimleri ve maliyet politikalarına** göre AI Orchestrator tarafından dinamik olarak seçilir, koordine edilir ve sonuçları birleştirilir.
+
+Bu mimari, gelecekte yeni uzman ajanlar eklenerek genişlemeyi sağlar; **mevcut çekirdeğin yeniden yazılmasını gerektirmez.**
+
+## 5.4 Agent Registry ve sürümleme
+
+Her ajan kayıtlıdır: kimlik · sürüm · yetenek beyanı · girdi/çıktı sözleşmesi · maliyet sınıfı · gizlilik sınıfı · gerekli entitlement · kalite geçmişi.
+
+Ajanlar sürümlüdür ve eski sürümler tekrar üretilebilirlik için korunur. Ajanlar eklenti olarak gelebilir (Bölüm 7.3) ve tenant'a özel ajanlar tanımlanabilir.
+
+## 5.5 Maliyet, kota ve insan onayı
+
+Maliyet politikası orkestratörde uygulanır: ucuz ve deterministik yol önce denenir; pahalı model yalnız gerektiğinde ve kota dahilinde çalışır. Kota ve paket sınırları STYVA entitlement'ından okunur (Bölüm 9.5).
+
+Üretim etkisi olan hiçbir AI çıktısı insan onayı olmadan baskıya inmez.
+
+## 5.6 Veri gizliliği sınırı
+
+Müşteri varlıkları ve içerikleri **eğitim verisi olarak kullanılamaz** ve başka tenant'a sızdırılamaz. Dış servise gönderilen her veri kayıt altına alınır; hangi verinin nereye gittiği izlenebilir olmalıdır. Yerel model, uygun olduğunda önceliklidir.
+
+---
+
+# BÖLÜM 6 — İÇERİK, VARLIK VE KATALOG
+
+## 6.1 Asset Registry
+
+Her varlık (görsel, font, şablon, sahne, dekor, üretim dosyası) merkezî kayıtta yaşar.
+
+Kayıt alanları: kimlik · tenant ve proje kapsamı · tür · **kaynak (origin)** · **lisans ve hak sahibi** · kullanım hakkı ve süresi · sağlama toplamı · **türev zinciri** (hangi varlıktan üretildi) · içe alma tarihi ve yolu · tespit edilen fontlar ve gömülü varlıklar · saklama politikası.
+
+Bu kayıt sayesinde: yıllar sonra dönen işte kaynak dosya bulunur, lisans sorusu yanıtlanır, üretilmiş çıktı yeniden üretilebilir, arşiv bütünlüğü doğrulanabilir.
+
+## 6.2 Görsel alanları (ImageSlot) ve görsel işleme
+
+Şablonlarda sabit resim değil, tanımlı **ImageSlot** bulunur: oran · maske · focus point · fit/fill davranışı · minimum DPI · arka plan politikası · gölge · kenarlık · köşe yarıçapı · kırpma · güvenli alan.
+
+Kullanıcı görseli slota yerleşir, oranına göre kırpılır, ana nesne korunur, gerekirse arka planı kaldırılır, ortak stile uyarlanır; düşük çözünürlük uyarı üretir.
+
+**Arka plan silme** desteklenir ve katmanlıdır: yerel/açık kaynak model → (yalnız onayla) ücretli servis → manuel düzeltme → kenar yumuşatma → şeffaf çıktı → **orijinalin korunması**.
+
+**Görsel standardizasyonu:** aynı projedeki ürün görselleri benzer ışık, doygunluk, arka plan, gölge, perspektif hissi ve kırpma standardına getirilebilir.
+
+## 6.3 Varlık gizliliği ve izolasyon
+
+Müşteri görselleri varsayılan olarak yalnız kendi tenant'ında, kendi müşteri kaydında, kendi projesinde ve yetkili kullanıcılarca görülebilir. Başka müşteriye önerilemez, aramada gösterilemez, örnek tasarımda kullanılamaz, ortak kütüphaneye taşınamaz.
+
+Proje bittiğinde varlık proje içinde kalır; yalnız açık yetkiyle aynı müşterinin yeni projesine taşınır.
+
+**Üretim girdisi olan dosyalar galeri varlığı değildir** ve paylaşılan havuzlara sızmaz.
+
+## 6.4 Asset Marketplace
+
+Lisansı doğrulanmış varlıkların (şablon, dekor, desen, font, sahne, ikon seti, profil paketi) paylaşıldığı veya satıldığı katmandır.
+
+- Her kalem **Asset Registry** kaydıyla gelir; lisans ve kaynak zorunludur.
+- Kapsam kontrolü: platform geneli · sektör · tenant · özel.
+- Ticari işlemler (satın alma, gelir paylaşımı, faturalama) **STYVA** üzerinden yürür.
+- Moderasyon, sürümleme ve geri çekme mekanizması bulunur.
+- Müşteri varlıkları buraya asla otomatik akmaz.
+
+## 6.5 Ürün kataloğu ve SWISS entegrasyonu
+
+SWISS_RESTORAN'ın ürün, kategori, seçenek/modifier, alerjen, görünürlük ve QR menü yetenekleri **yeniden yazılmaz**. TEZGÂH'ın görevi bunları kolay kullanmak ve görsel çıktılara bağlamaktır.
+
+**Entegrasyon aşamaları:**
+
+1. **Dosya:** CSV/XLSX dışa ve içe aktarma · kolon eşleme · önizleme · hata raporu · dry-run · **idempotent import** · SKU veya harici ID eşleme.
+2. **Sözleşme:** sürümlü JSON katalog sözleşmesi (kategoriler, ürünler, modifier grupları, varlık referansları, dışa aktarma damgası).
+3. **API:** katalog çekme · onaylı değişiklikleri gönderme · senkron durumu · çakışma raporu · denetim kaydı.
+4. **Olay:** ürün, kategori, fiyat, görünürlük ve varlık değişim olayları.
+
+Katalog değişiminin tasarıma yansıması Bölüm 3.3'teki snapshot kuralına tabidir.
+
+## 6.6 Marka ve tasarım sistemi
+
+**BrandKit** (proje veya müşteri seviyesinde): logo varyantları · renkler · fontlar · slogan · iletişim bilgileri · sosyal hesaplar · ikonlar · desenler · görsel stil · kullanım kuralları.
+
+**Design Tokens:** `brand.primary` · `brand.secondary` · `brand.accent` · `text.heading` · `text.body` · `price.primary` · `spacing.*` · `radius` · `stroke` · `shadow` · `imageTreatment` · `categoryStyle`.
+
+Aynı token farklı üretim profilinde farklı uygulanır: flyer'da bilgi yoğunluğu, tabelada uzaktan okunabilirlik, camda görüş mesafesi ve kesim, tekstilde baskı alanı ve renk sayısı, araçta panel ve eğrilik, sosyalde ekran oranı, menüde sayfa akışı.
+
+---
+
+# BÖLÜM 7 — GENİŞLEME MİMARİSİ
+
+## 7.1 Modüler sektör çalışma alanları
+
+TEZGÂH kapalı bir uygulama değil, ortak çekirdek üzerinde çalışan **modüler dikey çalışma alanları platformudur**. Her sektör kendi sipariş akışına, ölçü ve malzeme bilgisine, tasarım kurallarına, fiyatlandırma modeline, üretim çıktılarına, uzman ajanlarına ve arayüzüne sahip olabilir.
+
+**Kullanıcı yalnızca yaptığı işi görür.** Menü üreticisi tabela araçlarını, tekstilci menü modülünü görmez. Sektör sınırları geçirgendir: bir kullanıcı ek modülleri yetkilendirmeyle açabilir (matbaa menü basabilir, ajans tekstil satabilir, promosyoncu katalog hazırlayabilir).
+
+Sistem şu eksenlerde çalışır: sektör profili · aktif modüller · ek yetenek paketleri · kullanıcı rolü · abonelik ve entitlement.
+
+> **Değişmez ilke:** TEZGÂH herkese her aracı gösteren süper uygulama olmayacak; aynı çekirdek üzerinde her sektöre yalnızca yaptığı işi gösteren uzman çalışma alanları sunacaktır.
+
+## 7.2 Production Profiles
+
+Yeni sektör veya yeni ürün, **çekirdeğe kod eklenerek değil, profil tanımlanarak** gelir.
+
+Bir üretim profili en az şunları bildirir:
+
+```
+Profil kimliği ve sürümü
+Hedef kullanıcı ve sektör
+Sipariş alma şeması (zorunlu / koşullu / opsiyonel alanlar)
+Geometri: ölçü kümesi, bleed, güvenli alan, panel ve katlama, baskı alanı
+Tasarım kuralları (Rule Engine kural seti referansı)
+Tipografi sınırları
+Taşma stratejisi
+İzinli üretim teknikleri ve malzemeler
+Dosya gereksinimleri ve rolleri
+Kalite kapıları (INFO/WARNING/BLOCKER kümesi)
+Üretim çıktıları ve teslim biçimleri
+Fiyatlandırma girdileri
+Önizleme türleri
+Diğer modüllerle entegrasyon sınırları
+```
+
+**Kural:** yeni sektör = yeni profil. Çekirdek değişmez. Profil eklemek çekirdek testlerini kırmamalıdır.
+
+## 7.3 Plugin Architecture
+
+Platform, çekirdeği değiştirmeden genişletilebilir. Uzatma noktaları: üretim profilleri · kural setleri · uzman ajanlar · kalite kontrolleri · içe ve dışa aktarıcılar · bağlayıcılar · varlık sağlayıcıları · render adapter'ları.
+
+Her eklenti bir **manifest** ile gelir: kimlik · sürüm · uyumlu çekirdek aralığı · yetenek beyanı · gerekli izinler · gerekli entitlement · kaynak ve lisans.
+
+İlkeler: eklenti **sandbox** içinde çalışır · yalnız beyan ettiği yetenekleri kullanır · sözleşmeler sürümlüdür · eklenti hatası çekirdeği düşürmez · yükleme, güncelleme ve kaldırma denetlenir.
+
+## 7.4 Integration Connector Layer
+
+Dış sistemlerle tüm entegrasyon **tek bir bağlayıcı modeliyle** yürür: restoran ve POS sistemleri · e-ticaret · muhasebe ve ERP · matbaa ve tedarikçi sistemleri · üretim cihazları (Desktop Agent üzerinden) · bulut depolama · pazarlama kanalları.
+
+Her bağlayıcı bildirir: yetenek listesi · kimlik doğrulama yöntemi · sözleşme sürümü · veri eşleme · hız sınırı · yeniden deneme ve idempotency politikası · hata ve çakışma raporlama · denetim kaydı.
+
+Bağlayıcılar eklenti olarak dağıtılabilir; çekirdek hiçbir dış sisteme doğrudan bağımlı değildir.
+
+## 7.5 Country Package Architecture
+
+Aşağıdakiler çekirdeğe **sabit kodlanamaz**: dil · para birimi · vergi · ölçü birimi · kâğıt standardı · baskı standardı · elektrik standardı · malzeme terminolojisi · işçilik fiyatları · tabela ve cephe mevzuatı · adres, tarih ve sayı biçimi · ülkeye özgü yasal uyarılar.
+
+Bunlar **ülke paketi, bölge paketi, dil paketi, fiyat listesi, mevzuat paketi ve üretim standardı paketi** olarak eklenir ve tenant düzeyinde etkinleştirilir.
+
+Sistem baştan şunları destekler: çoklu dil · sağdan sola yazım · Latin dışı alfabeler · Unicode · yerelleştirilebilir şablon metinleri · çoklu para birimi · metrik ve imperial ölçü · A-serisi ve Letter/Legal · yerel vergi şemaları · bölgesel fiyatlandırma · zaman dilimleri · yerel veri saklama gereksinimleri.
+
+Yeni ülke eklemek çekirdeği çatallamaz, ayrı kod tabanı doğurmaz, mevcut tenant verisini bozmaz.
+
+> **İlke:** TEZGÂH evrensel geliştirilir, ülkelere uyarlanır. Türkiye'de doğar; dünyaya ihraç edilir.
+
+## 7.6 Sektör stüdyoları
+
+Sektör stüdyosu, bir üretim profilinin üzerine kurulmuş **uçtan uca karar ekranıdır**. İki referans stüdyo:
+
+### Tabela Studio
+
+Tabela; malzeme, ölçü, ışık, elektrik, üretim yöntemi, montaj, cephe perspektifi, gece ve gündüz görünümü ve maliyetle **birlikte** değerlendirilir. Müşterinin sorusu şudur: *"Dükkânım bu tabelayla gündüz nasıl, gece nasıl görünecek ve bana maliyeti ne olacak?"*
+
+Kapsam: ışıksız ve ışıklı tabela · vinil germe · pleksi, paslanmaz ve alüminyum kutu harf · kompozit zemin · önden, arkadan (halo) ve kenardan ışıklı harf · lightbox · neon ve LED neon · totem · çıkma tabela · dijital ekran.
+
+Her tasarım en az **gündüz ve gece** görünümünde üretilebilir; ileri seçenekler: yakın plan · karşı kaldırım · araç yaklaşımı · farklı hava koşulları · farklı ışık sıcaklıkları. Simülasyon dekoratif değildir; seçilen gerçek ışık ve malzeme davranışını yansıtmalıdır.
+
+Maliyet girdileri: en ve boy · harf sayısı ve yüksekliği · malzeme tipi ve kalınlığı · LED türü ve yoğunluğu · güç kaynağı · CNC veya lazer kesim · kaynak ve kasa işçiliği · taşıyıcı konstrüksiyon · baskı · folyo · montaj · vinç veya erişim ihtiyacı · nakliye · bölgesel işçilik · vergi ve para birimi.
+
+Onay sonrası üretilebilecekler: müşteri sunumu · teklif · malzeme listesi · ölçü planı · montaj notu · baskı dosyası · kesim dosyası · üretim iş emri.
+
+### Mimari Görselleştirme Stüdyosu
+
+Amaç, sıradan bir telefon fotoğrafını profesyonel bir mimari sunuma dönüştürmek ve müşterinin işletmesini gelecekteki hâliyle görmesini sağlamaktır.
+
+Saha fotoğrafı **profesyonel kabul edilmez**; eğri çekim, perspektif bozukluğu, düşük ışık, düşük çözünürlük, gürültü, yansıma ve renk hataları beklenir. Bu nedenle önce iyileştirme hattından geçer: perspektif ve lens düzeltme · beyaz dengesi · pozlama · gürültü azaltma · keskinleştirme · süper çözünürlük.
+
+Ardından: mekân analizi (duvar, zemin, tavan, cam, kolon, banko, tabela ve menü board alanları) → otomatik yerleştirme (tabela, cam giydirme, logo, menü board, duvar grafikleri) → iç mimari konsept (masa ve sandalye yerleşimi, renk, aydınlatma, dekor, malzeme) → fotogerçekçi sunum.
+
+**Konsept Mockup ile Teknik Proje ayrıdır** ve birbirinin yerine kullanılamaz. Sunum görselleri üretim/montaj çıktısı olarak kullanılamaz; bu ayrım çıktının üzerinde kalıcı biçimde işaretlenir.
+
+---
+
+# BÖLÜM 8 — UYGULAMA VE ÇALIŞMA ZAMANI MİMARİSİ
+
+## 8.1 Editör çekirdeği
+
+Tek editör çekirdeği vardır; ürün başına ayrı editör yazılmaz.
 
 ```text
 Editor Core
@@ -927,456 +580,179 @@ Editor Core
 └── Collaboration Adapter
 ```
 
-## 14.2 Üretim profilleri
+Üretim profilleri (flyer, menü, tabela, cam, tekstil, araç, sosyal, ambalaj ve gelecekte eklenecekler) aynı çekirdeği kullanır.
 
-- Flyer Profile
-- Menu Profile
-- Signage Profile
-- Glass Profile
-- Textile Profile
-- Vehicle Profile
-- Social Profile
-- Packaging Profile
+**Serbestlik ile otomasyon dengesi:** kullanıcı otomatik düzeni kullanabilir, alanları kilitleyebilir, kontrollü override yapabilir, belirli alanları otomatik akıştan hariç tutabilir; tasarımı bozacak müdahalelerde uyarılır.
 
-Ayrı ürünler için ayrı editör yazılmaz.
-
-## 14.3 Serbest düzenleme ile otomasyon dengesi
-
-Kullanıcı:
-
-- otomatik düzeni kullanabilir,
-- belirli alanları kilitleyebilir,
-- kontrollü override yapabilir,
-- otomatik yeniden akıştan alan hariç tutabilir,
-- tasarımı tamamen bozacak müdahalelerde uyarılır.
-
----
-
-# 15. RENDER MOTORU BAĞIMSIZLIĞI
-
-## 15.1 Konva geçici uygulamadır
-
-Konva mevcut ihtiyaçları karşıladığı sürece kullanılır.
-
-Konva:
-
-- ürün anayasası değildir,
-- belge formatı değildir,
-- iş kuralı değildir,
-- vazgeçilmez bağımlılık değildir.
-
-## 15.2 Adapter zorunluluğu
-
-Konva’ya doğrudan bağımlılık yalnızca renderer adapter içinde tutulur.
+## 8.2 Renderer bağımsızlığı
 
 ```text
-Domain Model
-↓
-Layout Result
-↓
-Renderer Interface
-├── KonvaRenderer
-├── FutureCanvasRenderer
-├── SVGRenderer
-└── ServerRenderer
+Domain Model → Layout Result → Renderer Interface
+                                ├── Interactive Renderer
+                                ├── Vector Renderer
+                                └── Server Renderer
 ```
 
-## 15.3 Açık kaynak teknik radar
+Render kütüphanesine doğrudan bağımlılık **yalnız adapter içinde** bulunur. Domain kuralları renderer içine gömülemez. Renderer değişimi TDR ve motor değiştirme kapısına tabidir (Bölüm 2.3).
 
-Düzenli değerlendirilecek alanlar:
+## 8.3 Sipariş alma sihirbazı
 
-- canvas editör motorları,
-- SVG düzenleyiciler,
-- layout motorları,
-- font shaping,
-- PDF,
-- renk yönetimi,
-- image processing,
-- WebGL/WebGPU,
-- CRDT,
-- background removal,
-- vectorization,
-- 3D mockup.
+Pazarlamacı grafik ayarı görmez. Akış: müşteri → proje → istenen ürünler → ölçüler → logo ve marka → ürün kataloğu → görseller → iletişim ve QR → teslim tarihi → otomatik tasarım üretimi.
 
-## 15.4 Motor değiştirme kapısı
+**Dinamik sorular:** sorular yalnız seçilen ürünlere göre açılır (tabela seçilmediyse tabela ölçüsü, tekstil seçilmediyse beden ve konum, QR seçilmediyse hedef adres sorulmaz).
 
-Geçiş için zorunlu:
+**Soru azaltma motoru:** BrandKit varsa renk, logo varsa görsel, bağlı katalog varsa ürünler, müşteri kaydı varsa adres tekrar sorulmaz; geçmiş ölçüler yeniden kullanılabilir.
 
-- capability matrisi,
-- lisans incelemesi,
-- benchmark,
-- proof of concept,
-- belge uyumluluğu,
-- görsel karşılaştırma,
-- performans testi,
-- migration,
-- rollback,
-- security review.
+**Roller:** grafiker otomatik tasarımı inceler, kilitli kuralları aşmadan düzenler, alternatif üretir, sunumu onaylar, baskı dosyasını serbest bırakır. Grafikeri olmayan firmada bu rolün büyük kısmını otomatik tasarım ve kalite kapıları üstlenir.
 
-Yeni teknoloji daha yeni olduğu için otomatik seçilmez.
+## 8.4 Desktop Agent (PC Companion)
+
+TEZGÂH uzun vadede yalnızca web uygulaması olmayacaktır. **İsteğe bağlı** çalışan bir masaüstü ajanı mimarisi bulunur.
+
+**Yetenek alanları:** yerel dosya sistemi · toplu klasör işlemleri · PDF üretimi · render · export · GPU hızlandırma · yerel AI · çevrimdışı çalışma.
+
+**Cihaz ve yazılım bağlantısı** (güvenli connector mimarisi üzerinden): üretim cihazları · yazıcılar · RIP · DTF · UV · CNC · lazer · barkod ve etiket yazıcıları. Uygun API veya otomasyon imkânı oluştuğunda profesyonel tasarım yazılımlarıyla (Photoshop, Illustrator, InDesign, CorelDRAW ve benzerleri) entegrasyon desteklenebilir.
+
+**Güvenlik ve sınırlar:**
+
+- Ajan **sandbox** mantığında çalışır.
+- **Açık kullanıcı izni olmadan işlem yapmaz.**
+- Tüm işlemler denetim izine yazılır.
+- Lisans ve entitlement doğrulaması **STYVA** üzerinden yapılır.
+- Yerelde işlenen veri politikası açıkça bildirilir.
+
+**Kural:** Desktop Agent çekirdeğin zorunlu parçası **değildir**. Web sürümü ajan olmadan tam çalışabilir olmaya devam eder.
+
+## 8.5 Baskı ve üretim
+
+**Referans A4 profili:** kesim 210 × 297 mm · bleed her kenarda 3 mm · çalışma alanı 216 × 303 mm · güvenli alan kesimden en az 4 mm içeride · hedef 300 DPI · baskı amacı CMYK · proof ve production export **ayrı**.
+
+**Renk yönetimi sunucu tarafındadır.** Tarayıcı önizlemesi baskı garantisi değildir. Sunucu hattında: ICC profilleri · rendering intent · RGB→CMYK dönüşümü · output intent · PDF/X · şeffaflık düzleştirme politikası · font gömme veya outline · overprint kontrolü.
+
+**Dürüstlük kuralı:** sistem, gerçekten sağlamadığı bir çıktı niteliğini (CMYK uygunluğu, PDF/X, ICC) **iddia edemez**. Doğrulanamayan nitelik sessiz geçilmez; INFO seviyesinde açıkça bildirilir.
+
+**Üretim çıktısı taksonomisi:** her çıktı türü (proof, üretim baskısı, kesim dosyası, nakış çıktısı, mockup, sunum, dijital menü ve benzeri) adlandırılmış bir kanaldır; sürüm sayacı taşır ve dosya adlandırma sözleşmesine uyar. Mockup ve sunum çıktıları üretim dosyası yerine geçmez; bu ayrım çıktının kendisinde görünür olur.
+
+**Üretim fiziği profil tarafından tanımlanır:** panel ve katlama haritaları · malzeme payları · ölçek damgaları (büyük formatta 1:10 gibi) · kesim ve nakış kısıtları · teknik–malzeme uyumu · vektör çıktıda metnin eğriye çevrilmesi gibi makine sözleşmeleri.
+
+## 8.6 Performans
+
+**Zorunlu veri setleri:** 20 · 50 · 100 · 200 ürün.
+
+Hedefler: 20 ürünlü belge açılışı p95 < 2 sn · 50 ürünlü belge p95 < 3 sn · 200 ürün paneli sanal listeyle akıcı · sürükleme ve ölçekleme tepkisi < 100 ms · autosave başarı oranı ≥ %99,9 · önizleme render p95 < 15 sn.
+
+İlkeler: ağır işler worker veya kuyrukta · editörde proxy/thumbnail, export'ta orijinal · sayfa dışı render azaltımı · bellek sızıntısı testi · ölçüm rejimi süreklidir.
 
 ---
 
-# 16. AÇIK KAYNAK TEKNOLOJİ POLİTİKASI
+# BÖLÜM 9 — PLATFORM TEMELLERİ
 
-Muhtemel katmanlar:
+## 9.1 Security Foundation
 
-| Alan | Birincil aday |
+- Her kayıt **tenant kapsamındadır**; tüm sorgular tenant filtresiyle yürür. Arayüzde gizlemek yetkilendirme değildir.
+- Kimlik doğrulama ve yetkilendirme zorunludur; yetki kontrolü sunucu tarafındadır.
+- Dosya erişimi imzalı ve kısa ömürlü bağlantılarla olur; depolama yolları tenant ve proje bazlıdır.
+- Yüklenen dosyalarda MIME ve imza kontrolü yapılır; vektör dosyalar sanitize edilir; zararlı içerik taranır.
+- Render ve dönüştürme işleri izole ortamda çalışır.
+- Cross-tenant erişim testleri zorunludur.
+- **Denetim izi değişmezdir**; onaylanan sürüm immutable'dır.
+- Dış servise veri gönderimi loglanır; müşteri verisi ortak veri setine girmez.
+- Bağımlılık zinciri güvenliği (lisans ve zafiyet taraması) sürekli izlenir.
+
+## 9.2 Observability
+
+Platform gözlemlenebilir olmalıdır: yapılandırılmış log · metrik · dağıtık izleme.
+
+İzlenmesi zorunlu alanlar: render ve export kuyruğu ile süreleri · kalite kapısı sonuçları · AI çağrıları (maliyet, gecikme, başarı) · entegrasyon hataları · tenant bazlı kullanım ve kota · hata bütçesi.
+
+**Ayrım:** denetim izi hukuki ve iş kaydıdır, değişmezdir; telemetri operasyoneldir ve örneklenebilir. Telemetri müşteri içeriği taşımaz.
+
+## 9.3 STYVA SaaS Integration
+
+TEZGÂH **bağımsız üründür**; ticari yönetim tamamen STYVA üzerinden yapılır.
+
+| Katman | Sahip |
 |---|---|
-| Canvas | Konva / React Konva |
-| State | Zustand |
-| Server State | TanStack Query |
-| Validation | Zod |
-| Fonts | opentype.js / fontkit / shaping çözümü |
-| Images | Sharp |
-| Background Removal | rembg veya eşdeğer açık kaynak model |
-| PDF Preview | PDF.js |
-| PDF Manipulation | pdf-lib |
-| Collaboration | Yjs |
-| QR | açık kaynak QR kütüphanesi |
-| Barcode | JsBarcode veya eşdeğeri |
-| Vectorization | Potrace |
-| 3D | Three.js / React Three Fiber |
-| Data | PostgreSQL + Prisma |
-| Queue | Redis + BullMQ |
-| Storage | S3 uyumlu object storage |
+| Abonelik · lisans · paket · ödeme · entitlement · kota · merkezî admin | **STYVA** |
+| Tasarım · üretim · render · AI · sektör stüdyoları | **TEZGÂH** |
 
-Bu tablo bağlayıcı teknoloji seçimi değil, adapter arkasında değerlendirilecek başlangıç setidir.
+**Kurallar:** iki sistem **ortak veritabanı kullanmaz** · iletişim sürümlü sözleşmelerle olur · TEZGÂH lisans ve kota kararını kendi üretmez, STYVA'dan alır · STYVA tasarım verisine doğrudan erişmez · kimlik ve tenant eşlemesi sözleşmeyle taşınır · bağlantı kesildiğinde tanımlı bir tolerans davranışı uygulanır ve durum görünür olur.
 
----
+## 9.4 STYVA Package Management
 
-# 17. BASKI VE ÜRETİM
+Paket, tenant'a açılan yetenek kümesidir: aktif modüller ve sektör stüdyoları · üretim profilleri · AI ajan sınıfları ve kotaları · depolama ve render kotaları · Desktop Agent hakkı · marketplace erişimi · destek düzeyi.
 
-## 17.1 A4 flyer varsayılan profili
+Paketler sürümlüdür; yükseltme ve düşürme davranışı (veri saklama, salt-okunur düşüş, geri yükleme) tanımlıdır. Paket değişimi mevcut veriyi silmez.
 
-- kesim: 210 × 297 mm,
-- bleed: her kenarda 3 mm,
-- çalışma alanı: 216 × 303 mm,
-- güvenli alan: kesimden en az 4 mm içeride,
-- hedef: 300 DPI,
-- baskı amacı: CMYK,
-- proof ve production export ayrı.
+## 9.5 Add-on / Entitlement System
 
-## 17.2 Renk yönetimi
+Yetenekler **entitlement** ile açılır; kod içinde sabit "premium" kontrolü yapılmaz.
 
-Tarayıcı önizlemesi baskı garantisi değildir.
+- Entitlement kaynağı STYVA'dır; TEZGÂH bunları yetki kararına çevirir.
+- Kontrol noktaları: modül görünürlüğü · profil kullanımı · AI ajan seçimi · kota tüketimi · Desktop Agent bağlantısı · marketplace işlemleri · bağlayıcı kullanımı.
+- Kota aşımında davranış nazik düşüştür (görünür bildirim ve engelleme), sessiz başarısızlık değil.
+- Entitlement değişimleri denetim izine yazılır.
 
-Sunucu tarafında:
+## 9.6 STYVA Admin Integration
 
-- ICC,
-- rendering intent,
-- RGB → CMYK,
-- output intent,
-- PDF/X,
-- transparency flattening politikası,
-- font embed/outline,
-- overprint kontrolü
+Merkezî yönetim STYVA'dadır: tenant yaşam döngüsü · paket atama · kullanım ve kota görünümü · faturalama · destek işlemleri.
 
-uygulanır.
-
-## 17.3 Preflight
-
-Kontroller:
-
-- düşük efektif DPI,
-- eksik font,
-- bleed,
-- safe area,
-- metin taşması,
-- çok küçük font,
-- ince çizgi,
-- bozuk SVG,
-- şeffaflık,
-- RGB/CMYK,
-- QR okunabilirliği,
-- barkod,
-- kırpılmış fiyat,
-- eksik görsel,
-- görünmeyen ürün,
-- çakışan kart,
-- kesilmiş logo,
-- yanlış para birimi,
-- lisansı belirsiz varlık.
-
-Seviyeler:
-
-- INFO
-- WARNING
-- BLOCKER
-
-BLOCKER çözülmeden üretim dosyası serbest bırakılamaz.
+TEZGÂH bu amaçla **okuma ağırlıklı, sözleşmeli** operasyonel uçlar sunar (kullanım özetleri, kota tüketimi, iş durumu, sağlık). Doğrudan veritabanı erişimi yoktur. Yönetimsel eylemler TEZGÂH tarafında **etki** doğurur; karar STYVA'da alınır.
 
 ---
 
-# 18. PERFORMANS
+# BÖLÜM 10 — YÜRÜTME
 
-Zorunlu veri setleri:
+## 10.1 Öncelik sırası (yürürlükteki karar)
 
-- 20 ürün,
-- 50 ürün,
-- 100 ürün,
-- 200 ürün.
+**A. Canonical Mimari** → **B. Dynamic Composition Engine** → **C. Production Profiles** → **D. SaaS Omurgası**
 
-Hedefler:
+- **A.** Mimari kararların bu belgeye işlenmesi. *Mimari güncellenmeden yeni modül geliştirmeye alınmaz.*
+- **B.** Ortak dinamik kompozisyon motoru: flyer · menü · katalog · broşür · tabela · tekstil · ambalaj için **tek çekirdek**.
+- **C.** Yeni modüller çekirdeğe kod eklenerek değil, **profil** tanımlanarak gelir.
+- **D.** Tenant · Auth · veritabanı · nesne depolama · olay veri yolu · entitlement; bu aşamada STYVA entegrasyonu tamamlanır.
 
-- 20 ürünlü belge açılışı p95 < 2 saniye,
-- 50 ürünlü belge p95 < 3 saniye,
-- 200 ürün paneli sanal liste ile akıcı,
-- sürükleme/ölçekleme tepki süresi < 100 ms,
-- autosave başarı oranı ≥ %99,9,
-- preview render p95 < 15 saniye,
-- ağır işlemler worker veya queue’da,
-- orijinal görseller export sırasında,
-- editörde proxy/thumbnail kullanımı,
-- sayfa dışı render azaltımı,
-- bellek sızıntısı testi.
+> **Kural:** Önce mimari, sonra uygulama. Bu karar bundan sonraki tüm geliştirmeler için geçerlidir.
 
----
+## 10.2 Faz planı
 
-# 19. GÜVENLİK VE TENANT İZOLASYONU
+| Faz | İçerik |
+|---|---|
+| **0** | Kanonikleştirme, eski protokol analizi ve arşivleme, yetenek audit'i |
+| **1** | Proje ve sipariş alma omurgası: Customer, Project, teslimat seçimi, ölçüler, Order Intake, BrandKit, Asset Library, rol bazlı sihirbaz |
+| **2** | Dinamik kompozisyon çekirdeği: geometri, dinamik grid, tipografi kuralları, simetri, reflow, undo/redo, autosave |
+| **3** | Katalog ve restoran entegrasyonu: dosya → sözleşme → API → olay; snapshot ve değişim etkisi |
+| **4** | 20–200 ürün zekâsı: adaptif tipografi, kategori dengeleme, görsel yoğunluğu, son satır kompozisyonu, taşma stratejisi, performans |
+| **5** | Görsel işleme: ImageSlot, kırpma, focus point, arka plan silme, standardizasyon, Asset Registry |
+| **6** | Baskı: sunucu render, CMYK, ICC, preflight, PDF/X, proof, üretim çıktısı |
+| **7** | Eşgüdümlü materyal seti ve sektör profilleri |
+| **8** | AI: orkestratör, çok-ajanlı uzman mimarisi, kontrollü benzersizlik, kalite puanlama |
+| **9** | Platform: tenant, entitlement, marketplace, observability, Desktop Agent |
 
-- Her kayıt tenant kapsamındadır.
-- Tüm sorgular tenant filtresiyle yürür.
-- UI gizleme yetkilendirme değildir.
-- S3 yolları tenant/proje bazlıdır.
-- Signed URL kısa ömürlüdür.
-- Cross-tenant IDOR testleri zorunludur.
-- SVG sanitize edilir.
-- MIME ve file signature kontrol edilir.
-- Render worker izole çalışır.
-- AI’ye veri gönderimi loglanır.
-- Müşteri görselleri ortak veri setine girmez.
-- Audit log tutulur.
-- Onaylanan tasarım immutable revision olur.
-- Değişiklik yeni revision açar.
+Fazların altyapısı paralel hazırlanabilir; ancak her materyal **ortak veri, marka ve layout motorunu** kullanmak zorundadır.
 
----
+## 10.3 Kalite kapıları
 
-# 20. ONAY VE REVİZYON AKIŞI
+| Kapı | Konu |
+|---|---|
+| **GT-0** | Protokol ve audit: tek kanonik belge, çelişkiler raporlandı, unutulan kararlar sunuldu |
+| **GT-1** | Sipariş alımı: tasarım bilgisi olmadan proje açılabiliyor, yalnız ilgili sorular geliyor, tekrar sorulmuyor |
+| **GT-2** | Dinamik kompozisyon: 20/50/100/200 ürün, sırıtmayan reflow, simetri, adaptif tipografi, minimum font koruması |
+| **GT-3** | Görsel motor: farklı oranlar, ImageSlot, arka plan silme, ortak stil, düşük DPI uyarısı, izolasyon |
+| **GT-4** | Katalog entegrasyonu: import/export, dry-run, idempotency, modifier korunumu, snapshot, çakışma raporu |
+| **GT-5** | Eşgüdümlü proje: aynı veriden farklı profillere taşınma, marka tutarlılığı, piksel kopya yok |
+| **GT-6** | Baskı: CMYK, bleed, güvenli alan, font, preflight, PDF/X, üretim onayı |
+| **GT-7** | Güvenlik: cross-tenant testleri, varlık gizliliği, imzalı bağlantılar, dosya güvenliği, denetim izi, değişmez onay |
+| **GT-8** | Platform: entitlement zorlaması, kota davranışı, eklenti izolasyonu, Desktop Agent izin ve denetimi |
 
-Durumlar:
+**READY kararı için ilgili tüm kapılar geçilmelidir.** İnsan turu gereken kapılarda sözlü onay yeterli değildir; kanıt kaydedilir.
+
+## 10.4 Görev formatları
+
+Görev başında:
 
 ```text
-DRAFT
-AUTO_GENERATED
-DESIGN_REVIEW
-CLIENT_REVIEW
-CHANGES_REQUESTED
-APPROVED
-PRODUCTION_READY
-ARCHIVED
-```
-
-## 20.1 İki seçenekli şirket modeli
-
-Sistem gerektiğinde müşteriye:
-
-- Seçenek A
-- Seçenek B
-
-sunabilir.
-
-Bu seçenekler aynı proje verisinden, farklı kontrollü kompozisyonlarla üretilir.
-
-## 20.2 Onay
-
-Müşteri onayı:
-
-- belge revision’ına bağlıdır,
-- proof dosyasına bağlıdır,
-- tarih ve kullanıcı kaydı taşır,
-- sonradan sessizce değiştirilemez.
-
----
-
-# 21. GELİŞTİRME FAZLARI
-
-## Faz 0 — Kanonikleştirme ve eski protokol analizi
-
-- tüm MD envanteri,
-- eski karar matrisi,
-- çelişki raporu,
-- bu dosyanın tek otorite yapılması,
-- eski protokollerin arşivlenmesi,
-- mevcut yetenek audit’i.
-
-## Faz 1 — Proje ve sipariş alma omurgası
-
-- Customer,
-- Project,
-- Deliverable selection,
-- Measurements,
-- Order Intake,
-- BrandKit,
-- Asset Library,
-- role-based wizard.
-
-## Faz 2 — Flyer dinamik tasarım çekirdeği
-
-- A4,
-- bleed,
-- safe area,
-- text,
-- image,
-- ProductCard,
-- categories,
-- dynamic grid,
-- typography rules,
-- symmetry,
-- auto reflow,
-- undo/redo,
-- autosave.
-
-## Faz 3 — Katalog ve restoran entegrasyonu
-
-- CSV/XLSX,
-- contract JSON,
-- SWISS_RESTORAN mapping,
-- modifiers,
-- assets,
-- catalog snapshot,
-- change impact preview.
-
-## Faz 4 — 20–200 ürün zekâsı
-
-- adaptive typography,
-- category balancing,
-- image density,
-- last-row composition,
-- overflow strategy,
-- A3/page recommendation,
-- performance.
-
-## Faz 5 — Görsel işleme
-
-- ImageSlot,
-- crop,
-- focus point,
-- background removal,
-- standardization,
-- asset privacy,
-- stock library.
-
-## Faz 6 — Baskı
-
-- server render,
-- CMYK,
-- ICC,
-- preflight,
-- PDF/X,
-- proof,
-- production export,
-- golden render.
-
-## Faz 7 — Eşgüdümlü materyal seti
-
-- menu,
-- QR menu,
-- signage,
-- glass,
-- textile,
-- social,
-- vehicle,
-- packaging.
-
-Bu faz flyer tamamlandıktan sonra başlamaz; altyapısı paralel hazırlanabilir. Ancak her materyal flyer çekirdeğinin ortak veri, marka ve layout motorunu kullanmak zorundadır.
-
-## Faz 8 — AI ve kontrollü benzersizlik
-
-- template ranking,
-- design variations,
-- text assistance,
-- image classification,
-- background generation,
-- quality scoring.
-
----
-
-# 22. KALİTE KAPILARI
-
-## GT-0 — Protokol ve audit
-
-- tüm eski protokoller analiz edildi,
-- çelişkiler raporlandı,
-- unutulan kararlar kullanıcıya sunuldu,
-- tek kanonik MD aktif,
-- ikinci anayasa yok.
-
-## GT-1 — Sipariş alımı
-
-- pazarlamacı tasarım bilgisi olmadan proje açabiliyor,
-- yalnızca seçilen ürünlere uygun sorular geliyor,
-- tekrar eden bilgi yeniden sorulmuyor,
-- teslimatlar seçilebiliyor.
-
-## GT-2 — Dinamik flyer
-
-- 20, 50, 100, 200 ürün testleri,
-- ürün ekleme/çıkarma sonrası sırıtmayan reflow,
-- simetri,
-- adaptive typography,
-- minimum font koruması,
-- grid ve serbest düzen.
-
-## GT-3 — Görsel motor
-
-- farklı oranlı görseller,
-- image slots,
-- background removal,
-- ortak stil,
-- düşük DPI uyarısı,
-- müşteri görsel izolasyonu.
-
-## GT-4 — Restoran entegrasyonu
-
-- CSV/XLSX import/export,
-- dry-run,
-- idempotency,
-- zeytin/peynir gibi modifier yapılarını koruma,
-- katalog snapshot,
-- QR menü eşlemesi,
-- conflict report.
-
-## GT-5 — Eşgüdümlü proje
-
-- flyer verisi menüye,
-- QR’ye,
-- tabela/cam/tekstile
-
-uygun profil üzerinden taşınabiliyor,
-- marka tutarlılığı korunuyor,
-- piksel kopyalama yapılmıyor.
-
-## GT-6 — Baskı
-
-- CMYK,
-- bleed,
-- safe area,
-- font,
-- preflight,
-- PDF/X,
-- golden render,
-- production approval.
-
-## GT-7 — Güvenlik
-
-- cross-tenant testler,
-- asset privacy,
-- signed URLs,
-- SVG security,
-- audit log,
-- immutable approvals.
-
-READY kararı için ilgili tüm GT kapıları geçmelidir.
-
----
-
-# 23. GELİŞTİRME ÇALIŞMA FORMATLARI
-
-Her görev başında:
-
-```text
-MODÜL:
+MODÜL / PROFİL:
 PROJE AKIŞINA ETKİ:
 PAZARLAMACIYA ETKİ:
 DİNAMİK TASARIMA ETKİ:
@@ -1393,775 +769,131 @@ ROLLBACK:
 ÜCRETLİ BAĞIMLILIK:
 ```
 
-Her görev sonunda:
+Görev sonunda:
 
 ```text
-1. Yapılan değişiklik
-2. Sipariş alma sürecine katkısı
-3. Dinamik tasarıma katkısı
-4. Eşgüdümlü materyallere katkısı
-5. Değişen dosyalar
-6. Migration/veri
-7. Test sonuçları
+1. Yapılan değişiklik       9. Güvenlik
+2. Sipariş alma katkısı    10. Performans
+3. Dinamik tasarım katkısı 11. Bilinen risk
+4. Eşgüdümlü materyal      12. Commit
+5. Değişen dosyalar        13. PR
+6. Migration / veri        14. Rollback
+7. Test sonuçları          15. Merge kararı: READY | BLOCKED
 8. GT sonucu
-9. Güvenlik
-10. Performans
-11. Bilinen risk
-12. Commit
-13. PR
-14. Rollback
-15. Merge kararı: READY veya BLOCKED
 ```
 
----
-
-# 24. ÜCRETLİ BAĞIMLILIK
-
-Kullanıcı onayı gerekir:
-
-- ücretli SDK,
-- ücretli API,
-- kapalı kaynak editör,
-- GPU aboneliği,
-- lisans maliyeti,
-- kullanıcı başı fiyat,
-- vendor lock-in,
-- müşteriye ek maliyet.
-
-Açık kaynak ve geri döndürülebilir çözümler önceliklidir.
-
----
-
-# 25. AJAN UYGULAMA DİREKTİFİ
+## 10.5 Uygulama direktifi
 
 ```text
 TEZGÂH KANONİK UYGULAMA DİREKTİFİ
 
 Sen TEZGÂH reposunda çalışan kıdemli SaaS ürün ve sistem mühendisisin.
 
-Ana amaç:
-Müşteriden minimum soruyla sipariş alan, ürün ve marka verisini tek projede toplayan, farklı içerik yoğunluklarında profesyonel ve simetrik tasarımları dinamik olarak üreten, seçilen tüm reklam materyallerini eşgüdümlü hazırlayan Creative Production SaaS geliştirmek.
+Amaç: müşteriden minimum soruyla sipariş alan, ürün ve marka verisini tek projede
+toplayan, farklı içerik yoğunluklarında profesyonel ve simetrik tasarımlar üreten,
+seçilen tüm materyalleri eşgüdümlü hazırlayan Creative Production SaaS geliştirmek.
 
 Değişmez kurallar:
 - Proje merkezlidir; belge merkezli değildir.
-- Flyer kırmızı çizgi ve layout zekâsının ilk kalite referansıdır.
-- Menü, QR, tabela, cam, tekstil ve diğer çıktılar aynı proje verisinden paralel üretilir.
-- Kullanıcıya gereksiz tasarım kararı verdirme.
-- Pazarlamacıya yalnızca gerekli soruları sor.
-- Ürün ekleme/çıkarma tasarımı bozmasın.
-- Tipografi içerik yoğunluğuna göre dinamik değişsin.
-- Minimum okunabilirlik sınırı ihlal edilmesin.
-- Simetri sürekli kuraldır.
-- Tasarımlar kontrollü biçimde benzersiz olsun.
-- Müşteri görsellerini başka müşteriye gösterme veya önerme.
-- Stok varlıkların lisansını takip et.
-- SWISS_RESTORAN’ın olgun ürün/modifier sistemini yeniden yazma.
-- Repolar bağımsız kalsın.
-- Entegrasyon sürümlü CSV/JSON/API/event sözleşmeleriyle yapılsın.
-- Canvas veya Konva state’ini kanonik veri sayma.
-- Konva’yı adapter arkasında tut.
-- Daha iyi açık kaynak motoru benchmark ve ADR olmadan değiştirme.
-- CMYK/PDF/X iddiasını browser export ile yapma.
+- Flyer kırmızı çizgidir ve layout zekâsının ilk kalite referansıdır.
+- Tüm çıktılar aynı proje verisinden paralel üretilir.
+- Kullanıcıya gereksiz tasarım kararı verdirme; yalnız gerekli soruyu sor.
+- Ürün ekleme/çıkarma tasarımı bozmasın; tipografi dinamik, sınırlar korunur.
+- Simetri sürekli kuraldır; tasarımlar kontrollü biçimde benzersizdir.
+- Müşteri varlıklarını başka müşteriye gösterme; lisans ve kaynağı izle.
+- SWISS_RESTORAN'ın olgun ürün/modifier sistemini yeniden yazma.
+- Repolar bağımsız kalsın; entegrasyon sürümlü sözleşmelerle olsun.
+- Ticari katman STYVA'nındır; TEZGÂH lisans/kota kararı üretmez.
+- Tuval durumunu kanonik veri sayma; render'ı adapter arkasında tut.
+- Teknoloji seçimini TDR olmadan değiştirme; çekirdeği teknolojiye bağlama.
+- Sağlamadığın çıktı niteliğini iddia etme (CMYK/PDF/X/ICC dahil).
 - Mock, sahte buton veya yarım akış bırakma.
 - Destructive migration yapma; additive migration ve rollback kullan.
 - Eski protokolleri analiz etmeden arşivleme.
-- Tüm GT kapıları geçmeden READY deme.
+- Tüm ilgili GT kapıları geçmeden READY deme.
+- Yeni modülü Canonical güncellenmeden geliştirmeye alma.
 ```
 
 ---
 
-# 26. İLK UYGULAMA GÖREVİ
+# EK-A — TECHNOLOGY REFERENCE STACK
 
-```text
-TEZGÂH V3 KANONİKLEŞTİRME VE DİNAMİK TASARIM AUDIT
+> **Bu bölüm mimari karar değildir.** Yalnızca güncellenebilir referans listesidir.
+> Buradaki hiçbir teknoloji çekirdeğin değiştirilemez parçası değildir; değişim **TDR** ile yapılır.
 
-1. Repodaki tüm MD dosyalarını listele.
-2. Önceki tüm protokol ve mimari kararlarını çıkar.
-3. Kararları KORUNDU / REVİZE / ÇELİŞKİLİ / GEÇERSİZ / BELİRSİZ olarak sınıflandır.
-4. Bu V3 protokolünde bulunmayan önemli kararları ayrı raporla.
-5. Kullanıcı kararı gerektiren maddeleri net soru listesi yap.
-6. Bu dosyayı repo kökünde tek kanonik protokol olarak hazırla.
-7. Eski protokolleri arşivle; silme.
-8. Mevcut proje/customer/order-intake yapısını audit et.
-9. Mevcut flyer/menu/editor yetenek matrisi çıkar.
-10. Dinamik layout, typography, symmetry ve reflow yeteneklerini VAR / KISMİ / MOCK / BOZUK / YOK olarak işaretle.
-11. 20/50/100/200 ürün test veri setlerini belirle.
-12. SWISS_RESTORAN katalog ve modifier sözleşmesini incele.
-13. CSV/JSON/API entegrasyon sınırını çıkar.
-14. Tenant asset izolasyonu ve stok kütüphanesi durumunu incele.
-15. Konva’ya doğrudan gömülü domain kurallarını belirle.
-16. Renderer adapter planı çıkar.
-17. Baskı/CMYK/preflight yolunu doğrula.
-18. P0/P1/P2 risk matrisi oluştur.
-19. İlk gerçek dikey dilimi öner:
-    Sipariş Alma → Katalog Bağlama → Dinamik A4 Flyer → Otomatik Menü Taslağı → QR Eşleme → Proof.
-20. Kod yazmadan önce audit raporu üret.
-21. Sonuç:
-    READY_FOR_DYNAMIC_DESIGN_CORE
-    veya
-    BLOCKED_WITH_REASONS.
-```
+| Yetenek (port) | Referans adaylar |
+|---|---|
+| Etkileşimli tuval | Konva · React-Konva |
+| Görsel işleme ve onarım | Sharp · OpenCV · Real-ESRGAN · LaMa |
+| PDF üretimi ve düzenleme | pdf-lib |
+| Vektör optimizasyonu | SVGO |
+| Font ve tipografi | OpenType.js |
+| Renk yönetimi | LittleCMS |
+| 3B ve sahne | Three.js |
+| Nesne depolama | MinIO (S3 uyumlu) |
+| Kuyruk ve arka plan işleri | Redis · BullMQ |
+| Arama | Meilisearch · OpenSearch |
+| Gözlemlenebilirlik | OpenTelemetry · Prometheus · Grafana |
+| Dosya güvenliği | ClamAV |
+| AI çalışma zamanı ve modeller | ComfyUI · Diffusers · Segment Anything · ControlNet · Grounding DINO |
+
+Liste zamanla güncellenir; güncelleme bu belgenin gövdesini değiştirmez.
+
+**Değişmez ilke:** TEZGÂH'ın rekabet avantajı kullandığı kütüphaneler değildir. Kalıcı değer; sektör uzmanlığı · modüler mimari · AI Orchestrator · sektör stüdyoları · baskı ve üretim motorları · workflow · rule engine · kalite kontrolü · STYVA entegrasyonu ve açık, değiştirilebilir teknoloji mimarisi üzerine kurulur. **Teknolojiler değişebilir; mimari korunur.**
 
 ---
 
-# 27. ESKİ PROTOKOLDEN KORUNAN KARARLAR
+# EK-B — KARAR KAYDI
 
-Bu V3 sürümünde önceki protokollerden korunan ana hükümler:
+**Bu sürümde (4.0.0) alınan ve kesinleşen kararlar**
 
-- A4 flyer kırmızı çizgidir.
-- 20–200 ürün yönetimi zorunludur.
-- Gridli ve gridsiz tasarım birlikte desteklenir.
-- CMYK, bleed ve safe area zorunludur.
-- Tek editör çekirdeği kullanılır.
-- Canvas state’i kanonik veri değildir.
-- ProductRecord/ProductCard yaklaşımı korunur.
-- Konva adapter arkasında tutulur.
-- Açık kaynak teknik radar uygulanır.
-- PDF/X ve server render hedeflenir.
-- Preflight zorunludur.
-- Tenant izolasyonu zorunludur.
-- Müşteri onayı revision’a bağlıdır.
-- Ücretli bağımlılık onaysız eklenmez.
-- GT kapıları geçmeden READY denmez.
-- Eski protokoller aktif otorite değildir.
-- Kök dizinde tek kanonik MD bulunur.
+| # | Karar |
+|---|---|
+| K-01 | Belge profesyonel mimari doküman düzenine getirildi; tekrar eden hükümler tek başlık altında birleştirildi. |
+| K-02 | Teknoloji isimleri gövdeden çıkarıldı, **EK-A**'ya taşındı ve bağlayıcı olmadığı ilan edildi. |
+| K-03 | **Open Source First** ve **Technology Independence** ilkeleri anayasa düzeyine alındı. |
+| K-04 | **ADR/TDR ayrımı** kuruldu; mimari ve teknoloji kararları ayrı numaralandırılır (numara çakışması giderildi). |
+| K-05 | **Multi-Agent Expert Architecture** benimsendi; ajan seçimi görev, tenant, lisans, performans, kalite ve maliyete göre orkestratörce yapılır. |
+| K-06 | **Quality Gate Engine** tek model olarak kuruldu (INFO/WARNING/BLOCKER, kayıtlı onay, değişmez denetim izi). |
+| K-07 | **Production Profiles** genişlemenin tek yolu ilan edildi: yeni sektör = yeni profil, çekirdek değişmez. |
+| K-08 | **Plugin Architecture**, **Integration Connector Layer**, **Asset Registry** ve **Asset Marketplace** mimariye eklendi. |
+| K-09 | **STYVA sınırı** kesinleşti: ticari katman STYVA'nın, üretim katmanı TEZGÂH'ın; ortak veritabanı yok. |
+| K-10 | **Desktop Agent** yol haritasına alındı; opsiyonel, sandbox, izinli, denetlenen, entitlement doğrulamalı. |
+| K-11 | **Country Package Architecture** ile yerel farklar çekirdekten ayrıldı. |
+| K-12 | **Observability** ve **Security Foundation** ayrı platform temelleri olarak tanımlandı. |
+| K-13 | Yürütme sırası **A→B→C→D** olarak sabitlendi; mimari güncellenmeden yeni modül geliştirilmez. |
+| K-14 | Baskıda **dürüstlük kuralı**: sağlanmayan çıktı niteliği iddia edilemez; doğrulanamayan nitelik açıkça bildirilir. |
+| K-15 | Üretim çıktısı taksonomisi, sürüm sayacı, dosya adlandırma sözleşmesi ve mockup ≠ üretim ayrımı mimariye taşındı. |
 
----
+**Devralınan kararların durumu**
 
-# 28. REVİZE EDİLEN ESKİ KARARLAR
-
-## Eski karar
-“Flyer tamamlanmadan diğer ürünler ana geliştirme odağı olamaz.”
-
-## Yeni karar
-Flyer, layout zekâsının ilk kalite referansı ve kırmızı çizgisidir; fakat müşteri proje modeli gereği menü, QR, tabela, cam ve tekstil altyapıları aynı veri ve tasarım sistemi üzerinden paralel geliştirilebilir. Hiçbiri ayrı editör veya ayrı veri adası oluşturamaz.
+Önceki anayasadan gelen hükümlerin sınıflandırması ve V3.1'de karşılığı bulunmayan hükümlerin listesi `docs/archive/protocols/2026-07/DEVIR_RAPORU.md` içindedir. Bu sürümde söz konusu hükümlerin mimari karşılığı olanlar ilgili bölümlere yerleştirilmiştir (Asset Registry, Quality Gate Engine, üretim çıktısı taksonomisi, migration disiplini, denetim izi değişmezliği, üretim fiziği, mockup ayrımı, harici sözleşme deseni). Yerleştirilemeyenler **EK-C**'dedir.
 
 ---
 
-## Eski karar
-“TEZGÂH’ın ilk ürünü flyer’dır.”
+# EK-C — AÇIK MADDELER
 
-## Yeni karar
-TEZGÂH’ın ana ürünü **eşgüdümlü müşteri projesidir**. Flyer ilk ve en zor üretim profilidir.
+Aşağıdakiler ürün sahibi kararı bekler; karara bağlandıkça ilgili bölüme işlenir ve buradan düşer.
 
----
-
-## Eski karar
-“Kullanıcı flyer tasarlar.”
-
-## Yeni karar
-Sistem, grafiker kararlarını dinamik kurallarla uygular; kullanıcı gerekli iş verilerini girer, otomatik sonucu seçer veya sınırlı düzenleme yapar.
-
----
-
-## Eski karar
-“Şablonlar ürün sayısına göre varyant üretir.”
-
-## Yeni karar
-Şablon yalnızca başlangıç kural setidir. Dinamik layout, tipografi, kategori dengeleme, görsel alanı ve reflow motoru gerçek sonucu hesaplar.
+| # | Konu | Neden açık |
+|---|---|---|
+| A-01 | Yaşam döngüsü sözlüğü göçü | Uygulamada birden çok durum sözlüğü var; Bölüm 3.4'e yakınsama planı ve göç adımı gerekiyor. |
+| A-02 | SaaS omurgasının zamanlaması | Sıra D olarak sabitlendi; pilot yerel çalıştığı için geçiş anı ayrıca kararlaştırılacak. |
+| A-03 | Glif ve karakter kapsam politikası | Mevcut sert engelleme ile Latin dışı alfabe hedefi birlikte yaşayamaz; kural yeniden tanımlanmalı. |
+| A-04 | Geliştirme yönetişimi (kapı, yetki, rapor biçimi) | Süreç kuralları bu belgeye mi taşınacak, ayrı süreç belgesinde mi kalacak? |
+| A-05 | Geri açılan kapsam kararları | Mimari görselleştirme, arka plan silme ve çok kullanıcılı yetki eskiden kapsam dışıydı; yeni kapsam kayda geçti, uygulama sırası belirlenecek. |
+| A-06 | Ölçüm rejiminin Bölüm 8.6 ile eşlenmesi | Bugünkü ölçümler farklı eksende; p95, kuyruk ve autosave metrikleri eklenecek. |
 
 ---
 
-# 29. DEĞİŞMEZ ÜRÜN İLKELERİ
-
-1. TEZGÂH proje merkezlidir.
-2. Müşteriden minimum soruyla sipariş alınır.
-3. Grafik tasarım kararları yazılıma dönüştürülür.
-4. Flyer layout zekâsının kırmızı çizgisidir.
-5. Tüm seçili materyaller eşgüdümlü üretilir.
-6. Ürün sayısı değiştiğinde tasarım yeniden dengelenir.
-7. Simetri kalıcı kuraldır.
-8. Tipografi dinamik ve sınırlandırılmıştır.
-9. Tasarımlar kontrollü biçimde benzersizdir.
-10. Müşteri varlıkları başka müşteriye açık değildir.
-11. Stok varlıkların lisansı takip edilir.
-12. SWISS_RESTORAN ürün/modifier yetenekleri korunur.
-13. Repolar bağımsızdır.
-14. Entegrasyon yalnızca sürümlü sözleşmelerle yapılır.
-15. Tek editör çekirdeği vardır.
-16. Konva değiştirilebilir renderer’dır.
-17. Kanonik veri sürümlü domain belgesidir.
-18. Onaylanan sürüm değiştirilemez.
-19. Baskı çıktısı preflight’sız üretilemez.
-20. Tek aktif protokol bu dosyadır.
-
----
-
-# 30. SON ÜRÜN TANIMI
-
-TEZGÂH, klasik bir Canva kopyası değildir.
-
-TEZGÂH:
-
-- sipariş alma sistemi,
-- müşteri proje sistemi,
-- marka ve katalog merkezi,
-- dinamik tasarım motoru,
-- grafiker karar motoru,
-- çok materyalli üretim sistemi,
-- baskı öncesi kontrol sistemi,
-- müşteri onay sistemi,
-- restoran QR entegrasyon katmanı,
-- reklam firmaları için operasyonel SaaS
-
-olarak geliştirilir.
-
-Nihai hedef:
-
-> Pazarlamacı müşterinin ne istediğini ve temel verileri girer; TEZGÂH ürün sayısına, kategori yapısına, görsellere, ölçülere ve seçilen materyallere göre profesyonel, simetrik, benzersiz ve baskıya hazır bir tasarım seti üretir. Grafiker varsa onaylar ve iyileştirir; grafiker yoksa sistem güvenli üretim sınırları içinde işi tamamlar.
-
-
----
-
-# 31. MİMARİ GÖRSELLEŞTİRME VE İÇ MİMARİ VİZYONU
-
-## 31.1 Nihai hedef
-
-TEZGÂH'ın uzun vadeli hedeflerinden biri, yalnızca baskı materyalleri üretmek değil; restoranın fiziksel mekânını profesyonel seviyede görselleştirebilen bir mimari sunum platformu olmaktır.
-
-Bu modül;
-
-- dış cephe,
-- tabela,
-- cam giydirme,
-- menü board,
-- kasa alanı,
-- oturma düzeni,
-- duvar grafikleri,
-- aydınlatma önerileri,
-- dekor öğeleri,
-- Amerikan servis,
-- paketleme ürünleri
-
-gibi tüm görsel unsurları tek proje içinde değerlendirebilir.
-
-## 31.2 Ham fotoğraf kabul ilkesi
-
-Sahadan gelen fotoğraflar varsayılan olarak profesyonel kabul edilmez.
-
-Sistem şu durumları bekler:
-
-- eğri çekim,
-- perspektif bozukluğu,
-- düşük ışık,
-- düşük çözünürlük,
-- gürültü,
-- yansıma,
-- istenmeyen nesneler,
-- renk hataları.
-
-Bu nedenle tüm fotoğraflar önce iyileştirme hattından geçirilir.
-
-## 31.3 Architectural Vision Engine
-
-Bu motor aşağıdaki aşamalardan oluşur:
-
-1. Fotoğraf kurtarma
-   - perspektif düzeltme
-   - lens düzeltme
-   - beyaz dengesi
-   - pozlama
-   - gürültü azaltma
-   - keskinleştirme
-   - süper çözünürlük
-
-2. Mekân analizi
-   - duvar
-   - zemin
-   - tavan
-   - cam
-   - kolon
-   - banko
-   - tabela alanı
-   - menü board alanı
-
-3. Otomatik yerleştirme
-   - tabela
-   - cam giydirme
-   - logo
-   - menü board
-   - duvar grafikleri
-
-4. İç mimari konsept
-   - masa ve sandalye yerleşimi
-   - renk önerileri
-   - aydınlatma
-   - dekor
-   - malzeme önerileri
-
-5. Fotogerçekçi sunum
-   Amaç, müşteriye profesyonel bir iç mimar tarafından hazırlanmış hissi veren yüksek kaliteli konsept görseller sunmaktır.
-
-## 31.4 Konsept ve teknik proje ayrımı
-
-Sistem iki farklı çıktı üretir:
-
-- Konsept Mockup: Sunum ve karar verme amacıyla oluşturulan görseller.
-- Teknik Proje: Gerçek ölçüler, üretim ve montaj için doğrulanmış uygulama çıktıları.
-
-Bu iki çıktı birbirinin yerine kullanılmamalıdır.
-
-## 31.5 Değişmez ilke
-
-Her yeni mimari özellik şu hedefe hizmet etmelidir:
-
-> Kullanıcının yüklediği sıradan bir telefon fotoğrafını, mümkün olan en yüksek doğrulukla profesyonel bir mimari sunuma dönüştürmek ve müşterinin kendi işletmesini gelecekteki hâliyle görebilmesini sağlamak.
-
----
-
-# 32. MODÜLER SEKTÖR ÇALIŞMA ALANLARI
-
-## 32.1 Temel karar
-
-TEZGÂH tek bir sektör için hazırlanmış kapalı bir uygulama değildir.
-
-TEZGÂH ortak bir çekirdek üzerinde çalışan, gerektiğinde yeni sektörlerin eklenebildiği **modüler dikey çalışma alanları platformudur**.
-
-Her sektör:
-
-- kendi sipariş akışına,
-- kendi ölçü ve malzeme bilgilerine,
-- kendi tasarım kurallarına,
-- kendi fiyatlandırma modeline,
-- kendi üretim çıktılarına,
-- kendi AI uzmanına,
-- kendi kullanıcı arayüzüne
-
-sahip olabilir.
-
-Sektör modülleri ortak çekirdeği paylaşır; ancak birbirine zorunlu olarak bağımlı değildir.
-
-## 32.2 Kullanıcı yalnızca yaptığı işi görür
-
-Bir işletme yalnızca ihtiyaç duyduğu modülleri kullanır.
-
-Örnekler:
-
-### Menü üreticisi
-
-Şunları görebilir:
-
-- restoran menüsü,
-- deri veya kaplamalı menü,
-- masa menüsü,
-- QR menü,
-- dijital menü,
-- menü board,
-- ürün ve fiyat kataloğu.
-
-Tabela, tekstil veya ambalaj modülleri varsayılan olarak görünmez.
-
-### İş elbisesi ve tekstil firması
-
-Şunları görebilir:
-
-- tişört,
-- polo yaka,
-- sweatshirt,
-- mont,
-- önlük,
-- şapka,
-- baskı alanı,
-- DTF,
-- nakış,
-- renk ve beden varyantları,
-- ürün mockup'ları.
-
-Menü ve iç mimari modülleri varsayılan olarak görünmez.
-
-### Reklam ajansı
-
-Ajans, yetkisine göre birden fazla modülü birlikte açabilir:
-
-- flyer,
-- katalog,
-- tabela,
-- cam giydirme,
-- araç giydirme,
-- sosyal medya,
-- tekstil,
-- ambalaj,
-- menü,
-- mimari mockup.
-
-Ajans çalışma alanı diğer dikeylerin birleşimi olabilir; fakat ortak çekirdek üzerinde çalışır.
-
-### Matbaa
-
-Şunları görebilir:
-
-- flyer,
-- broşür,
-- katalog,
-- kartvizit,
-- etiket,
-- sticker,
-- afiş,
-- roll-up,
-- baskıya hazır PDF,
-- kesim ve taşma alanları.
-
-Matbaa müşterisi menü bastığında menü tasarım modülü ayrıca yetkilendirilebilir. Bu, matbaanın bütün kullanıcılarının menü modülünü zorunlu olarak görmesi anlamına gelmez.
-
-### Ambalaj üreticisi
-
-Şunları görebilir:
-
-- kutu,
-- poşet,
-- bardak,
-- kılıf,
-- etiket,
-- sargı,
-- die-line,
-- baskı yüzeyleri,
-- malzeme ve adet bazlı maliyet.
-
-### Çevrim içi kişiselleştirilmiş kıyafet satıcısı
-
-Şunları görebilir:
-
-- müşterinin kendi tasarımını yüklemesi,
-- ürün üzerinde canlı kişiselleştirme,
-- baskı alanı kontrolü,
-- renk ve beden varyantları,
-- sipariş önizlemesi,
-- baskı tekniği seçimi,
-- üretim dosyası,
-- e-ticaret entegrasyonu.
-
-### Promosyon firması
-
-Şunları görebilir:
-
-- kalem,
-- kupa,
-- anahtarlık,
-- çanta,
-- defter,
-- tekstil,
-- hediyelik,
-- ürün kişiselleştirme,
-- katalog oluşturma,
-- teklif üretme.
-
-Promosyon firması katalog basıyorsa katalog modülü açılabilir. Tekstil satıyorsa tekstil modülü eklenebilir. Bu genişleme kullanıcıya özel yetkilendirme ile yapılır.
-
-### Cam ve folyo uygulama firması
-
-Şunları görebilir:
-
-- cam ölçüsü,
-- folyo,
-- one-way vision,
-- kumlama,
-- kesim,
-- yüzey yerleşimi,
-- perspektif mockup,
-- üretim ve montaj çıktısı.
-
-Tabela yapmıyorsa tabela araçları gösterilmez.
-
-### Endüstriyel mutfak veya restoran kurulum firması
-
-Şunları görebilir:
-
-- iç mekân analizi,
-- mutfak yerleşimi,
-- operasyon akışı,
-- banko,
-- servis alanı,
-- oturma düzeni,
-- mimari konsept,
-- fotogerçekçi sunum.
-
-Flyer veya tekstil modülleri ancak ayrıca açılırsa görünür.
-
-## 32.3 Sektör sınırları geçirgendir
-
-Sektörler katı kutular değildir.
-
-Bir kullanıcı ana iş kolunun yanında başka işler de yapabilir.
-
-Örnek:
-
-- promosyon firması katalog hazırlayabilir,
-- matbaa menü üretebilir,
-- ajans tabela ve tekstil satabilir,
-- tekstil firması promosyon ürünleri ekleyebilir,
-- ambalaj firması etiket ve katalog hizmeti sunabilir.
-
-Bu nedenle sistem:
-
-- sektör profili,
-- aktif modüller,
-- ek yetenek paketleri,
-- kullanıcı rolü,
-- abonelik ve entitlement
-
-üzerinden çalışmalıdır.
-
-Yeni alan açmak, çekirdeği çatallamak veya ayrı ürün yazmak anlamına gelmemelidir.
-
-## 32.4 Modül sözleşmesi
-
-Her yeni sektör modülü en az şu sözleşmeleri tanımlar:
-
-1. Hedef kullanıcı
-2. Sipariş alma şeması
-3. Zorunlu ve isteğe bağlı alanlar
-4. Tasarım kuralları
-5. Üretim malzemeleri
-6. Fiyatlandırma girdileri
-7. Önizleme türleri
-8. Baskı veya üretim çıktıları
-9. Kalite kapıları
-10. Diğer modüllerle entegrasyon sınırları
-
-## 32.5 Değişmez ilke
-
-> TEZGÂH, herkese her aracı gösteren karmaşık bir süper uygulama olmayacaktır. Aynı çekirdek üzerinde, her sektöre yalnızca yaptığı işi gösteren uzman çalışma alanları sağlayacaktır.
-
----
-
-# 33. TABELA STUDIO VE TABELA SATIŞ MOTORU
-
-## 33.1 Bağımsız ürün alanı
-
-Tabela, genel grafik editörünün küçük bir uzantısı değildir.
-
-Tabela tasarımı:
-
-- malzeme,
-- ölçü,
-- ışık,
-- elektrik,
-- üretim yöntemi,
-- montaj,
-- cephe perspektifi,
-- gece ve gündüz görünümü,
-- maliyet
-
-ile birlikte değerlendirilir.
-
-Bu nedenle **Tabela Studio** bağımsız bir sektör modülü olarak geliştirilir.
-
-## 33.2 Müşteri karar ekranı
-
-Müşteri veya satış temsilcisi:
-
-- iş yeri fotoğrafını yükler,
-- tabela alanını seçer,
-- ölçü girer,
-- yazı veya logoyu yerleştirir,
-- tabela tipini seçer,
-- ışık türlerini karşılaştırır,
-- gündüz ve gece görünümünü inceler,
-- malzeme seçeneklerini karşılaştırır,
-- yaklaşık veya kesin fiyat alır.
-
-Müşterinin temel sorusu şu şekilde yanıtlanmalıdır:
-
-> Benim dükkânım bu tabela ile gündüz nasıl, gece nasıl görünecek ve bana maliyeti ne olacak?
-
-## 33.3 Desteklenecek temel tabela sınıfları
-
-- ışıksız tabela,
-- ışıklı tabela,
-- vinil germe tabela,
-- pleksi kutu harf,
-- paslanmaz kutu harf,
-- alüminyum kutu harf,
-- kompozit zemin,
-- önden ışıklı harf,
-- arkadan halo ışıklı harf,
-- kenardan ışıklı harf,
-- lightbox,
-- neon ve LED neon,
-- totem,
-- çıkma tabela,
-- dijital ekran.
-
-## 33.4 Gündüz ve gece simülasyonu
-
-Her tasarım en az iki ayrı ışık koşulunda üretilebilir:
-
-- gündüz görünümü,
-- gece görünümü.
-
-İleri görünüm seçenekleri:
-
-- yakın plan,
-- karşı kaldırım,
-- araç yaklaşımı,
-- farklı hava koşulları,
-- farklı ışık sıcaklıkları.
-
-Simülasyon yalnızca dekoratif olmamalı; seçilen gerçek ışık ve malzeme davranışını mümkün olduğunca doğru yansıtmalıdır.
-
-## 33.5 Dinamik maliyet motoru
-
-Tabela fiyatı yalnızca yüzey alanından oluşmaz.
-
-Maliyet girdileri:
-
-- en ve boy,
-- harf sayısı,
-- harf yüksekliği,
-- malzeme tipi,
-- malzeme kalınlığı,
-- LED türü ve yoğunluğu,
-- güç kaynağı,
-- CNC veya lazer kesim,
-- kaynak ve kasa işçiliği,
-- taşıyıcı konstrüksiyon,
-- baskı,
-- folyo,
-- montaj,
-- vinç veya erişim ihtiyacı,
-- nakliye,
-- bölgesel işçilik,
-- vergi ve para birimi.
-
-Fiyat motoru ülke, bölge, tedarikçi ve üretici fiyat listelerine göre uyarlanabilir olmalıdır.
-
-## 33.6 Üretim çıktıları
-
-Onay sonrası sistem mümkün olduğunda şunları üretir:
-
-- müşteri sunumu,
-- teklif,
-- malzeme listesi,
-- ölçü planı,
-- montaj notu,
-- baskı dosyası,
-- kesim dosyası,
-- üretim iş emri.
-
----
-
-# 34. EVRENSEL VE GLOBAL-FIRST ÜRÜN MİMARİSİ
-
-## 34.1 Temel karar
-
-> TEZGÂH Türkiye için başlayacak, fakat yalnızca Türkiye için yazılmayacaktır.
-
-Türkiye ilk pazar, ilk saha doğrulaması ve ilk üretim ekosistemidir.
-
-Ürün çekirdeği ise evrensel tasarlanacaktır.
-
-## 34.2 Evrensel çekirdek, yerel paketler
-
-Aşağıdaki alanlar çekirdeğe sabit kodlanamaz:
-
-- dil,
-- para birimi,
-- vergi,
-- ölçü birimi,
-- kâğıt standardı,
-- baskı standardı,
-- elektrik standardı,
-- malzeme terminolojisi,
-- işçilik fiyatları,
-- tabela ve cephe kuralları,
-- adres biçimi,
-- tarih ve sayı biçimi,
-- ülkeye özgü yasal uyarılar.
-
-Bunlar:
-
-- ülke profili,
-- bölge profili,
-- dil paketi,
-- fiyat listesi,
-- mevzuat paketi,
-- üretim standardı paketi
-
-olarak eklenebilir.
-
-## 34.3 Uluslararasılaştırma gereksinimleri
-
-Sistem baştan itibaren şunları destekleyecek şekilde tasarlanır:
-
-- çoklu dil,
-- sağdan sola yazılar,
-- Latin dışı alfabeler,
-- Unicode,
-- yerelleştirilebilir şablon metinleri,
-- çoklu para birimi,
-- metrik ve imperial ölçüler,
-- A-serisi ve Letter/Legal kâğıtlar,
-- yerel vergi şemaları,
-- bölgesel fiyatlandırma,
-- ülke bazlı malzeme isimleri,
-- zaman dilimleri,
-- yerel veri saklama gereksinimleri.
-
-## 34.4 İhracat ilkesi
-
-Yeni bir ülkenin eklenmesi:
-
-- çekirdeği çatallamamalı,
-- ayrı kod tabanı oluşturmamalı,
-- mevcut tenant verisini bozmamalı,
-- yalnızca gerekli ülke ve dil paketlerini etkinleştirmelidir.
-
-## 34.5 Değişmez ilke
-
-> TEZGÂH evrensel geliştirilir, ülkelere uyarlanır. Türkiye’de doğar; dünyaya ihraç edilir.
-
----
-
-# 35. VİZYON, SLOGAN VE GELİŞTİRME FİLTRESİ
-
-## 35.1 Ana slogan
-
-> **Karmaşık işleri kolaylaştırır.**
-
-Bu slogan yalnızca pazarlama cümlesi değildir.
-
-TEZGÂH’ın:
-
-- ürün vizyonu,
-- geliştirme filtresi,
-- kullanıcı deneyimi ilkesi,
-- sektör genişleme ölçütü,
-- kalite değerlendirme standardıdır.
-
-## 35.2 Ürün vizyonu
-
-> TEZGÂH; baskının, grafiğin, kişiselleştirmenin ve üretimin karmaşık olduğu sektörlerde uzman bilgiyi yazılıma dönüştürür, profesyonel sonucu herkes için erişilebilir hâle getirir.
-
-## 35.3 Geliştirme filtresi
-
-Her yeni özellik şu sorularla değerlendirilir:
-
-1. Karmaşık bir işi gerçekten kolaylaştırıyor mu?
-2. Kullanıcının uzmanlık ihtiyacını azaltıyor mu?
-3. Sorulması gereken soru sayısını düşürüyor mu?
-4. Hata ihtimalini azaltıyor mu?
-5. Profesyonel kaliteyi koruyor veya yükseltiyor mu?
-6. Yalnızca ilgili sektörün kullanıcısına mı gösteriliyor?
-7. Evrensel çekirdeğe ve yerel uyarlama modeline uyuyor mu?
-8. Yeni sektörlerin sonradan eklenmesini zorlaştırıyor mu?
-
-Bu filtreyi geçmeyen özellik yeniden tasarlanır veya reddedilir.
-
-## 35.4 Kapsamın büyüme prensibi
-
-TEZGÂH başlangıçta belirli sektörlerde derinleşir.
-
-Yeni sektörler şu koşullarla eklenebilir:
-
-- baskı, grafik, kişiselleştirme veya görsel üretimde gerçek karmaşıklık bulunması,
-- sektöre ait tekrar eden uzman kararlarının yazılıma dönüştürülebilmesi,
-- ölçülebilir üretim veya satış çıktısının bulunması,
-- ortak çekirdekten anlamlı biçimde yararlanması,
-- ayrı ve sade bir çalışma alanı olarak sunulabilmesi.
-
-Alan genişleyebilir; ancak kontrolsüz özellik birikimi yapılamaz.
-
-## 35.5 Son kimlik cümlesi
-
-> **TEZGÂH, karmaşık baskı, grafik, kişiselleştirme ve reklam üretimi işlerini kolaylaştıran; sektörlere göre modülerleşen, Türkiye’den başlayıp dünyaya açılan evrensel Creative Production SaaS platformudur.**
-
+# EK-D — SÖZLÜK
+
+**Creative Document** — sürümlü, render'dan bağımsız kanonik tasarım belgesi.
+**Production Profile** — bir ürün veya materyal türünün geometri, kural, teknik ve çıktı sözleşmesi.
+**Sektör Stüdyosu** — bir profil üzerine kurulmuş uçtan uca karar ekranı.
+**Quality Gate** — INFO/WARNING/BLOCKER seviyeli kalite kapısı.
+**Entitlement** — STYVA'dan gelen; bir tenant'ın hangi yeteneği hangi kotayla kullanabileceğini belirten hak.
+**designSeed** — tasarımın tekrar üretilebilir varyasyon tohumu.
+**ADR / TDR** — mimari karar kaydı / teknoloji karar kaydı.
+**Desktop Agent** — opsiyonel masaüstü yardımcı; yerel dosya, cihaz ve yazılım köprüsü.
+**Asset Registry** — her varlığın kaynak, lisans, türev ve bütünlük kaydı.
