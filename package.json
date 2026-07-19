@@ -11,12 +11,15 @@
     "dev": "concurrently -n server,web -c yellow,cyan \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
     "typecheck": "npm run typecheck -ws --if-present",
     "test": "npm run test -ws --if-present",
-    "lint": "npm run lint -ws --if-present"
+    "lint": "npm run lint -ws --if-present",
+    "journal": "tsx packages/journal/src/cli.ts",
+    "journal:verify": "tsx packages/journal/src/cli.ts verify"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "concurrently": "^9.1.0",
     "eslint": "^9.39.5",
+    "tsx": "^4.23.0",
     "typescript-eslint": "^8.64.0"
   }
 }

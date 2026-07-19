@@ -1,0 +1,7 @@
+# Package Journal (Canonical 11.3) — bayt düzeyinde korunur.
+# -text            : core.autocrlf=true olan makinelerde checkout CRLF'e çevirirdi;
+#                    o an hash zinciri ve "HEAD çalışma ağacının öneki" denetimi kırılır.
+# merge=binary     : aynı paketin journal'ı iki dalda yazılırsa sessiz satır-satır
+#                    birleşme yerine AÇIK çakışma üretir (sessiz birleşme seq'i bozar).
+# linguist-generated: makine üretimi; diff gürültüsü kısılır.
+docs/journal/events/*.jsonl -text merge=binary linguist-generated=true
