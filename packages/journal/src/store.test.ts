@@ -350,6 +350,17 @@ describe("kaynak taraması — append-only'yi delen fs çağrısı YOK", () => {
     expect(offenders.map((f) => path.relative(SRC, f))).toEqual([]);
   });
 
+  /* KAPSAM ŞERHİ (adversarial tur bulgusu — KAYITLI SINIR, Faz 0'da kapatılmadı).
+     Bu tarama fs yüzeyinin YALNIZ `fs.`-önekli alt kümesini ölçer. Çıplak import
+     edilen çağrılar listenin DIŞINDADIR — bugün: gates.ts mkdtempSync'i çıplak
+     import eder ve çağırır; taze geçici dizin açtığı, hiçbir şeyin üzerine
+     yazmadığı için bütünlük etkisi sıfırdır.
+     Üzerine-yazan adları katman A (verify.ts kaynakIcerigiTara) önek-BAĞIMSIZ
+     yakalar, dolayısıyla asıl savunma delinmiş değildir.
+     Kapanmayan artık: YASAK_YAZMA'da olmayan + çıplak import edilen + üzerine
+     yazan yeni bir uç (ör. fd düzeyinde writeSync). Tam çözüm her dosyanın
+     `node:fs` çıplak-import listesini ayrıştırmaktır; bugün sıfır fayda için
+     gerçek iş olduğundan Faz 1+ backlog'una yazıldı. */
   it("kullanılan fs yüzeyi izinli listeyle sınırlı", () => {
     const used = new Set<string>();
     for (const f of sourceFiles(SRC)) {

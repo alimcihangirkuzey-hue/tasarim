@@ -179,23 +179,39 @@ interface ExecResult {
 }
 
 /**
+ * ÖLÇEN SÜRECİN NODE_ENV'İ ÇOCUĞA SIZAMAZ — her yazımıyla.
+ *
+ * Ölçüldü: kapı koşucusu vitest içinden çağrıldığında NODE_ENV=test miras
+ * kalıyor, vite React'in DEVELOPMENT yapısını derliyor ve bundle 191.13 yerine
+ * 271.19 gzip kB ölçülüyor (%42 sapma, aynı commit). Journal bunu "ölçülmüş"
+ * diye kaydederdi — modülün önlemek için var olduğu hatanın ta kendisi.
+ *
+ * `delete env.NODE_ENV` YETMEZ: Windows'ta ortam değişkenleri çimlik-DUYARSIZ,
+ * düz nesne `delete`'i ise çimlik-DUYARLIDIR. Ölçüldü — `node_env=test` set
+ * edildiğinde `delete env.NODE_ENV` onu bırakıyor ve çocuk süreç
+ * `process.env.NODE_ENV === "test"` okuyor. Bu yüzden anahtarlar BÜYÜK harfe
+ * çevrilerek karşılaştırılır.
+ *
+ * Değişken SİLİNİR, production'a SABİTLENMEZ: her araç kendi varsayılanını
+ * uygular, yani ölçüm temiz bir kabuktan koşulmuş gibi olur ve `spec.command`'ı
+ * elle çalıştıran insanla AYNI sayıyı üretir.
+ */
+export function temizEnv(kaynak: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const [k, v] of Object.entries(kaynak)) {
+    if (k.toUpperCase() !== "NODE_ENV") env[k] = v;
+  }
+  return env;
+}
+
+/**
  * TEK STRING + shell:true. argv dizisi geçilmez (DEP0190), npm .cmd olduğu
  * için kabuk şart. Kapılar kökten koşar; stdout büyük olabildiğinden
  * maxBuffer yükseltilir (rapor dosyaya yazılsa da build çıktısı akar).
  */
 function exec(command: string): ExecResult {
   const t0 = Date.now();
-
-  /* ÖLÇEN SÜRECİN NODE_ENV'İ ÇOCUĞA SIZAMAZ.
-     Ölçüldü ve doğrulandı: kapı koşucusu vitest içinden çağrıldığında
-     NODE_ENV=test miras kalıyor, vite React'in DEVELOPMENT yapısını derliyor ve
-     bundle 191.13 yerine 271.19 gzip kB ölçülüyor (%42 sapma, aynı commit).
-     Journal bunu "ölçülmüş" diye kaydederdi — modülün önlemek için var olduğu
-     hatanın ta kendisi. Değişkeni SİLİYORUZ (production'a sabitlemiyoruz): her
-     araç kendi varsayılanını uygular, yani ölçüm temiz bir kabuktan koşulmuş
-     gibi olur ve `spec.command`'ı elle çalıştıran insanla AYNI sayıyı üretir. */
-  const env = { ...process.env };
-  delete env.NODE_ENV;
+  const env = temizEnv(process.env);
 
   const r = spawnSync(command, {
     shell: true,
@@ -356,7 +372,7 @@ interface MachineGateOptions {
  * spawn edilemeyen komut "kaldi" DEĞİL "olculemedi"dir: çalışmayan bir ölçüm
  * aracı, kapının kaldığına dair kanıt üretmez.
  */
-function machineGate(
+export function machineGate(
   gate: JournalGateName,
   runs: ExecResult[],
   commandLabel: string,

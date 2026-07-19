@@ -30,7 +30,7 @@ import { fileURLToPath } from "node:url";
 import { verifyJournalChain, verifyJournalStructure, type JournalLine } from "@tezgah/shared";
 
 import { sha256 } from "./hash.js";
-import { ROOT_DIR, journalFile } from "./paths.js";
+import { ROOT_DIR, journalDir, journalFile } from "./paths.js";
 import { listPackageIds, readJournal } from "./store.js";
 
 export interface JournalViolation {
@@ -177,9 +177,79 @@ function gitHatasi(e: unknown): string {
   return mesaj(e);
 }
 
-function baytOneki(onek: Buffer, tam: Buffer): boolean {
+/** HEAD sürümü çalışma ağacının bayt öneki mi? (append-only'nin B2 yargısı) */
+export function baytOneki(onek: Buffer, tam: Buffer): boolean {
   if (onek.length > tam.length) return false;
   return tam.subarray(0, onek.length).equals(onek);
+}
+
+/**
+ * `git diff --numstat` satırından SİLİNEN sütununu çözer.
+ * Biçim: `<eklenen>\t<silinen>\t<yol>`; ikili dosyada iki sütun da `-`.
+ *
+ * Saf ve dışa açık: bu, append-only'nin B1 yargısını taşıyan karardır ve
+ * uçtan uca git harness'ı olmadan pozitif olarak sınanabilmelidir.
+ */
+export function numstatSilinen(satir: string): number | { hata: string } {
+  const alan = satir.split("\t");
+  if (alan.length < 2) return { hata: `numstat çözümlenemedi: "${satir}"` };
+  const silinen = alan[1];
+  if (silinen === "-") return { hata: "numstat ikili dosya bildirdi" };
+  const n = Number.parseInt(silinen, 10);
+  if (!Number.isFinite(n) || !/^\d+$/.test(silinen.trim())) {
+    return { hata: `numstat silinen sütunu sayı değil: "${silinen}"` };
+  }
+  return n;
+}
+
+/** Journal dizininin depo köküne göre git yolu; depo dışındaysa null. */
+function journalGitOneki(): string | null {
+  const rel = path.relative(ROOT_DIR, journalDir());
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
+  return rel.split(path.sep).join("/");
+}
+
+/**
+ * GIT'İN BİLDİĞİ paket id'leri — çalışma ağacının DEĞİL.
+ *
+ * Bu numaralandırma olmadan bir journal dosyasını tamamen silmek dört katmanın
+ * hiçbirine görünmüyordu: denetlenecek id listesi `listPackageIds()` ile
+ * çalışma ağacından türetildiği için, dosya yoksa id listeye hiç girmiyor ve
+ * git katmanı o paketi hiç sormuyordu. Ölçüldü: `git rm <journal>` + commit
+ * sonrası `verify` "dört katman temiz" diyip exit 0 dönüyordu — üstelik
+ * bütünlüğü main'e bağlayan `npm test` kapısı da yeşil kalıyordu (fail-open).
+ * Kayıt düzenlemek anında yakalanırken SİLMEK görünmezdi; yani saldırganın
+ * rasyonel hamlesi tam da savunmasız olanıydı.
+ *
+ * İKİ kaynak gerekir, biri yetmez:
+ * · `ls-files`  — çalışma ağacından silinmiş ama HÂLÂ izlenen dosyayı görür
+ *                 (`rm` / `mv`, henüz commit'lenmemiş).
+ * · `--diff-filter=D` — `git rm` + commit sonrası dosya artık izlenmediği için
+ *                 `ls-files` onu listelemez; silme TARİHÇESİ tek tanıktır.
+ */
+function gitIzlenenIdler(): { ok: true; ids: string[] } | { ok: false; message: string } {
+  const onek = journalGitOneki();
+  if (onek === null) return { ok: true, ids: [] }; // depo dışı: git ölçemez
+
+  const idler = new Set<string>();
+  const topla = (out: Buffer): void => {
+    for (const satir of out.toString("utf8").split(/\r?\n/)) {
+      const yol = satir.trim();
+      if (yol.length === 0 || !yol.startsWith(`${onek}/`)) continue;
+      const ad = yol.slice(onek.length + 1);
+      if (ad.endsWith(".jsonl") && !ad.includes("/")) idler.add(ad.slice(0, -".jsonl".length));
+    }
+  };
+
+  const izlenen = git(["ls-files", "--", `${onek}/*.jsonl`]);
+  if (!izlenen.ok) return { ok: false, message: `git ls-files: ${izlenen.message}` };
+  topla(izlenen.out);
+
+  const silinen = git(["log", "--diff-filter=D", "--format=", "--name-only", "--", onek]);
+  if (!silinen.ok) return { ok: false, message: `git log --diff-filter=D: ${silinen.message}` };
+  topla(silinen.out);
+
+  return { ok: true, ids: [...idler] };
 }
 
 function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void {
@@ -193,6 +263,22 @@ function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void 
   if (!on.ok) {
     ekle(JOURNAL_VIOLATION_REPO, `git denetimi koşulamadı: ${on.message}`);
     return;
+  }
+
+  /* SİLME DENETİMİ — çalışma ağacı numaralandırmasının kör noktası.
+     Kural TEK YÖNLÜDÜR: git-izlenen ⊆ çalışma-ağacı. Tersi ihlal DEĞİLDİR;
+     çalışma ağacında olup git'te olmayan dosya, henüz commit edilmemiş YENİ
+     PAKETTİR ve bu, aşağıdaki döngünün de tek meşru atlama durumudur. */
+  const izlenen = gitIzlenenIdler();
+  if (!izlenen.ok) {
+    ekle(JOURNAL_VIOLATION_REPO, `git denetimi koşulamadı: ${izlenen.message}`);
+  } else {
+    const mevcut = new Set(ids);
+    for (const id of izlenen.ids) {
+      if (!mevcut.has(id)) {
+        ekle(id, `append-only ihlali: journal dosyası SİLİNMİŞ (git biliyor, çalışma ağacında yok)`);
+      }
+    }
   }
 
   for (const id of ids) {
@@ -241,19 +327,9 @@ function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void 
       const govde = d.out.toString("utf8").trim();
       if (govde.length === 0) continue; // bu çiftte dosya değişmemiş
       for (const satir of govde.split(/\r?\n/)) {
-        const alan = satir.split("\t");
-        if (alan.length < 2) {
-          ekle(id, `git denetimi koşulamadı: numstat çözümlenemedi: "${satir}"`);
-          continue;
-        }
-        const silinen = alan[1];
-        if (silinen === "-") {
-          ekle(id, `git denetimi koşulamadı: numstat ikili dosya bildirdi (${a.slice(0, 8)}..${b.slice(0, 8)})`);
-          continue;
-        }
-        const n = Number.parseInt(silinen, 10);
-        if (!Number.isFinite(n)) {
-          ekle(id, `git denetimi koşulamadı: numstat silinen sütunu sayı değil: "${silinen}"`);
+        const n = numstatSilinen(satir);
+        if (typeof n !== "number") {
+          ekle(id, `git denetimi koşulamadı: ${n.hata} (${a.slice(0, 8)}..${b.slice(0, 8)})`);
           continue;
         }
         if (n !== 0) {

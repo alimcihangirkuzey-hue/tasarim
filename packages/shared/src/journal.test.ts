@@ -20,10 +20,12 @@ import {
   isValidStageTransition,
   journalHashInput,
   validateJournalLine,
+  validateJournalPayload,
   verifyJournalChain,
   verifyJournalStructure,
   type JournalActor,
   type JournalEvent,
+  type JournalEventType,
   type JournalGateName,
   type JournalGateRun,
   type JournalLine,
@@ -547,6 +549,246 @@ describe("validateJournalLine — kapalı birlik, sert şema", () => {
         payload: { from: null, to: "planlama" },
       })
     ).toEqual({ ok: true });
+  });
+});
+
+/* ── olay GÖVDESİ (validateJournalPayload) ────────────────────────────── */
+
+/**
+ * Bir olay türünün gövdesi için SAĞLAM/BOZUK çifti.
+ *
+ * Pozitif eşlenik ŞARTTIR: yalnız RED yazmak sahte-yeşildir — satır başka bir
+ * sebepten de düşüyor olabilirdi ve test bunu ayırt edemezdi (argv kilitlerinin
+ * doktrini burada da geçerli). `issues` TAM beklenir, "içerir" ile geçiştirilmez:
+ * bir gövde kuralı sessizce kaldırıldığında ilgili satır kırılmak ZORUNDA.
+ */
+interface GovdeVakasi {
+  ad: string;
+  type: JournalEventType;
+  /** gate_run satırlarında insan kapısı için gerekebilir */
+  actor?: JournalActor;
+  saglam: unknown;
+  bozuk: unknown;
+  issues: string[];
+}
+
+const ASAMA_SOZLUGU = "planlama|canonical-kaydi|gelistirme|test|ikinci-dogrulayici|hazir|merge|dagitim";
+
+const VERDICT = { decision: "bulgu", findings_open: 2, findings_closed: 8, summary: "iki açık bulgu" };
+const FINDING = {
+  finding_id: "B-1",
+  severity: "blocker",
+  summary: "zincir denetimi atlanıyor",
+  file: "src/verify.ts",
+};
+const GIT = { kind: "commit", value: "d46b877", subject: "B: Dynamic Composition Engine" };
+const RISK = { risk_id: "R-1", status: "acik", summary: "kilit yok" };
+const HAM_KANIT = "docs/journal/evidence/PJ-01/test-kaldi.txt";
+
+const GOVDE_VAKALARI: GovdeVakasi[] = [
+  /* ── package_declared ──────────────────────────────────────────────── */
+  {
+    ad: "package_declared: name boş olamaz",
+    type: "package_declared",
+    saglam: DECLARED,
+    bozuk: { ...DECLARED, name: "   " },
+    issues: ["payload.name boş olamaz"],
+  },
+  {
+    ad: "package_declared: risk_class kapalı sözlükten (tipo risk sınıfı olmaz)",
+    type: "package_declared",
+    saglam: DECLARED,
+    bozuk: { ...DECLARED, risk_class: "belki" },
+    issues: ["payload.risk_class geçersiz: belki (beklenen: dusuk|orta|yuksek)"],
+  },
+  {
+    ad: "package_declared: modules DİZE dizisi olmalı (sayı sızamaz)",
+    type: "package_declared",
+    saglam: DECLARED,
+    bozuk: { ...DECLARED, modules: [1] },
+    issues: ["payload.modules dize dizisi olmalı"],
+  },
+  {
+    ad: "package_declared: canonical_sections BOŞ olamaz (izlenebilirlik)",
+    type: "package_declared",
+    saglam: DECLARED,
+    bozuk: { ...DECLARED, canonical_sections: [] },
+    issues: ["payload.canonical_sections en az bir bölüm taşımalı (izlenebilirlik)"],
+  },
+
+  /* ── stage_changed ─────────────────────────────────────────────────── */
+  {
+    /* İKİ ayrı kural düşer: gövde sözlüğü (payload.to) ve geçiş kuralı.
+       Geçiş kuralı tek başına bırakılırsa "bilinmeyen aşama" ile "yasak
+       geçiş" aynı mesaja çöker; ikisi AYRI raporlanır. */
+    ad: "stage_changed: to bilinmeyen aşama",
+    type: "stage_changed",
+    saglam: { from: null, to: "planlama" },
+    bozuk: { from: null, to: "neredeyse-bitti" },
+    issues: [
+      `payload.to geçersiz: neredeyse-bitti (beklenen: ${ASAMA_SOZLUGU})`,
+      "geçersiz aşama geçişi: null → neredeyse-bitti",
+    ],
+  },
+  {
+    ad: "stage_changed: from bilinmeyen aşama (null meşru, tipo değil)",
+    type: "stage_changed",
+    saglam: { from: "planlama", to: "canonical-kaydi" },
+    bozuk: { from: "uydurma", to: "canonical-kaydi" },
+    issues: [
+      "payload.from bilinmeyen aşama: uydurma",
+      "geçersiz aşama geçişi: uydurma → canonical-kaydi",
+    ],
+  },
+
+  /* ── gate_run · kural 5b (sonlu sayı) ──────────────────────────────── */
+  {
+    /* JSON NaN TAŞIYAMAZ; gerçek saldırı yüzeyi sayı KILIĞINDAKİ dizedir.
+       Tip denetimi çalışma zamanında yoktur: dosyadan okunan satır `unknown`
+       gelir ve "629" burada durdurulmazsa hash girdisine dize olarak girer. */
+    ad: "gate_run 5b: values sayı kılığında DİZE taşıyamaz",
+    type: "gate_run",
+    saglam: MAKINE,
+    bozuk: { ...MAKINE, values: { tests: "629" } },
+    issues: ["values.tests sonlu sayı değil (629)"],
+  },
+  {
+    /* Bellekte üretilen yolda (ölçüm kodu bir bölmeyi 0'a bölerse) Infinity
+       tipten GEÇER ama canonicalJson onu null'a çevirir — hash girdisi
+       bellekteki değerden ayrışır. */
+    ad: "gate_run 5b: values Infinity taşıyamaz (canonicalJson null'a çevirir)",
+    type: "gate_run",
+    saglam: MAKINE,
+    bozuk: { ...MAKINE, values: { tests: Number.POSITIVE_INFINITY } },
+    issues: ["values.tests sonlu sayı değil (Infinity)"],
+  },
+
+  /* ── gate_run · kural 7 (ham kanıt) ────────────────────────────────── */
+  {
+    ad: "gate_run 7: ham kanıt yalnız 'kaldi' satırında, raw_sha256 64 hex olmalı",
+    type: "gate_run",
+    saglam: {
+      ...MAKINE,
+      outcome: "kaldi",
+      exit_code: 1,
+      raw_evidence: HAM_KANIT,
+      raw_sha256: hex(0xbeef),
+    },
+    bozuk: { ...MAKINE, raw_evidence: HAM_KANIT, raw_sha256: "SUS" },
+    issues: [
+      "ham kanıt yalnız outcome='kaldi' satırında olur",
+      "raw_sha256 64 hex olmalı",
+    ],
+  },
+
+  /* ── agent_started / agent_finished ────────────────────────────────── */
+  {
+    ad: "agent_started: agent_label boş olamaz",
+    type: "agent_started",
+    saglam: { agent_label: "AJAN-5", task: "kilit turu" },
+    bozuk: { agent_label: "", task: "kilit turu" },
+    issues: ["payload.agent_label boş olamaz"],
+  },
+  {
+    ad: "agent_finished: outcome kapalı sözlükten (ok|hata|atlandi)",
+    type: "agent_finished",
+    saglam: { agent_label: "AJAN-5", outcome: "ok", summary: "bitti" },
+    bozuk: { agent_label: "AJAN-5", outcome: "basarili", summary: "bitti" },
+    issues: ["payload.outcome geçersiz: basarili (beklenen: ok|hata|atlandi)"],
+  },
+
+  /* ── verifier_finding ──────────────────────────────────────────────── */
+  {
+    ad: "verifier_finding: severity kapalı sözlükten (kritik diye bir ağırlık YOK)",
+    type: "verifier_finding",
+    saglam: FINDING,
+    bozuk: { ...FINDING, severity: "kritik" },
+    issues: ["payload.severity geçersiz: kritik (beklenen: blocker|ciddi|kucuk)"],
+  },
+  {
+    ad: "verifier_finding: file dize ya da null olmalı",
+    type: "verifier_finding",
+    saglam: { ...FINDING, file: null },
+    bozuk: { ...FINDING, file: 42 },
+    issues: ["payload.file dize ya da null olmalı"],
+  },
+
+  /* ── verifier_verdict ──────────────────────────────────────────────── */
+  {
+    ad: "verifier_verdict: findings_open negatif olamaz",
+    type: "verifier_verdict",
+    saglam: VERDICT,
+    bozuk: { ...VERDICT, findings_open: -1 },
+    issues: ["payload.findings_open negatif olmayan tamsayı olmalı"],
+  },
+  {
+    /* 11.6/1 kapısı: açık bulgu varken onay, kapıyı yeşil göstermenin sessiz
+       yoludur. CLI'daki eşleniği argv.test.ts'te kilitli; burada kilitlenen
+       şey DOSYAYA YAZILMIŞ satırın aynı kapıdan geçmesi. */
+    ad: "verifier_verdict: açık bulgu varken 'onay' verilemez (11.6/1)",
+    type: "verifier_verdict",
+    saglam: { decision: "onay", findings_open: 0, findings_closed: 5, summary: "temiz" },
+    bozuk: { decision: "onay", findings_open: 5, findings_closed: 0, summary: "sonra bakarız" },
+    issues: ["açık bulgu varken 'onay' verilemez"],
+  },
+
+  /* ── git_recorded / risk_recorded / note ───────────────────────────── */
+  {
+    ad: "git_recorded: kind kapalı sözlükten (tag kaydı YOK)",
+    type: "git_recorded",
+    saglam: GIT,
+    bozuk: { ...GIT, kind: "tag" },
+    issues: ["payload.kind geçersiz: tag (beklenen: base|branch|commit|merge)"],
+  },
+  {
+    ad: "risk_recorded: status kapalı sözlükten (acik|kapali)",
+    type: "risk_recorded",
+    saglam: RISK,
+    bozuk: { ...RISK, status: "belirsiz" },
+    issues: ["payload.status geçersiz: belirsiz (beklenen: acik|kapali)"],
+  },
+  {
+    ad: "note: text boş olamaz (boş anlatı kayıt değildir)",
+    type: "note",
+    saglam: { text: "kapasite uyarısı eklendi" },
+    bozuk: { text: "" },
+    issues: ["payload.text boş olamaz"],
+  },
+  {
+    /* Dizi `typeof "object"` olduğu için zarf denetiminden GEÇER; gövde
+       denetimi olmasa şemasız bir dizi geçerli olay sayılırdı. */
+    ad: "payload DİZİ olamaz (typeof 'object' tuzağı)",
+    type: "note",
+    saglam: { text: "kapasite uyarısı eklendi" },
+    bozuk: [],
+    issues: ["payload bir nesne değil"],
+  },
+];
+
+describe("validateJournalPayload — 10 olay türünün GÖVDESİ de şemalıdır", () => {
+  it.each(GOVDE_VAKALARI)("$ad", ({ type, actor, saglam, bozuk, issues }) => {
+    const zarf = { ...NOT_SATIRI, type, actor: actor ?? AJAN };
+    /* POZİTİF eşlenik — satır yalnız bozuk gövde yüzünden düşmeli */
+    expect(validateJournalLine({ ...zarf, payload: saglam })).toEqual({ ok: true });
+    expect(validateJournalLine({ ...zarf, payload: bozuk })).toEqual({ ok: false, issues });
+  });
+
+  it("gövde denetimi ÜRETİM yolundan bağımsız olarak da aynı kararı verir", () => {
+    /* Doğrudan çağrı, satır yolundaki ikinci issue'nun nereden geldiğini
+       ayırır: aşama sözlüğü GÖVDE kuralıdır, geçiş kuralı AYRI bir katman. */
+    expect(validateJournalPayload("stage_changed", { from: null, to: "neredeyse-bitti" })).toEqual({
+      ok: false,
+      issues: [`payload.to geçersiz: neredeyse-bitti (beklenen: ${ASAMA_SOZLUGU})`],
+    });
+    expect(validateJournalPayload("note", { text: "kapasite uyarısı eklendi" })).toEqual({ ok: true });
+    /* Nesne olmayan gövde: satır yolunda "payload ZORUNLU" zaten yakalar,
+       ama saf motorun kendi kapısı da kapalı olmalı. */
+    for (const bad of [42, "{}", null, []]) {
+      expect(validateJournalPayload("note", bad)).toEqual({
+        ok: false,
+        issues: ["payload bir nesne değil"],
+      });
+    }
   });
 });
 

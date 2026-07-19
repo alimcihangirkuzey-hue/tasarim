@@ -8,15 +8,26 @@
    runGate("test") packages/journal'ı da koşacağı için bu dosyayı İÇİNDEN
    yeniden çalıştırırdı. Gerçekten koşulan tek kapı typecheck'tir.
 
+   KALAN YOLU SENTETİK KOŞUMLA ÖLÇÜLÜR: gerçek kapılar bu depoda yeşil olduğu
+   için `outcome = exit===0 ? "gecti" : "kaldi"` satırının KALAN dalı hiç
+   koşmuyordu — canlı kayıttaki beş gate_run'ın beşi de "gecti"ydi. machineGate
+   `runs: ExecResult[]` aldığından başarısız koşum ÜRETİLEBİLİR: çocuk süreç
+   başlatmadan, uydurma exit code'la, gerçek gövdeden geçirilir.
+
    SAHTE YEŞİL SAVUNMASI: her olumlu iddianın yanında bir NEGATİF KONTROL var —
    checkGateHonesty'nin gerçekten iş yaptığı, elle bozulmuş kayıtları REDDEDEREK
    kanıtlanır. Aksi hâlde "honesty ok" iddiası her zaman geçen boş bir iddia olurdu. */
 
-import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { checkGateActor, checkGateHonesty, type JournalActor, type JournalGateRun } from "@tezgah/shared";
 
 import {
   firstLine,
+  machineGate,
   parseToolVersion,
   roundKb,
   runGate,
@@ -24,10 +35,11 @@ import {
   summarizeBundleSizes,
   summarizeEslintJson,
   summarizeVitestReports,
+  temizEnv,
 } from "./gates.js";
 /* ROOT_DIR gates.ts'ten DEĞİL paths.ts'ten gelir — tek tanım, barrel'da
    TS2308 çakışması yok. cwd'nin o ortak kökle aynı olduğunu doğrularız. */
-import { ROOT_DIR } from "./paths.js";
+import { ROOT_DIR, evidenceDir } from "./paths.js";
 
 const ISO_UTC_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const SEMVER = /^\d+\.\d+\.\d+/;
@@ -88,7 +100,15 @@ describe("runGate — typecheck (GERÇEKTEN koşar)", () => {
   it(
     "exit code'dan sonuç üretir, araç sürümünü ölçer, SAYI UYDURMAZ",
     () => {
+      /* KANIT YALITIMI ŞART: ağaç KIRMIZIYKEN bu kapı "kaldi" döner ve ham
+         kanıt DİSKE yazılır. Yalıtımsız koşumda dosya gerçek
+         docs/journal/evidence/ altına düşer — hiçbir journal satırının
+         referans etmediği, git'e sızan öksüz bir kanıt. Ölçüldü: paralel bir
+         oturum ağacı geçici olarak kırmızı bırakınca tam da bu oldu.
+         Test yeşil ağaçta da kırmızı ağaçta da depoyu KİRLETMEZ. */
+      const kok = kanitiYalit();
       const run = runGate("typecheck");
+      expect(path.resolve(evidenceDir()).startsWith(path.resolve(kok))).toBe(true);
 
       expect(checkGateHonesty(run)).toEqual({ ok: true });
 
@@ -114,6 +134,196 @@ describe("runGate — typecheck (GERÇEKTEN koşar)", () => {
     },
     300_000
   );
+});
+
+/* ── machineGate: KALAN yolu (sentetik başarısız koşum) ───────────────── */
+
+/* ÖLÇÜLMÜŞ BOŞLUK: gates.ts'in sonucu belirleyen tek satırı
+   `run.outcome = exitCode === 0 ? "gecti" : "kaldi"` — canlı journal'daki 5
+   gate_run'ın 5'i de "gecti" olduğu için KALAN dalı hiç koşmamıştı. Yeşil bir
+   depoda bu dal, kapı koşucusunu değiştirmeden ancak sentetik koşumla ölçülür.
+
+   ŞERH — bu test tam anlamıyla süreçsiz DEĞİLDİR: başarısız KOŞUM sentetiktir,
+   ama machineGate gövdesi measureTool() üzerinden araç sürümünü gerçekten
+   ölçer (`npx tsc -v`). Sonda atlanmıyor: sürüm ölçülemezse gövde daha kural 1'e
+   varmadan "olculemedi" döner ve aşağıdaki iddiaların hiçbiri kurulmaz. */
+
+/** ExecResult dışa açık bir tür DEĞİL; yapısal olarak kurulur (aynı şekil). */
+function sahteKosum(status: number | null, stderr: string) {
+  return {
+    command: "sahte-komut --kosmadi",
+    status,
+    stdout: "",
+    stderr,
+    spawned: true,
+    spawnError: null,
+    duration_ms: 1,
+  };
+}
+
+const SENTETIK_ETIKET = "sahte-komut --kosmadi";
+
+/** extract çağrıldı mı — "values null" iddiasının boş olmadığını kanıtlar */
+let extractCagrildi = 0;
+const bosExtract = () => {
+  extractCagrildi++;
+  return { values: null, method: null };
+};
+
+const geciciKanitDizinleri: string[] = [];
+
+/**
+ * Ham kanıt DİSKE yazılır; gerçek docs/journal/evidence kirlenmesin diye
+ * TEZGAH_JOURNAL_DIR geçici dizine alınır. evidenceDir() journalDir()'in
+ * KARDEŞİDİR — bu yüzden env'e <tmp>/events verilir, <tmp> değil (aksi hâlde
+ * kanıt os.tmpdir()/evidence'a düşerdi: yalıtımsız ve paylaşılan).
+ */
+function kanitiYalit(): string {
+  const kok = fs.mkdtempSync(path.join(os.tmpdir(), "tezgah-gate-kanit-"));
+  geciciKanitDizinleri.push(kok);
+  process.env.TEZGAH_JOURNAL_DIR = path.join(kok, "events");
+  /* Seam gerçekten kuruldu mu — kurulmadıysa test gerçek depoya yazar */
+  expect(path.resolve(evidenceDir()).startsWith(path.resolve(kok))).toBe(true);
+  return kok;
+}
+
+afterEach(() => {
+  delete process.env.TEZGAH_JOURNAL_DIR;
+});
+
+afterAll(() => {
+  for (const d of geciciKanitDizinleri) {
+    try {
+      fs.rmSync(d, { recursive: true, force: true });
+    } catch {
+      /* geçici dizin temizliği testin sonucunu etkilemez */
+    }
+  }
+});
+
+describe("machineGate — sonuç EXIT CODE'dan doğar (KALAN yolu)", () => {
+  it(
+    "başarısız koşum: 'kaldi' + gerçek exit code + HAM KANIT yazılır",
+    () => {
+      const kok = kanitiYalit();
+      const oncekiSayac = extractCagrildi;
+
+      const run = machineGate("typecheck", [sahteKosum(2, "hata: sentetik kapı düşüşü\nikinci satır")], SENTETIK_ETIKET, {
+        numbersAreTheVerdict: false,
+        extract: bosExtract,
+      });
+
+      /* Kapının taşıyıcı yargısı */
+      expect(run.outcome).toBe("kaldi");
+      expect(run.exit_code).toBe(2);
+      expect(run.origin).toBe("olculdu");
+
+      /* Sonucun uydurma değil ÖLÇÜM olduğunun kanıtı diske düşmüş olmalı */
+      expect(run.raw_evidence).not.toBeNull();
+      expect(run.raw_sha256).toMatch(/^[0-9a-f]{64}$/);
+
+      const kanitYolu = run.raw_evidence as string;
+      expect(path.resolve(kanitYolu).startsWith(path.resolve(kok))).toBe(true);
+      expect(fs.existsSync(kanitYolu)).toBe(true);
+
+      /* Özet, artefaktı GERÇEKTEN bağlıyor mu? Digest bilerek node:crypto ile
+         alınır: gates.ts'in kendi hash'iyle hesaplamak, ikisi birlikte yanlış
+         olsa da yeşil kalırdı. */
+      const govde = fs.readFileSync(kanitYolu, "utf8");
+      expect(createHash("sha256").update(govde, "utf8").digest("hex")).toBe(run.raw_sha256);
+
+      /* Kanıt gerçek koşumun gövdesini taşır — boş dosya da 64 hex üretirdi */
+      expect(govde).toContain(SENTETIK_ETIKET);
+      expect(govde).toContain("hata: sentetik kapı düşüşü");
+      expect(govde).toContain("exit: 2");
+
+      /* Ölçüm gövdesi baştan sona koştu */
+      expect(run.gate).toBe("typecheck");
+      expect(run.command).toBe(SENTETIK_ETIKET);
+      expect(run.tool).not.toBeNull();
+      expect(run.tool?.name).toBe("typescript");
+      expect(run.duration_ms).toBe(1);
+      expect(extractCagrildi).toBe(oncekiSayac + 1);
+      expect(run.values).toBeNull();
+
+      /* Ve KALAN kaydı da dürüstlük sözleşmesinden geçer (11.3) */
+      expect(checkGateHonesty(run)).toEqual({ ok: true });
+    },
+    300_000
+  );
+
+  it(
+    "SİMETRİK POZİTİF: exit 0 → 'gecti', ham kanıt YAZILMAZ",
+    () => {
+      const kok = kanitiYalit();
+
+      const run = machineGate("typecheck", [sahteKosum(0, "")], SENTETIK_ETIKET, {
+        numbersAreTheVerdict: false,
+        extract: bosExtract,
+      });
+
+      expect(run.outcome).toBe("gecti");
+      expect(run.exit_code).toBe(0);
+      expect(run.origin).toBe("olculdu");
+
+      /* 11.3 kural 7: ham kanıt YALNIZ kalan kapıda olur. Geçen kapıya kanıt
+         iliştirmek, raw_sha256'yı hiçbir şeyi bağlamayan süse çevirirdi. */
+      expect(run.raw_evidence).toBeNull();
+      expect(run.raw_sha256).toBeNull();
+      expect(fs.existsSync(evidenceDir())).toBe(false);
+      expect(path.resolve(evidenceDir()).startsWith(path.resolve(kok))).toBe(true);
+
+      expect(checkGateHonesty(run)).toEqual({ ok: true });
+    },
+    300_000
+  );
+
+  /* NEGATİF KONTROL — yukarıdaki "honesty ok" iddiaları boş değil: aynı KALAN
+     kaydının sonucu elle "gecti"ye çevrilirse denetim exit code ile çelişkiyi
+     görmek ZORUNDA. Görmezse iki iddia da her koşulda geçerdi. */
+  it(
+    "KALAN kaydı elle 'gecti'ye çevrilirse dürüstlük denetimi REDDEDER",
+    () => {
+      kanitiYalit();
+      const gercek = machineGate("typecheck", [sahteKosum(2, "hata")], SENTETIK_ETIKET, {
+        numbersAreTheVerdict: false,
+        extract: bosExtract,
+      });
+      const forged: JournalGateRun = { ...gercek, outcome: "gecti" };
+
+      const check = checkGateHonesty(forged);
+      expect(check.ok).toBe(false);
+      if (!check.ok) {
+        expect(check.issues).toContain("outcome='gecti' ama exit_code=2 — çelişki");
+        expect(check.issues).toContain("ham kanıt yalnız outcome='kaldi' satırında olur");
+      }
+    },
+    300_000
+  );
+});
+
+/* ── temizEnv: NODE_ENV çocuğa SIZAMAZ (çimlik-duyarsız) ──────────────── */
+
+describe("temizEnv", () => {
+  it("NODE_ENV'i HER YAZIMIYLA düşürür, diğerlerine dokunmaz", () => {
+    /* Ölçülmüş tuzak: Windows env'i çimlik-DUYARSIZ, JS `delete` çimlik-DUYARLI.
+       `delete env.NODE_ENV` yalnız birebir yazımı düşürür; `node_env=test`
+       çocuk süreçte yine NODE_ENV olarak okunur ve vite development yapısı
+       derler (bundle 191.13 → 271.19, ölçüldü). */
+    const temiz = temizEnv({ NODE_ENV: "test", node_env: "test", Node_Env: "test", PATH: "/x" });
+
+    expect(Object.keys(temiz)).toEqual(["PATH"]);
+    expect(temiz.PATH).toBe("/x");
+    expect(temiz.NODE_ENV).toBeUndefined();
+    expect(temiz.node_env).toBeUndefined();
+    expect(temiz.Node_Env).toBeUndefined();
+  });
+
+  it("kaynağı DEĞİŞTİRMEZ — ölçen sürecin kendi ortamı bozulmaz", () => {
+    const kaynak = { NODE_ENV: "test", PATH: "/x" };
+    temizEnv(kaynak);
+    expect(kaynak.NODE_ENV).toBe("test");
+  });
 });
 
 /* ── Koşucu kimliği ───────────────────────────────────────────────────── */

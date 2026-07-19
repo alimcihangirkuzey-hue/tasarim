@@ -535,6 +535,47 @@ describe("diğer olay komutları", () => {
     expect(r.cmd).toBe("error");
   });
 
+  /* sayi() okuyucusunun regex'i /^-?\d+$/ — EKSİ İŞARETİNİ KABUL EDER, yani
+     "-5" onun için geçerli bir tam sayıdır. Negatifi düşüren tek yer verifier
+     komutundaki ayrı denetimdir; o denetim kalkarsa "-5 açık bulgu" satırı
+     dosyaya YAZILIR ve 11.6/1 kapısı ((findingsOpen ?? 0) > 0) da sessizce
+     yanlış tarafa düşer: negatif sayı "açık bulgu yok" gibi okunur. */
+  it("KİLİT — --findings-open negatif olamaz (regex '-5'i tam sayı SAYAR)", () => {
+    const r = parse(
+      "verifier", ...PKG, "--decision", "bulgu", "--findings-open", "-5",
+      "--findings-closed", "0", "--summary", "eksi bulgu", ...AJAN
+    );
+    expect(r.cmd).toBe("error");
+    expect(hataMesaji(r)).toMatch(/--findings-open negatif olamaz/);
+
+    /* GEÇEN eşlenik: aynı komut sayı negatiflikten çıkınca geçer — komut
+       başka bir sebepten düşmüyor. 0 meşrudur, yokluk değildir. */
+    const geceli = parse(
+      "verifier", ...PKG, "--decision", "bulgu", "--findings-open", "0",
+      "--findings-closed", "0", "--summary", "eksi bulgu", ...AJAN
+    );
+    expect(geceli.cmd).toBe("verifier");
+    if (geceli.cmd !== "verifier" || geceli.kind !== "verdict") return;
+    expect(geceli.findingsOpen).toBe(0);
+  });
+
+  it("KİLİT — --findings-closed negatif olamaz", () => {
+    const r = parse(
+      "verifier", ...PKG, "--decision", "bulgu", "--findings-open", "1",
+      "--findings-closed", "-1", "--summary", "eksi kapalı", ...AJAN
+    );
+    expect(r.cmd).toBe("error");
+    expect(hataMesaji(r)).toMatch(/--findings-closed negatif olamaz/);
+
+    const geceli = parse(
+      "verifier", ...PKG, "--decision", "bulgu", "--findings-open", "1",
+      "--findings-closed", "1", "--summary", "eksi kapalı", ...AJAN
+    );
+    expect(geceli.cmd).toBe("verifier");
+    if (geceli.cmd !== "verifier" || geceli.kind !== "verdict") return;
+    expect(geceli.findingsClosed).toBe(1);
+  });
+
   it("findings sayısı tam sayı olmalı", () => {
     const r = parse(
       "verifier", ...PKG, "--decision", "bulgu", "--findings-open", "iki",
