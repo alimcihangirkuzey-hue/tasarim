@@ -1,3 +1,18 @@
+/* DONMUŞ TABAN — REFACTOR ÖNCESİ KOD. ELLE DÜZENLENMEZ.
+   ============================================================================
+   Bu dosya `git show main:<yol>` ile Dynamic Composition Engine paketinden
+   ÖNCEKİ koddan çıkarılmıştır ve YALNIZCA `composition-differential.test.ts`
+   tarafından kullanılır: eski davranış ile yeni davranış yan yana koşturulup
+   birebir karşılaştırılır.
+
+   NEDEN REPODA DURUYOR: köken iddiası ("çıktı birebir korundu") aksi halde
+   yalnız bir kereye mahsus, tekrar üretilemez bir ölçüme dayanırdı. Bu dosya
+   sayesinde sonraki geliştirici iddiayı KENDİ koşturarak doğrulayabilir.
+
+   Üretime dahil değildir (yalnız test tarafından import edilir, tree-shake
+   ile bundle dışında kalır). Motor davranışı bilinçli olarak değiştiğinde bu
+   dosya GÜNCELLENMEZ — diferansiyel test o değişikliği görünür kılmalıdır;
+   değişiklik onaylandığında taban yeni bir commit'ten yeniden çıkarılır. */
 /* flyer analiz — ön: kampanya + mini grid (format bazlı kapasite);
    arka: iletişim + QR + teslimat bloğu + çift saat (boş bloklar gizlenir). */
 
@@ -8,7 +23,6 @@ import {
   resolveSlotValue,
   type BindScope,
 } from "../engine/binding.js";
-import { composeGrid, resolveOverflowStrategy } from "../engine/composition.js";
 import type { LayoutWarning } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
@@ -16,9 +30,6 @@ import { resolveTheme, type Theme } from "../themes.js";
 import { manifest } from "./manifest.js";
 
 const MARGIN = 10;
-/* Bir mini hücrenin okunabilir kaldığı en küçük yükseklik (foto + ad + fiyat).
-   Izgara kapasitesi bundan türer — sabit ürün sayısı yerine ölçülebilir sınır. */
-const MIN_CELL_H = 34;
 
 export interface FlyerMiniItem {
   id: string;
@@ -82,61 +93,32 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
     if (qr.contrastFallback) warnings.push({ type: "qr-contrast", slotId: "qr" });
   }
 
-  /* Mini ızgara — kompozisyon motoru (Canonical 4.1).
-     Sütun sayısı formattan gelir; SATIR sayısı artık sabit "2" değil,
-     kullanılabilir yükseklikten türetilir.
-
-     ÖLÇÜM (iki formatta da h_mm = 210):
-       availableH = (210 - 14) - 96 = 100mm · gap 4 · MIN_CELL_H 34
-       satır      = floor((100 + 4) / (34 + 4)) = floor(2,73) = 2
-       cellH      = (100 - 4) / 2 = 48mm  → eski sabit hesapla birebir aynı
-     Yani bugünkü çıktı değişmedi; fark, yeni bir format/profil geldiğinde
-     ızgaranın kendiliğinden uyarlanması ve kapasitenin artık el yazması bir
-     sabit olmamasıdır. */
+  /* Mini grid: a5 → 2 sütun (4 hücre), 21x21 → 3 sütun (6 hücre) */
   const cols = format === "21x21" ? 3 : 2;
+  const capacity = cols * 2;
   const selected = resolveSelection(client.catalog, doc.selection);
   const all = selected.flatMap((s) => s.items);
+  const shown = all.slice(0, capacity);
+  if (all.length > capacity) {
+    warnings.push({ type: "overflow-items", count: all.length - capacity });
+  }
 
   const gridTop = 96;
   const gridBottom = H - 14;
   const gap = 4;
-  const grid = composeGrid({
-    entries: all,
-    cols,
-    availableH_mm: gridBottom - gridTop,
-    minCellH_mm: MIN_CELL_H,
-    gap_mm: gap,
-    cellW_mm: (W - 2 * MARGIN - (cols - 1) * gap) / cols,
-    originX_mm: MARGIN,
-    originY_mm: gridTop,
-    strategy: resolveOverflowStrategy(manifest.repeater?.overflow, "shrink-then-warn"),
-  });
-  if (grid.overflow.length > 0) {
-    warnings.push({ type: "overflow-items", count: grid.overflow.length });
-  }
-  /* İlan "ürün düşmez" diyorsa ama düştüyse, motor bunu bildirir ve BURADA
-     görünür uyarıya çevrilir. Bugün flyer düşüren bir strateji ilan ettiği
-     için bu yol tetiklenmez; ilan değişirse sessiz kalmaz. */
-  if (grid.strategyViolation) {
-    warnings.push({
-      type: "overflow-strategy-violation",
-      declared: grid.strategyViolation,
-      dropped: grid.overflow.length,
-    });
-  }
-
-  const items: FlyerMiniItem[] = grid.cells.map((cell) => {
-    const it = cell.entry;
+  const cellW = (W - 2 * MARGIN - (cols - 1) * gap) / cols;
+  const cellH = (gridBottom - gridTop - gap) / 2;
+  const items: FlyerMiniItem[] = shown.map((it, i) => {
     const asset = assetById(client, it.photo);
     return {
       id: it.id,
       name: it.name_fr,
       price: it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "",
       photoUrl: asset?.urls.master ?? null,
-      x: cell.x_mm,
-      y: cell.y_mm,
-      w: cell.w_mm,
-      h: cell.h_mm,
+      x: MARGIN + (i % cols) * (cellW + gap),
+      y: gridTop + Math.floor(i / cols) * (cellH + gap),
+      w: cellW,
+      h: cellH,
     };
   });
 

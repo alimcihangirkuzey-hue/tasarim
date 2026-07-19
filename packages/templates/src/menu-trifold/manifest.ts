@@ -39,7 +39,12 @@ export const manifest = {
   repeater: {
     id: "items",
     bind: "selection.items",
-    overflow: "shrink-then-flow",
+    /* DÜZELTME (Composition Engine): burası "shrink-then-flow" ilan ediyordu,
+       yani "ürün düşmez, sayfa eklenir". Trifold FİZİKSEL olarak tek yüzdür —
+       analyze.ts fonta biner, sığmayanı görünür uyarıyla dışarıda bırakır.
+       İlan artık davranışın kendisidir. Çıktı değişmedi; değişen, sözleşmenin
+       doğru söylemesi. */
+    overflow: "shrink-then-warn",
     itemSlots: [
       { id: "name", kind: "text", bind: "item.name_fr", font_mm: { min: 3, max: 4 }, maxLines: 2 },
       { id: "desc", kind: "text", bind: "item.desc_fr", font_mm: { min: 2.3, max: 2.8 }, maxLines: 2 },

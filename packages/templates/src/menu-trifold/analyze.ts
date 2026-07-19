@@ -1,5 +1,11 @@
 /* menu-trifold analiz — iç yüz 3 sütunlu liste akışı (satır motoru yeniden kullanımı);
-   shrink-then-flow sütunlar ARASINDA; 3 sütuna da sığmazsa görünür taşma uyarısı (M8). */
+   ÖNCE fonta biner, 3 sütuna da sığmazsa sığmayanı görünür taşma uyarısıyla
+   dışarıda bırakır (M8) — yani "shrink-then-warn". Trifold fiziksel olarak tek
+   yüzdür; sayfa eklenemez.
+
+   ŞERH: bu şablon manifest'teki `repeater.overflow` ilanını HENÜZ OKUMUYOR,
+   davranışı burada sabit kodlu. İlan ile davranış (manifest.ts'te) hizalandı
+   ama bağ kurulmadı — motora bağlama ayrı pakettir. */
 
 import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {

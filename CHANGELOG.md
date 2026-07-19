@@ -14,6 +14,43 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   — Dosya açılamadı / okunamadı"; "Geçiş engellendi — Tasarım eşiği kapalı…").
 
 ### Added
+- **Dynamic Composition Engine (Canonical B aşaması, Bölüm 4.1/4.3/7.2):**
+  sütun seçimi, font ölçekleme, sayfa bölme, taşma stratejisi ve ızgara
+  kapasitesi artık şablona özel koddan çıkıp paylaşılan, teknoloji-bağımsız
+  bir çekirdekte (`packages/templates/src/engine/composition.ts`).
+  `composeColumns` (değişken yükseklikli akış) + `composeGrid` (sabit hücre;
+  **kapasite geometriden türer**, sessiz `slice` yok).
+  · `menu-liste-premium` elle yazılmış `solveFontScale`+`flowColumns` bloğunu
+    bıraktı; **çıktı birebir korundu.**
+  · `flyer`'daki sabit `slice(0, cols*2)` ve el yazması satır sayısı kalktı —
+    satır artık kullanılabilir yükseklikten türüyor (bugünkü iki formatta da
+    sonuç aynı: 2 satır, hücre 48mm).
+  · `menu-trifold` manifest'i **yalan ilan** ediyordu (`shrink-then-flow` =
+    "ürün düşmez") oysa fonta binip artanı düşürüyor → `shrink-then-warn`.
+  · **Taşma sözlüğü tek kaynağa indi:** `types.ts` artık motordan okuyor
+    (önce 2 değer sayıyordu, motor 4 tanıyor — `flow` ve
+    `truncate-with-warning` hiçbir manifestte ilan EDİLEMİYORDU).
+  · **Kanıt:** `composition-differential.test.ts` — `main`'den çıkarılmış
+    refactor-öncesi kod (`__baseline.ts`) ile bugünkü kod ~800 parametre
+    kombinasyonunda yan yana koşuyor, metin içeriği dahil karşılaştırılıyor.
+    Altın kayıt (13 vaka) ayrıca duruyor.
+  · **ŞERH — kapsam:** beş manifestin ilanını bugün yalnız İKİSİ okuyor
+    (`menu-liste-premium`, `flyer`). `menu-trifold` ve `menu-grid-cells` hâlâ
+    sabit kodlu; motora bağlanmaları ayrı pakettir (çıktıları değişebilir).
+- **İkinci doğrulayıcı bulguları (7 lens tek turda paralel):** 2 BLOCKER +
+  6 CİDDİ + 11 KÜÇÜK. Kapatılanlar arasında: dalda **typecheck kırıktı**
+  (`manifest.repeater` opsiyonel) ve **lint kırıktı** (ölü import);
+  `balanceLastColumn` içeriği **sessizce sayfa dışına taşırıyordu** (ürün
+  kaybolmuyor ama basılmıyor ve uyarı da üretilmiyordu) — artık tavanı aşarsa
+  dengelenmemiş akışa geri düşüyor; `balanceColumns`'ın **test kapsaması
+  sıfırdı** (gövdeye `throw` konsa bile süit yeşil kalıyordu); `composeGrid`'de
+  `strategy` **ölü parametreydi** — artık ilan-davranış uyuşmazlığını
+  `strategyViolation` ile rapor ediyor; ölü `seed` alanı **kaldırıldı**
+  (Canonical adı `designSeed`, gövdede hiç okunmuyordu — kapatılan ölü
+  sözleşmenin yerine yenisi açılamaz); altın kayıt vaka adları
+  yanıltıcıydı (`30-urun-2sutun` aslında `columns:1` koşuyordu).
+  **Mutasyon kanıtı:** sütun-kapatma sınırında `>`→`>=` ve `balanceColumns`
+  gövdesine `throw` — ikisi de ÖNCE hayatta kalıyordu, ŞİMDİ ölüyor.
 - **Canonical v4.1.0 — Bölüm 11 "Geliştirme Operasyonu" (Package Journal +
   Developer Cockpit):** modül mimarisi kayda geçti; **kod yazılmadı.** Package
   Journal geliştirme sürecinin **ölçüm** verisinde tek doğruluk kaynağı ilan

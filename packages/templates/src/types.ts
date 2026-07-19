@@ -7,7 +7,12 @@ export type RenderMode = "edit" | "print";
 
 export type SlotKind = "text" | "image" | "color" | "price" | "qr" | "badge";
 
-export type OverflowRule = "shrink-then-flow" | "shrink-then-warn";
+/* Taşma sözlüğü TEK kaynaktan gelir: kompozisyon motoru. Burada ayrı bir liste
+   tutulursa manifest'in ilan EDEBİLDİĞİ ile motorun UYGULADIĞI ayrışır — nitekim
+   ayrışmıştı: burası 2 değer sayıyordu, motor 4 tanıyor; "flow" ve
+   "truncate-with-warning" hiçbir manifestte ilan edilemiyordu. */
+import type { OverflowStrategy } from "./engine/composition.js";
+export type OverflowRule = OverflowStrategy;
 
 /** mm cinsinden izinli font aralığı (M8: shrink bu aralıkta çalışır) */
 export interface FontRangeMM {

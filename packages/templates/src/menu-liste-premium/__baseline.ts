@@ -1,17 +1,44 @@
+/* DONMUŞ TABAN — REFACTOR ÖNCESİ KOD. ELLE DÜZENLENMEZ.
+   ============================================================================
+   Bu dosya `git show main:<yol>` ile Dynamic Composition Engine paketinden
+   ÖNCEKİ koddan çıkarılmıştır ve YALNIZCA `composition-differential.test.ts`
+   tarafından kullanılır: eski davranış ile yeni davranış yan yana koşturulup
+   birebir karşılaştırılır.
+
+   NEDEN REPODA DURUYOR: köken iddiası ("çıktı birebir korundu") aksi halde
+   yalnız bir kereye mahsus, tekrar üretilemez bir ölçüme dayanırdı. Bu dosya
+   sayesinde sonraki geliştirici iddiayı KENDİ koşturarak doğrulayabilir.
+
+   Üretime dahil değildir (yalnız test tarafından import edilir, tree-shake
+   ile bundle dışında kalır). Motor davranışı bilinçli olarak değiştiğinde bu
+   dosya GÜNCELLENMEZ — diferansiyel test o değişikliği görünür kılmalıdır;
+   değişiklik onaylandığında taban yeni bir commit'ten yeniden çıkarılır. */
 /* menu-liste-premium analiz — shrink-then-flow (M8):
    önce tek sayfaya sığdırmak için font izinli aralıkta küçülür;
    min fontta da sığmıyorsa devam sayfalarına akar. */
 
-import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
+import {
+  formatPrice,
+  type Category,
+  type ClientDTO,
+  type DocumentState,
+  type Item,
+} from "@tezgah/shared";
 import {
   assetById,
   resolveSelection,
   resolveSlotValue,
   selectionFlow,
   type BindScope,
+  type FlowEntry,
 } from "../engine/binding.js";
-import { estimateWidth, wrapText, type LayoutWarning } from "../engine/layout.js";
-import { composeColumns, resolveOverflowStrategy } from "../engine/composition.js";
+import {
+  estimateWidth,
+  flowColumns,
+  solveFontScale,
+  wrapText,
+  type LayoutWarning,
+} from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
@@ -178,16 +205,8 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   const descSlot = manifest.repeater.itemSlots.find((s) => s.id === "desc")!;
   const metrics = listMetrics(columns, nameSlot.font_mm!.max, descSlot.maxLines!);
 
-  /* Satır üretimi: verilen ad fontuna VE sütun sayısına göre yükseklikler.
-     `cols` argümanı motorun `build(font, columns)` sözleşmesinden gelir; sütun
-     sayısı değişince satır genişliği (dolayısıyla sarma ve yükseklik) değişir.
-     Sabit sütunda `cols === columns`'tır ve `colW` ile birebir aynı sonucu
-     verir; `derive` stratejisi kullanılırsa doğru genişlikle ölçülür. */
-  const buildRows = (nameFont: number, cols: number = columns): ListRow[] => {
-    /* Ad bilinçli: dış kapsamdaki `colW`'yi GÖLGELEMEZ. Gölgeleme olsaydı
-       `derive`'a geçildiğinde dosyanın geri kalanı (kısaltma döngüsü, dönen
-       `colW` alanı) eski değeri kullanmaya devam eder ve sessizce ayrışırdı. */
-    const satirW = (geo.content.w - (cols - 1) * COL_GAP) / cols;
+  /* Satır üretimi: verilen ad fontuna göre yükseklikler */
+  const buildRows = (nameFont: number): ListRow[] => {
     const descFont = Math.max(
       descSlot.font_mm!.min,
       Math.min(descSlot.font_mm!.max, nameFont * 0.68)
@@ -227,7 +246,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
       const nameWrap = wrapText(nameText, {
         font_mm: nameFont,
         ratio: theme.ratios.item,
-        maxWidth_mm: satirW - priceZone,
+        maxWidth_mm: colW - priceZone,
         maxLines: nameSlot.maxLines!,
       });
       const descWrap =
@@ -235,7 +254,7 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
           ? wrapText(item.desc_fr, {
               font_mm: descFont,
               ratio: theme.ratios.body,
-              maxWidth_mm: satirW * 0.78,
+              maxWidth_mm: colW * 0.78,
               maxLines: metrics.descMaxLines,
             })
           : { lines: [], truncated: false };
@@ -260,36 +279,47 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     return rows;
   };
 
-  /* KOMPOZİSYON — Canonical 4.1: politika artık paylaşılan motorda.
-     Strateji manifest'ten OKUNUR (`repeater.overflow`); ilan ile davranış
-     ayrışamaz. Bu şablonun ilanı "shrink-then-flow": önce fonta bin, sığmazsa
-     sayfa ekle — ürün DÜŞMEZ (M8: sessiz kırpma yok). */
-  const strategy = resolveOverflowStrategy(manifest.repeater.overflow, "shrink-then-flow");
-  const composed = composeColumns<ListRow>(
-    {
-      build: (font, cols) => buildRows(font, cols).map((r) => ({ entry: r, h_mm: r.h })),
-      typography: { min: nameSlot.font_mm!.min, max: metrics.nameMaxFont },
-      columns: { kind: "fixed", count: columns },
-      columnHeight_mm: colH,
-      strategy,
-      targetPages: 1,
+  /* Shrink: tek sayfaya sığdıran en büyük font; olmuyorsa min + flow (M8).
+     Compact modda tavan bir kademe düşüktür (metrics.nameMaxFont). */
+  const fit = solveFontScale({
+    min: nameSlot.font_mm!.min,
+    max: metrics.nameMaxFont,
+    fits: (f) => {
+      const rows = buildRows(f);
+      const flown = flowColumns(
+        rows.map((r) => ({ entry: dummyEntry(r), h_mm: r.h })),
+        colH,
+        columns
+      );
+      return flown.pages.length <= 1;
     },
-    (row) => row.kind === "category" /* kategori tek başına sütun sonunda kalmaz */
-  );
+  });
 
   /* FAZ5 §3: yoğun modda font okunabilirlik tabanına (min) dayandıysa uyar (M8);
      içerik yine akar (sayfa eklenir), sessiz kırpma yok. */
-  if (metrics.compact && !composed.fitsTarget) {
+  if (metrics.compact && !fit.fits) {
     warnings.push({ type: "min-font", slotId: "name" });
   }
-  /* Strateji ürün düşürdüyse GÖRÜNÜR uyarı (bu şablonda düşmez; sözleşme gereği) */
-  if (composed.overflow.length > 0) {
-    warnings.push({ type: "overflow-items", count: composed.overflow.length });
-  }
 
-  const rows = buildRows(composed.font_mm);
-  const pages: ListPage[] = composed.pages.map((p) => ({
-    columns: p.columns.map((col) => col.map((b) => ({ row: b.entry, y: b.y_mm }))),
+  const rows = buildRows(fit.font_mm);
+  const flown = flowColumns(
+    rows.map((r) => ({ entry: dummyEntry(r), h_mm: r.h })),
+    colH,
+    columns
+  );
+
+  /* flowColumns FlowEntry taşır; satırları sırayla geri eşle */
+  let cursor = 0;
+  const pages: ListPage[] = flown.pages.map((pageCols) => ({
+    columns: pageCols.map((col) => {
+      let y = 0;
+      return col.map((blk) => {
+        const row = rows[cursor++];
+        const placed = { row, y };
+        y += blk.h_mm;
+        return placed;
+      });
+    }),
   }));
 
   /* Kısaltma uyarıları (görünür, M8) */
@@ -313,8 +343,21 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   return {
     theme, geo, format, formatDef, columns, colW, colGap: COL_GAP,
     showDesc, priceLayout, pages, warnings, scope, decor, decorBandH,
-    nameFont: composed.font_mm,
+    nameFont: fit.font_mm,
     metrics,
     qr,
   };
+}
+
+/* flowColumns yalnız kind bilgisine bakar (keep-with-next); gerçek entry taşımak gerekmez */
+function dummyEntry(r: ListRow): FlowEntry {
+  const category: Category = {
+    id: r.kind === "category" ? r.id : "x",
+    name_fr: r.kind === "category" ? r.name : "x",
+    order: 0,
+    items: [],
+  };
+  return r.kind === "category"
+    ? { kind: "category", category }
+    : { kind: "item", item: r.item, category };
 }
