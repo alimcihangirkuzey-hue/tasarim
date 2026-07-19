@@ -17,13 +17,8 @@ import {
   type BindScope,
   type FlowEntry,
 } from "../engine/binding.js";
-import {
-  estimateWidth,
-  flowColumns,
-  solveFontScale,
-  wrapText,
-  type LayoutWarning,
-} from "../engine/layout.js";
+import { estimateWidth, wrapText, type LayoutWarning } from "../engine/layout.js";
+import { composeColumns, resolveOverflowStrategy } from "../engine/composition.js";
 import { currentFormat, paramValue } from "../engine/params.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
@@ -264,47 +259,36 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     return rows;
   };
 
-  /* Shrink: tek sayfaya sığdıran en büyük font; olmuyorsa min + flow (M8).
-     Compact modda tavan bir kademe düşüktür (metrics.nameMaxFont). */
-  const fit = solveFontScale({
-    min: nameSlot.font_mm!.min,
-    max: metrics.nameMaxFont,
-    fits: (f) => {
-      const rows = buildRows(f);
-      const flown = flowColumns(
-        rows.map((r) => ({ entry: dummyEntry(r), h_mm: r.h })),
-        colH,
-        columns
-      );
-      return flown.pages.length <= 1;
+  /* KOMPOZİSYON — Canonical 4.1: politika artık paylaşılan motorda.
+     Strateji manifest'ten OKUNUR (`repeater.overflow`); ilan ile davranış
+     ayrışamaz. Bu şablonun ilanı "shrink-then-flow": önce fonta bin, sığmazsa
+     sayfa ekle — ürün DÜŞMEZ (M8: sessiz kırpma yok). */
+  const strategy = resolveOverflowStrategy(manifest.repeater.overflow, "shrink-then-flow");
+  const composed = composeColumns<ListRow>(
+    {
+      build: (font) => buildRows(font).map((r) => ({ entry: r, h_mm: r.h })),
+      typography: { min: nameSlot.font_mm!.min, max: metrics.nameMaxFont },
+      columns: { kind: "fixed", count: columns },
+      columnHeight_mm: colH,
+      strategy,
+      targetPages: 1,
     },
-  });
+    (row) => row.kind === "category" /* kategori tek başına sütun sonunda kalmaz */
+  );
 
   /* FAZ5 §3: yoğun modda font okunabilirlik tabanına (min) dayandıysa uyar (M8);
      içerik yine akar (sayfa eklenir), sessiz kırpma yok. */
-  if (metrics.compact && !fit.fits) {
+  if (metrics.compact && !composed.fitsTarget) {
     warnings.push({ type: "min-font", slotId: "name" });
   }
+  /* Strateji ürün düşürdüyse GÖRÜNÜR uyarı (bu şablonda düşmez; sözleşme gereği) */
+  if (composed.overflow.length > 0) {
+    warnings.push({ type: "overflow-items", count: composed.overflow.length });
+  }
 
-  const rows = buildRows(fit.font_mm);
-  const flown = flowColumns(
-    rows.map((r) => ({ entry: dummyEntry(r), h_mm: r.h })),
-    colH,
-    columns
-  );
-
-  /* flowColumns FlowEntry taşır; satırları sırayla geri eşle */
-  let cursor = 0;
-  const pages: ListPage[] = flown.pages.map((pageCols) => ({
-    columns: pageCols.map((col) => {
-      let y = 0;
-      return col.map((blk) => {
-        const row = rows[cursor++];
-        const placed = { row, y };
-        y += blk.h_mm;
-        return placed;
-      });
-    }),
+  const rows = buildRows(composed.font_mm);
+  const pages: ListPage[] = composed.pages.map((p) => ({
+    columns: p.columns.map((col) => col.map((b) => ({ row: b.entry, y: b.y_mm }))),
   }));
 
   /* Kısaltma uyarıları (görünür, M8) */
@@ -328,21 +312,8 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   return {
     theme, geo, format, formatDef, columns, colW, colGap: COL_GAP,
     showDesc, priceLayout, pages, warnings, scope, decor, decorBandH,
-    nameFont: fit.font_mm,
+    nameFont: composed.font_mm,
     metrics,
     qr,
   };
-}
-
-/* flowColumns yalnız kind bilgisine bakar (keep-with-next); gerçek entry taşımak gerekmez */
-function dummyEntry(r: ListRow): FlowEntry {
-  const category: Category = {
-    id: r.kind === "category" ? r.id : "x",
-    name_fr: r.kind === "category" ? r.name : "x",
-    order: 0,
-    items: [],
-  };
-  return r.kind === "category"
-    ? { kind: "category", category }
-    : { kind: "item", item: r.item, category };
 }

@@ -8,6 +8,7 @@ import {
   resolveSlotValue,
   type BindScope,
 } from "../engine/binding.js";
+import { composeGrid, resolveOverflowStrategy } from "../engine/composition.js";
 import type { LayoutWarning } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
@@ -15,6 +16,9 @@ import { resolveTheme, type Theme } from "../themes.js";
 import { manifest } from "./manifest.js";
 
 const MARGIN = 10;
+/* Bir mini hücrenin okunabilir kaldığı en küçük yükseklik (foto + ad + fiyat).
+   Izgara kapasitesi bundan türer — sabit ürün sayısı yerine ölçülebilir sınır. */
+const MIN_CELL_H = 34;
 
 export interface FlyerMiniItem {
   id: string;
@@ -78,32 +82,47 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
     if (qr.contrastFallback) warnings.push({ type: "qr-contrast", slotId: "qr" });
   }
 
-  /* Mini grid: a5 → 2 sütun (4 hücre), 21x21 → 3 sütun (6 hücre) */
+  /* Mini ızgara — kompozisyon motoru (Canonical 4.1).
+     Sütun sayısı formattan gelir; SATIR sayısı artık sabit "2" değil,
+     kullanılabilir yükseklikten türetilir. Bugünkü geometride
+     (a5: 178mm, 21x21: 106mm alan · minCellH 34mm) sonuç 2 satırdır —
+     yani çıktı birebir aynı; fark, yeni bir format/profil geldiğinde
+     ızgaranın kendiliğinden uyarlanması ve kapasitenin artık
+     el yazması bir sabit olmamasıdır. */
   const cols = format === "21x21" ? 3 : 2;
-  const capacity = cols * 2;
   const selected = resolveSelection(client.catalog, doc.selection);
   const all = selected.flatMap((s) => s.items);
-  const shown = all.slice(0, capacity);
-  if (all.length > capacity) {
-    warnings.push({ type: "overflow-items", count: all.length - capacity });
-  }
 
   const gridTop = 96;
   const gridBottom = H - 14;
   const gap = 4;
-  const cellW = (W - 2 * MARGIN - (cols - 1) * gap) / cols;
-  const cellH = (gridBottom - gridTop - gap) / 2;
-  const items: FlyerMiniItem[] = shown.map((it, i) => {
+  const grid = composeGrid({
+    entries: all,
+    cols,
+    availableH_mm: gridBottom - gridTop,
+    minCellH_mm: MIN_CELL_H,
+    gap_mm: gap,
+    cellW_mm: (W - 2 * MARGIN - (cols - 1) * gap) / cols,
+    originX_mm: MARGIN,
+    originY_mm: gridTop,
+    strategy: resolveOverflowStrategy(manifest.repeater.overflow, "shrink-then-warn"),
+  });
+  if (grid.overflow.length > 0) {
+    warnings.push({ type: "overflow-items", count: grid.overflow.length });
+  }
+
+  const items: FlyerMiniItem[] = grid.cells.map((cell) => {
+    const it = cell.entry;
     const asset = assetById(client, it.photo);
     return {
       id: it.id,
       name: it.name_fr,
       price: it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "",
       photoUrl: asset?.urls.master ?? null,
-      x: MARGIN + (i % cols) * (cellW + gap),
-      y: gridTop + Math.floor(i / cols) * (cellH + gap),
-      w: cellW,
-      h: cellH,
+      x: cell.x_mm,
+      y: cell.y_mm,
+      w: cell.w_mm,
+      h: cell.h_mm,
     };
   });
 
