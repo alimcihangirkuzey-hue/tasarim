@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  F1_GARMENT_SIZES,
   GARMENT_AREAS,
   areasForKind,
   f1TotalQuantity,
@@ -49,9 +50,9 @@ const TECHNIQUES = [
   { id: "genel_baski", label: "Genel baskı (300dpi alfa-PNG)" },
   { id: "dtf", label: "DTF" },
 ];
-/* v1 beden seti: tenant/ürün-tipi beden modeli repo'da YOK (14d tek-tenant) →
-   standart küme sabit; tenant bazlı set gerekirse ayrı karar (rapora yazıldı). */
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+/* Beden seti TEK KAYNAKTAN (shared/f1-spec.ts) — sunucu doğrulaması da aynı
+   kümeyi okur; UI'da ayrı liste tutulmaz (D-63). */
+const SIZES = F1_GARMENT_SIZES;
 
 const box: React.CSSProperties = {
   border: "1px solid #ddd",
@@ -75,6 +76,9 @@ export function BriefPage() {
   const [files, setFiles] = useState<BriefFileResult["file"][]>([]);
   const [ackBy, setAckBy] = useState("");
   const [ackReason, setAckReason] = useState("");
+  /* Beden matrisi: ham metin + alan-başına hata (sessiz düşürme YOK) */
+  const [sizeText, setSizeText] = useState<Record<string, string>>({});
+  const [sizeError, setSizeError] = useState<Record<string, string>>({});
 
   const formats = useMemo(() => menuFormatOptions(), []);
 
@@ -119,6 +123,49 @@ export function BriefPage() {
   const placements = Array.isArray(spec.placements) ? (spec.placements as GarmentAreaId[]) : [];
   const sizeDist = (spec.size_distribution ?? {}) as Record<string, number>;
   const totalQty = f1TotalQuantity(sizeDist);
+
+  /**
+   * Beden hücresi kaydı: metni İSTEMCİDE de doğrular (virgüllü ondalık, harf,
+   * negatif) — geçersizse SUNUCUYA GİTMEZ ve değer sessizce DÜŞMEZ, hücrenin
+   * altında gerekçe belirir (AJAN-5/B-4). Geçerliyse sunucuya yazılır ve
+   * ham-metin taslağı temizlenir (ekran = kayıt, AJAN-5/B-5).
+   */
+  const commitSize = async (size: string) => {
+    if (!view) return;
+    const text = (sizeText[size] ?? String(sizeDist[size] ?? "")).trim();
+    const next = { ...sizeDist };
+    if (text === "") {
+      delete next[size];
+    } else {
+      const n = Number(text.replace(",", "."));
+      if (!Number.isFinite(n)) {
+        setSizeError((p) => ({ ...p, [size]: "sayı olmalı" }));
+        return;
+      }
+      if (!Number.isInteger(n)) {
+        setSizeError((p) => ({ ...p, [size]: "tam sayı olmalı (ör. 12)" }));
+        return;
+      }
+      if (n < 0) {
+        setSizeError((p) => ({ ...p, [size]: "negatif olamaz" }));
+        return;
+      }
+      next[size] = n;
+    }
+    setSizeError((p) => ({ ...p, [size]: "" }));
+    await run(async () => {
+      setView(await api.patchBrief(view.brief.id, { spec_values: { size_distribution: next } }));
+      /* BULGU-4 kökü: taslağı BOŞ DİZE ile temizlemek kutuyu kalıcı boş
+         bırakıyordu — `sizeText[size] ?? ...` (nullish) "" için fallback'e
+         DÜŞMEZ. Ayrıca sonraki blur'da text="" okunup bedeni SİLİYORDU.
+         Doğrusu: taslak anahtarını KALDIR → kayıt değeri görünür. */
+      setSizeText((p) => {
+        const next = { ...p };
+        delete next[size];
+        return next;
+      });
+    });
+  };
   const garmentKind = (str("garment_type") || "tshirt") as GarmentKind;
   const validAreas = areasForKind(garmentKind);
 
@@ -318,9 +365,17 @@ export function BriefPage() {
                 <select
                   style={input}
                   value={str("garment_type")}
-                  onChange={(e) =>
-                    void patch({ spec_values: { garment_type: e.target.value, placements: [] } })
-                  }
+                  onChange={(e) => {
+                    /* Ürün tipi değişince baskı yerlerini KÖRÜ KÖRÜNE silme:
+                       yeni tipte geçerli olanlar korunur (BULGU-5 dersi). */
+                    const gecerli = areasForKind(e.target.value as GarmentKind);
+                    void patch({
+                      spec_values: {
+                        garment_type: e.target.value,
+                        placements: placements.filter((p) => gecerli.includes(p)),
+                      },
+                    });
+                  }}
                 >
                   <option value="">— seçin —</option>
                   {GARMENT_KINDS.map((g) => (
@@ -400,29 +455,54 @@ export function BriefPage() {
                 </select>
 
                 {/* BEDEN × ADET MATRİSİ — toplam HESAPLANIR */}
-                <label style={{ ...label, marginTop: 12 }}>Beden × adet</label>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <label style={{ ...label, marginTop: 12 }} id="size-matrix-label">
+                  Beden × adet
+                </label>
+                <div
+                  style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+                  role="group"
+                  aria-labelledby="size-matrix-label"
+                >
                   {SIZES.map((size) => (
                     <div key={size} style={{ width: 78 }}>
-                      <div style={{ fontSize: 12, textAlign: "center", opacity: 0.75 }}>{size}</div>
+                      <label
+                        htmlFor={`size-${size}`}
+                        style={{ display: "block", fontSize: 12, textAlign: "center", opacity: 0.75 }}
+                      >
+                        {size}
+                      </label>
                       <input
-                        style={{ ...input, textAlign: "center", padding: 6 }}
-                        type="number"
-                        min={0}
-                        defaultValue={sizeDist[size] ?? ""}
-                        onBlur={(e) => {
-                          const next = { ...sizeDist };
-                          const n = Number(e.target.value);
-                          if (Number.isFinite(n) && n > 0) next[size] = Math.floor(n);
-                          else delete next[size];
-                          void patch({ spec_values: { size_distribution: next } });
+                        id={`size-${size}`}
+                        aria-label={`${size} beden adedi`}
+                        aria-invalid={Boolean(sizeError[size])}
+                        style={{
+                          ...input,
+                          textAlign: "center",
+                          padding: 6,
+                          borderColor: sizeError[size] ? "#C8102E" : undefined,
                         }}
+                        type="text"
+                        inputMode="numeric"
+                        /* KONTROLLÜ: sunucu bir yazımı reddederse ekran ile kayıt
+                           AYRIŞMAZ (AJAN-5/B-5); ham metin tutulur ki kullanıcının
+                           yazdığı sessizce kaybolmasın (AJAN-5/B-4). */
+                        value={sizeText[size] ?? String(sizeDist[size] ?? "")}
+                        onChange={(e) => setSizeText((prev) => ({ ...prev, [size]: e.target.value }))}
+                        onBlur={() => void commitSize(size)}
                       />
                     </div>
                   ))}
                 </div>
-                <p style={{ margin: "6px 0 0", fontWeight: 700 }}>
-                  Toplam adet: {totalQty}
+                {Object.entries(sizeError).some(([, v]) => v) && (
+                  <p style={{ margin: "6px 0 0", color: "#C8102E", fontSize: 13 }}>
+                    {Object.entries(sizeError)
+                      .filter(([, v]) => v)
+                      .map(([s, v]) => `${s}: ${v}`)
+                      .join(" · ")}
+                  </p>
+                )}
+                <p style={{ margin: "6px 0 0", fontWeight: 700 }} aria-live="polite">
+                  Toplam adet: {totalQty} <span style={{ fontWeight: 400, opacity: 0.6 }}>(hesaplanır)</span>
                   {totalQty === 0 && (
                     <span style={{ fontWeight: 400, color: "#C8102E" }}> — beden dağılımı boş</span>
                   )}
@@ -502,10 +582,40 @@ export function BriefPage() {
               </>
             )}
 
-            <label style={{ ...label, marginTop: 12 }}>
+            {/* OPSİYONEL (eksiksizlik hesabına GİRMEZ — spec optional_fields) */}
+            {isGarment && (
+              <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={publications.includes("mockup")}
+                  onChange={() =>
+                    void patch({
+                      requested_publications: publications.includes("mockup")
+                        ? publications.filter((x) => x !== "mockup")
+                        : [...publications, "mockup"],
+                    })
+                  }
+                />
+                Mockup istensin (opsiyonel)
+              </label>
+            )}
+
+            <label style={{ ...label, marginTop: 12 }} htmlFor="brief-notes">
+              Notlar (opsiyonel)
+            </label>
+            <textarea
+              id="brief-notes"
+              style={{ ...input, minHeight: 60, fontFamily: "inherit" }}
+              defaultValue={view.brief.requester_notes ?? ""}
+              onBlur={(e) => void patch({ requester_notes: e.target.value })}
+              placeholder="operatör notu…"
+            />
+
+            <label style={{ ...label, marginTop: 12 }} htmlFor="brief-file">
               {isGarment ? "Tasarım dosyası" : "Logo dosyası"} (PNG · JPG · SVG · PDF)
             </label>
             <input
+              id="brief-file"
               style={{ ...input, padding: 8 }}
               type="file"
               accept=".png,.jpg,.jpeg,.svg,.pdf"

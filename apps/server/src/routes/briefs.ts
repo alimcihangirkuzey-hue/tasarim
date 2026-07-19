@@ -16,13 +16,15 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   canTransitionF1,
+  f1SpecFor,
   f1WritableSpecKeys,
   isF1State,
   newId,
-  normalizeSizeDistribution,
   nowISO,
   toF1Readiness,
+  validateSizeDistribution,
   type F1Family,
+  type F1SizeIssue,
   type F1State,
 } from "@tezgah/shared";
 import { db } from "../db.js";
@@ -75,33 +77,97 @@ function findBrief(id: string): BriefRow | null {
 const familyOf = (requestType: string): F1Family => (requestType === "garment" ? "garment" : "menu");
 
 /**
- * spec_values YAZMA BEKÇİSİ (P5): yalnız SpecRef'te tanımlı (kolon/türetme
- * kaynaklı OLMAYAN) anahtarlar yazılabilir → çift kaynak ve çöp alan yok.
- * Beden×adet dağılımı normalize edilir: 0/negatif adetler DÜŞER (boş dağılım
- * = eksik; rozette görünür).
+ * spec_values YAZMA BEKÇİSİ (P5 + D-63 sıkılaştırması):
+ * · yalnız SpecRef'te tanımlı (kolon/türetme kaynaklı OLMAYAN) anahtarlar
+ *   yazılabilir → çift kaynak ve çöp alan yok
+ * · beden×adet KATI doğrulanır: ondalık/negatif/metin/NaN/bilinmeyen beden
+ *   SESSİZCE DÜZELTİLMEZ, isteği REDDEDER (400)
+ * · toplam adet İSTEMCİDEN alınmaz — hesaplanan alandır (yazılabilir anahtar
+ *   listesinde yoktur; gönderilirse tanımsız alan olarak reddedilir)
  */
 function sanitizeSpecValues(
   family: F1Family,
   input: Record<string, unknown>
-): { values: Record<string, unknown>; unknown: string[] } {
+): {
+  values: Record<string, unknown>;
+  unknown: string[];
+  sizeIssues: F1SizeIssue[];
+  valueIssues: Array<{ field: string; detail_tr: string }>;
+} {
   const allowed = new Set(f1WritableSpecKeys(family));
+  const rules = new Map(f1SpecFor(family).fields.map((f) => [f.id, f]));
   const values: Record<string, unknown> = {};
   const unknownKeys: string[] = [];
+  const sizeIssues: F1SizeIssue[] = [];
+  const valueIssues: Array<{ field: string; detail_tr: string }> = [];
+
   for (const [key, raw] of Object.entries(input)) {
     if (!allowed.has(key)) {
       unknownKeys.push(key);
       continue;
     }
     if (key === "size_distribution") {
-      values[key] = normalizeSizeDistribution(raw);
+      const check = validateSizeDistribution(raw);
+      if (!check.ok) {
+        sizeIssues.push(...check.issues);
+        continue;
+      }
+      values[key] = check.value;
       continue;
     }
-    /* boş dize = alanı TEMİZLE (eksik olarak görünsün) */
+    /* TEMİZLEME yolu: boş dize ya da BOŞ DİZİ = alanı sil (eksik görünsün).
+       BULGU-5 (GT-F1/P5 otomatik tur): boş dizi doğrulayıcıya düşünce
+       "en az 1 seçim" kuralına takılıyor, istek atomik olduğu için AYNI
+       gövdedeki geçerli alanlar da yazılamıyordu → ürün tipi hiç
+       seçilemiyordu. Temizleme, doğrulamadan ÖNCE ele alınır. */
     if (typeof raw === "string" && raw.trim() === "") continue;
+    if (Array.isArray(raw) && raw.length === 0) continue;
     if (raw === null || raw === undefined) continue;
+
+    /* AJAN-5/B-2,B-3: alan TİP/DEĞER denetimi — çöp veri REDDET-sınıfı kapıyı
+       açamaz; ilan edilen teknik listesi artık gerçekten zorlanır. */
+    const rule = rules.get(key);
+    const problem = rule?.validate ? rule.validate(raw) : null;
+    if (problem) {
+      valueIssues.push({ field: key, detail_tr: `${rule?.label_tr ?? key}: ${problem}` });
+      continue;
+    }
     values[key] = raw;
   }
-  return { values, unknown: unknownKeys };
+  return { values, unknown: unknownKeys, sizeIssues, valueIssues };
+}
+
+interface SpecWriteRejection {
+  unknown: string[];
+  sizeIssues: F1SizeIssue[];
+  valueIssues: Array<{ field: string; detail_tr: string }>;
+}
+
+/** Reddedilen spec yazımı: 400 + AUDIT (sessiz red yok — denetim izi kalır) */
+function rejectSpecWrite(
+  briefId: string | null,
+  r: SpecWriteRejection
+): { error: string; keys?: string[]; issues?: unknown[]; detail: string } {
+  const reason =
+    r.unknown.length > 0
+      ? `tanımsız alan: ${r.unknown.map((k) => k || "(boş anahtar)").join(", ")}`
+      : [...r.sizeIssues.map((i) => i.detail_tr), ...r.valueIssues.map((i) => i.detail_tr)].join(" · ");
+
+  if (briefId) {
+    writeAudit({
+      brief_id: briefId,
+      event_type: "spec_write_rejected",
+      reason,
+      payload: { unknown_keys: r.unknown, size_issues: r.sizeIssues, value_issues: r.valueIssues },
+    });
+  }
+  if (r.unknown.length > 0) {
+    return { error: "unknown_spec_keys", keys: r.unknown, detail: `Spec'te ${reason}` };
+  }
+  if (r.sizeIssues.length > 0) {
+    return { error: "invalid_size_distribution", issues: r.sizeIssues, detail: reason };
+  }
+  return { error: "invalid_spec_value", issues: r.valueIssues, detail: reason };
 }
 
 function writeAudit(input: {
@@ -162,10 +228,9 @@ export function briefRoutes(app: FastifyInstance): void {
       if (!client) return reply.code(404).send({ error: "client_not_found" });
     }
     const specIn = sanitizeSpecValues(familyOf(body.request_type), body.spec_values);
-    if (specIn.unknown.length > 0) {
-      return reply
-        .code(400)
-        .send({ error: "unknown_spec_keys", keys: specIn.unknown, detail: "Spec'te tanımsız alan" });
+    if (specIn.unknown.length > 0 || specIn.sizeIssues.length > 0 || specIn.valueIssues.length > 0) {
+      /* brief henüz yok → audit satırı yazılamaz (kayıt açılmadı); yanıt gerekçeli */
+      return reply.code(400).send(rejectSpecWrite(null, specIn));
     }
     const now = nowISO();
     const row: BriefRow = {
@@ -241,10 +306,8 @@ export function briefRoutes(app: FastifyInstance): void {
 
     /* Yazma bekçisi: tanımsız anahtar REDDEDİLİR; verilen anahtarlar BİRLEŞİR */
     const incoming = sanitizeSpecValues(familyOf(brief.request_type), patch.spec_values ?? {});
-    if (incoming.unknown.length > 0) {
-      return reply
-        .code(400)
-        .send({ error: "unknown_spec_keys", keys: incoming.unknown, detail: "Spec'te tanımsız alan" });
+    if (incoming.unknown.length > 0 || incoming.sizeIssues.length > 0 || incoming.valueIssues.length > 0) {
+      return reply.code(400).send(rejectSpecWrite(brief.id, incoming));
     }
     const specCurrent = JSON.parse(brief.spec_values_json || "{}") as Record<string, unknown>;
     /* Boş dize/null gelen alanlar TEMİZLENİR (eksik olarak görünsünler) */

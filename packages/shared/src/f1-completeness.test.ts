@@ -4,11 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  F1_GARMENT_SIZES,
   F1_GARMENT_SPEC,
   F1_MENU_SPEC,
   f1SpecFor,
   f1TotalQuantity,
   isAllowedSpecRef,
+  validateSizeDistribution,
 } from "./f1-spec.js";
 import {
   computeF1Completeness,
@@ -96,6 +98,60 @@ describe("Spec-referans modeli (DB tablosu YOK — manifest'e referans)", () => 
     expect(f1HasValue([])).toBe(false);
     expect(f1HasValue({})).toBe(false);
     expect(f1HasValue(undefined)).toBe(false);
+  });
+});
+
+describe("beden×adet KATI doğrulama (D-63) — sessiz düzeltme YOK", () => {
+  it("geçerli dağılım: 0 adet meşru, toplam hesaplanır", () => {
+    const r = validateSizeDistribution({ XS: 0, S: 10, M: 20, L: 15, XL: 5 });
+    expect(r).toMatchObject({ ok: true, total: 50 });
+    if (r.ok) expect(r.value).toEqual({ XS: 0, S: 10, M: 20, L: 15, XL: 5 });
+  });
+
+  it("negatif · ondalık · metin · NaN · bilinmeyen beden REDDEDİLİR (gerekçeli)", () => {
+    const cases: Array<[unknown, string]> = [
+      [{ S: -1 }, "negative"],
+      [{ S: 2.5 }, "not_integer"],
+      [{ S: "10" }, "not_number"],
+      [{ S: Number.NaN }, "not_number"],
+      [{ XXXL: 1 }, "unknown_size"],
+    ];
+    for (const [input, reason] of cases) {
+      const r = validateSizeDistribution(input);
+      expect(r.ok, JSON.stringify(input)).toBe(false);
+      if (!r.ok) {
+        expect(r.issues[0].reason).toBe(reason);
+        expect(r.issues[0].detail_tr.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("nesne olmayan girdi (dizi/null/metin) reddedilir", () => {
+    for (const bad of [[1, 2], null, "S:10", 42]) {
+      const r = validateSizeDistribution(bad);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.issues[0].reason).toBe("not_object");
+    }
+  });
+
+  it("beden seti TEK kaynaktan (XS-XXL) ve toplam hesaplanan alandır", () => {
+    expect([...F1_GARMENT_SIZES]).toEqual(["XS", "S", "M", "L", "XL", "XXL"]);
+    expect(f1TotalQuantity({ S: 3, M: 4 })).toBe(7);
+  });
+
+  it("TOPLAM=0 → alan EKSİK sayılır (varlık kontrolü yetmez; özel doluluk kuralı)", () => {
+    const sifir = computeF1Completeness({
+      ...GARMENT_FULL,
+      values: { ...GARMENT_FULL.values, size_distribution: { S: 0, M: 0 } },
+    });
+    expect(sifir.missing.map((m) => m.id)).toContain("size_distribution");
+    expect(sifir.productionCompleteness).toBeLessThan(100);
+
+    const dolu = computeF1Completeness({
+      ...GARMENT_FULL,
+      values: { ...GARMENT_FULL.values, size_distribution: { S: 0, M: 1 } },
+    });
+    expect(dolu.missing).toEqual([]);
   });
 });
 

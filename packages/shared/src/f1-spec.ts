@@ -56,7 +56,42 @@ export interface F1FieldRule {
   trigger: F1Trigger;
   /** REDDET sınıfı: kayıtlı istisnayla KARŞILANAMAZ (F1.5) */
   reject_class?: boolean;
+  /** Özel doluluk kuralı (yoksa f1HasValue) — ör. beden dağılımında TOPLAM>0 */
+  satisfied?: (value: unknown) => boolean;
+  /** YAZMA doğrulaması (AJAN-5/B-3): geçersizse Türkçe gerekçe, geçerliyse null.
+      Yoksa alan tip denetimsizdi → çöp veri REDDET-sınıfı kapıyı açabiliyordu. */
+  validate?: (value: unknown) => string | null;
 }
+
+/* ---- Yazma doğrulayıcıları (küçük, birleştirilebilir) ------------------- */
+
+const vText =
+  (max = 400) =>
+  (v: unknown): string | null =>
+    typeof v === "string" && v.trim() !== "" && v.length <= max
+      ? null
+      : `metin olmalı (1-${max} karakter)`;
+
+const vOneOf =
+  (values: readonly string[]) =>
+  (v: unknown): string | null =>
+    typeof v === "string" && values.includes(v) ? null : `geçerli değerler: ${values.join(", ")}`;
+
+/** Sayım alanı: GÜVENLİ tam sayı, 1..max (AJAN-5/B-1: üst sınır yoktu) */
+const vCount =
+  (max: number) =>
+  (v: unknown): string | null =>
+    typeof v === "number" && Number.isSafeInteger(v) && v > 0 && v <= max
+      ? null
+      : `1 ile ${max} arasında tam sayı olmalı`;
+
+const vStringList =
+  (allowed: readonly string[], min = 1) =>
+  (v: unknown): string | null => {
+    if (!Array.isArray(v) || v.length < min) return `en az ${min} seçim yapılmalı`;
+    const bad = v.filter((x) => typeof x !== "string" || !allowed.includes(x));
+    return bad.length === 0 ? null : `geçersiz seçim: ${bad.join(", ")} (geçerli: ${allowed.join(", ")})`;
+  };
 
 /** Dosya şartı — role brief_files.role ile BİREBİR aynı dizedir */
 export interface F1FileRequirement {
@@ -97,7 +132,14 @@ export const F1_MENU_SPEC: F1Spec = {
   ],
   fields: [
     /* --- design_pre: eksikse iş TASARIMA GİREMEZ --- */
-    { id: "format", label_tr: "Format", layer: "design_pre", trigger: { kind: "always" }, reject_class: true },
+    {
+      id: "format",
+      label_tr: "Format",
+      layer: "design_pre",
+      trigger: { kind: "always" },
+      reject_class: true,
+      validate: vText(40),
+    },
     { id: "languages", label_tr: "Dil listesi (≥1)", layer: "design_pre", trigger: { kind: "always" } },
     { id: "content_skeleton", label_tr: "İçerik iskeleti", layer: "design_pre", trigger: { kind: "always" } },
     {
@@ -113,6 +155,7 @@ export const F1_MENU_SPEC: F1Spec = {
       layer: "design_pre",
       trigger: { kind: "format_free_choice" },
       reject_class: true,
+      validate: vOneOf(["portrait", "landscape"]),
     },
     /* --- production_pre: tasarımı engellemez, ÜRETİM kapısını kapatır --- */
     { id: "prices", label_tr: "Fiyatlar (tüm listelenen ürünlerde)", layer: "production_pre", trigger: { kind: "always" } },
@@ -122,24 +165,28 @@ export const F1_MENU_SPEC: F1Spec = {
       label_tr: "QR hedef adresi",
       layer: "production_pre",
       trigger: { kind: "publication", publication: "qr_image" },
+      validate: vText(500),
     },
     {
       id: "print_quantity",
       label_tr: "Baskı adedi",
       layer: "production_pre",
       trigger: { kind: "any_printed_publication" },
+      validate: vCount(1_000_000),
     },
     {
       id: "print_material",
       label_tr: "Baskı malzemesi",
       layer: "production_pre",
       trigger: { kind: "any_printed_publication" },
+      validate: vText(200),
     },
     {
       id: "color_font_choice",
       label_tr: "Renk/font açık seçimi (Brand referansı yoksa)",
       layer: "production_pre",
       trigger: { kind: "brand_ref_missing" },
+      validate: vText(300),
     },
   ],
   file_requirements: [
@@ -156,6 +203,18 @@ export const F1_MENU_SPEC: F1Spec = {
 
 export const F1_GARMENT_TECHNIQUES = ["broderie", "genel_baski"] as const;
 
+/* Ürün tipi ve baskı alanı kimlikleri — GarmentKindSchema / GarmentAreaIdSchema
+   (schemas.ts) ile BİREBİR; yazma doğrulaması bunları zorlar (AJAN-5/B-2,B-3). */
+export const F1_GARMENT_TYPES = ["tshirt", "apron_bavette", "apron_taille"] as const;
+export const F1_GARMENT_AREA_IDS = [
+  "chest_left",
+  "chest_center",
+  "back_full",
+  "sleeve",
+  "chest",
+  "front",
+] as const;
+
 export const F1_GARMENT_SPEC: F1Spec = {
   family: "garment",
   allowed_specs: [{ template_id: "garment", format: "libre" }],
@@ -167,6 +226,7 @@ export const F1_GARMENT_SPEC: F1Spec = {
       layer: "design_pre",
       trigger: { kind: "always" },
       reject_class: true,
+      validate: vOneOf(F1_GARMENT_TYPES),
     },
     {
       id: "placements",
@@ -174,18 +234,37 @@ export const F1_GARMENT_SPEC: F1Spec = {
       layer: "design_pre",
       trigger: { kind: "always" },
       reject_class: true,
+      /* AJAN-5/B-3: düz metin bu REDDET-sınıfı kapıyı açıyordu — artık liste şart */
+      validate: vStringList(F1_GARMENT_AREA_IDS),
     },
     /* --- production_pre --- */
-    { id: "fabric_color", label_tr: "Ürün rengi", layer: "production_pre", trigger: { kind: "always" } },
+    {
+      id: "fabric_color",
+      label_tr: "Ürün rengi",
+      layer: "production_pre",
+      trigger: { kind: "always" },
+      validate: vText(60),
+    },
     {
       /* P5: kanonik ad `size_distribution` — spec_values anahtarıyla BİREBİR
-         (toplam adet HESAPLANIR: f1TotalQuantity, ayrı alan değildir) */
+         (toplam adet HESAPLANIR: f1TotalQuantity, ayrı alan değildir).
+         D-63: BOŞ harita ya da TOPLAM=0 → üretim önkoşulu EKSİK (0'lar meşru
+         veri olduğu için varlık kontrolü yetmez → özel doluluk kuralı). */
       id: "size_distribution",
       label_tr: "Beden×adet dağılımı",
       layer: "production_pre",
       trigger: { kind: "always" },
+      satisfied: (value) => f1TotalQuantity(value as Record<string, number> | null) > 0,
     },
-    { id: "technique", label_tr: "Baskı tekniği", layer: "production_pre", trigger: { kind: "always" } },
+    {
+      id: "technique",
+      label_tr: "Baskı tekniği",
+      layer: "production_pre",
+      trigger: { kind: "always" },
+      /* AJAN-5/B-2: teknik listesi ilan ediliyordu ama ZORLANMIYORDU (API `decoupe`
+         kabul ediyordu). DTF bilinçli olarak KABUL edilir (bilgi notu üretir). */
+      validate: vOneOf([...F1_GARMENT_TECHNIQUES, "dtf"]),
+    },
     { id: "delivery_deadline", label_tr: "Teslim tarihi", layer: "production_pre", trigger: { kind: "always" } },
     /* koşullu(production): yer başına boyut/konum — varsayılan Spec'ten gelir */
     {
@@ -193,6 +272,7 @@ export const F1_GARMENT_SPEC: F1Spec = {
       label_tr: "Baskı boyutu/konumu (yer başına)",
       layer: "production_pre",
       trigger: { kind: "has_placements" },
+      validate: vText(500),
     },
   ],
   file_requirements: [
@@ -238,21 +318,96 @@ export function f1WritableSpecKeys(family: F1Family): string[] {
   ];
 }
 
-/** Beden×adet dağılımını normalize eder: yalnız POZİTİF adetler kalır (0/negatif düşer) */
-export function normalizeSizeDistribution(input: unknown): Record<string, number> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
-  const out: Record<string, number> = {};
-  for (const [size, raw] of Object.entries(input as Record<string, unknown>)) {
-    const n = typeof raw === "number" ? raw : Number(raw);
-    if (Number.isFinite(n) && n > 0) out[size.trim()] = Math.floor(n);
-  }
-  return out;
-}
+/* NOT (D-63): eski `normalizeSizeDistribution` (sessiz düzeltme) KALDIRILDI —
+   yerine katı `validateSizeDistribution` geçti; hatalı girdi artık sessizce
+   düzeltilmez, REDDEDİLİR (sessiz veri değişimi yasağı). */
 
 /** Toplam adet HESAPLANAN değerdir (beden×adet dağılımından) — ayrı alan değil */
 export function f1TotalQuantity(distribution: Record<string, number> | null | undefined): number {
-  if (!distribution) return 0;
+  if (!distribution || typeof distribution !== "object") return 0;
   return Object.values(distribution).reduce((sum, n) => sum + (Number.isFinite(n) ? n : 0), 0);
+}
+
+/* ---- Beden seti + KATI doğrulama (D-63) -------------------------------- */
+
+/* Beden seti: repoda tenant/ürün-tipi beden modeli YOK (14d tek-tenant) →
+   kanonik FALLBACK burada, TEK yerde (sunucu doğrulaması ve UI aynı kaynağı
+   okur). Tenant bazlı set gerekirse ayrı karar. */
+export const F1_GARMENT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
+export type F1GarmentSize = (typeof F1_GARMENT_SIZES)[number];
+
+/** Beden başına makul üst sınır (AJAN-5/B-1: sınırsız değer + Infinity toplam) */
+export const F1_SIZE_MAX = 1_000_000;
+
+export type F1SizeIssueReason =
+  | "not_object"
+  | "unknown_size"
+  | "not_number"
+  | "not_integer"
+  | "negative"
+  | "too_large";
+
+export interface F1SizeIssue {
+  size: string;
+  reason: F1SizeIssueReason;
+  detail_tr: string;
+}
+
+export type F1SizeValidation =
+  | { ok: true; value: Record<string, number>; total: number }
+  | { ok: false; issues: F1SizeIssue[] };
+
+/**
+ * Beden×adet dağılımını KATI doğrular (D-63): sessiz düzeltme YOK — ondalık,
+ * negatif, metin, NaN ve bilinmeyen beden anahtarı REDDEDİLİR (çağıran 400 döner).
+ * 0 adet MEŞRUDUR (yazılır); ama toplam 0 ise alan EKSİK sayılır (spec kuralı).
+ */
+export function validateSizeDistribution(input: unknown): F1SizeValidation {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return {
+      ok: false,
+      issues: [{ size: "", reason: "not_object", detail_tr: "Beden dağılımı bir nesne olmalı" }],
+    };
+  }
+  const known = new Set<string>(F1_GARMENT_SIZES);
+  const issues: F1SizeIssue[] = [];
+  const value: Record<string, number> = {};
+
+  for (const [size, raw] of Object.entries(input as Record<string, unknown>)) {
+    if (!known.has(size)) {
+      issues.push({
+        size,
+        reason: "unknown_size",
+        detail_tr: `Bilinmeyen beden: ${size} (geçerli: ${F1_GARMENT_SIZES.join(", ")})`,
+      });
+      continue;
+    }
+    if (typeof raw !== "number" || Number.isNaN(raw) || !Number.isFinite(raw)) {
+      issues.push({ size, reason: "not_number", detail_tr: `${size}: adet sayı olmalı` });
+      continue;
+    }
+    if (!Number.isInteger(raw)) {
+      issues.push({ size, reason: "not_integer", detail_tr: `${size}: adet tam sayı olmalı` });
+      continue;
+    }
+    if (raw < 0) {
+      issues.push({ size, reason: "negative", detail_tr: `${size}: adet negatif olamaz` });
+      continue;
+    }
+    /* AJAN-5/B-1: üst sınır yoktu — 1e21 kabul ediliyor, toplam Infinity olabiliyordu */
+    if (!Number.isSafeInteger(raw) || raw > F1_SIZE_MAX) {
+      issues.push({
+        size,
+        reason: "too_large",
+        detail_tr: `${size}: adet en çok ${F1_SIZE_MAX} olabilir`,
+      });
+      continue;
+    }
+    value[size] = raw;
+  }
+
+  if (issues.length > 0) return { ok: false, issues };
+  return { ok: true, value, total: f1TotalQuantity(value) };
 }
 
 /** SpecRef izinli mi? (manifest'te olmayan format uydurulmaz) */
