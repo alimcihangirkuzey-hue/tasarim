@@ -94,13 +94,13 @@ function fingerprintFlyer(c: ClientDTO, params: Record<string, unknown>) {
 const CASES: Array<{ ad: string; cats: number; per: number; params: Record<string, unknown>; long?: boolean }> = [
   { ad: "bos", cats: 0, per: 0, params: {} },
   { ad: "tek-urun", cats: 1, per: 1, params: {} },
-  { ad: "30-urun-2sutun", cats: 3, per: 10, params: {} },
-  { ad: "80-urun-2sutun", cats: 8, per: 10, params: {} },
+  { ad: "30-urun-a4-varsayilan-1sutun", cats: 3, per: 10, params: {} },
+  { ad: "80-urun-a4-varsayilan-1sutun", cats: 8, per: 10, params: {} },
   { ad: "120-urun-3sutun", cats: 12, per: 10, params: { columns: 3 } },
-  { ad: "200-urun-2sutun", cats: 10, per: 20, params: {} },
+  { ad: "200-urun-a4-varsayilan-1sutun", cats: 10, per: 20, params: {} },
   { ad: "200-urun-3sutun-desc", cats: 10, per: 20, params: { columns: 3, showDesc: true } },
   { ad: "uzun-adlar", cats: 4, per: 8, params: {}, long: true },
-  { ad: "a3-100urun", cats: 10, per: 10, params: { format: "a3-portrait" } },
+  { ad: "a3-100urun-varsayilan-2sutun", cats: 10, per: 10, params: { format: "a3-portrait" } },
   { ad: "fiyat-kolon", cats: 5, per: 8, params: { priceLayout: "columns" } },
 ];
 

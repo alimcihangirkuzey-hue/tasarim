@@ -7,6 +7,14 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 >
 > **Ritüel eki (F7-A dersi):** Onaylı plan, koşu başında dala/scratchpad'e kalıcılaştırılır (oturum kaybına dayanıklılık — plan sohbette kalırsa bağlam özetlenince/oturum düşünce kaybolur; F7-A'da plan önceki oturum transkriptinden kurtarıldı).
 
+### Composition Engine sonrası açılan borçlar (2026-07-19, B paketi)
+- [ ] **`menu-trifold` ve `menu-grid-cells` motora bağlanacak.** Bugün beş manifestin `repeater.overflow` ilanını yalnız ikisi okuyor (`menu-liste-premium`, `flyer`); kalan ikisi davranışını sabit kodluyor — ilan orada hâlâ ölü sözleşme. Bağlama çıktılarını değiştirebilir → kendi altın kaydını + GT turunu ister. Ayrı paket.
+- [ ] **`generated/kabul-fabrika` manifesti** de ilan ediyor ama fabrika şablonları motoru kullanmıyor; yukarıdaki paketle birlikte değerlendirilecek.
+- [ ] **Tohumlu varyasyon (Canonical 4.4 `designSeed`).** Motorda ölü bir `seed` alanı vardı, kaldırıldı. Gerçek varyasyon eklenirken alan `designSeed` adıyla ve ölçülebilir etkiyle gelmeli; testi "farklı tohum → FARKLI yerleşim" olmalı.
+- [ ] **`balanceLastColumn` bugün hiçbir çağıran tarafından kullanılmıyor.** Canonical 4.3 simetri şartıyla ilişkisi kurulmadı: özellik ya bir şablona bağlanıp GT'den geçirilmeli ya ilanı geri çekilmeli.
+- [ ] **`composeGrid.strategyViolation` çağıran tarafından okunmuyor.** Flyer bugün düşüren strateji ilan ettiği için ihlal doğmuyor; ilan değişirse sessiz kalmaması için uyarıya bağlanmalı.
+- [ ] **GT-2 kapısının insan turu kalemleri** (Canonical 10.3: "sırıtmayan reflow", "simetri") otomatik doğrulanamıyor — 20/50/100/200 ürün görsel turu hâlâ insan gerektiriyor.
+
 ## Pilot dönem (aktif — Faz 4 kapanışıyla)
 - [ ] **Pilot iş dönemi başladı — FAZ5 paketi pilot saha notlarıyla şekillenecek; bu dönemde gelen her yeni fikir/talep M10 gereği TODO'ya yazılır, sırasız uygulanmaz.**
 

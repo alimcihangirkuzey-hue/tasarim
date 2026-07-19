@@ -7,8 +7,20 @@
    NEDEN VAR: taşma stratejisi, sütun seçimi, sayfa bölme ve font ölçekleme
    daha önce her şablonun analyze.ts'inde ELLE tekrarlanıyordu; manifest'teki
    `repeater.overflow` alanı ise ilan ediliyor ama HİÇBİR kod tarafından
-   okunmuyordu (ölü sözleşme). Artık strateji buradan geçer ve ilan ile
-   davranış ayrışamaz.
+   okunmuyordu (ölü sözleşme).
+
+   BUGÜNKÜ DURUM — `repeater.overflow` ilan eden BEŞ manifest var, İKİSİ okunuyor:
+   · menu-liste-premium      ✓ ilanı okur
+   · flyer                   ✓ ilanı okur
+   · menu-trifold            ✗ sabit kodlu
+   · menu-grid-cells         ✗ sabit kodlu
+   · generated/kabul-fabrika ✗ motoru hiç kullanmıyor
+   Yani "ilan = davranış" şu an yalnız bağlı iki şablonda geçerlidir; kalan
+   ÜÇÜNDE ilan hâlâ ölü sözleşmedir. Bağlanmaları ayrı bir pakettir (çıktıları
+   değişebilir; kendi altın kaydını ve GT turunu ister). Bu satır bağlama
+   tamamlanana kadar silinmemelidir — aksi halde motor sağlamadığı bir
+   bütünlüğü iddia eder. (Sayı ölçüldü: `repeater.overflow` geçen manifest
+   sayısı 5; `carte-fidelite` repeater içermez.)
 
    İKİ KOMPOZİSYON BİÇİMİ
    · composeColumns — değişken yükseklikli blokların sütun/sayfa akışı
@@ -43,9 +55,15 @@ export function isOverflowStrategy(v: unknown): v is OverflowStrategy {
 }
 
 /**
- * Manifest ilanını stratejiye çevirir. Bilinmeyen/eksik ilan SESSİZCE
- * varsayılana düşmez — çağıran açık bir yedek vermek zorundadır ki
- * "ilan ile davranış ayrışmasın".
+ * Manifest ilanını stratejiye çevirir.
+ *
+ * DÜRÜSTLÜK ŞERHİ: bu fonksiyon geçersiz ilanı **sessizce** yedeğe düşürür —
+ * hata atmaz, uyarı üretmez. Zorladığı tek şey, çağıranın yedeği AÇIKÇA
+ * yazmasıdır (varsayılan gizli değildir). Yazım hatası içeren bir ilan
+ * (ör. "shrink-then-flowww") fark edilmeden yedeğe düşer.
+ *
+ * Tipli manifest yolunda `OverflowRule` bunu derleme anında yakalar; bu
+ * fonksiyon yalnız tipsiz/dış kaynaklı ilanlar için son savunmadır.
  */
 export function resolveOverflowStrategy(
   declared: unknown,
@@ -54,7 +72,8 @@ export function resolveOverflowStrategy(
   return isOverflowStrategy(declared) ? declared : fallback;
 }
 
-/** Stratejinin ürün düşürmesine izin var mı? (kalite kapısı bunu okur) */
+/** Stratejinin ürün düşürmesine izin var mı? Bugün yalnız motor içinde sayfa
+    tavanı uygulanırken okunur; ileride kalite kapısının da okuması hedeflenir. */
 export function strategyDropsContent(s: OverflowStrategy): boolean {
   return s === "shrink-then-warn" || s === "truncate-with-warning";
 }
@@ -96,12 +115,11 @@ export interface ColumnCompositionRequest<T> {
   maxPages?: number;
   /** Son sütun dengeleme (Canonical 4.3) — GÖRSEL DEĞİŞİKLİKTİR, opt-in */
   balanceLastColumn?: boolean;
-  /**
-   * Varyasyon tohumu (Canonical 4.4). Bugün yerleşimi ETKİLEMEZ; sözleşmede
-   * taşınır ki tohumlu varyasyon eklendiğinde imza değişmesin. Determinizm
-   * garantisi: aynı seed + aynı veri = aynı sonuç.
-   */
-  seed?: string;
+  /* NOT — burada bir `seed?: string` alanı vardı ve KALDIRILDI: gövdede hiç
+     okunmuyordu, farklı seed birebir aynı çıktıyı veriyordu. Bu dosyanın tezi
+     "ilan edilen ama uygulanmayan sözleşme olmaz" iken, kapatılan ölü
+     sözleşmenin yerine yenisi açılamaz. Tohumlu varyasyon (Canonical 4.4)
+     eklendiğinde alan `designSeed` adıyla ve GERÇEK etkisiyle gelir. */
 }
 
 export interface CompositionMetrics {
@@ -163,12 +181,25 @@ function flowIntoColumns<T>(
   return pages.length > 0 ? pages : [[[]]];
 }
 
-/** Sütunları eşit yüksekliğe yaklaştırır (yalnız tek sayfada, opt-in). */
+/**
+ * Sütunları eşit yüksekliğe yaklaştırır (yalnız tek sayfada, opt-in).
+ *
+ * İKİ AYRI SINIR VARDIR ve karıştırılmamalıdır:
+ * · `target` — DENGE kaygısıdır, yumuşaktır. Son sütunda göz ardı edilebilir.
+ * · `colH_mm` — SAYFA sınırıdır, serttir. Hiçbir koşulda aşılamaz; aşılırsa
+ *   içerik sayfa dışına basılır ve — taşma listesine de girmediği için —
+ *   görünür uyarı bile üretmez. Sessiz kayıptan beterdir.
+ *
+ * Dengeleme yalnız KOZMETİK bir iyileştirmedir: zaten sığan bir yerleşimi
+ * daha dengeli kılar. Sığdıramıyorsa `null` döner ve çağıran dengelenmemiş
+ * akışa geri düşer — dengeleme hiçbir zaman durumu KÖTÜLEŞTİREMEZ.
+ */
 function balanceColumns<T>(
   blocks: Array<CompositionBlock<T>>,
   colsPerPage: number,
+  colH_mm: number,
   keepWithNext: (entry: T) => boolean
-): Array<Array<CompositionBlock<T>>> {
+): Array<Array<CompositionBlock<T>>> | null {
   const total = blocks.reduce((s, b) => s + b.h_mm, 0);
   const target = total / colsPerPage;
   const cols: Array<Array<CompositionBlock<T>>> = [];
@@ -177,12 +208,19 @@ function balanceColumns<T>(
 
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
-    const remainingCols = colsPerPage - cols.length;
-    const isLastCol = remainingCols <= 1;
+    const isLastCol = colsPerPage - cols.length <= 1;
     const next = blocks[i + 1];
-    const glued = keepWithNext(b.entry) && next;
-    /* hedefi aşacaksa ve bu blokla birlikte kalması gereken bir şey yoksa kapat */
-    if (!isLastCol && used > 0 && used + b.h_mm > target && !glued) {
+    const glued = keepWithNext(b.entry) && next !== undefined;
+    /* keep-with-next: blok tek başına değil, ardılıyla birlikte ölçülür.
+       Aksi halde yapıştırma kararı sütunu tavanın üstüne itiyordu (kırılımı
+       bastırmak yerine İLERİ BAKARIZ ve gerekirse ÖNCE kapatırız). */
+    const gereken = glued ? b.h_mm + next.h_mm : b.h_mm;
+    const asarDenge = used > 0 && used + gereken > target;
+    const asarTavan = used > 0 && used + gereken > colH_mm;
+
+    if ((!isLastCol && asarDenge) || asarTavan) {
+      /* Tavanı aşıyoruz ama taşıyacak sütun kalmadı → dengeleme başarısız */
+      if (isLastCol) return null;
       cols.push(col);
       col = [];
       used = 0;
@@ -192,6 +230,13 @@ function balanceColumns<T>(
   }
   cols.push(col);
   while (cols.length < colsPerPage) cols.push([]);
+
+  /* Son güvence: keep-with-next yapıştırması tavanı aşmış olabilir */
+  for (const c of cols) {
+    let h = 0;
+    for (const b of c) h += b.h_mm;
+    if (h > colH_mm) return null;
+  }
   return cols;
 }
 
@@ -242,15 +287,14 @@ export function composeColumns<T>(
   const blocks = req.build(fit.font_mm, columns);
 
   /* 3) Akış (gerekiyorsa dengeli) */
-  let pageCols: Array<Array<Array<CompositionBlock<T>>>>;
-  const balanced =
-    req.balanceLastColumn === true &&
-    flowIntoColumns(blocks, req.columnHeight_mm, columns, keepWithNext).length === 1;
-  if (balanced) {
-    pageCols = [balanceColumns(blocks, columns, keepWithNext)];
-  } else {
-    pageCols = flowIntoColumns(blocks, req.columnHeight_mm, columns, keepWithNext);
-  }
+  const akis = flowIntoColumns(blocks, req.columnHeight_mm, columns, keepWithNext);
+  /* Dengeleme yalnız tek sayfaya sığan yerleşimde denenir; başarısız olursa
+     (tavanı aşacaksa) dengelenmemiş akışa geri düşülür. */
+  const dengeli =
+    req.balanceLastColumn === true && akis.length === 1
+      ? balanceColumns(blocks, columns, req.columnHeight_mm, keepWithNext)
+      : null;
+  const pageCols: Array<Array<Array<CompositionBlock<T>>>> = dengeli ? [dengeli] : akis;
 
   /* 4) Strateji: düşüren stratejilerde sayfa tavanı uygulanır */
   const overflow: T[] = [];
@@ -276,8 +320,12 @@ export function composeColumns<T>(
     (n, p) => n + p.columns.reduce((m, c) => m + c.length, 0),
     0
   );
+  /* Dengesizlik ÜRETİLMESİ İSTENEN sütun sayısına göre ölçülür: içerik 3
+     sütundan 1'ine sığdıysa bu kusursuz denge DEĞİL, en kötü dengesizliktir.
+     Üretilmeyen sütunlar 0 yükseklikle sayılır. */
   const lastPage = keptPages[keptPages.length - 1] ?? [];
   const heights = lastPage.map((c) => heightOf(c));
+  while (heights.length < columns) heights.push(0);
   const imbalance =
     heights.length > 1 ? Math.max(...heights) - Math.min(...heights) : 0;
 
@@ -332,6 +380,13 @@ export interface GridCompositionResult<T> {
   capacity: number;
   cellH_mm: number;
   metrics: CompositionMetrics;
+  /**
+   * Izgara SABİT yüzeydir: sayfa ekleyemez, dolayısıyla ürün düşürmeyen bir
+   * strateji ("flow" / "shrink-then-flow") ilan edilmişse onu UYGULAYAMAZ.
+   * Böyle bir ilan sessizce yutulmaz; burada rapor edilir ve çağıran görünür
+   * uyarıya çevirmek zorundadır. `null` = ilan ile davranış uyumlu.
+   */
+  strategyViolation: OverflowStrategy | null;
 }
 
 /**
@@ -341,10 +396,10 @@ export interface GridCompositionResult<T> {
  */
 export function composeGrid<T>(req: GridCompositionRequest<T>): GridCompositionResult<T> {
   const { availableH_mm, minCellH_mm, gap_mm, cols } = req;
-  const maxRows = Math.max(
-    1,
-    Math.floor((availableH_mm + gap_mm) / (minCellH_mm + gap_mm))
-  );
+  /* minCellH 0/negatif olursa bölme Infinity üretir ve cellH NaN'a düşer —
+     sessiz bozuk geometri yerine anlamlı bir tabana çekilir. */
+  const tabanH = minCellH_mm > 0 ? minCellH_mm : Math.max(1, availableH_mm);
+  const maxRows = Math.max(1, Math.floor((availableH_mm + gap_mm) / (tabanH + gap_mm)));
   const rows = req.maxRows ? Math.min(maxRows, req.maxRows) : maxRows;
   const cellH = (availableH_mm - (rows - 1) * gap_mm) / rows;
   const capacity = cols * rows;
@@ -370,6 +425,10 @@ export function composeGrid<T>(req: GridCompositionRequest<T>): GridCompositionR
     rows,
     capacity,
     cellH_mm: cellH,
+    /* İlan "ürün düşmez" diyorsa ama gerçekten düştüyse, bu bir sözleşme
+       ihlalidir ve çağırana bildirilir (sessizce yutulmaz). */
+    strategyViolation:
+      overflow.length > 0 && !strategyDropsContent(req.strategy) ? req.strategy : null,
     metrics: {
       blocks: req.entries.length,
       placed: cells.length,

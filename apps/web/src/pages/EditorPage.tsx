@@ -56,6 +56,10 @@ function warnText(w: LayoutWarning): string {
       return t("editor.warn_min_font");
     case "empty-price":
       return `${t("editor.warn_empty_price")} (${w.itemId})`;
+    case "overflow-strategy-violation":
+      /* Şablon "ürün düşmez" ilan etmiş ama yüzey sabit kapasiteli olduğu için
+         ürün düştü. Operatör görsün ki manifest ilanı düzeltilebilsin. */
+      return `${t("editor.warn_strategy_violation")} (${w.declared}, ${w.dropped})`;
   }
 }
 

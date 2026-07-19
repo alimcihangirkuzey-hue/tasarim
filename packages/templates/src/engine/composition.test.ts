@@ -39,7 +39,10 @@ describe("strateji sözlüğü", () => {
     expect(isOverflowStrategy(null)).toBe(false);
   });
 
-  it("bilinmeyen ilan SESSİZCE düşmez — çağıranın yedeği kullanılır", () => {
+  /* Ad bilinçli: fonksiyon geçersiz ilanı SESSİZCE yedeğe düşürür. Zorladığı
+     tek şey, yedeğin çağıran tarafından AÇIKÇA yazılmasıdır (gizli varsayılan
+     yok). Test adı bir kez bunun TERSİNİ söylüyordu — kodla hizalandı. */
+  it("bilinmeyen ilan sessizce yedeğe düşer — yedek gizli değil, çağıran yazar", () => {
     expect(resolveOverflowStrategy("uydurma", "flow")).toBe("flow");
     expect(resolveOverflowStrategy(undefined, "shrink-then-warn")).toBe("shrink-then-warn");
     expect(resolveOverflowStrategy("truncate-with-warning", "flow")).toBe("truncate-with-warning");
@@ -139,41 +142,162 @@ describe("composeColumns — sütun türetme (dinamik grid)", () => {
 });
 
 describe("composeColumns — keep-with-next (kategori başlığı yalnız kalmaz)", () => {
-  it("sütun sonunda kalan başlık, takip eden ürünle birlikte taşınır", () => {
-    /* 10mm başlık + 10mm ürün çiftleri; sütun 100mm → tam 10 blok sığar.
-       9. blok başlıksa tek başına bırakılmamalı. */
-    const build = () =>
-      Array.from({ length: 12 }, (_, i) => ({
-        entry: { id: `b${i}`, baslik: i % 2 === 0 },
-        h_mm: 10,
-      }));
-    const r = composeColumns(
-      { ...req({ build, columnHeight_mm: 100, typography: { min: 4, max: 4 }, strategy: "flow" }), build },
-      (e) => (e as { baslik: boolean }).baslik
-    );
+  /* Bu blok da bir kez VAKUMDU: senaryodaki başlıklar hiçbir sütun sonuna
+     denk gelmiyordu, yani keepWithNext geçilmese de sonuç birebir aynıydı.
+     Aşağıdaki senaryo kuralı GERÇEKTEN tetikler ve bunu önce kanıtlar. */
+
+  /* Sütun 100mm. Bloklar 12mm → 8 blok sığar (96mm), 9. taşar.
+     8. blok (index 7) BAŞLIK: kuralsız orada kalır, kuralla taşınır. */
+  const build = () =>
+    Array.from({ length: 16 }, (_, i) => ({ entry: { id: `b${i}`, baslik: i === 7 }, h_mm: 12 }));
+  const ayar = { build, columnHeight_mm: 100, typography: { min: 4, max: 4 }, strategy: "flow" as OverflowStrategy };
+  const basliklar = (e: unknown) => (e as { baslik: boolean }).baslik;
+  const ilkSutun = (r: ReturnType<typeof composeColumns>) =>
+    r.pages[0].columns[0].map((b) => (b.entry as { id: string }).id);
+
+  it("ÖNKOŞUL: kural GERÇEKTEN fark yaratıyor (kuralsız sonuç farklı)", () => {
+    const kuralsiz = composeColumns({ ...req(ayar), build });
+    const kurallı = composeColumns({ ...req(ayar), build }, basliklar);
+    expect(ilkSutun(kuralsiz)).toContain("b7");
+    expect(ilkSutun(kurallı), "başlık bir sonraki sütuna taşınmalı").not.toContain("b7");
+  });
+
+  it("hiçbir sütun yalnız başlıkla bitmez", () => {
+    const r = composeColumns({ ...req(ayar), build }, basliklar);
     for (const p of r.pages) {
       for (const col of p.columns) {
         const son = col[col.length - 1];
-        if (son) expect((son.entry as { baslik: boolean }).baslik, "sütun başlıkla bitmemeli").toBe(false);
+        if (son) expect(basliklar(son.entry), "sütun başlıkla bitmemeli").toBe(false);
       }
     }
+  });
+
+  it("kural blok kaybettirmez", () => {
+    const r = composeColumns({ ...req(ayar), build }, basliklar);
+    expect(r.metrics.placed + r.overflow.length).toBe(16);
+  });
+});
+
+describe("composeColumns — sütun kapatma SINIRI (±1 mutasyon avı)", () => {
+  /* Motorun en kritik kırılım koşulu: `used + h > colH` mi, `>=` mi?
+     Bir mutasyon turu `>` → `>=` yaptı ve TÜM süit yeşil kaldı — yani sınırın
+     testi yoktu. Aşağıdaki üç vaka sınırı üç yönden çiviliyor. */
+  const sinir = (h: number, n: number) =>
+    composeColumns(
+      req({
+        build: () => Array.from({ length: n }, (_, i) => ({ entry: { id: `b${i}` }, h_mm: h })),
+        columnHeight_mm: 100,
+        typography: { min: 4, max: 4 },
+        strategy: "flow",
+        columns: { kind: "fixed", count: 1 },
+      })
+    );
+
+  it("TAM sığan blok kümesi tek sütunda kalır (100mm = 100mm taşma DEĞİLDİR)", () => {
+    const r = sinir(25, 4); // 4×25 = 100 = colH
+    expect(r.pages).toHaveLength(1);
+    expect(r.pages[0].columns[0]).toHaveLength(4);
+  });
+
+  it("bir birim fazlası taşar", () => {
+    const r = sinir(25, 5); // 5×25 = 125 > 100
+    expect(r.pages.length).toBeGreaterThan(1);
+    expect(r.pages[0].columns[0]).toHaveLength(4);
+  });
+
+  it("tek blok tam sütun boyundaysa yerleşir, taşmaz", () => {
+    const r = sinir(100, 1);
+    expect(r.pages).toHaveLength(1);
+    expect(r.pages[0].columns[0]).toHaveLength(1);
   });
 });
 
 describe("composeColumns — son sütun dengeleme (opt-in)", () => {
-  it("varsayılan KAPALI: istemsiz görsel değişiklik yok", () => {
-    const kapali = composeColumns(req({ build: blocks(21, 10), columnHeight_mm: 100, typography: { min: 4, max: 4 } }));
-    const acik = composeColumns(
-      req({ build: blocks(21, 10), columnHeight_mm: 100, typography: { min: 4, max: 4 }, balanceLastColumn: true })
-    );
-    expect(kapali.metrics.imbalance_mm).toBeGreaterThanOrEqual(acik.metrics.imbalance_mm);
+  /* DİKKAT — bu blok bir kez SAHTE YEŞİL'di: senaryo 21 blok × 10mm / 2×100mm
+     kullanıyordu, bu 2 SAYFA eder ve dengeleme yalnız tek sayfada çalışır.
+     Yani `balanceColumns` hiç çağrılmıyordu; 30 satırlık fonksiyonun test
+     kapsaması SIFIRDI ve tamamen bozuk olsa bile testler geçerdi.
+     Aşağıdaki senaryolar dengelemenin GERÇEKTEN koştuğunu önce kanıtlar. */
+
+  /* 15 blok × 10mm = 150mm, 2 sütun × 100mm → tek sayfa (dengeleme koşar).
+     Dengesiz akış: [100, 50] · dengeli hedef: 75mm */
+  const denge = (over = {}) =>
+    req({ build: blocks(15, 10), columnHeight_mm: 100, typography: { min: 4, max: 4 }, ...over });
+
+  it("ÖNKOŞUL: senaryo tek sayfa üretir — yoksa dengeleme hiç çalışmaz", () => {
+    expect(composeColumns(denge()).pages).toHaveLength(1);
   });
 
-  it("açıkken de tek bir blok kaybolmaz", () => {
+  it("dengeleme GERÇEKTEN koşuyor: dengesizlik kesin olarak azalır", () => {
+    const kapali = composeColumns(denge());
+    const acik = composeColumns(denge({ balanceLastColumn: true }));
+    expect(kapali.metrics.imbalance_mm).toBeGreaterThan(0);
+    expect(acik.metrics.imbalance_mm).toBeLessThan(kapali.metrics.imbalance_mm);
+  });
+
+  it("dengeleme açıkken blok kaybolmaz", () => {
+    const r = composeColumns(denge({ balanceLastColumn: true }));
+    expect(r.metrics.placed + r.overflow.length).toBe(15);
+  });
+
+  it("varsayılan KAPALI: istemsiz görsel değişiklik yok", () => {
+    const kapali = composeColumns(denge());
+    const acikAmaVarsayilan = composeColumns(denge({ balanceLastColumn: undefined }));
+    expect(JSON.stringify(kapali)).toBe(JSON.stringify(acikAmaVarsayilan));
+  });
+
+  /* REGRESYON — dengeleme içeriği SAYFA DIŞINA taşırıyordu.
+     Kök neden: son sütunda `colH_mm` hiç kontrol edilmiyordu, kalan her şey
+     oraya yığılıyordu. Ürün kaybolmuyor ama basılmıyor ve `overflow` boş
+     kaldığı için GÖRÜNÜR UYARI da üretilmiyordu — sessiz kayıptan beter. */
+  it("REGRESYON: dengeleme hiçbir sütunu sayfa yüksekliğinden taşırmaz", () => {
+    const build = () => [10, 90, 90].map((h, i) => ({ entry: { id: `b${i}` }, h_mm: h }));
     const r = composeColumns(
-      req({ build: blocks(21, 10), columnHeight_mm: 100, typography: { min: 4, max: 4 }, balanceLastColumn: true })
+      req({ build, columnHeight_mm: 100, typography: { min: 4, max: 4 }, balanceLastColumn: true, strategy: "flow" })
     );
-    expect(r.metrics.placed + r.overflow.length).toBe(21);
+    for (const p of r.pages) {
+      for (const col of p.columns) {
+        const h = col.reduce((s, b) => s + b.h_mm, 0);
+        expect(h, "sütun sayfa yüksekliğini aşamaz").toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("REGRESYON (geniş tarama): dengeleme hiçbir senaryoda taşma ÜRETMEZ", () => {
+    /* Dengeleme kozmetiktir: sığan bir yerleşimi kötüleştiremez. */
+    for (let n = 2; n <= 40; n++) {
+      for (const cols of [2, 3, 4]) {
+        for (const h of [7, 13, 29]) {
+          const build = () => Array.from({ length: n }, (_, i) => ({ entry: { id: `b${i}` }, h_mm: h }));
+          const ayar = { build, columnHeight_mm: 100, typography: { min: 4, max: 4 }, columns: { kind: "fixed" as const, count: cols }, strategy: "flow" as OverflowStrategy };
+          const kapali = composeColumns(req(ayar));
+          if (kapali.pages.length !== 1) continue; // dengeleme yalnız tek sayfada
+          const acik = composeColumns(req({ ...ayar, balanceLastColumn: true }));
+          for (const p of acik.pages) {
+            for (const col of p.columns) {
+              const th = col.reduce((s, b) => s + b.h_mm, 0);
+              expect(th, `n=${n} cols=${cols} h=${h}`).toBeLessThanOrEqual(100);
+            }
+          }
+          expect(acik.metrics.placed + acik.overflow.length, `n=${n} cols=${cols} h=${h}`).toBe(n);
+        }
+      }
+    }
+  });
+
+  it("sığdıramadığında dengelenmemiş akışa geri düşer (durumu kötüleştirmez)", () => {
+    /* keep-with-next zinciri dengelemeyi imkânsız kılar → fallback */
+    const build = () => [50, 60].map((h, i) => ({ entry: { id: `b${i}`, tut: i === 0 }, h_mm: h }));
+    const acik = composeColumns(
+      { ...req({ build, columnHeight_mm: 100, typography: { min: 4, max: 4 }, balanceLastColumn: true, strategy: "flow" }), build },
+      (e) => (e as { tut: boolean }).tut
+    );
+    expect(acik.metrics.placed + acik.overflow.length).toBe(2);
+    for (const p of acik.pages) {
+      for (const col of p.columns) {
+        expect(col.reduce((s, b) => s + b.h_mm, 0)).toBeLessThanOrEqual(100);
+      }
+    }
   });
 });
 
@@ -230,6 +354,64 @@ describe("composeGrid — kapasite geometriden türer", () => {
     expect(r.cells).toEqual([]);
     expect(r.overflow).toEqual([]);
   });
+
+  it("minCellH 0/negatif: bölme patlamaz, NaN geometri üretilmez", () => {
+    for (const m of [0, -5]) {
+      const r = g({ minCellH_mm: m, gap_mm: 0 });
+      expect(Number.isFinite(r.rows), `minCellH=${m}`).toBe(true);
+      expect(Number.isFinite(r.cellH_mm), `minCellH=${m}`).toBe(true);
+      for (const c of r.cells) expect(Number.isFinite(c.y_mm)).toBe(true);
+    }
+  });
+});
+
+describe("composeGrid — ilan/davranış ayrışması sessiz kalmaz", () => {
+  const g = (strategy: OverflowStrategy) =>
+    composeGrid({
+      entries: Array.from({ length: 8 }, (_, i) => ({ id: `i${i}` })),
+      cols: 2,
+      availableH_mm: 100,
+      minCellH_mm: 34,
+      gap_mm: 4,
+      cellW_mm: 60,
+      originX_mm: 10,
+      originY_mm: 96,
+      strategy,
+    });
+
+  it("düşürmeyen strateji ilan edilip ürün düşerse İHLAL raporlanır", () => {
+    /* Izgara sabit yüzeydir: "flow" (= ürün düşmez) sözünü tutamaz.
+       Sessizce yutulmaz — çağıran görünür uyarıya çevirsin diye bildirilir. */
+    for (const s of ["flow", "shrink-then-flow"] as OverflowStrategy[]) {
+      const r = g(s);
+      expect(r.overflow.length, s).toBeGreaterThan(0);
+      expect(r.strategyViolation, s).toBe(s);
+    }
+  });
+
+  it("düşüren strateji ilan edilmişse ihlal YOKTUR", () => {
+    for (const s of ["shrink-then-warn", "truncate-with-warning"] as OverflowStrategy[]) {
+      expect(g(s).strategyViolation, s).toBeNull();
+    }
+  });
+
+  it("taşma yoksa hiçbir stratejide ihlal doğmaz", () => {
+    for (const s of OVERFLOW_STRATEGIES) {
+      const r = composeGrid({
+        entries: [{ id: "a" }, { id: "b" }],
+        cols: 2,
+        availableH_mm: 100,
+        minCellH_mm: 34,
+        gap_mm: 4,
+        cellW_mm: 60,
+        originX_mm: 0,
+        originY_mm: 0,
+        strategy: s,
+      });
+      expect(r.overflow, s).toEqual([]);
+      expect(r.strategyViolation, s).toBeNull();
+    }
+  });
 });
 
 describe("DETERMİNİZM — aynı girdi + aynı ayar = aynı yerleşim", () => {
@@ -240,12 +422,17 @@ describe("DETERMİNİZM — aynı girdi + aynı ayar = aynı yerleşim", () => {
     }
   });
 
-  it("aynı seed aynı sonucu verir; seed yerleşimi bozmaz", () => {
-    const a = composeColumns(req({ build: blocks(30), seed: "abc" }));
-    const b = composeColumns(req({ build: blocks(30), seed: "abc" }));
-    const seedsiz = composeColumns(req({ build: blocks(30) }));
-    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-    expect(JSON.stringify(a)).toBe(JSON.stringify(seedsiz));
+  /* Buradaki eski test `seed` alanını "determinizm" diye doğruluyordu; alan
+     gövdede hiç okunmadığı için test VAKUMDU (farklı seed → aynı çıktı, çünkü
+     seed hiçbir şey yapmıyordu). Alan kaldırıldı, test de. Tohumlu varyasyon
+     geldiğinde buraya GERÇEK bir test yazılır: farklı tohum FARKLI yerleşim. */
+
+  it("sıra bağımlılığı yok: farklı çağrı sıraları aynı sonucu verir", () => {
+    const a1 = composeColumns(req({ build: blocks(30) }));
+    composeColumns(req({ build: blocks(7, 55), strategy: "truncate-with-warning" }));
+    composeColumns(req({ build: blocks(120, 3), columns: { kind: "derive", min: 1, max: 5 } }));
+    const a2 = composeColumns(req({ build: blocks(30) }));
+    expect(JSON.stringify(a2), "önceki çağrılar sonrakini etkilememeli").toBe(JSON.stringify(a1));
   });
 
   it("composeGrid tekrar koşumda birebir aynı", () => {

@@ -46,7 +46,7 @@
       }
     ]
   },
-  "30-urun-2sutun": {
+  "30-urun-a4-varsayilan-1sutun": {
     "format": "a4-portrait",
     "columns": 1,
     "colW": 190,
@@ -300,7 +300,7 @@
       }
     ]
   },
-  "80-urun-2sutun": {
+  "80-urun-a4-varsayilan-1sutun": {
     "format": "a4-portrait",
     "columns": 1,
     "colW": 190,
@@ -1905,7 +1905,7 @@
       }
     ]
   },
-  "200-urun-2sutun": {
+  "200-urun-a4-varsayilan-1sutun": {
     "format": "a4-portrait",
     "columns": 1,
     "colW": 190,
@@ -5231,7 +5231,7 @@
       }
     ]
   },
-  "a3-100urun": {
+  "a3-100urun-varsayilan-2sutun": {
     "format": "a3-portrait",
     "columns": 2,
     "colW": 134.5,

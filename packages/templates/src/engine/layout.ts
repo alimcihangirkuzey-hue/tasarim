@@ -326,4 +326,8 @@ export type LayoutWarning =
   /* FAZ4 §3 (mimar #8 devamı): her broderie belgesinde silik bilgi notu */
   | { type: "broderie-info" }
   /* FAZ5 §3: yoğun (3 sütun) modda font okunabilirlik tabanına indi (min) */
-  | { type: "min-font"; slotId: string };
+  | { type: "min-font"; slotId: string }
+  /* Kompozisyon motoru: manifest "ürün düşmez" ilan etti ama yüzey sabit
+     kapasiteli olduğu için ürün düştü. İlan ile davranış ayrıştı — sessiz
+     kalmaz, operatöre gösterilir ki ilan düzeltilebilsin. */
+  | { type: "overflow-strategy-violation"; declared: string; dropped: number };
