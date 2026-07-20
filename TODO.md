@@ -73,7 +73,7 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ## Faz 5'e kayıt (FAZ4-GOREV §15)
 - [x] QR dijital menü statik HTML export'u. → FAZ5 §9'da uygulanıyor.
 - [ ] Çoklu-yüzey sahne (tek fotoda N quad kolajı). → Faz S'e taşındı.
-- [ ] Arka plan silme entegrasyonu (lokal rembg veya dış API — ADR-7). → Faz S'e taşındı.
+- [ ] Arka plan silme entegrasyonu (lokal rembg veya dış API — arşiv CONSTITUTION teknoloji ADR-7; canlı program ADR-007 değil, bkz. Canonical §0.3). → Faz S'e taşındı.
 - [ ] FR açıklama önerileri (Claude API, opsiyonel/internetli). → Faz S (internetli, opsiyonel).
 - [ ] AI destekli foto eşleme. → Faz S'e taşındı.
 - [ ] Preset yönetim arayüzü (Faz S).

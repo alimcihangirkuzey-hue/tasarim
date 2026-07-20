@@ -7,7 +7,9 @@ import { db } from "../db.js";
 import { ASSETS_DIR } from "../paths.js";
 import { assetToDTO } from "./clients.js";
 
-/* CONSTITUTION ADR-7: orig saklanır, master <=4000px, thumb 400px jpg */
+/* Arşiv CONSTITUTION teknoloji ADR-7 (görsel işleme): orig saklanır, master
+   <=4000px, thumb 400px jpg — canlı program ADR-007 DEĞİL; bkz. Canonical §0.3
+   numaralandırma eşleme şerhi (EK-C/A-08). */
 
 const ALLOWED: Record<string, string> = {
   "image/png": "png",
