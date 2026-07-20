@@ -714,6 +714,12 @@ TEZGÂH bu amaçla **okuma ağırlıklı, sözleşmeli** operasyonel uçlar suna
 
 > **Kural:** Önce mimari, sonra uygulama. Bu karar bundan sonraki tüm geliştirmeler için geçerlidir.
 
+> **Şerh — Geliştirme Operasyonu modülünün yeri (2026-07-19, ürün sahibi direktifi; 11.8'in şart koştuğu sıra kaydı).**
+> Bölüm 11 modülü **B tamamlandıktan sonra** (`d46b877`) yürütülür: **Modül Fazı 0 (Package Journal) → Modül Fazı 1 (Cockpit) → ürün sırasına dönüş.**
+> Bu modül bir **ürün fazı değildir**; A-B-C-D'nin arasına giren bir **geliştirme altyapısı şerididir** ve C ile D'nin içeriğini değiştirmez.
+> Gerekçe direktifte açıktır: Cockpit "geliştirme sürecinin resmî gözlem yüzeyi" ilan edilmiştir — bundan sonraki tüm paketler onun üzerinden izlenecektir, dolayısıyla **sonraki paketlerden önce** var olması gerekir.
+> **Kapsanmayan:** Cockpit sonrası **C mi D mi** geleceği bu şerhle kararlaşmadı — bkz. 11.8.
+
 ## 10.2 Faz planı
 
 | Faz | İçerik |
@@ -929,8 +935,9 @@ Böylece Bölüm 9.1 ve 9.3 ile birlikte çok kullanıcılı yetkilendirme geldi
 | Panelden otomatik merge yetkisi hangi koşulda doğar? | **ADR-007** — karara bağlanmadı |
 | Geliştirme yönetişimi bu belgeye mi taşınacak? | **EK-C / A-04** — açık; bu bölüm kapatmaz |
 | Süreç belgelerinin çelişki sıralamasındaki rütbesi | **EK-C / A-07** — açık; ADR-007 buna bağlı |
-| Journal'ın saklama yeri ve biçimi | Modül fazı 0 paketinde TDR ile kararlaştırılır; bu bölüm teknoloji seçmez |
-| Bu modülün Bölüm 10.1 yürütme sırasındaki (A→B→C→D) yeri | 10.1 bu modülü **sıralamıyor** (muafiyet değil — sıra kaydı yok). Modül fazı 0 başlatılmadan önce sıradaki yeri karara bağlanmalı |
+| Journal'ın saklama yeri ve biçimi | **KAPANDI — `docs/tdr/TDR-001.md`** (2026-07-19): git-izlenen, hash-zincirli JSONL; `docs/journal/events/<package_id>.jsonl`. Migration yok, yeni bağımlılık yok |
+| Bu modülün Bölüm 10.1 yürütme sırasındaki (A→B→C→D) yeri | **KAPANDI — bkz. 10.1 şerhi** (2026-07-19, ürün sahibi direktifi): modül **B'den sonra**, geliştirme altyapısı şeridi olarak sıralandı |
+| Cockpit sonrası ürün sırası: **C** (Production Profiles) mi, doğrudan **D** (SaaS) mi? | **AÇIK.** Direktif "Cockpit'ten sonra öncelikli SaaS paketleri" diyor; bu D'yi işaret ediyor ama C'yi atlayıp atlamadığı **söylenmedi**. Bu bölüm o soruyu kapatmaz |
 
 ---
 
