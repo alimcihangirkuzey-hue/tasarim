@@ -51,10 +51,19 @@ export interface JournalRiskState {
 
 export interface JournalVerifierState {
   decision: "onay" | "bulgu" | null;
+  /** Kararın BEYAN ettiği sayılar — karar yoksa 0 (beyan yok demektir) */
   findings_open: number;
   findings_closed: number;
   summary: string | null;
   ts: string | null;
+}
+
+export interface JournalFinding {
+  finding_id: string;
+  severity: "blocker" | "ciddi" | "kucuk";
+  summary: string;
+  file: string | null;
+  ts: string;
 }
 
 export interface JournalPackageRecord {
@@ -72,6 +81,19 @@ export interface JournalPackageRecord {
   /** agent_started − agent_finished (11.3: aktörün anlık durumu olay kaydında yaşar) */
   active_agents: JournalAgentState[];
   verifier: JournalVerifierState;
+  /**
+   * KAYDEDİLMİŞ bulgular — `verifier_verdict`in beyanından BAĞIMSIZ.
+   *
+   * Önceki hâlde `verifier_finding` olayları hiçbir yere düşmüyordu ve bulgu
+   * sayısı yalnız karardan doluyordu. Sonuç: üç blocker kaydedilmiş ama karar
+   * henüz yazılmamış bir paket, hiç bulgu çıkmamış paketle AYNI görünüyordu —
+   * doğrulama turunun tam ortası, en riskli an, ekranda "temiz" okunuyordu.
+   * Bilgi kayıttaydı; türetilmiş görünümde yeri yoktu.
+   *
+   * İki sayı bilerek AYRI tutulur: biri kaydedilen olgu, diğeri kararın beyanı.
+   * Aralarındaki fark tek başına bir sinyaldir ve gizlenmemelidir.
+   */
+  findings: JournalFinding[];
   git: JournalGitRefs;
   open_risks: JournalRiskState[];
   closed_risks: JournalRiskState[];
@@ -101,6 +123,7 @@ export function foldPackageJournal(lines: JournalLine[]): JournalPackageRecord {
     gate_history: [],
     active_agents: [],
     verifier: { decision: null, findings_open: 0, findings_closed: 0, summary: null, ts: null },
+    findings: [],
     git: { base: null, branch: null, commits: [], merge: null },
     open_risks: [],
     closed_risks: [],
@@ -155,7 +178,7 @@ export function foldPackageJournal(lines: JournalLine[]): JournalPackageRecord {
         break;
       }
       case "verifier_finding": {
-        /* Bulgu sayısı verdict'ten okunur; tek tek bulgular akışta yaşar */
+        rec.findings.push({ ...deep(l.payload), ts: l.ts });
         break;
       }
       case "verifier_verdict": {
