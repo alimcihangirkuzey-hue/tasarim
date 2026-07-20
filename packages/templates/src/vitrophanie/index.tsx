@@ -47,7 +47,8 @@ const SLOT_DEFS = [
 function makeManifest(variant: VitroVariant, name_tr: string): TemplateManifest {
   return {
     id: `vitro-${variant}`,
-    type: "menu",
+    type: "cam",
+    profile_version: 1,
     name_tr,
     bleed_mm: 0, // gerçek bleed param'dan; manifest değeri taban
     safe_mm: 0,

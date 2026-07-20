@@ -80,9 +80,42 @@ export interface TemplateProvenance {
   imported_at: string;
 }
 
+/* ── Üretim Profili Kimlik Katmanı (C-P0; Canonical 7.2 kalem #1) ─────────
+
+   MATERYAL TÜRÜ. Önceki sözleşme `type: "menu"` LİTERALİYDİ: tip sistemi
+   tabelaya, tişörte ve cam kaplamaya da "menu" demeyi ZORLUYORDU — aileler
+   yanlış beyan etmeyi seçmemişti, başka seçenekleri yoktu. Malzeme türü
+   manifest'ten OKUNAMAZDI; ayrım vector.ts'te `id.startsWith("vitro-")` gibi
+   sabit-kodlu sniff'le yaşıyordu.
+
+   Kapalı union: 7.2 "yeni sektör = yeni profil" der; yeni tür eklemek bu
+   listeye kalem eklemektir ve derleyici o türe dokunan her switch'i bulur.
+   Serbest string olsaydı "tabela" ile "sign" iki ayrı tür sanılırdı. */
+export const MATERIAL_TYPES = [
+  "menu",
+  "flyer",
+  "kart",
+  "tabela",
+  "tekstil",
+  "cam",
+] as const;
+export type MaterialType = (typeof MATERIAL_TYPES)[number];
+
+export function isMaterialType(x: string): x is MaterialType {
+  return (MATERIAL_TYPES as readonly string[]).includes(x);
+}
+
 export interface TemplateManifest {
   id: string;
-  type: "menu";
+  /** Materyal türü — profil kimliğinin çekirdeği. Artık literal "menu" değil. */
+  type: MaterialType;
+  /**
+   * Profil sözleşme sürümü (Canonical 7.2 #1 "kimlik ve sürüm"; 7.3 eklenti
+   * manifesti de sürüm ister). ZORUNLU — ürün sahibi kararı (C-B-1): sürümsüz
+   * manifest, hangi sözleşmeyle yazıldığı bilinmeyen manifesttir. Bugün tek
+   * geçerli değer 1'dir; alan gelecekteki şema evrimi için rezervdir.
+   */
+  profile_version: number;
   name_tr: string;
   bleed_mm: number;
   safe_mm: number;

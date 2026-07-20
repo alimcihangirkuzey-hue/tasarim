@@ -114,6 +114,7 @@ import type { TemplateManifest } from "../../types.js";
 export const manifest: TemplateManifest = {
   id: "${input.id}",
   type: "menu",
+  profile_version: 1,
   name_tr: ${JSON.stringify(input.name_tr)},
   bleed_mm: 3,
   safe_mm: 3,

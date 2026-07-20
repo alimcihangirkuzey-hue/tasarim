@@ -6,6 +6,7 @@ import { CHROME_SLOTS } from "../parts/PageChrome.js";
 export const manifest = {
   id: "menu-liste-premium",
   type: "menu",
+  profile_version: 1,
   name_tr: "Premium Yazılı Menü",
   bleed_mm: 3,
   safe_mm: 5,

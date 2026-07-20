@@ -7,6 +7,7 @@ import type { TemplateManifest } from "../types.js";
 export const manifest = {
   id: "menu-trifold",
   type: "menu",
+  profile_version: 1,
   name_tr: "Trifold Menü (roll fold)",
   bleed_mm: 3,
   safe_mm: 5,

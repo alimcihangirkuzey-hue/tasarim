@@ -55,7 +55,8 @@ const FABRIC_HEX: Record<string, string> = {
 
 export const manifest: TemplateManifest = {
   id: "garment",
-  type: "menu",
+  type: "tekstil",
+  profile_version: 1,
   name_tr: "Tişört / Önlük",
   bleed_mm: 0,
   safe_mm: 0,

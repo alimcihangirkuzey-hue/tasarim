@@ -4,7 +4,8 @@ import type { TemplateManifest } from "../types.js";
 
 export const manifest: TemplateManifest = {
   id: "flyer",
-  type: "menu",
+  type: "flyer",
+  profile_version: 1,
   name_tr: "Flyer (kampanya)",
   bleed_mm: 3,
   safe_mm: 5,
