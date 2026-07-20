@@ -131,6 +131,51 @@ const KOKEN_ADI: Record<Koken, string> = {
   tahmini: "TAHMİNİ — ölçüm değil",
 };
 
+/**
+ * Sözlükte OLMAYAN bir değer sayfayı ÇÖKERTMEZ; görünür bir bulguya dönüşür.
+ *
+ * Ölçüldü: elle bozulmuş bir JSONL'de tanınmayan bir `outcome`, `KAPI_DURUMU`
+ * aramasını `undefined` yapıyor ve tüm sayfa 500'e düşüyordu — yani TEŞHİS
+ * ARACI, teşhis edeceği dosya yüzünden hiç açılmıyordu. `readJournal` bozuk
+ * dosyayı bilerek tolere ederken (şema denetlemez, yalnız JSON.parse) render'ın
+ * onu açamaması, aracın var oluş amacına aykırı.
+ *
+ * Kaçış DEĞİL, teşhis: bilinmeyen değer ekranda kendi adıyla ve "kütükte YOK"
+ * uyarısıyla görünür. Bir sayfa bozuk bir alan yüzünden tümüyle kaybolursa,
+ * okuyan hangi alanın bozuk olduğunu da öğrenemez.
+ */
+function sozluk<T>(tablo: Record<string, T>, anahtar: string, bilinmeyen: (a: string) => T): T {
+  return Object.prototype.hasOwnProperty.call(tablo, anahtar) ? tablo[anahtar] : bilinmeyen(anahtar);
+}
+
+/**
+ * CSS sınıf adı olarak GÜVENLİ ek — kapalı sözlükten gelmeyen değerler için.
+ *
+ * `kacir()` metin gövdesi için yeterlidir ama ÖZNİTELİK için değildir: kaçışlanmış
+ * bir tırnak bile `class="…"` içinde konum bozar. Ölçüldü — yukarıdaki sözlük
+ * guard'ı eklendiğinde `durum` değeri `class="kapi kapi--${sinifAdi(k.durum)}"` içine ham
+ * giriyordu ve `x" onmouseover="alert(1)` girdisi ÇALIŞAN bir satır içi olay
+ * işleyicisi üretiyordu. Guard'dan önce aynı girdi sayfayı 500'e düşürdüğü için
+ * delik ULAŞILAMAZDI; yani çökmeyi kaldırmak deliği AÇTI.
+ *
+ * Bu yüzden sınıf adı kaçışlanmaz, SÜZÜLÜR: yalnız harf/rakam/tire geçer.
+ * Bilinmeyen değerin kendisi zaten kart gövdesinde `kacir()` ile görünür;
+ * sınıf adının onu taşıması gerekmez.
+ */
+function sinifAdi(deger: string): string {
+  const temiz = deger.replace(/[^a-zA-Z0-9-]/g, "");
+  return temiz.length > 0 ? temiz : "bilinmeyen";
+}
+
+const BILINMEYEN_DURUM = (a: string): DurumBicimi => ({
+  etiket: `BİLİNMEYEN: ${a}`,
+  isaret: "⁇",
+  aciklama:
+    "bu değer kapı kütüğünde YOK — kayıt elle düzenlenmiş ya da başka bir şema sürümünden gelmiş olabilir; `npm run journal:verify` koşulmalıdır",
+});
+
+const BILINMEYEN_ETIKET = (a: string): string => `BİLİNMEYEN: ${a} (kütükte yok)`;
+
 /* ── Küçük yapı taşları ───────────────────────────────────────────────── */
 
 const YOK = `<span class="yok">— kayıt yok</span>`;
@@ -249,13 +294,23 @@ function paketAlanlari(p: PaketOzeti): string {
   return `<dl class="alanlar">
     ${alanKod("Paket kimliği", p.package_id)}
     ${alan("Ad", p.ad)}
-    ${alan("Aşama", p.asama === null ? null : ASAMA_ADI[p.asama])}
+    ${alan("Aşama", p.asama === null ? null : sozluk(ASAMA_ADI, p.asama, BILINMEYEN_ETIKET))}
     ${alanKod("Başlangıç", p.baslangic)}
     <div class="alan"><dt>Bitiş</dt><dd>${bitisMetni(p.bitis)}</dd></div>
     ${alan("Olay sayısı", p.olay_sayisi)}
     ${alanKod("Son olay", p.son_olay_ts)}
     ${alan("Doğrulayıcı kararı", kararMetni(p.dogrulayici_karari))}
-    ${alan("Doğrulayıcının açık bulgusu", p.dogrulayici_acik_bulgu)}
+    ${alan("Doğrulayıcının açık bulgusu (KARARIN BEYANI)", p.dogrulayici_acik_bulgu)}
+    ${alan("Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)", p.dogrulayici_kayitli_bulgu)}
+    ${
+      p.dogrulayici_karari === null && p.dogrulayici_kayitli_bulgu > 0
+        ? `<p class="olcum-kaybi">Bu pakette <strong>${kacir(
+            p.dogrulayici_kayitli_bulgu
+          )} bulgu kayıtlı</strong> ama doğrulayıcı <strong>kararı henüz YAZILMAMIŞ</strong> —
+        paket doğrulama turunun ORTASINDADIR. Beyan edilen sayının 0 olması, bulgu
+        olmadığı anlamına GELMEZ.</p>`
+        : ""
+    }
     ${alan("Açık risk", p.acik_risk)}
     ${alan("Kapalı risk", p.kapali_risk)}
   </dl>
@@ -282,10 +337,12 @@ function cizelgeBolumu(o: Olcum<AsamaAdimi[]>): string {
       ? `<p class="bos">Aktif paket olmadığı için yaşam döngüsü konumu yok.</p>`
       : `<ol class="serit">${o.deger
           .map(
-            (a, i) => `<li class="adim adim--${a.durum}${a.ziyaret > 1 ? " adim-tekrarli" : ""}">
+            (a, i) => `<li class="adim adim--${sinifAdi(a.durum)}${a.ziyaret > 1 ? " adim-tekrarli" : ""}">
               <span class="adim-no">${i + 1}</span>
-              <span class="adim-ad">${kacir(ASAMA_ADI[a.asama])}</span>
-              <span class="adim-durum">${kacir(ASAMA_DURUMU[a.durum])}</span>
+              <span class="adim-ad">${kacir(sozluk(ASAMA_ADI, a.asama, BILINMEYEN_ETIKET))}</span>
+              <span class="adim-durum">${kacir(
+                sozluk(ASAMA_DURUMU, a.durum, BILINMEYEN_ETIKET)
+              )}</span>
               <span class="adim-ts">${a.ts === null ? "—" : kacir(a.ts)}</span>
               ${
                 a.ziyaret > 1
@@ -363,14 +420,14 @@ function kapiSayilari(k: KapiGorunumu): string {
 }
 
 function kapiKarti(k: KapiGorunumu): string {
-  const b = KAPI_DURUMU[k.durum];
+  const b = sozluk(KAPI_DURUMU, k.durum, BILINMEYEN_DURUM);
   const kosum = k.kosum;
   const kayip = olcumKaybi(k);
 
   const kokenRozeti =
     kosum === null || kosum.origin === "olculdu"
       ? ""
-      : `<span class="rozet rozet--koken">${kacir(KOKEN_ADI[kosum.origin])}</span>`;
+      : `<span class="rozet rozet--koken">${kacir(sozluk(KOKEN_ADI, kosum.origin, BILINMEYEN_ETIKET))}</span>`;
 
   /* Kayıp uyarısı BAŞLIKTA da durur: "GEÇTİ" rozeti taşıyan bir kart, sayısı
      kaybolmuşken temiz bir geçiş gibi taranmamalıdır. */
@@ -390,7 +447,7 @@ function kapiKarti(k: KapiGorunumu): string {
       : `<details class="ayrinti">
           <summary>Koşum ayrıntısı</summary>
           <dl class="alanlar">
-            ${alan("Köken", KOKEN_ADI[kosum.origin])}
+            ${alan("Köken", sozluk(KOKEN_ADI, kosum.origin, BILINMEYEN_ETIKET))}
             ${alanKod("Komut", kosum.command)}
             ${alanKod("Çalışma dizini", kosum.cwd)}
             ${alan("Araç", kosum.tool === null ? null : `${kosum.tool.name} ${kosum.tool.version}`)}
@@ -406,10 +463,10 @@ function kapiKarti(k: KapiGorunumu): string {
           </dl>
         </details>`;
 
-  return `<article class="kapi kapi--${k.durum}${kayip ? " kapi-kayipli" : ""}">
+  return `<article class="kapi kapi--${sinifAdi(k.durum)}${kayip ? " kapi-kayipli" : ""}">
     <header class="kapi-bas">
       <span class="kapi-ad"><code>${kacir(k.ad)}</code></span>
-      <span class="rozet rozet--${k.durum}">${b.isaret} ${kacir(b.etiket)}</span>
+      <span class="rozet rozet--${sinifAdi(k.durum)}">${b.isaret} ${kacir(b.etiket)}</span>
       ${kayipRozeti}
       ${k.insan ? `<span class="rozet rozet--insan">İNSAN TURU GEREKİR</span>` : ""}
       ${kokenRozeti}
@@ -625,7 +682,7 @@ function gecmisBolumu(o: Olcum<PaketOzeti[]>): string {
           <thead><tr>
             <th>Paket</th><th>Ad</th><th>Amaç</th><th>Aşama</th>
             <th>Başlangıç</th><th>Bitiş</th><th>Olay</th><th>Son olay</th>
-            <th>Doğrulayıcı</th><th>Açık bulgu</th><th>Açık risk</th><th>Kapalı risk</th>
+            <th>Doğrulayıcı</th><th>Açık bulgu</th><th>Kayıtlı bulgu</th><th>Açık risk</th><th>Kapalı risk</th>
           </tr></thead>
           <tbody>${o.deger
             .map(
@@ -633,7 +690,7 @@ function gecmisBolumu(o: Olcum<PaketOzeti[]>): string {
                 <td><code>${kacir(p.package_id)}</code></td>
                 <td>${p.ad === null ? YOK : kacir(p.ad)}</td>
                 <td class="amac">${p.amac === null ? YOK : kacir(p.amac)}</td>
-                <td>${p.asama === null ? YOK : kacir(ASAMA_ADI[p.asama])}</td>
+                <td>${p.asama === null ? YOK : kacir(sozluk(ASAMA_ADI, p.asama, BILINMEYEN_ETIKET))}</td>
                 <td><code>${p.baslangic === null ? "—" : kacir(p.baslangic)}</code></td>
                 <td>${
                   p.bitis === null
@@ -644,6 +701,7 @@ function gecmisBolumu(o: Olcum<PaketOzeti[]>): string {
                 <td><code>${p.son_olay_ts === null ? "—" : kacir(p.son_olay_ts)}</code></td>
                 <td>${p.dogrulayici_karari === null ? YOK : kacir(kararMetni(p.dogrulayici_karari))}</td>
                 <td class="sag">${kacir(p.dogrulayici_acik_bulgu)}</td>
+                <td class="sag">${kacir(p.dogrulayici_kayitli_bulgu)}</td>
                 <td class="sag">${kacir(p.acik_risk)}</td>
                 <td class="sag">${kacir(p.kapali_risk)}</td>
               </tr>`

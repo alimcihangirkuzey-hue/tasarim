@@ -251,8 +251,24 @@ export function tabanRef(mainVar: boolean): { ref: string; not: string } {
  * HER ÇIKIŞ YOLU BİR CÜMLE TAŞIR. Sessiz null yok: "42" ile "ölçemedim"
  * arasındaki fark ancak gerekçe görünürken okunabilir.
  */
+/** Kesik geçmişli depo (`--depth`, sparse/partial klon) — bayatlık ÖLÇÜLEMEZ */
+export const NOT_SHALLOW =
+  "shallow (kesik geçmişli) depo — dosyanın gerçek son commit'i geçmişte kalmış olabilir, bayatlık ÖLÇÜLEMEZ";
+
 function bayatlikOlc(gitYol: string): Bayatlik {
   const okundu = new Date().toISOString();
+
+  /* SHALLOW DEPO BEKÇİSİ — sha muhafızının yakalayamadığı aynı sınıf hata.
+     Ölçüldü: `git clone --depth 1` sonrası `git log -1 -- <yol>` dosyanın
+     GERÇEK son commit'ini değil, kesilmiş geçmişin ucundaki commit'i döndürür.
+     Bu sha GEÇERLİ 40 hex olduğu için `sonCommitCoz` muhafızından geçer, sonra
+     `rev-list --count` sıfır verir ve ekran "ana dalla aynı hizada — 0 commit
+     geride" der: aylarca eski bir yol haritası GÜNCEL görünür. Boş-sha tuzağı
+     ile aynı sınıf — ölçüm hatasının en iyimser cevaba dönüşmesi (11.3). */
+  const shallow = gitCalistir(["rev-parse", "--is-shallow-repository"]);
+  if (shallow.ok && shallow.out.trim() === "true") {
+    return { guncellendi: null, geride_commit: null, olcum_notu: NOT_SHALLOW, okundu };
+  }
 
   const log = gitCalistir(["log", "-1", "--format=%H%x09%cI", "--", gitYol]);
   if (!log.ok) {

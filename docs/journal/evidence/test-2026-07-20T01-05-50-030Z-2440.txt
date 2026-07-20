@@ -1,0 +1,58 @@
+gate: test
+runner: win32/node24.15.0/npm11.12.1
+cwd: C:\Users\MacBook\tasarim
+
+$ npm test -w apps/server -- --reporter=json --outputFile="C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-apps-server.json"
+exit: 0  duration_ms: 4169
+--- stdout ---
+
+> @tezgah/server@0.1.0 test
+> vitest run --reporter=json --outputFile=C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-apps-server.json
+
+JSON report written to C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-apps-server.json
+
+--- stderr ---
+
+
+$ npm test -w packages/shared -- --reporter=json --outputFile="C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-shared.json"
+exit: 1  duration_ms: 4749
+--- stdout ---
+
+> @tezgah/shared@0.1.0 test
+> vitest run --reporter=json --outputFile=C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-shared.json
+
+JSON report written to C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-shared.json
+
+--- stderr ---
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path C:\Users\MacBook\tasarim\packages\shared
+npm error workspace @tezgah/shared@0.1.0
+npm error location C:\Users\MacBook\tasarim\packages\shared
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c vitest run --reporter=json --outputFile=C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-shared.json
+
+
+$ npm test -w packages/templates -- --reporter=json --outputFile="C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-templates.json"
+exit: 0  duration_ms: 15649
+--- stdout ---
+
+> @tezgah/templates@0.1.0 test
+> vitest run --reporter=json --outputFile=C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-templates.json
+
+JSON report written to C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-templates.json
+
+--- stderr ---
+
+
+$ npm test -w packages/journal -- --reporter=json --outputFile="C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-journal.json"
+exit: 0  duration_ms: 36177
+--- stdout ---
+
+> @tezgah/journal@0.1.0 test
+> vitest run --reporter=json --outputFile=C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-journal.json
+
+JSON report written to C:/Users/MacBook/AppData/Local/Temp/tezgah-gate-U79odU/vitest-packages-journal.json
+
+--- stderr ---
+

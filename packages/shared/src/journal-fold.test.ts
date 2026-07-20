@@ -372,6 +372,45 @@ describe("doğrulayıcı — sayı verdict'ten okunur", () => {
       summary: "kapandı",
       ts: TS(3),
     });
+    /* Bulgu OLAYI kararın beyanından bağımsız durur: karar "0 açık" dese de
+       kaydedilen bulgu kaybolmaz. */
+    expect(rec.findings.map((f) => f.finding_id)).toEqual(["B-1"]);
+  });
+
+  /* Bu davranış eskiden YOKTU: `verifier_finding` olayları hiçbir yere
+     düşmüyordu ve bulgu sayısı yalnız karardan doluyordu. Sonuç, doğrulama
+     turunun ORTASINDAKİ paketin (bulgular yazılmış, karar henüz yok) hiç bulgu
+     çıkmamış paketle aynı görünmesiydi — en riskli an, en sakin görünen andı. */
+  it("KARAR YOKKEN kaydedilmiş bulgular korunur (sayı karardan türetilmez)", () => {
+    const bulgu = (id: string, severity: "blocker" | "ciddi" | "kucuk"): JournalEvent => ({
+      type: "verifier_finding",
+      payload: { finding_id: id, severity, summary: `${id} özeti`, file: null },
+    });
+    const rec = foldPackageJournal(
+      kayit([PD, bulgu("B-1", "blocker"), bulgu("B-2", "ciddi"), bulgu("B-3", "kucuk")])
+    );
+    expect(rec.findings).toEqual([
+      { finding_id: "B-1", severity: "blocker", summary: "B-1 özeti", file: null, ts: TS(1) },
+      { finding_id: "B-2", severity: "ciddi", summary: "B-2 özeti", file: null, ts: TS(2) },
+      { finding_id: "B-3", severity: "kucuk", summary: "B-3 özeti", file: null, ts: TS(3) },
+    ]);
+    /* Karar yok: beyan da yok. Biri diğerini ÖRTMEZ. */
+    expect(rec.verifier.decision).toBeNull();
+    expect(rec.verifier.findings_open).toBe(0);
+  });
+
+  it("bulgu listesi girdiyi DEĞİŞTİRMEZ (fold saflığı iç içe yapılara da uzanır)", () => {
+    const satirlar = kayit([
+      PD,
+      {
+        type: "verifier_finding",
+        payload: { finding_id: "B-9", severity: "ciddi", summary: "özet", file: "a.ts" },
+      },
+    ]);
+    const once = JSON.stringify(satirlar);
+    const rec = foldPackageJournal(satirlar);
+    rec.findings[0].summary = "SIZDI";
+    expect(JSON.stringify(satirlar)).toBe(once);
   });
 });
 
@@ -413,6 +452,7 @@ describe("boş akış", () => {
         summary: null,
         ts: null,
       },
+      findings: [],
       git: { base: null, branch: null, commits: [], merge: null },
       open_risks: [],
       closed_risks: [],

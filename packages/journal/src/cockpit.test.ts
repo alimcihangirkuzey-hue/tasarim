@@ -22,14 +22,18 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  JOURNAL_GATE_NAMES,
   foldPackageJournal,
   type JournalActor,
   type JournalEvent,
+  type JournalGateRun,
+  type JournalLine,
   type JournalPackageRecord,
   type JournalStage,
 } from "@tezgah/shared";
 
 import { aktifPaketId, cockpitGorunumu } from "./cockpit.js";
+import { renderCockpitPage } from "./page.js";
 import { journalFile } from "./paths.js";
 import { appendEvent } from "./store.js";
 import { cockpitSunucusu } from "./serve.js";
@@ -38,11 +42,11 @@ import type { AsamaAdimi } from "./view.js";
 const OWNER: JournalActor = { kind: "human", id: "urun-sahibi", role: "urun-sahibi" };
 const AGENT: JournalActor = { kind: "agent", id: "ajan-1", role: "uygulayici" };
 
-const bildirim = (ad: string): JournalEvent => ({
+const bildirim = (ad: string, amac = "Cockpit testi"): JournalEvent => ({
   type: "package_declared",
   payload: {
     name: ad,
-    purpose: "Cockpit testi",
+    purpose: amac,
     canonical_version: "4.1.0",
     canonical_sections: ["11.1", "11.4"],
     adr_tdr: [],
@@ -55,6 +59,61 @@ const bildirim = (ad: string): JournalEvent => ({
 });
 
 const not = (text: string): JournalEvent => ({ type: "note", payload: { text } });
+
+/* ── Olay üreticileri — üç türden ON türe ────────────────────────────────
+
+   Bu dosya uzun süre yalnız `package_declared`, `note` ve `stage_changed`
+   üretti. Sonuç: `gate_run` ve `risk_recorded` yollarının DOLU hâli hiç
+   koşulmadı; açık risk sayacı ölçülürken LİSTE İÇERİĞİ ölçülmedi ve `bitis`
+   (merge geçişi) daima null kaldı. Boş fikstür, boş yolu sınar; ölçülmemiş
+   olan dolu yoldur. */
+
+const gec = (from: JournalStage | null, to: JournalStage): JournalEvent => ({
+  type: "stage_changed",
+  payload: { from, to },
+});
+
+const risk = (
+  risk_id: string,
+  status: "acik" | "kapali",
+  summary: string
+): JournalEvent => ({ type: "risk_recorded", payload: { risk_id, status, summary } });
+
+/** Ölçülmüş MAKİNE koşumunun tam gövdesi (checkGateHonesty kural 1'in altısı) */
+const OLCULMUS: Omit<JournalGateRun, "gate" | "outcome" | "exit_code"> = {
+  origin: "olculdu",
+  command: "npm run <kapi>",
+  cwd: "/tmp/tezgah",
+  tool: { name: "arac", version: "1.0.0" },
+  runner_platform: "test/node",
+  measured_at: "2026-07-19T10:00:00.000Z",
+  duration_ms: 1234,
+  values: null,
+  method: null,
+  evidence: null,
+  reason: null,
+  raw_evidence: null,
+  raw_sha256: null,
+};
+
+/** Ölçülmemiş koşum: gerekçe ZORUNLU, sayı YASAK (kural 3 ve 4) */
+const OLCULMEMIS: Omit<JournalGateRun, "gate" | "outcome" | "reason"> = {
+  origin: "tahmini",
+  command: null,
+  cwd: null,
+  tool: null,
+  runner_platform: null,
+  exit_code: null,
+  measured_at: null,
+  duration_ms: null,
+  values: null,
+  method: null,
+  evidence: null,
+  raw_evidence: null,
+  raw_sha256: null,
+};
+
+const kapi = (payload: JournalGateRun): JournalEvent => ({ type: "gate_run", payload });
 
 /* ── Geçici journal ───────────────────────────────────────────────────── */
 
@@ -82,9 +141,60 @@ function msIlerle(): void {
   }
 }
 
-function paketKur(id: string, olaylar: readonly JournalEvent[] = []): void {
-  appendEvent(id, bildirim(id), OWNER);
-  for (const ev of olaylar) appendEvent(id, ev, AGENT);
+/** YAZILAN SATIRLARI döner: `ts` alanları ancak yazma anında bilinir ve
+    "bitiş anı = merge geçişinin anı" iddiası ancak o damgayla ölçülebilir. */
+function paketKur(
+  id: string,
+  olaylar: readonly JournalEvent[] = [],
+  amac?: string
+): JournalLine[] {
+  const yazilan = [appendEvent(id, bildirim(id, amac), OWNER)];
+  for (const ev of olaylar) yazilan.push(appendEvent(id, ev, AGENT));
+  return yazilan;
+}
+
+/* ── HTML kesitleri ──────────────────────────────────────────────────────
+
+   Bu dosya render'ı page.test.ts kadar ayrıntılı sınamaz; ölçtüğü şey
+   ZİNCİRİN UCUDUR: diskteki olay → model → EKRAN. Bir alan modelde doğru olup
+   ekranda kaybolursa yalnız burada görünür. Kesit alınır, belge geneli
+   taranmaz: "sayı çıktıda var" iddiası, sayı başka bir hücrede dururken de
+   yeşil kalırdı. */
+
+function kesit(html: string, id: string): string {
+  const bas = html.indexOf(`<section class="bolum" id="${id}"`);
+  expect(bas, `bölüm bulunamadı: ${id}`).toBeGreaterThan(-1);
+  const son = html.indexOf("<section", bas + 12);
+  return son === -1 ? html.slice(bas) : html.slice(bas, son);
+}
+
+/** `<dt>ETİKET</dt><dd>…</dd>` — etiket ile değer arasındaki BAĞI ölçer */
+function alanDegeri(bolge: string, etiket: string): string {
+  const im = `<dt>${etiket}</dt><dd>`;
+  const bas = bolge.indexOf(im);
+  expect(bas, `alan bulunamadı: ${etiket}`).toBeGreaterThan(-1);
+  const govdeBas = bas + im.length;
+  const son = bolge.indexOf("</dd>", govdeBas);
+  expect(son, `alan kapanmadı: ${etiket}`).toBeGreaterThan(-1);
+  return bolge.slice(govdeBas, son);
+}
+
+/**
+ * Geçmiş tablosunun bir satırı — BAŞLIK → HÜCRE eşlemesi olarak.
+ *
+ * Hücreleri sırayla okuyup "19 çıktıda var" demek zayıftır: iki sayısal sütun
+ * yer değiştirse iddia yeşil kalırdı. Eşleme, sayıyı BAŞLIĞINA bağlar; takas
+ * ancak böyle kırılır.
+ */
+function gecmisSatiri(html: string, packageId: string): Record<string, string> {
+  const bolge = kesit(html, "bolum-gecmis");
+  const basliklar = [...bolge.matchAll(/<th>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+  expect(basliklar.length, "geçmiş tablosunun başlıkları okunamadı").toBeGreaterThan(0);
+  const satir = bolge.split("<tr>").find((s) => s.includes(`<code>${packageId}</code>`));
+  expect(satir, `geçmiş satırı bulunamadı: ${packageId}`).toBeDefined();
+  const hucreler = [...(satir as string).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+  expect(hucreler, "hücre sayısı başlık sayısıyla uyuşmuyor").toHaveLength(basliklar.length);
+  return Object.fromEntries(basliklar.map((b, i) => [b, hucreler[i]]));
 }
 
 /* ── (1) aktifPaketId — SAF ───────────────────────────────────────────── */
@@ -134,6 +244,35 @@ describe("aktifPaketId — en son olayı olan paket", () => {
     const a = kayit("PKG-A", "2026-07-19T10:00:00.000Z");
     const b = kayit("PKG-B", "2026-07-19T10:00:00.000Z");
     expect(aktifPaketId([a, b])).toBe(aktifPaketId([b, a]));
+  });
+
+  /* BELİRLİLİK ≠ KARAR. Üstteki test yalnız "iki çağrı aynı cevabı verir" der;
+     HANGİ cevabın verildiğini söylemez. Beraberlik kuralı tersine çevrilse
+     (`>` yerine `<`) o test YEŞİL kalırdı — oysa cockpit.ts'in yazılı kararı
+     nettir: "Beraberlikte package_id'nin BÜYÜĞÜ kazanır. Rastgele değil:
+     id'ler tarih önekiyle açıldığı için büyük olan yenidir." Yazılı karar
+     sınanmazsa belge ile kod sessizce ayrışır. */
+  it("BERABERLİK: package_id'nin BÜYÜĞÜ kazanır (yazılı karar)", () => {
+    const T = "2026-07-19T10:00:00.000Z";
+    const a = kayit("PKG-A", T);
+    const b = kayit("PKG-B", T);
+    expect(aktifPaketId([a, b])).toBe("PKG-B");
+    expect(aktifPaketId([b, a])).toBe("PKG-B");
+  });
+
+  it("BERABERLİK gerekçesi işler: tarih önekli id'lerde YENİ olan seçilir", () => {
+    /* Kuralın var oluş sebebi budur — büyük id, tarih öneki yüzünden yeni pakettir */
+    const T = "2026-07-19T10:00:00.000Z";
+    const eski = kayit("2026-07-18-cockpit-p0", T);
+    const yeni = kayit("2026-07-19-cockpit-p1", T);
+    expect(aktifPaketId([eski, yeni])).toBe("2026-07-19-cockpit-p1");
+    expect(aktifPaketId([yeni, eski])).toBe("2026-07-19-cockpit-p1");
+  });
+
+  it("BERABERLİK olaysız kayıtlarda da aynı kuralla çözülür (ikisi de ts=null)", () => {
+    /* İki null damga `""` olarak eşitlenir; ayrım yine id'ye düşer */
+    expect(aktifPaketId([kayit("PKG-Y", null), kayit("PKG-Z", null)])).toBe("PKG-Z");
+    expect(aktifPaketId([kayit("PKG-Z", null), kayit("PKG-Y", null)])).toBe("PKG-Z");
   });
 });
 
@@ -312,10 +451,6 @@ describe("cockpitGorunumu — zaman çizelgesi geri dönüşü gösterir", () =>
      geçmiş paket AYNI görünüyordu — `ikinci-dogrulayici: gecildi`. 11.5 geri
      dönüşü geçerli bir geçiş sayar ve kayda geçirir; kayıtta olup ekranda
      olmayan geçiş, ekranın yalanıdır. Bu test o yalanın gerileme kapısıdır. */
-  const gec = (from: JournalStage | null, to: JournalStage): JournalEvent => ({
-    type: "stage_changed",
-    payload: { from, to },
-  });
 
   it("geri gönderilen paket: ikinci-dogrulayici.geri_donus=1 · test.ziyaret=2", () => {
     paketKur("PKG-GERI", [
@@ -369,6 +504,180 @@ describe("cockpitGorunumu — zaman çizelgesi geri dönüşü gösterir", () =>
     const cizelge = cockpitGorunumu().zaman_cizelgesi.deger;
     expect(cizelge.map((a) => a.geri_donus)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
     expect(cizelge.filter((a) => a.ziyaret > 1)).toEqual([]);
+  });
+});
+
+/* ── DOLU PAKET: kapı · risk · merge yolları ─────────────────────────────
+
+   Buraya kadarki fikstürler üç olay türü üretiyordu (bildirim · not · geçiş).
+   Sonuç ölçüldü: `gate_run` ve `risk_recorded` yollarının DOLU hâli hiç
+   koşulmadı, `bitis` daima null kaldı ve açık risk SAYACI sınanırken LİSTE
+   İÇERİĞİ sınanmadı. Sayacı doğru, listeyi yanlış basan bir yüzey "sessiz
+   yutma" değil GÖRÜNÜR ÇELİŞKİ üretirdi: ekranda "1 açık risk" yazarken
+   listede başka bir risk dururdu.
+
+   Bu bölüm zincirin UCUNU ölçer: diskteki olay → model → EKRAN. */
+
+describe("cockpitGorunumu — DOLU paket (gate_run · risk_recorded · merge)", () => {
+  const AMAC = "AMAC-ALANI: paketin ne icin acildigi (Canonical 11.3-a kimlik kumesi)";
+  const ACIK_1 = "ACIK-OZET-1: cockpit yuzeyi urun sunucusuna baglanmadi";
+  const ACIK_2 = "ACIK-OZET-2: shallow bekcisi yalniz plan katmaninda";
+  const KAPALI_1 = "KAPALI-OZET-1: kapatildi";
+  const KAPALI_2 = "KAPALI-OZET-2: kapatildi";
+  const KAPALI_3 = "KAPALI-OZET-3: kapatildi";
+  const SON_NOT = "SON-NOT: merge gecisinden SONRA yazildi";
+
+  /* DÖRT SAYI BİLEREK FARKLI: olay=19 · acik bulgu=5 · acik risk=2 · kapali
+     risk=3. Eşit sayılarla iki sütunun takası ekranda görünmezdi. */
+  const OLAYLAR: JournalEvent[] = [
+    gec(null, "planlama"),
+    gec("planlama", "canonical-kaydi"),
+    gec("canonical-kaydi", "gelistirme"),
+    kapi({ ...OLCULMUS, gate: "typecheck", outcome: "gecti", exit_code: 0 }),
+    kapi({
+      ...OLCULMUS,
+      gate: "lint",
+      outcome: "kaldi",
+      exit_code: 1,
+      values: { problems: 3, files: 10 },
+      method: "eslint --format json errorCount+warningCount",
+    }),
+    kapi({ ...OLCULMEMIS, gate: "bundle", outcome: "atlandi", reason: "build kosulmadi; dist uretilmedi" }),
+    kapi({ ...OLCULMEMIS, gate: "smoke", outcome: "olculemedi", reason: "insan turu gerektirir" }),
+    gec("gelistirme", "test"),
+    gec("test", "ikinci-dogrulayici"),
+    risk("R-ACIK-1", "acik", ACIK_1),
+    risk("R-ACIK-2", "acik", ACIK_2),
+    risk("R-KAPALI-1", "kapali", KAPALI_1),
+    risk("R-KAPALI-2", "kapali", KAPALI_2),
+    risk("R-KAPALI-3", "kapali", KAPALI_3),
+    {
+      type: "verifier_verdict",
+      payload: { decision: "bulgu", findings_open: 5, findings_closed: 1, summary: "bulgu ozeti" },
+    },
+    gec("ikinci-dogrulayici", "hazir"),
+    gec("hazir", "merge"),
+  ];
+
+  interface Kurulum {
+    satirlar: JournalLine[];
+    baslangicTs: string;
+    mergeTs: string;
+    sonTs: string;
+  }
+
+  function doluPaketKur(id: string): Kurulum {
+    const once = paketKur(id, OLAYLAR, AMAC);
+    /* Merge geçişi SON OLAY OLMAMALI: `bitis` sessizce "son olay anı"na
+       eşitlenirse ayrım kaybolur ve test bunu göremezdi. Saat ilerletilir,
+       yoksa iki damga aynı milisaniyeye düşer ve iddia kendi kurgusundan
+       ötürü yeşil kalırdı. */
+    msIlerle();
+    const son = appendEvent(id, not(SON_NOT), AGENT);
+    const satirlar = [...once, son];
+    const merge = satirlar.find((l) => l.type === "stage_changed" && l.payload.to === "merge");
+    expect(merge, "merge geçişi yazılmadı").toBeDefined();
+    return {
+      satirlar,
+      baslangicTs: satirlar[0].ts,
+      mergeTs: (merge as JournalLine).ts,
+      sonTs: son.ts,
+    };
+  }
+
+  it("gate_run: DÖRT outcome da modelde kendi durumuyla, ekranda kendi rozetiyle", () => {
+    doluPaketKur("PKG-KAPI");
+    const g = cockpitGorunumu();
+    const durum = (ad: string): string | undefined =>
+      g.kapilar.deger.find((k) => k.ad === ad)?.durum;
+
+    expect(durum("typecheck")).toBe("gecti");
+    expect(durum("lint")).toBe("kaldi");
+    expect(durum("bundle")).toBe("atlandi");
+    expect(durum("smoke")).toBe("olculemedi");
+    /* Yazılmamış kapı EKRANDAN SİLİNMEZ — kütük tam listedir */
+    expect(durum("build")).toBe("yazilmadi");
+    expect(g.kapilar.deger).toHaveLength(JOURNAL_GATE_NAMES.length);
+
+    /* Ölçülen SAYI modelden ekrana ulaşır (kaybolan ölçüm sessiz bozulmadır) */
+    expect(g.kapilar.deger.find((k) => k.ad === "lint")?.kosum?.values).toEqual({
+      problems: 3,
+      files: 10,
+    });
+    /* Ölçülmemiş kapının GEREKÇESİ de taşınır */
+    expect(g.kapilar.deger.find((k) => k.ad === "bundle")?.kosum?.reason).toContain("build kosulmadi");
+
+    const bolge = kesit(renderCockpitPage(g), "bolum-kapilar");
+    for (const rozet of ["GEÇTİ", "KALDI", "ATLANDI", "ÖLÇÜLEMEDİ", "YAZILMADI"]) {
+      expect(bolge, rozet).toContain(rozet);
+    }
+    expect(bolge).toContain("problems");
+    expect(bolge).toContain("<strong>3</strong>");
+  });
+
+  it("AÇIK RİSKLER dolu: LİSTE İÇERİĞİ modelde ve ekranda; kapalılar SIZMAZ", () => {
+    const k = doluPaketKur("PKG-RISK");
+    const g = cockpitGorunumu();
+
+    expect(g.riskler.deger.map((r) => r.risk_id)).toEqual(["R-ACIK-1", "R-ACIK-2"]);
+    expect(g.riskler.deger.map((r) => r.summary)).toEqual([ACIK_1, ACIK_2]);
+    /* SAYAÇ ile LİSTE ÇELİŞMEZ. Sayaç pinliyken liste pinsiz kalırsa sonuç
+       "sessiz yutma" değil GÖRÜNÜR ÇELİŞKİ olurdu: ekranda "2 açık risk"
+       yazarken listede başka risk dururdu. */
+    expect(g.aktif_paket.deger?.acik_risk).toBe(g.riskler.deger.length);
+    expect(g.aktif_paket.deger?.kapali_risk).toBe(3);
+    /* Her riskin ANI da taşınır — damgasız bir ölçüm gösterilmez */
+    const acikSatirlar = k.satirlar.filter(
+      (l) => l.type === "risk_recorded" && l.payload.status === "acik"
+    );
+    expect(g.riskler.deger.map((r) => r.ts)).toEqual(acikSatirlar.map((l) => l.ts));
+
+    const b = kesit(renderCockpitPage(g), "bolum-riskler");
+    expect(b).not.toContain("Açık risk kaydı yok");
+    for (const gorunmeli of ["R-ACIK-1", ACIK_1, "R-ACIK-2", ACIK_2]) {
+      expect(b, gorunmeli).toContain(gorunmeli);
+    }
+    for (const sizmamali of ["R-KAPALI-1", "R-KAPALI-2", "R-KAPALI-3", KAPALI_1, KAPALI_2, KAPALI_3]) {
+      expect(b, `kapalı risk açık listesine sızdı: ${sizmamali}`).not.toContain(sizmamali);
+    }
+  });
+
+  it("geçmiş tablosunun SAYISAL hücreleri KENDİ sütunlarında (takas kırılır)", () => {
+    doluPaketKur("PKG-SAYI");
+    const g = cockpitGorunumu();
+    expect(g.aktif_paket.deger?.olay_sayisi).toBe(19);
+
+    const h = gecmisSatiri(renderCockpitPage(g), "PKG-SAYI");
+    expect(h["Olay"]).toBe("19");
+    expect(h["Açık bulgu"]).toBe("5");
+    expect(h["Açık risk"]).toBe("2");
+    expect(h["Kapalı risk"]).toBe("3");
+    expect(h["Doğrulayıcı"]).toBe("BULGU");
+    /* Fikstür gerçekten ayırt edici: dört sayı da farklı, yani iki sütunun
+       yer değiştirmesi yukarıdaki iddialardan en az birini kırar. */
+    expect(new Set([h["Olay"], h["Açık bulgu"], h["Açık risk"], h["Kapalı risk"]]).size).toBe(4);
+  });
+
+  it("aktif kartın KİMLİK alanları: amaç · başlangıç · bitiş (Canonical 11.3-a)", () => {
+    const k = doluPaketKur("PKG-KIMLIK");
+    const g = cockpitGorunumu();
+    const p = g.aktif_paket.deger;
+
+    expect(p?.amac).toBe(AMAC);
+    expect(p?.baslangic).toBe(k.baslangicTs);
+    expect(p?.asama).toBe("merge");
+    /* BİTİŞ = İLK merge geçişinin anı. "Son olay anı" DEĞİLDİR: ikisi bu
+       fikstürde bilerek ayrıştırıldı (merge'den sonra bir olay daha var). */
+    expect(p?.bitis).toBe(k.mergeTs);
+    expect(p?.son_olay_ts).toBe(k.sonTs);
+    expect(p?.bitis).not.toBe(p?.son_olay_ts);
+
+    const b = kesit(renderCockpitPage(g), "bolum-paket");
+    expect(alanDegeri(b, "Amaç")).toBe(AMAC);
+    expect(alanDegeri(b, "Başlangıç")).toBe(`<code>${k.baslangicTs}</code>`);
+    expect(alanDegeri(b, "Bitiş")).toBe(`<code>${k.mergeTs}</code>`);
+    /* Bitmiş paket "sürüyor" DEMEZ — tahmini bitiş de üretilmez */
+    expect(b).not.toContain("sürüyor");
   });
 });
 

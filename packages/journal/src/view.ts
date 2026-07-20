@@ -225,7 +225,16 @@ export interface PaketOzeti {
   olay_sayisi: number;
   son_olay_ts: string | null;
   dogrulayici_karari: "onay" | "bulgu" | null;
+  /** Kararın BEYAN ettiği açık bulgu sayısı (karar yoksa 0 = beyan yok) */
   dogrulayici_acik_bulgu: number;
+  /**
+   * KAYDEDİLMİŞ bulgu olaylarının sayısı — karardan bağımsız.
+   *
+   * Yalnız beyanı göstermek, doğrulama turunun ORTASINDAKİ paketi (bulgular
+   * yazılmış, karar henüz yok) hiç bulgu çıkmamış paketle aynı gösteriyordu.
+   * İkisi ayrı durur; aralarındaki fark tek başına bir sinyaldir.
+   */
+  dogrulayici_kayitli_bulgu: number;
   acik_risk: number;
   kapali_risk: number;
 }
@@ -277,6 +286,7 @@ export function paketOzeti(rec: JournalPackageRecord): PaketOzeti {
     son_olay_ts: rec.last_event_ts,
     dogrulayici_karari: rec.verifier.decision,
     dogrulayici_acik_bulgu: rec.verifier.findings_open,
+    dogrulayici_kayitli_bulgu: rec.findings.length,
     acik_risk: rec.open_risks.length,
     kapali_risk: rec.closed_risks.length,
   };
@@ -360,15 +370,19 @@ export function buildCockpitView(girdi: GorunumGirdisi): CockpitGorunumu {
     aktif_paket: olcum(a === null ? null : paketOzeti(a), "foldPackageJournal()"),
     zaman_cizelgesi: olcum(a === null ? [] : zamanCizelgesi(a), "stage_changed olayları"),
     kapilar: olcum(a === null ? [] : kapiGorunumleri(a), "gate_run olayları"),
+    /* Diziler KOPYALANIR, takma ad verilmez: ilk hâlde `bolumler` doğrudan
+       `rec.identity.canonical_sections` idi ve görünüm üstünden yapılan bir
+       `push`/`sort` KAYDI değiştiriyordu (ölçüldü). journal-fold saflığı derin
+       kopyayla koruyorken view o zinciri kırıyordu. */
     izlenebilirlik: olcum(
       {
         canonical_version: a?.identity?.canonical_version ?? null,
-        bolumler: a?.identity?.canonical_sections ?? [],
-        adr_tdr: a?.identity?.adr_tdr ?? [],
-        moduller: a?.identity?.modules ?? [],
-        sozlesmeler: a?.identity?.contracts ?? [],
-        kapsam_ic: a?.identity?.scope_in ?? [],
-        kapsam_dis: a?.identity?.scope_out ?? [],
+        bolumler: [...(a?.identity?.canonical_sections ?? [])],
+        adr_tdr: [...(a?.identity?.adr_tdr ?? [])],
+        moduller: [...(a?.identity?.modules ?? [])],
+        sozlesmeler: [...(a?.identity?.contracts ?? [])],
+        kapsam_ic: [...(a?.identity?.scope_in ?? [])],
+        kapsam_dis: [...(a?.identity?.scope_out ?? [])],
         risk_sinifi: a?.identity?.risk_class ?? null,
       },
       "package_declared olayı"

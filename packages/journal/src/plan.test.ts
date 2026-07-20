@@ -11,10 +11,15 @@
    Canlı depoya karşı koşan testler SALT-OKUNURDUR (readFileSync + git log/
    rev-list) ve depoyu kirletmez. */
 
-import { describe, expect, it, vi } from "vitest";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   BOS_KAYNAK_SATIRI,
+  NOT_SHALLOW,
   PLAN_KAYNAKLARI,
   type Bayatlik,
   kaynakBasligi,
@@ -420,4 +425,178 @@ describe("okuPlanlar — canlı kaynaklar", () => {
       vi.useRealTimers();
     }
   });
+});
+
+/* ── SHALLOW DEPO BEKÇİSİ — GERÇEK klonla ölçülür ─────────────────────────
+
+   ÖLÇÜLEN KUSURDU: `git clone --depth 1` sonrası `git log -1 -- <yol>` dosyanın
+   GERÇEK son commit'ini değil, kesilmiş geçmişin UCUNDAKİ commit'i döndürür.
+   O sha geçerli 40 hex olduğu için `sonCommitCoz` muhafızından geçer; ardından
+   `rev-list --count <o sha>..main` SIFIR verir ve ekran "ana dalla aynı hizada
+   — 0 commit geride" der. Aylarca eski bir yol haritası GÜNCEL görünür: boş-sha
+   tuzağıyla aynı sınıf hata — ölçüm hatasının EN İYİMSER cevaba dönüşmesi (11.3).
+
+   SAHTE GİT YOK. Tuzak yalnız gerçek shallow klonda doğar, bu yüzden burada
+   gerçek bir depo kurulur, gerçekten klonlanır ve gerçek git ölçer. Tuzağın
+   VAR OLDUĞU da ayrıca ölçülür (KANIT testi): bekçi, olmayan bir hataya karşı
+   yazılmış olsaydı ne kırılırdı ne de bir şey kanıtlardı.
+
+   İZOLASYON: her şey mkdtemp altında kurulur ve sonunda silinir; GERÇEK depoya
+   tek bir yazma yapılmaz.
+
+   ÖLÇÜM DİKİŞİ: `gitCalistir` git'i DAİMA `cwd: ROOT_DIR` ile çağırır (live.ts),
+   yani ölçüm noktası gerçek depoya sabitlenmiştir ve enjekte edilemez. Ölçümü
+   geçici klona yöneltmek için git'in kendi `GIT_DIR` değişkeni kullanılır:
+   GIT_DIR verildiğinde git o depoyu okur, çalışma ağacının tepesi olarak da
+   cwd'yi kabul eder — dolayısıyla `-- docs/ROADMAP.md` ve `-- .` yol
+   belirteçleri depo-göreli çözülür. Ölçülen KOD YOLU üretimdekinin AYNISIDIR
+   (okuPlanlar → bayatlikOlc → gitCalistir); değişen yalnız hangi deponun
+   okunduğudur.
+
+   ŞERH — bu kurulumun ölçmediği şey: plan GÖVDESİ yine gerçek depodaki
+   `docs/ROADMAP.md`'den okunur (`readFileSync(ROOT_DIR/...)`), çünkü içerik
+   okuması GIT_DIR'den etkilenmez. Bu yüzden aşağıda içerik hakkında HİÇBİR
+   iddia yoktur; yalnız BAYATLIK ölçülür. */
+
+describe("shallow depo: bayatlık ölçülemez, 'plan güncel' yalanı üretilmez", () => {
+  const KAYNAK = "docs/ROADMAP.md";
+  let tmpKok = "";
+  let shallowGitDir = "";
+  let tamGitDir = "";
+
+  /** Doğrudan git — kurulum ve KANIT için; üretim yolundan bağımsız ölçer */
+  const git = (args: string[], cwd: string): string =>
+    execFileSync("git", args, { cwd, stdio: ["ignore", "pipe", "pipe"] })
+      .toString("utf8")
+      .trim();
+
+  /**
+   * Ölçümü geçici klona yönelten dikiş. Eski değer FINALLY'de birebir geri
+   * konur (yoksa silinir): sızan bir GIT_DIR, bu dosyadaki diğer testleri
+   * sessizce başka bir depoya bakmaya gönderirdi.
+   */
+  function gitDiziniyle<T>(gitDir: string, f: () => T): T {
+    const eski = process.env.GIT_DIR;
+    process.env.GIT_DIR = gitDir;
+    try {
+      return f();
+    } finally {
+      if (eski === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = eski;
+    }
+  }
+
+  beforeAll(() => {
+    tmpKok = fs.mkdtempSync(path.join(os.tmpdir(), "tezgah-shallow-"));
+    const origin = path.join(tmpKok, "origin");
+    fs.mkdirSync(path.join(origin, "docs"), { recursive: true });
+
+    git(["init", "-q", "-b", "main", "."], origin);
+    /* Yerel kimlik/imza: koşucunun global git ayarı ne olursa olsun commit atılabilsin */
+    git(["config", "user.email", "tezgah@test.local"], origin);
+    git(["config", "user.name", "tezgah-test"], origin);
+    git(["config", "commit.gpgsign", "false"], origin);
+
+    /* c1 — ölçülecek dosyanın GERÇEK son commit'i */
+    fs.writeFileSync(path.join(origin, "docs", KAYNAK.split("/")[1]), "# ROADMAP\n- ilk madde\n", "utf8");
+    git(["add", "-A"], origin);
+    git(["commit", "-q", "-m", "c1 roadmap"], origin);
+
+    /* c2, c3 — ROADMAP'e DOKUNMAYAN iki commit: doğru cevap "2 commit geride" */
+    for (const [i, m] of [["a", "c2"], ["b", "c3"]].entries()) {
+      fs.appendFileSync(path.join(origin, "baska.md"), `${m[0]}${i}\n`, "utf8");
+      git(["add", "-A"], origin);
+      git(["commit", "-q", "-m", m[1]], origin);
+    }
+
+    /* file:// ZORUNLU: yerel yolla `--depth` sessizce yok sayılır (git --local
+       yolunu seçer) ve kurulum hiç shallow olmazdı — test sahte yeşile düşerdi. */
+    const url = `file:///${origin.replace(/\\/g, "/")}`;
+    git(["clone", "-q", "--depth", "1", url, "shallow"], tmpKok);
+    git(["clone", "-q", url, "tam"], tmpKok);
+
+    shallowGitDir = path.join(tmpKok, "shallow", ".git");
+    tamGitDir = path.join(tmpKok, "tam", ".git");
+  }, 180_000);
+
+  afterAll(() => {
+    if (tmpKok.length > 0) {
+      fs.rmSync(tmpKok, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  });
+
+  it("KURULUM gerçekten shallow — karşı depo değil", () => {
+    /* Bu iddia olmadan aşağıdaki testler, git `--depth`i yok saymış olsa bile
+       (yerel yol tuzağı) sessizce yeşil kalabilirdi. */
+    expect(git(["rev-parse", "--is-shallow-repository"], path.dirname(shallowGitDir))).toBe("true");
+    expect(git(["rev-parse", "--is-shallow-repository"], path.dirname(tamGitDir))).toBe("false");
+  }, 60_000);
+
+  it("KANIT: tuzak GERÇEK — shallow klon YANLIŞ commit'i verir, sayım 0 çıkar", () => {
+    const shallowDizin = path.dirname(shallowGitDir);
+    const tamDizin = path.dirname(tamGitDir);
+    const shaShallow = git(["log", "-1", "--format=%H", "--", KAYNAK], shallowDizin);
+    const shaTam = git(["log", "-1", "--format=%H", "--", KAYNAK], tamDizin);
+
+    /* Aynı dosya, aynı depo — iki farklı cevap. Kesik geçmiş budur. */
+    expect(shaShallow).not.toBe(shaTam);
+    /* VE yanlış sha, mevcut muhafızdan GEÇER: 40 hex olduğu için sonCommitCoz
+       onu reddetmez — bu yüzden sha muhafızı bu hatayı yakalayamıyordu. */
+    expect(sonCommitCoz(`${shaShallow}\t2026-01-01T00:00:00Z`)).not.toBeNull();
+    /* Bekçi olmasaydı ekrana çıkacak sayı: 0 = "plan güncel" */
+    expect(git(["rev-list", "--count", `${shaShallow}..refs/heads/main`, "--", "."], shallowDizin)).toBe("0");
+    /* Doğru cevap tam klonda 2'dir — yani 0 bir ölçüm değil, YANILGIDIR */
+    expect(git(["rev-list", "--count", `${shaTam}..refs/heads/main`, "--", "."], tamDizin)).toBe("2");
+  }, 60_000);
+
+  it("shallow depoda bayatlık ÖLÇÜLEMEZ: iki değer de null, gerekçe NOT_SHALLOW", () => {
+    const p = gitDiziniyle(shallowGitDir, () => okuPlanlar([KAYNAK])[0]);
+
+    expect(p.guncellendi).toBeNull();
+    expect(p.geride_commit).toBeNull();
+    expect(p.olcum_notu).toBe(NOT_SHALLOW);
+    /* ASIL İDDİA: en iyimser cevap ÜRETİLMEZ. `toBeNull` bunu tek başına söyler
+       ama açıkça yazılır — kırılan gün ne kaybedildiği okunsun. */
+    expect(p.geride_commit).not.toBe(0);
+    /* Ölçüm yapılamadı ama DENEME bir andır ve damgalanır */
+    expect(p.okundu).toMatch(ISO_UTC_MS);
+    /* Sınıf değişmez: ölçülemeyen plan da plan sınıfıdır */
+    expect(p.sinif).toBe("plan");
+    expect(p.kaynak).toBe(KAYNAK);
+  }, 60_000);
+
+  it("KARŞI YÖN: tam klonda GERÇEK sayı ölçülür — bekçi her depoyu kapatmaz", () => {
+    /* Koşulsuz "ölçülemez" diyen bir bekçi de en az yanlış sayı kadar kötüdür:
+       bayatlık ölçüsü tümüyle kaybolurdu. */
+    const p = gitDiziniyle(tamGitDir, () => okuPlanlar([KAYNAK])[0]);
+
+    expect(p.olcum_notu).toBe("taban refs/heads/main");
+    expect(p.olcum_notu).not.toBe(NOT_SHALLOW);
+    expect(p.guncellendi).toMatch(ISO_OFSETLI);
+    /* c1'den sonra ROADMAP'e dokunmayan İKİ commit atıldı */
+    expect(p.geride_commit).toBe(2);
+  }, 60_000);
+
+  it("NOT_SHALLOW gerekçesi diğerlerinden AYIRT EDİLEBİLİR ve 'ölçülemez' der", () => {
+    /* Beşinci gerekçe: "ölçemedim" diyen dört cümleye karışırsa okuyan
+       shallow klonu diğer arızalardan ayıramaz. */
+    expect(NOT_SHALLOW).toContain("shallow");
+    expect(NOT_SHALLOW).toContain("ÖLÇÜLEMEZ");
+    const digerleri = [
+      tabanRef(true).not,
+      tabanRef(false).not,
+      "son commit sha çözülemedi, sayım yapılmadı",
+      "ölçüm notu verilmedi — bayatlığın tabanı bildirilmedi",
+    ];
+    expect(digerleri).not.toContain(NOT_SHALLOW);
+  });
+
+  it("GERÇEK DEPO KİRLENMEDİ — ölçüm turu depoya yazmadı", () => {
+    /* Dikiş `GIT_DIR` ile kurulduğu için sızıntı riski gerçektir: geri
+       konmasaydı bu dosyadaki diğer testler başka bir depoyu ölçerdi. */
+    expect(process.env.GIT_DIR).toBeUndefined();
+    const p = okuPlanlar([KAYNAK])[0];
+    expect(p.olcum_notu).toBe("taban refs/heads/main");
+    expect(p.geride_commit).toBeGreaterThanOrEqual(0);
+  }, 60_000);
 });

@@ -35,12 +35,96 @@ function kapiKarti(html: string, ad: string): string {
   return bulunan as string;
 }
 
+/**
+ * `<dt>ETİKET</dt>` ile eşleşen alanın <dd> GÖVDESİ — etiket ile değer
+ * arasındaki BAĞ ancak burada ölçülür.
+ *
+ * Bölüm genelinde `toContain` bu bağı göremez: iki listenin ekrandaki yerleri
+ * TAKAS edilse bile her iki değer belgede geçmeye devam eder ve iddia yeşil
+ * kalır. Takas eslint'e, tsc'ye ve vitest'e görünmez — üçü de "aynı tipte iki
+ * dize dizisi" görür. Kesit alan düzeyine indirilmezse bu dosya "sözleşme
+ * bekçisi" iddiasını izlenebilirlik bölümünde taşımıyor demektir.
+ */
+function alanDegeri(bolge: string, etiket: string): string {
+  const im = `<dt>${etiket}</dt><dd>`;
+  const bas = bolge.indexOf(im);
+  expect(bas, `alan bulunamadı: ${etiket}`).toBeGreaterThan(-1);
+  const govdeBas = bas + im.length;
+  const son = bolge.indexOf("</dd>", govdeBas);
+  expect(son, `alan kapanmadı: ${etiket}`).toBeGreaterThan(-1);
+  return bolge.slice(govdeBas, son);
+}
+
 const sayac = (html: string, kalip: RegExp): number => (html.match(kalip) ?? []).length;
+
+/**
+ * Verilen sınıf ön ekini taşıyan TÜM açılış etiketleri — sınıf DEĞERİ değil,
+ * etiketin TAMAMI (`<` ...ilk `>`).
+ *
+ * Yalnız `class="([^"]*)"` yakalamak zayıftır ve tam da ölçülmesi gereken
+ * durumda yanıltır: öznitelik bir tırnakla KIRILDIĞINDA yakalama enjekte edilen
+ * tırnakta DURUR ve geriye tertemiz bir sınıf adı bırakır. Yani "sınıf yalnız
+ * güvenli karakter taşıyor" iddiası, özniteliğin kırıldığı ve yanına bir olay
+ * işleyicisi iliştirildiği çıktıda da YEŞİL kalırdı. Etiketin tamamı alınınca
+ * ikinci bir öznitelik saklanamaz — ölçü, sınırın kendisine bakar.
+ */
+function sinifEtiketleri(html: string, onEk: string): string[] {
+  const cikti: string[] = [];
+  for (let i = html.indexOf(onEk); i > -1; i = html.indexOf(onEk, i + 1)) {
+    const bas = html.lastIndexOf("<", i);
+    const son = html.indexOf(">", i);
+    expect(bas, `açılış etiketi bulunamadı: ${onEk}`).toBeGreaterThan(-1);
+    expect(son, `etiket kapanmadı: ${onEk}`).toBeGreaterThan(i);
+    cikti.push(html.slice(bas, son + 1));
+  }
+  expect(cikti.length, `hiç etiket bulunamadı: ${onEk}`).toBeGreaterThan(0);
+  return cikti;
+}
+
+/**
+ * Geçmiş tablosunun bir satırı — BAŞLIK → HÜCRE eşlemesi olarak.
+ *
+ * Hücreleri sırayla okuyup "3 çıktıda var" demek zayıftır: iki sayısal sütun
+ * yer değiştirse iddia yeşil kalırdı. Eşleme sayıyı hem BAŞLIĞINA hem SATIRINA
+ * bağlar; takas ancak böyle kırılır.
+ *
+ * (cockpit.test.ts'te aynı ölçüyü yapan bir eşi var; oradan içe aktarılmadı
+ * çünkü test dosyaları birbirini içe aktarmıyor — kopya bilinçlidir.)
+ */
+function gecmisSatiri(html: string, packageId: string): Record<string, string> {
+  const bolge = kesit(html, "bolum-gecmis");
+  const basliklar = [...bolge.matchAll(/<th>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+  expect(basliklar.length, "geçmiş tablosunun başlıkları okunamadı").toBeGreaterThan(0);
+  const satir = bolge.split("<tr>").find((s) => s.includes(`<code>${packageId}</code>`));
+  expect(satir, `geçmiş satırı bulunamadı: ${packageId}`).toBeDefined();
+  const hucreler = [...(satir as string).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+  expect(hucreler, "hücre sayısı başlık sayısıyla uyuşmuyor").toHaveLength(basliklar.length);
+  return Object.fromEntries(basliklar.map((b, i) => [b, hucreler[i]]));
+}
 
 /* ── Sabit görünüm (elle kurulur — fold ÇAĞRILMAZ) ────────────────────── */
 
 type Kosum = NonNullable<KapiGorunumu["kosum"]>;
 type Durum = KapiGorunumu["durum"];
+type Asama = AsamaAdimi["asama"];
+type AdimDurumu = AsamaAdimi["durum"];
+type Koken = Kosum["origin"];
+
+/* ── Kütükte OLMAYAN değer ────────────────────────────────────────────────
+
+   Cast KAÇINILMAZDIR ve tam da bu yüzden gereklidir: sözlükler TİPTE kapalıdır,
+   dolayısıyla elle düzenlenmiş bir JSONL'in ürettiği değer tipte TEMSİL
+   EDİLEMEZ. `readJournal` şema denetlemez (bilerek: "bozulmuş bir dosya da
+   okunabilmelidir, yoksa teşhis aracı teşhis edilecek dosyayı açamaz"), yani
+   bu değerler çalışma zamanında GERÇEKTEN render ediciye ulaşır. Tipin
+   yalan söylediği yer, tam olarak sınanması gereken yerdir.
+
+   Parametre `string` tipindedir; TS bu daralmayı kabul eder, sabit literal
+   ile aynı cast'i yazmak ise derleme hatası olurdu. */
+const bilinmeyenDurum = (d: string): Durum => d as Durum;
+const bilinmeyenAsama = (a: string): Asama => a as Asama;
+const bilinmeyenAdimDurumu = (d: string): AdimDurumu => d as AdimDurumu;
+const bilinmeyenKoken = (k: string): Koken => k as Koken;
 
 const TASLAK: Kosum = {
   gate: "typecheck",
@@ -182,7 +266,8 @@ const CIZELGE: AsamaAdimi[] = [
 /** Aynı paket, hiç geri dönmemiş hâli — tekrar işaretinin negatif kontrolü */
 const DUZ_CIZELGE: AsamaAdimi[] = CIZELGE.map((a) => ({ ...a, ziyaret: Math.min(a.ziyaret, 1), geri_donus: 0 }));
 
-/** SÜREN paket: `bitis: null` → tahmini bitiş ÜRETİLMEMELİ */
+/** SÜREN paket: `bitis: null` → tahmini bitiş ÜRETİLMEMELİ.
+    Karar YOK ama bulgu KAYDEDİLMİŞ (2 ≠ 3): doğrulama turunun tam ortası. */
 const PAKET: PaketOzeti = {
   package_id: "2026-07-20-cockpit-p1-readonly",
   ad: "Cockpit Modül Fazı 1 — Salt-okunur Developer Cockpit",
@@ -194,6 +279,9 @@ const PAKET: PaketOzeti = {
   son_olay_ts: "2026-07-19T21:09:56.415Z",
   dogrulayici_karari: null,
   dogrulayici_acik_bulgu: 2,
+  /* Kararın BEYANINDAN ayrı tutulur; iki sayı bilerek FARKLI seçildi ki
+     ekranda yer değiştirmeleri görünür olsun. */
+  dogrulayici_kayitli_bulgu: 3,
   acik_risk: 1,
   kapali_risk: 4,
 };
@@ -210,6 +298,9 @@ const BITMIS: PaketOzeti = {
   son_olay_ts: "2026-07-18T12:00:00.000Z",
   dogrulayici_karari: "onay",
   dogrulayici_acik_bulgu: 0,
+  /* Karar ONAY ve açık bulgu 0 — ama tur boyunca 5 bulgu KAYDEDİLDİ ve
+     kapandı. "Hiç bulgu çıkmadı" ile "çıktı, kapandı" aynı şey değildir. */
+  dogrulayici_kayitli_bulgu: 5,
   acik_risk: 0,
   kapali_risk: 8,
 };
@@ -651,9 +742,150 @@ describe("Kimlik kümesi (Canonical 11.3-a) tam gösterilir", () => {
   });
 
   it("doğrulayıcının açık bulgusu ve iki risk sayacı ayrı ayrı görünür", () => {
-    expect(b).toContain("<dt>Doğrulayıcının açık bulgusu</dt><dd>2</dd>");
+    expect(b).toContain("<dt>Doğrulayıcının açık bulgusu (KARARIN BEYANI)</dt><dd>2</dd>");
     expect(b).toContain("<dt>Açık risk</dt><dd>1</dd>");
     expect(b).toContain("<dt>Kapalı risk</dt><dd>4</dd>");
+  });
+
+  /* BULGU KAPANDI: `dogrulayici_kayitli_bulgu` modele eklenmiş ama page.ts onu
+     HİÇBİR YERDE çizmiyordu — ne aktif kartta ne geçmiş tablosunda. Alan artık
+     çiziliyor; gerileme kapısı aşağıdaki ayrı bölümdür ("KAYITLI BULGU …").
+     Buradaki iddia yalnız BEYAN alanının kendi etiketine bağlılığını ölçer. */
+  it("BEYAN edilen açık bulgu KENDİ etiketine bağlıdır", () => {
+    /* İki sayı fikstürde bilerek FARKLI (beyan 2 · kayıtlı 3): biri diğerinin
+       hücresine yazılırsa bu iddia kırılır. `toContain` ile yazılsaydı, hangi
+       sayının hangi etiketin altında olduğu ölçülmemiş kalırdı. */
+    expect(PAKET.dogrulayici_karari).toBeNull();
+    expect(PAKET.dogrulayici_acik_bulgu).not.toBe(PAKET.dogrulayici_kayitli_bulgu);
+    expect(alanDegeri(b, "Doğrulayıcının açık bulgusu (KARARIN BEYANI)")).toBe(String(PAKET.dogrulayici_acik_bulgu));
+    expect(alanDegeri(b, "Açık risk")).toBe(String(PAKET.acik_risk));
+    expect(alanDegeri(b, "Kapalı risk")).toBe(String(PAKET.kapali_risk));
+  });
+});
+
+/* ── KAYITLI BULGU — beyan edilmemiş bulgu ekrandan düşmez ────────────────
+
+   ÖLÇÜLMÜŞ KUSURDU: `PaketOzeti.dogrulayici_kayitli_bulgu` modele eklenmişti
+   (view.ts, `rec.findings.length`ten dolar) ama render edici onu HİÇBİR YERDE
+   çizmiyordu. Sonuç, alanın var oluş sebebinin tam tersi: doğrulama turunun
+   ORTASINDAKİ bir paket — bulgular yazılmış, karar henüz yazılmamış — kartta
+   yalnız BEYANI gösteriyordu ve karar yokken beyan 0'dır. Yani üç bulgu
+   kayıtlıyken paket ekranda TEMİZ görünüyordu.
+
+   İki sayı AYNI ŞEY DEĞİLDİR ve ekranda da ayrılırlar:
+   · "Doğrulayıcının açık bulgusu (KARARIN BEYANI)" — kararın SÖYLEDİĞİ sayı,
+   · "Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)" — kütükte GERÇEKTEN duran olay.
+   Aralarındaki fark tek başına bir sinyaldir; uyarı da o farkı okur.
+
+   Uyarı KOŞULLUDUR ve koşulluluğu ayrıca sınanır: koşulsuz basılan bir uyarı,
+   hiç basılmayan bir uyarı kadar işe yaramaz. Üç ayar (karar yok + bulgu var ·
+   karar var + bulgu var · karar yok + bulgu yok) AYNI render yolundan geçer —
+   fikstür farkı dışında hiçbir şey değişmez, yoksa "çıkmadı" iddiası yolun
+   kendisinin değişmesiyle de sağlanabilirdi. */
+
+describe("KAYITLI BULGU — karar yazılmamışken kaydedilmiş bulgu ekranda durur", () => {
+  const UYARI = `class="olcum-kaybi"`;
+  const METIN = "kararı henüz YAZILMAMIŞ";
+
+  /** Üç ayarın üçü de BURADAN geçer: tek değişken paket özeti. */
+  const paketKesiti = (uzerine: Partial<PaketOzeti>): string =>
+    kesit(
+      renderCockpitPage(
+        gorunumKur({
+          aktif_paket: { sinif: "olcum", kaynak: "foldPackageJournal()", deger: { ...PAKET, ...uzerine } },
+        })
+      ),
+      "bolum-paket"
+    );
+
+  it("karar YOK + kayıtlı bulgu VAR → uyarı GÖRÜNÜR ve sayıyı adıyla söyler", () => {
+    expect(PAKET.dogrulayici_karari).toBeNull();
+    expect(PAKET.dogrulayici_kayitli_bulgu).toBeGreaterThan(0);
+    const b = paketKesiti({});
+    expect(b).toContain(UYARI);
+    expect(b).toContain(METIN);
+    expect(b).toContain(`<strong>${PAKET.dogrulayici_kayitli_bulgu} bulgu kayıtlı</strong>`);
+    /* Uyarının asıl cümlesi: 0 sessizliği delil değildir */
+    expect(b).toContain("Beyan edilen sayının 0 olması");
+    expect(b).toContain("anlamına GELMEZ");
+    expect(b).toContain("doğrulama turunun ORTASINDADIR");
+    /* Sabit görünüm de aynı yoldan geçer — bölüm fikstüre bağlı kalmasın */
+    expect(kesit(HTML, "bolum-paket")).toContain(UYARI);
+  });
+
+  it("karar VAR + kayıtlı bulgu VAR → uyarı ÇIKMAZ (koşulsuz basılmıyor)", () => {
+    /* ONAY + kayıtlı bulgu MEŞRU bir bileşimdir: bulgular çıkmış ve KAPANMIŞTIR.
+       Uyarının söylediği şey "bulgu var" değil, "karar HENÜZ YAZILMAMIŞ"tır;
+       karar yazıldığı anda okuyanın önünde beyanın kendisi durur. */
+    const b = paketKesiti({ dogrulayici_karari: "onay" });
+    expect(b).not.toContain(UYARI);
+    expect(b).not.toContain(METIN);
+    /* POZİTİF KONTROL: kart yine de çizildi ve sayı yerinde — "uyarı yok"
+       iddiası boş bir bölümde de sağlanırdı */
+    expect(alanDegeri(b, "Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)")).toBe(
+      String(PAKET.dogrulayici_kayitli_bulgu)
+    );
+    expect(b).toContain("<dt>Doğrulayıcı kararı</dt><dd>ONAY</dd>");
+  });
+
+  it("karar YOK + kayıtlı bulgu YOK → uyarı ÇIKMAZ", () => {
+    const b = paketKesiti({ dogrulayici_kayitli_bulgu: 0 });
+    expect(b).not.toContain(UYARI);
+    expect(b).not.toContain(METIN);
+    expect(alanDegeri(b, "Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)")).toBe("0");
+    /* Sıfır SESSİZCE düşmez: alan yine ekrandadır, "kayıt yok" değildir */
+    expect(alanDegeri(b, "Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)")).not.toContain("kayıt yok");
+  });
+
+  it("iki sayı KENDİ etiketine bağlıdır — takas edilirse iddia kırılır", () => {
+    /* Fikstürde bilerek FARKLI (beyan 2 · kayıtlı 3). `toContain` ile yazılsaydı
+       hangi sayının hangi etiketin altında durduğu ÖLÇÜLMEMİŞ kalırdı. */
+    expect(PAKET.dogrulayici_acik_bulgu).not.toBe(PAKET.dogrulayici_kayitli_bulgu);
+    const b = paketKesiti({});
+    expect(alanDegeri(b, "Doğrulayıcının açık bulgusu (KARARIN BEYANI)")).toBe(
+      String(PAKET.dogrulayici_acik_bulgu)
+    );
+    expect(alanDegeri(b, "Kayıtlı bulgu olayı (BEYANDAN BAĞIMSIZ)")).toBe(
+      String(PAKET.dogrulayici_kayitli_bulgu)
+    );
+    /* Uyarıdaki sayı BEYANI değil KAYDI okur — ikisi karışırsa uyarı yalan söyler */
+    expect(b).toContain(`<strong>${PAKET.dogrulayici_kayitli_bulgu} bulgu kayıtlı</strong>`);
+    expect(b).not.toContain(`<strong>${PAKET.dogrulayici_acik_bulgu} bulgu kayıtlı</strong>`);
+  });
+
+  it("uyarı KATLAMANIN İÇİNE saklanmaz — M18 dersi", () => {
+    /* M18: katlanmış içerikte İKİNCİ kez geçen metin, iddiayı sahte-yeşil yapar.
+       Bu yüzden hem bölümde hiç katlama OLMADIĞI hem de uyarının belgedeki İLK
+       <details>'ten önce durduğu ölçülür — uyarı, açılması gereken bir kutunun
+       içine kayarsa "görünür" demek anlamını yitirir. */
+    const b = kesit(HTML, "bolum-paket");
+    expect(b).not.toContain("<details");
+    const uyariYeri = HTML.indexOf(UYARI);
+    const ilkKatlama = HTML.indexOf("<details");
+    expect(uyariYeri, "uyarı belgede yok").toBeGreaterThan(-1);
+    expect(ilkKatlama, "belgede hiç katlama yok — konum iddiası ölçüsüz kalırdı").toBeGreaterThan(-1);
+    expect(uyariYeri, "uyarı katlamanın içine saklanmış").toBeLessThan(ilkKatlama);
+  });
+
+  it("geçmiş tablosunda KENDİ sütunu var ve değer KENDİ satırına bağlı", () => {
+    const g = kesit(HTML, "bolum-gecmis");
+    expect(g).toContain("<th>Kayıtlı bulgu</th>");
+    /* İki satır, DÖRT ayrı sayı (2/3 ve 0/5): sütun ya da satır takası kırar */
+    const suren = gecmisSatiri(HTML, PAKET.package_id);
+    expect(suren["Kayıtlı bulgu"]).toBe(String(PAKET.dogrulayici_kayitli_bulgu));
+    expect(suren["Açık bulgu"]).toBe(String(PAKET.dogrulayici_acik_bulgu));
+    const bitmis = gecmisSatiri(HTML, BITMIS.package_id);
+    expect(bitmis["Kayıtlı bulgu"]).toBe(String(BITMIS.dogrulayici_kayitli_bulgu));
+    expect(bitmis["Açık bulgu"]).toBe(String(BITMIS.dogrulayici_acik_bulgu));
+    /* Fikstürün ayırt ediciliği ölçülür: eşit sayılar takası görünmez kılardı */
+    expect(BITMIS.dogrulayici_kayitli_bulgu).not.toBe(BITMIS.dogrulayici_acik_bulgu);
+    expect(BITMIS.dogrulayici_kayitli_bulgu).not.toBe(PAKET.dogrulayici_kayitli_bulgu);
+  });
+
+  it("uyarı sayfayı salt-okunur olmaktan çıkarmaz", () => {
+    const h = renderCockpitPage(gorunumKur());
+    expect(sayac(h, /<button|<form|<input|onclick/gi)).toBe(0);
+    expect(h).toContain(UYARI);
   });
 });
 
@@ -752,6 +984,150 @@ describe("kural 2 — ölçüm sınıfı kaynağını gösterir", () => {
     expect(kesit(HTML, "bolum-kapilar")).toContain("gate_run olayları");
     expect(kesit(HTML, "bolum-cizelge")).toContain("stage_changed olayları");
     expect(kesit(HTML, "bolum-gecmis")).toContain("docs/journal/events/*.jsonl");
+  });
+});
+
+/* ── Canonical izlenebilirlik — ALAN DÜZEYİNDE, ANLAM TAKASINA karşı ──────
+
+   Faz 1'in "salt-okunur" iddiasının ekrandaki TAŞIYICISI `kapsam_ic` ve
+   `kapsam_dis` listeleridir: paketin neyi yaptığını ve neyi YAPMADIĞINI
+   söyleyen tek yer orasıdır. İkisi ekranda yer değiştirse "işlem düğmeleri
+   (Faz 3)" kapsam İÇİ görünür — yani sayfa, kapsamını tersine çevirmiş olur.
+
+   Bu takas üç denetimden de SESSİZCE geçer: tsc iki `string[]` görür, eslint
+   ölü kod görmez (iki alan da kullanılıyordur), vitest ise bölüm genelinde
+   `toContain` yazıldığı sürece her iki değeri de bulur. Bölümü tümüyle silmek
+   ise ölü değişken bırakacağı için zayıf mutasyondur — nişan ALAN DÜZEYİNE
+   alınır: her değer KENDİ başlığının altında olmalı, başkasının altında OLMAMALI. */
+
+describe("Canonical izlenebilirlik — her değer KENDİ başlığının altında", () => {
+  /* Altı listenin altısı da AYIRT EDİLEBİLİR değer taşır. Ortak/boş değer
+     paylaşan bir fikstürde takas görünmez kalırdı. */
+  const IZ = {
+    canonical_version: "9.9.9-iz",
+    bolumler: ["BOLUM-A", "BOLUM-B"],
+    adr_tdr: ["ADR-A"],
+    moduller: ["MODUL-A"],
+    sozlesmeler: ["SOZLESME-A"],
+    kapsam_ic: ["KAPSAM-IC-A", "KAPSAM-IC-B"],
+    kapsam_dis: ["KAPSAM-DIS-A"],
+    risk_sinifi: "RISK-A",
+  };
+
+  const bolge = kesit(
+    renderCockpitPage(
+      gorunumKur({
+        izlenebilirlik: { sinif: "olcum", kaynak: "package_declared olayı", deger: IZ },
+      })
+    ),
+    "bolum-izlenebilirlik"
+  );
+
+  /* Başlık → o başlığın altında BEKLENEN değerler. Tablo hem pozitif iddiayı
+     hem TAKAS BEKÇİSİNİ besler: her alan, diğer BEŞ alanın değerlerini
+     taşımadığını da kanıtlar (tam ikili matris). */
+  const ESLESME: [string, string[]][] = [
+    ["Bölümler", IZ.bolumler],
+    ["ADR / TDR", IZ.adr_tdr],
+    ["Etkilenen modüller", IZ.moduller],
+    ["Sözleşmeler", IZ.sozlesmeler],
+    ["Kapsam içi", IZ.kapsam_ic],
+    ["Kapsam DIŞI", IZ.kapsam_dis],
+  ];
+
+  it.each(ESLESME)("%s: değerleri KENDİ alanında, başkasınınkiler DEĞİL", (etiket, degerler) => {
+    const dd = alanDegeri(bolge, etiket);
+    for (const d of degerler) expect(dd, `${etiket} kendi değerini taşımıyor: ${d}`).toContain(d);
+    for (const [baska, baskaDegerler] of ESLESME) {
+      if (baska === etiket) continue;
+      for (const b of baskaDegerler) {
+        expect(dd, `TAKAS: "${etiket}" alanında "${baska}" değeri (${b})`).not.toContain(b);
+      }
+    }
+  });
+
+  it("canonical_version ile risk_sinifi TAKAS EDİLEMEZ", () => {
+    /* İkisi de tek dizedir ve ikisi de aynı <dl> içindedir; ayrımı yalnız
+       başlık taşır. Yer değiştirseler sürüm numarası risk sınıfı diye okunurdu. */
+    expect(alanDegeri(bolge, "Canonical sürümü")).toContain(IZ.canonical_version);
+    expect(alanDegeri(bolge, "Canonical sürümü")).not.toContain(IZ.risk_sinifi);
+    expect(alanDegeri(bolge, "Risk sınıfı")).toContain(IZ.risk_sinifi);
+    expect(alanDegeri(bolge, "Risk sınıfı")).not.toContain(IZ.canonical_version);
+  });
+
+  it("altı listenin altısı da EKRANDA — hiçbiri sessizce düşmez", () => {
+    /* Bir alanı render'dan çıkarmak, onu boş bildirmekle aynı görünürdü. */
+    expect(sayac(bolge, /<ul class="etiketler">/g)).toBe(ESLESME.length);
+  });
+
+  it("BOŞ liste KENDİ boş metnini yazar — 'kapsam' ile 'kapsam dışı' karışmaz", () => {
+    /* Boş metinler de takas edilebilir bir çifttir ve dolu fikstürde hiç
+       görünmezler; bu yüzden ayrı bir render'da ölçülürler. */
+    const b = kesit(
+      renderCockpitPage(
+        gorunumKur({
+          izlenebilirlik: {
+            sinif: "olcum",
+            kaynak: "package_declared olayı",
+            deger: {
+              canonical_version: null,
+              bolumler: [],
+              adr_tdr: [],
+              moduller: [],
+              sozlesmeler: [],
+              kapsam_ic: [],
+              kapsam_dis: [],
+              risk_sinifi: null,
+            },
+          },
+        })
+      ),
+      "bolum-izlenebilirlik"
+    );
+    expect(alanDegeri(b, "Bölümler")).toBe(`<span class="yok">bölüm bildirilmedi</span>`);
+    expect(alanDegeri(b, "ADR / TDR")).toBe(`<span class="yok">ADR/TDR bildirilmedi</span>`);
+    expect(alanDegeri(b, "Etkilenen modüller")).toBe(`<span class="yok">modül bildirilmedi</span>`);
+    expect(alanDegeri(b, "Sözleşmeler")).toBe(`<span class="yok">sözleşme bildirilmedi</span>`);
+    expect(alanDegeri(b, "Kapsam içi")).toBe(`<span class="yok">kapsam bildirilmedi</span>`);
+    expect(alanDegeri(b, "Kapsam DIŞI")).toBe(`<span class="yok">kapsam dışı bildirilmedi</span>`);
+    /* Bildirilmemiş sürüm/risk de "kayıt yok" der; boş dize basılmaz */
+    expect(alanDegeri(b, "Canonical sürümü")).toContain("kayıt yok");
+    expect(alanDegeri(b, "Risk sınıfı")).toContain("kayıt yok");
+  });
+
+  it("bölüm ÖLÇÜM sınıfıdır ve Journal kaynağını yazar", () => {
+    expect(bolge).toContain("package_declared olayı");
+    expect(bolge).toContain("rozet--olcum");
+    expect(bolge).toContain("kutu--olcum");
+    /* Plan/anlatı kılığına girmez */
+    expect(bolge).not.toContain("rozet--plan");
+    expect(bolge).not.toContain("rozet--anlati");
+  });
+
+  it("izlenebilirlik değerleri de KAÇIŞLANIR (Journal serbest metindir)", () => {
+    const b = kesit(
+      renderCockpitPage(
+        gorunumKur({
+          izlenebilirlik: {
+            sinif: "olcum",
+            kaynak: "package_declared olayı",
+            deger: {
+              ...IZ,
+              kapsam_dis: [`<img src=x onerror="alert(1)">`],
+              risk_sinifi: `" onmouseover="alert(2)`,
+            },
+          },
+        })
+      ),
+      "bolum-izlenebilirlik"
+    );
+    expect(sayac(b, /<img/gi)).toBe(0);
+    /* Öznitelikten kaçış TIRNAKLA kırılamaz: ham `"` çıktıda yoktur, dolayısıyla
+       ` onmouseover=` metni bir özniteliğe DÖNÜŞEMEZ (kaçışlı metin zararsızdır). */
+    expect(b).not.toContain(`" onmouseover="`);
+    expect(b).not.toContain(`onerror="`);
+    expect(alanDegeri(b, "Kapsam DIŞI")).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(alanDegeri(b, "Risk sınıfı")).toContain("&quot; onmouseover=&quot;alert(2)");
   });
 });
 
@@ -1068,6 +1444,364 @@ describe("kural 6 — düşmanca journal metni ekranda çalıştırılamaz", () 
     /* Gerçek veri zaten düşmanca: lint referans komutu `-o <tmp>` içerir */
     expect(kapiKarti(HTML, "lint")).toContain("-o &lt;tmp&gt;");
     expect(HTML).not.toContain("-o <tmp>");
+  });
+});
+
+/* ── KÜTÜKTE OLMAYAN DEĞER — teşhis aracı, teşhis edeceği dosya yüzünden kapanmaz ──
+
+   ÖLÇÜLEN KUSURDU: elle bozulmuş bir JSONL'de tanınmayan bir `outcome`,
+   `KAPI_DURUMU[...]` aramasını `undefined` yapıyor, `b.isaret` patlıyor ve TÜM
+   sayfa 500'e düşüyordu. store.ts bozuk dosyayı BİLEREK tolere ederken
+   ("şema denetimi yapmaz: bozulmuş bir dosya da okunabilmelidir, yoksa teşhis
+   aracı teşhis edilecek dosyayı açamaz"), render katmanının onu açamaması
+   aracın var oluş amacına aykırıydı.
+
+   İKİNCİ VE DAHA AĞIR SONUÇ: tek bir bozuk alan yüzünden SAĞLAM paketler de
+   ekrandan siliniyordu — cockpit.ts'in "bozuk paket SAĞLAM paketleri ekrandan
+   silmez" değişmezi, kaynak tarafında korunup render tarafında deliniyordu.
+   Aşağıdaki iddialar o deliğin gerileme kapısıdır. */
+
+describe("kütükte OLMAYAN değer ÇÖKERTMEZ, görünür bulguya döner", () => {
+  /** Sayfanın bütün bölümleri — bozuk bir alan hiçbirini düşürmemeli */
+  const BOLUMLER = [
+    "bolum-sozluk",
+    "bolum-paket",
+    "bolum-cizelge",
+    "bolum-kapilar",
+    "bolum-izlenebilirlik",
+    "bolum-git",
+    "bolum-plan",
+    "bolum-riskler",
+    "bolum-notlar",
+    "bolum-gecmis",
+  ];
+
+  /* Elle düzenlenmiş bir kütükte en olası hata: başka bir şema sürümünün
+     ya da bir yazım hatasının bıraktığı tanınmayan değer. */
+  const BOZUK_OUTCOME = "PASSED";
+  const OUTCOME_BOZUK = renderCockpitPage(
+    gorunumKur({
+      kapilar: kapilarIle("lint", (k) => ({ ...k, durum: bilinmeyenDurum(BOZUK_OUTCOME) })),
+    })
+  );
+
+  it("bilinmeyen outcome: render ÇÖKMEZ, belge tam kalır", () => {
+    expect(() =>
+      renderCockpitPage(
+        gorunumKur({
+          kapilar: kapilarIle("lint", (k) => ({ ...k, durum: bilinmeyenDurum(BOZUK_OUTCOME) })),
+        })
+      )
+    ).not.toThrow();
+    expect(OUTCOME_BOZUK.startsWith("<!DOCTYPE html>")).toBe(true);
+    expect(OUTCOME_BOZUK.trimEnd().endsWith("</html>")).toBe(true);
+    /* Sessiz "undefined" da çökme kadar kötüdür: ekranda bir şey yazar ama
+       hangi alanın bozuk olduğunu SÖYLEMEZ. */
+    expect(OUTCOME_BOZUK).not.toContain("undefined");
+  });
+
+  it("bilinmeyen outcome GÖRÜNÜR bulgudur — değeri adıyla ve gerekçesiyle yazar", () => {
+    const kart = kapiKarti(OUTCOME_BOZUK, "lint");
+    expect(kart).toContain(`BİLİNMEYEN: ${BOZUK_OUTCOME}`);
+    expect(kart).toContain("⁇");
+    expect(kart).toContain("kapı kütüğünde YOK");
+    /* Ne yapılacağını da söyler: bulgu, eyleme çevrilebilir olmalı */
+    expect(kart).toContain("journal:verify");
+  });
+
+  it("bulgu KATLAMANIN İÇİNE saklanmaz — kartın görünür başlığında durur (M18 dersi)", () => {
+    const kart = kapiKarti(OUTCOME_BOZUK, "lint");
+    const ayrintiYeri = kart.indexOf("<details");
+    const bulguYeri = kart.indexOf(`BİLİNMEYEN: ${BOZUK_OUTCOME}`);
+    expect(ayrintiYeri).toBeGreaterThan(-1);
+    expect(bulguYeri).toBeGreaterThan(-1);
+    expect(bulguYeri, "bulgu katlamanın içine saklanmış").toBeLessThan(ayrintiYeri);
+  });
+
+  it("KRİTİK: bozuk kapı SAĞLAM kapıları ekrandan SİLMEZ", () => {
+    const bolge = kesit(OUTCOME_BOZUK, "bolum-kapilar");
+    expect(sayac(bolge, /<article class="kapi/g)).toBe(JOURNAL_GATE_NAMES.length);
+    /* Sağlam kapılar kendi metinlerini TAM olarak korur */
+    expect(kapiKarti(OUTCOME_BOZUK, "typecheck")).toContain("gerçekten koşuldu ve geçti");
+    expect(kapiKarti(OUTCOME_BOZUK, "test")).toContain("gerçekten koşuldu ve kaldı");
+    expect(kapiKarti(OUTCOME_BOZUK, "gt")).toContain("Journal&#39;da HİÇ kayıt yok");
+    expect(kapiKarti(OUTCOME_BOZUK, "smoke")).toContain("değeri ölçülemedi");
+    /* ve kapsam şerhleri yerinde: bozuk komşu, bağlayıcı devir şartını düşürmez */
+    for (const ad of JOURNAL_GATE_NAMES) {
+      expect(kapiKarti(OUTCOME_BOZUK, ad), ad).toContain(kacir(JOURNAL_GATES[ad].scope));
+    }
+  });
+
+  it("KRİTİK: bozuk kapı DİĞER BÖLÜMLERİ de ekrandan silmez", () => {
+    for (const id of BOLUMLER) {
+      expect(kesit(OUTCOME_BOZUK, id).length, id).toBeGreaterThan(0);
+    }
+    expect(kesit(OUTCOME_BOZUK, "bolum-paket")).toContain(kacir(PAKET.amac));
+    expect(kesit(OUTCOME_BOZUK, "bolum-gecmis")).toContain(kacir(BITMIS.ad));
+    expect(kesit(OUTCOME_BOZUK, "bolum-plan")).toContain("37 commit geride");
+    expect(kesit(OUTCOME_BOZUK, "bolum-riskler")).toContain("R-01");
+  });
+
+  it("bilinmeyen AŞAMA üç bölümde de bulguya döner (paket · çizelge · geçmiş)", () => {
+    const BOZUK_ASAMA = "gelistirmee";
+    const bozukPaket: PaketOzeti = { ...PAKET, asama: bilinmeyenAsama(BOZUK_ASAMA) };
+    const h = renderCockpitPage(
+      gorunumKur({
+        aktif_paket: { sinif: "olcum", kaynak: "foldPackageJournal()", deger: bozukPaket },
+        zaman_cizelgesi: {
+          sinif: "olcum",
+          kaynak: "stage_changed olayları",
+          deger: CIZELGE.map((a, i) => (i === 2 ? { ...a, asama: bilinmeyenAsama(BOZUK_ASAMA) } : a)),
+        },
+        gecmis: { sinif: "olcum", kaynak: "docs/journal/events/*.jsonl", deger: [bozukPaket, BITMIS] },
+      })
+    );
+    const beklenen = `BİLİNMEYEN: ${BOZUK_ASAMA} (kütükte yok)`;
+    expect(alanDegeri(kesit(h, "bolum-paket"), "Aşama")).toBe(beklenen);
+    expect(kesit(h, "bolum-cizelge")).toContain(beklenen);
+    expect(kesit(h, "bolum-gecmis")).toContain(beklenen);
+
+    /* TANINAN aşamalar bulguya dönüşmez — guard koşulsuz basmıyor */
+    expect(kesit(h, "bolum-cizelge")).toContain("Planlama");
+    expect(kesit(h, "bolum-cizelge")).toContain("Merge");
+    expect(sayac(kesit(h, "bolum-cizelge"), /BİLİNMEYEN/g)).toBe(1);
+    expect(h).not.toContain("undefined");
+    expect(h.trimEnd().endsWith("</html>")).toBe(true);
+  });
+
+  it("bilinmeyen KÖKEN bulguya döner ve rozeti KATLAMADAN önce durur", () => {
+    const BOZUK_KOKEN = "guessed";
+    const h = renderCockpitPage(
+      gorunumKur({
+        kapilar: kapilarIle("bundle", (k) => kosumIle(k, { origin: bilinmeyenKoken(BOZUK_KOKEN) })),
+      })
+    );
+    const kart = kapiKarti(h, "bundle");
+    const beklenen = `BİLİNMEYEN: ${BOZUK_KOKEN} (kütükte yok)`;
+    const rozetYeri = kart.indexOf("rozet--koken");
+    const ayrintiYeri = kart.indexOf("<details");
+    expect(rozetYeri).toBeGreaterThan(-1);
+    expect(ayrintiYeri).toBeGreaterThan(-1);
+    expect(rozetYeri).toBeLessThan(ayrintiYeri);
+    expect(kart.slice(0, ayrintiYeri)).toContain(beklenen);
+    /* Katlamadaki "Köken" alanı da aynı bulguyu taşır */
+    expect(alanDegeri(kart, "Köken")).toBe(beklenen);
+    /* Diğer kapının ÖLÇÜLDÜ kökeni bundan etkilenmez */
+    expect(kapiKarti(h, "typecheck")).not.toContain("BİLİNMEYEN");
+  });
+
+  it("bilinmeyen değer KAÇIŞLANIR — bulgu, enjeksiyon kapısına dönüşmez", () => {
+    /* Bulgu ekranda "kendi adıyla" görünür; o ad JSONL'den gelir ve JSONL
+       serbest metindir. Görünürlük kazanırken kaçış kaybedilseydi, guard
+       bir çökmeyi bir XSS'e takas etmiş olurdu. */
+    const zehir = `<script>alert(1)</script>`;
+    const h = renderCockpitPage(
+      gorunumKur({
+        aktif_paket: {
+          sinif: "olcum",
+          kaynak: "foldPackageJournal()",
+          deger: { ...PAKET, asama: bilinmeyenAsama(zehir) },
+        },
+        zaman_cizelgesi: {
+          sinif: "olcum",
+          kaynak: "stage_changed olayları",
+          deger: CIZELGE.map((a, i) => (i === 2 ? { ...a, asama: bilinmeyenAsama(zehir) } : a)),
+        },
+        kapilar: kapilarIle("bundle", (k) =>
+          kosumIle(k, { origin: bilinmeyenKoken(`" onmouseover="alert(2)`) })
+        ),
+      })
+    );
+    expect(sayac(h, /<script/gi)).toBe(0);
+    expect(h).not.toContain(zehir);
+    expect(h).toContain("BİLİNMEYEN: &lt;script&gt;alert(1)&lt;/script&gt; (kütükte yok)");
+    expect(h).toContain("BİLİNMEYEN: &quot; onmouseover=&quot;alert(2) (kütükte yok)");
+    /* Ham `"` çıktıda yok → kaçışlı ` onmouseover=` metni özniteliğe dönüşemez */
+    expect(h).not.toContain(`" onmouseover="`);
+  });
+
+  it("bilinmeyen outcome ETİKETİ kaçışlanmış basılır", () => {
+    /* KAPSAM ŞERHİ — bu iddianın ÖLÇMEDİĞİ şey:
+       yalnız GÖRÜNEN ETİKET metni sınanır. Aynı `k.durum` ayrıca üç CSS sınıf
+       ÖZNİTELİĞİNE de giriyor; oradaki kaçış deliği ölçüldü, kapatıldı ve
+       gerileme kapısı ayrı bölümde duruyor ("ÖZNİTELİK SINIRI …"). Gövde
+       kaçışı ile öznitelik süzgeci AYRI iki savunmadır ve ayrı sınanırlar:
+       birini diğerinin testine yıkmak, düşenin sessizce düşmesine izin verir. */
+    const h = renderCockpitPage(
+      gorunumKur({
+        kapilar: kapilarIle("lint", (k) => ({ ...k, durum: bilinmeyenDurum(`x" & <b>`) })),
+      })
+    );
+    const kart = kapiKarti(h, "lint");
+    const etiketBas = kart.indexOf(">⁇ ");
+    expect(etiketBas).toBeGreaterThan(-1);
+    expect(kart.slice(etiketBas)).toContain("BİLİNMEYEN: x&quot; &amp; &lt;b&gt;");
+  });
+
+  it("bozuk kapı sayfayı salt-okunur olmaktan da çıkarmaz", () => {
+    expect(sayac(OUTCOME_BOZUK, /<button|<form|<input|onclick/gi)).toBe(0);
+    expect(sayac(OUTCOME_BOZUK, /https?:\/\//gi)).toBe(0);
+  });
+});
+
+/* ── ÖZNİTELİK SINIRI — sınıf adı kaçışlanmaz, SÜZÜLÜR ───────────────────
+
+   ÖLÇÜLMÜŞ KUSURDU: yukarıdaki sözlük guard'ı bilinmeyen `durum` değerini
+   ekrana taşırken, aynı değer ÜÇ AYRI sınıf özniteliğine de HAM giriyordu —
+   `class="kapi kapi--${durum}"`, `class="rozet rozet--${durum}"` ve
+   `class="adim adim--${durum}"`. `x" onmouseover="alert(1)` girdisi özniteliği
+   kapatıp yanına ÇALIŞAN bir satır içi olay işleyicisi iliştiriyordu: bu
+   dosyanın 1. kuralı ("hiçbir satır içi olay işleyicisi üretmez") kendi
+   ürettiğimiz HTML'in içinde deliniyordu.
+
+   İRONİ KAYDA GEÇER: guard'dan ÖNCE aynı girdi sayfayı 500'e düşürdüğü için
+   delik ULAŞILAMAZDI. Çökmeyi kaldırmak deliği AÇTI — bir güvenlik özelliğini
+   farkında olmadan üstlenmiş bir çökme, yerine bir şey konmadan kaldırılırsa
+   "düzeltme" gerileme üretir. Bu bölüm o gerilemenin kapısıdır.
+
+   ÇÖZÜM `kacir()` DEĞİLDİR: kaçış metin GÖVDESİ içindir, `&quot;` bir sınıf
+   adının içinde de anlamsızdır. Sınıf adı SÜZÜLÜR (yalnız harf/rakam/tire),
+   değerin kendisi gövdede kaçışlanmış olarak zaten görünür.
+
+   BU YÜZDEN İDDİALAR İKİLİDİR. "Sınıf güvenli" tek başına ölçülseydi, değeri
+   TÜMÜYLE SİLEN bir düzeltme de testi geçirir ve teşhis sessizce kaybolurdu —
+   güvenliği teşhisi öldürerek satın almak, bu dosyanın reddettiği takas. */
+
+describe("ÖZNİTELİK SINIRI — bozuk durum değeri sınıf özniteliğini kıramaz", () => {
+  const YUK = `x" onmouseover="alert(1)`;
+
+  /** ÜÇ sınıf ailesinin üçü de aynı render'da zehirlenir */
+  const zehirle = (durum: string): string =>
+    renderCockpitPage(
+      gorunumKur({
+        kapilar: kapilarIle("lint", (k) => ({ ...k, durum: bilinmeyenDurum(durum) })),
+        zaman_cizelgesi: {
+          sinif: "olcum",
+          kaynak: "stage_changed olayları",
+          deger: CIZELGE.map((a, i) => (i === 2 ? { ...a, durum: bilinmeyenAdimDurumu(durum) } : a)),
+        },
+      })
+    );
+
+  const ZEHIRLI = zehirle(YUK);
+
+  /* Öznitelik SINIRININ kırıldığı an: ham bir `"` kapanışını, boşluk ve
+     `on…="` izliyor. Gövdedeki kaçışlanmış metinde `"` yerine `&quot;` durduğu
+     için bu desen ORAYA UYMAZ — yani ölçü, zararsız teşhis metnini zararlı
+     öznitelikten ayırt eder. (Belge geneli taranır: delik nerede açılırsa.) */
+  const CALISAN_ISLEYICI = /"\s+on[a-z]+="/gi;
+
+  const SINIF_AILELERI: [string, RegExp][] = [
+    [`class="kapi kapi--`, /^<article class="[a-zA-Z0-9- ]+">$/],
+    [`class="rozet rozet--`, /^<span class="[a-zA-Z0-9- ]+">$/],
+    [`class="adim adim--`, /^<li class="[a-zA-Z0-9- ]+">$/],
+  ];
+
+  it("ÇALIŞAN satır içi olay işleyicisi üretilmez", () => {
+    expect(sayac(ZEHIRLI, CALISAN_ISLEYICI)).toBe(0);
+    /* POZİTİF KONTROL: yük GERÇEKTEN sayfaya ULAŞTI. Bu olmadan iddia,
+       zehirli kapıyı hiç çizmeyen bir render'da da yeşil kalırdı. */
+    expect(ZEHIRLI).toContain("BİLİNMEYEN: x&quot; onmouseover=&quot;alert(1)");
+    /* NEGATİF KONTROL: ölçü koşulsuz 0 dönmüyor — kırılmış bir sınırı görüyor */
+    expect(sayac(`<article class="kapi kapi--x" onmouseover="alert(1)">`, CALISAN_ISLEYICI)).toBe(1);
+    /* Temiz kütükte de aynı — ölçü zehirli render'a özel değil */
+    expect(sayac(HTML, CALISAN_ISLEYICI)).toBe(0);
+  });
+
+  it.each(SINIF_AILELERI)(
+    "%s: üretilen etiket yalnız [a-zA-Z0-9- ] sınıf değeri taşır, İKİNCİ öznitelik yok",
+    (onEk, bicim) => {
+      const etiketler = sinifEtiketleri(ZEHIRLI, onEk);
+      for (const e of etiketler) expect(e, `sınır kırılmış: ${e}`).toMatch(bicim);
+    }
+  );
+
+  it("bozuk değer GÖVDEDE kaçışlanmış olarak DURUR — teşhis kaybolmaz", () => {
+    /* Güvenlik ile teşhis BİRLİKTE sınanır: değeri tümüyle silen bir düzeltme
+       yukarıdaki sınıf iddiasını geçer ama bu iddiayı geçemez. */
+    const kart = kapiKarti(ZEHIRLI, "lint");
+    expect(kart).toContain("BİLİNMEYEN: x&quot; onmouseover=&quot;alert(1)");
+    expect(kart).toContain("kapı kütüğünde YOK");
+    expect(kart).toContain("journal:verify");
+    /* Ham yük hiçbir yerde geçmez — teşhis, enjeksiyon kapısına dönüşmedi */
+    expect(ZEHIRLI).not.toContain(YUK);
+    expect(ZEHIRLI).not.toContain(`" onmouseover="`);
+  });
+
+  it("<script> yükü de sınıfa sızmaz ama gövdede kaçışlanmış görünür", () => {
+    const h = zehirle("<script>alert(1)</script>");
+    expect(sayac(h, /<script/gi)).toBe(0);
+    for (const [onEk, bicim] of SINIF_AILELERI) {
+      for (const e of sinifEtiketleri(h, onEk)) expect(e, `sınır kırılmış: ${e}`).toMatch(bicim);
+    }
+    expect(kapiKarti(h, "lint")).toContain(
+      "BİLİNMEYEN: &lt;script&gt;alert(1)&lt;/script&gt;"
+    );
+  });
+
+  it("tamamen özel karakterden ibaret değer BOŞ sınıf değil 'bilinmeyen' üretir", () => {
+    /* Süzgeç her karakteri düşürürse geriye `kapi--` kalırdı: geçerli ama
+       ANLAMSIZ bir sınıf ve CSS'te hiçbir kurala tutunmayan bir kart. */
+    const h = zehirle(`"""`);
+    expect(sayac(h, /class="kapi kapi--"/g)).toBe(0);
+    expect(sayac(h, /class="rozet rozet--"/g)).toBe(0);
+    expect(sayac(h, /class="adim adim--"/g)).toBe(0);
+    expect(h).toContain(`class="kapi kapi--bilinmeyen"`);
+    expect(h).toContain(`class="rozet rozet--bilinmeyen"`);
+    expect(h).toContain(`class="adim adim--bilinmeyen`);
+    /* Değer yine gövdede: sınıf "bilinmeyen" oldu diye teşhis silinmedi */
+    expect(kapiKarti(h, "lint")).toContain("BİLİNMEYEN: &quot;&quot;&quot;");
+  });
+
+  it("aşama şeridi (a.durum) da aynı süzgeçten geçer", () => {
+    const b = kesit(ZEHIRLI, "bolum-cizelge");
+    expect(sayac(b, CALISAN_ISLEYICI)).toBe(0);
+    /* POZİTİF KONTROL: yük şeride GERÇEKTEN ulaştı — zehirlenen adım
+       "simdi" idi ve o sınıf artık ÜRETİLMİYOR. Süzgecin ÇIKTISINA değil,
+       tanınan değerin KAYBINA bakılır: ölçü, süzgecin biçimine bağlanmaz. */
+    expect(sayac(kesit(HTML, "bolum-cizelge"), /adim--simdi/g)).toBe(1);
+    expect(sayac(b, /adim--simdi/g)).toBe(0);
+    /* Sekiz aşamanın sekizi de EKRANDA: bozuk bir adım şeridi düşürmez */
+    expect(sayac(b, /<li class="adim /g)).toBe(JOURNAL_STAGES.length);
+    /* Ve bozuk adım "undefined" basmaz */
+    expect(b).not.toContain("undefined");
+
+    /* KAPSAM ŞERHİ — bu iddianın ÖLÇMEDİĞİ şey: bozuk `a.durum` değerinin
+       GÖVDEDE görünürlüğü. Kapı kartında ikili tamdır (süzülmüş sınıf +
+       kaçışlanmış gövde); şeritte YARIM.
+
+       ÖLÇÜLDÜ (bu tur): `ASAMA_DURUMU[a.durum]` doğrudan indekslenir ve
+       `sozluk()` guard'ından GEÇMEZ — hemen üstündeki komşusu
+       `sozluk(ASAMA_ADI, a.asama, …)` geçtiği hâlde. Tanınmayan bir adım
+       durumunda `kacir(undefined)` boş dize döner ve şeride
+       `<span class="adim-durum"></span>` yazılır: çökme yok, "undefined" yok —
+       ama TEŞHİS DE YOK. Okuyan, o adımın durumunun bozuk olduğunu değil,
+       hiç yazılmadığını sanır.
+
+       Bu bir ÜRETİM KUSURUDUR ve bu turun kapsamı dışıdır (üretim kodu
+       değiştirilmeyecek); BULGU olarak devredildi. Kusuru sabitleyen bir
+       beklenti buraya BİLEREK yazılmadı: düzeltmeyi kırardı. Düzeltme tek
+       satırdır — `sozluk(ASAMA_DURUMU, a.durum, BILINMEYEN_ETIKET)`. */
+  });
+
+  it("NEGATİF KONTROL: temiz kütükte sınıf adları dar sözlükten gelir", () => {
+    /* Ailelerin GERÇEKTEN üretildiğini de kanıtlar: yukarıdaki biçim iddiaları
+       hiç etiket üretmeyen bir render'da boşuna yeşil olurdu. */
+    for (const [onEk, bicim] of SINIF_AILELERI) {
+      const etiketler = sinifEtiketleri(HTML, onEk);
+      expect(etiketler.length, onEk).toBeGreaterThan(0);
+      for (const e of etiketler) expect(e).toMatch(bicim);
+    }
+    expect(HTML).toContain(`class="kapi kapi--gecti"`);
+    expect(HTML).toContain(`class="rozet rozet--yazilmadi"`);
+    expect(HTML).toContain(`class="adim adim--gecildi"`);
+    /* Süzgecin "hepsi düştü" dalı temiz kütükte HİÇ çalışmaz */
+    expect(HTML).not.toContain("bilinmeyen");
+  });
+
+  it("zehirli değer sayfayı salt-okunur olmaktan da çıkarmaz", () => {
+    expect(sayac(ZEHIRLI, /<button|<form|<input|onclick/gi)).toBe(0);
+    expect(ZEHIRLI.trimEnd().endsWith("</html>")).toBe(true);
   });
 });
 
