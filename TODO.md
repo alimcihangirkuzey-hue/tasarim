@@ -3,6 +3,8 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
+- [ ] **A-08 devir işi (C-P0'dan, mekanik niteleme turu):** arşiv teknoloji ADR serisine çıplak atıf yapan **9 canlı dosyada** yorum/belge nitelemesi (`arşiv CONSTITUTION teknoloji ADR-n` biçimine) — davranış-dışı: `apps/web/src/store/editorStore.ts:1` (ADR-6) · `apps/server/src/routes/cmyk.ts:1` + `apps/web/src/api.ts:244` + `apps/web/src/i18n/tr.json:257` + `apps/web/src/pages/EditorPage.tsx:503` + `docs/export-kinds.md:18` (ADR-4) · `apps/web/src/main.tsx:28` + `packages/templates/fonts/fonts.css:2` (ADR-3) · `packages/shared/src/fonts.ts:23` (ADR-8). Kanonik disambigüasyon zaten var (Canonical §0.3 + EK-B/K-21); bu tur yalnız yorumları hizalar. C-P0 Adım A yalnız `assets.ts`+`TODO.md` nitelemişti (kapsam darlığı).
+
 > **Ritüel:** origin/main'e KOD push'u yalnız mimar merge onayından SONRA; docs/pilot-kayıt commit'leri istisna. Koşu, mimarın "başla"sı olmadan başlamaz.
 >
 > **Ritüel eki (F7-A dersi):** Onaylı plan, koşu başında dala/scratchpad'e kalıcılaştırılır (oturum kaybına dayanıklılık — plan sohbette kalırsa bağlam özetlenince/oturum düşünce kaybolur; F7-A'da plan önceki oturum transkriptinden kurtarıldı).

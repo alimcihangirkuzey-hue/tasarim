@@ -25,7 +25,8 @@ const SLOTS = [
 
 export const manifest: TemplateManifest = {
   id: "enseigne-panneau",
-  type: "menu",
+  type: "tabela",
+  profile_version: 1,
   name_tr: "Tabela (tek panel)",
   bleed_mm: 0,
   safe_mm: 0,

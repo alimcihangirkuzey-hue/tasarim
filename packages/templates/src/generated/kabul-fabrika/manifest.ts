@@ -5,6 +5,7 @@ import type { TemplateManifest } from "../../types.js";
 export const manifest: TemplateManifest = {
   id: "kabul-fabrika",
   type: "menu",
+  profile_version: 1,
   name_tr: "Kabul Fabrika Menü",
   bleed_mm: 0,
   safe_mm: 3,

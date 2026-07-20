@@ -5,7 +5,8 @@ import type { TemplateManifest } from "../types.js";
 
 export const manifest = {
   id: "carte-fidelite",
-  type: "menu",
+  type: "kart",
+  profile_version: 1,
   name_tr: "Sadakat Kartı",
   bleed_mm: 2,
   safe_mm: 3,

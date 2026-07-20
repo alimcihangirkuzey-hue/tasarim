@@ -61,6 +61,11 @@ describe("şablon fabrikası kod üreticisi", () => {
   it("manifest: slot tanımları + repeater item-slot eşlemesi", () => {
     const m = generateManifestTs(makeInput());
     expect(m).toContain(`id: "pizza-menu-a4"`);
+    /* C-P0 kimlik katmanı: fabrika ürettiği manifest sürümünü BEYAN eder —
+       emit'e profile_version eklendi (C-B-1, ürün sahibi istisnası); bu satır
+       o yetkilendirilen değişikliğin pinidir. Alan zorunlu: sürümsüz manifest
+       yük-zamanı invaryantından (templates/index.ts) geçemez. */
+    expect(m).toContain(`profile_version: 1,`);
     expect(m).toContain(`{ id: "title", kind: "text", bind: null, default_fr: "NOTRE CARTE", font_mm: { min: 6, max: 12 }, maxLines: 1 },`);
     expect(m).toContain(`bind: "brand.logo_primary"`);
     expect(m).toContain(`bind: "item.name_fr"`);
