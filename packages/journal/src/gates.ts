@@ -431,7 +431,15 @@ export function machineGate(
   if (run.outcome === "kaldi") {
     const ev = writeEvidence(gate, evidenceBody(gate, runs));
     if (ev !== null) {
-      run.raw_evidence = ev.path;
+      /* DEPO-GÖRELİ yol yazılır, mutlak değil. Mutlak yol (`C:\Users\...`)
+         başka bir makinedeki klonda YOKTUR ve `raw_sha256` doğrulanamayan bir
+         işaretçiye dönüşür — kanıt uzantısının `.log` yerine `.txt` seçilme
+         gerekçesiyle (kanıt git'e girmeli, klonda bulunmalı) aynı sınıf sorun,
+         yalnız başka biçimde. Depo dışına düşerse mutlak kalır: yalan
+         söylemektense taşınamaz olduğunu göstersin. */
+      const rel = path.relative(ROOT_DIR, ev.path);
+      run.raw_evidence =
+        rel.startsWith("..") || path.isAbsolute(rel) ? ev.path : rel.split(path.sep).join("/");
       run.raw_sha256 = ev.sha256;
     }
   }
