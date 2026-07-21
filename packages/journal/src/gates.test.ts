@@ -6,7 +6,9 @@
 
    TAM KOŞUM YAPILMAZ: build/test/lint kapıları dakikalar sürer ve
    runGate("test") packages/journal'ı da koşacağı için bu dosyayı İÇİNDEN
-   yeniden çalıştırırdı. Gerçekten koşulan tek kapı typecheck'tir.
+   yeniden çalıştırırdı. Gerçekten koşulan tek kapı typecheck'tir — ve o da
+   ASYNC çocuk-süreçte (C-M-1 RPC-fix: senkron blok worker'ın birpc ack'lerini
+   60s aşırıp suite'i 1320/1320 geçerken exit 1'e düşürüyordu).
 
    KALAN YOLU SENTETİK KOŞUMLA ÖLÇÜLÜR: gerçek kapılar bu depoda yeşil olduğu
    için `outcome = exit===0 ? "gecti" : "kaldi"` satırının KALAN dalı hiç
@@ -18,6 +20,7 @@
    checkGateHonesty'nin gerçekten iş yaptığı, elle bozulmuş kayıtları REDDEDEREK
    kanıtlanır. Aksi hâlde "honesty ok" iddiası her zaman geçen boş bir iddia olurdu. */
 
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -96,18 +99,61 @@ describe("runGate — insan kapıları", () => {
 
 /* ── Gerçek koşum: typecheck ──────────────────────────────────────────── */
 
+/**
+ * RPC-FIX (C-M-1): gerçek koşum ASYNC çocuk-süreçte yürütülür.
+ *
+ * Eski hâlde test runGate("typecheck")'i DOĞRUDAN çağırıyordu; içindeki
+ * spawnSync bu worker'ın olay döngüsünü 36-60s bloke ediyordu. 9 dosyalı
+ * paralel koşumda CPU bölüşümü bloğu uzatınca vitest'in birpc "onTaskUpdate"
+ * çağrısı 60s aşımına takılıyor ve suite 1320/1320 GEÇERKEN exit 1 dönüyordu.
+ * ÖLÇÜLDÜ: gates.test.ts tek başına=exit 0 · gates'siz 8 dosya=exit 0 ·
+ * birleşim=exit 1 (3/3 tekrarlanabilir).
+ *
+ * Prob (gates-gercek-probe.ts) AYNI üretim yolunu (gates.ts → runGate) çocuk
+ * süreçte koşar; bu worker await ederken olay döngüsü SERBEST kalır, RPC
+ * ack'leri akar. İddialar birebir aynı: JSON round-trip'ten gelen JournalGateRun
+ * aynı sözleşmeyle sınanır. Üretim koduna dokunulmadı; test zayıflatılmadı.
+ */
+function probeTypecheck(): Promise<JournalGateRun> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("npx tsx src/gates-gercek-probe.ts typecheck", {
+      shell: true, /* Windows: npx bir .cmd'dir (gates.ts'teki ölçülmüş tuzak) */
+      cwd: path.resolve(ROOT_DIR, "packages", "journal"),
+      windowsHide: true,
+    });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (d: Buffer) => { out += String(d); });
+    child.stderr.on("data", (d: Buffer) => { err += String(d); });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const satir = out.split("\n").find((l) => l.startsWith("__RUNGATE_JSON__"));
+      if (code !== 0 || satir === undefined) {
+        reject(
+          new Error(
+            `prob başarısız: exit=${String(code)} işaretçi=${satir === undefined ? "YOK" : "var"} stderr="${firstLine(err)}"`
+          )
+        );
+        return;
+      }
+      resolve(JSON.parse(satir.slice("__RUNGATE_JSON__".length)) as JournalGateRun);
+    });
+  });
+}
+
 describe("runGate — typecheck (GERÇEKTEN koşar)", () => {
   it(
     "exit code'dan sonuç üretir, araç sürümünü ölçer, SAYI UYDURMAZ",
-    () => {
+    async () => {
       /* KANIT YALITIMI ŞART: ağaç KIRMIZIYKEN bu kapı "kaldi" döner ve ham
          kanıt DİSKE yazılır. Yalıtımsız koşumda dosya gerçek
          docs/journal/evidence/ altına düşer — hiçbir journal satırının
          referans etmediği, git'e sızan öksüz bir kanıt. Ölçüldü: paralel bir
          oturum ağacı geçici olarak kırmızı bırakınca tam da bu oldu.
-         Test yeşil ağaçta da kırmızı ağaçta da depoyu KİRLETMEZ. */
+         Test yeşil ağaçta da kırmızı ağaçta da depoyu KİRLETMEZ.
+         (Çocuk süreç env'i miras alır → kanıt yine geçici dizine düşer.) */
       const kok = kanitiYalit();
-      const run = runGate("typecheck");
+      const run = await probeTypecheck();
       expect(path.resolve(evidenceDir()).startsWith(path.resolve(kok))).toBe(true);
 
       expect(checkGateHonesty(run)).toEqual({ ok: true });
