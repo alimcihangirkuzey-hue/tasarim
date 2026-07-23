@@ -1,0 +1,35 @@
+gate: test
+runner: linux/node22.22.2/npm10.9.7
+cwd: /home/user/tasarim
+
+$ npm test -w apps/server -- --reporter=json --outputFile="/tmp/tezgah-gate-flkilA/vitest-apps-server.json"
+exit: 0  duration_ms: 2890
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-flkilA/vitest-apps-server.json
+
+--- stderr ---
+
+
+$ npm test -w packages/shared -- --reporter=json --outputFile="/tmp/tezgah-gate-flkilA/vitest-packages-shared.json"
+exit: 0  duration_ms: 3638
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-flkilA/vitest-packages-shared.json
+
+--- stderr ---
+
+
+$ npm test -w packages/templates -- --reporter=json --outputFile="/tmp/tezgah-gate-flkilA/vitest-packages-templates.json"
+exit: 1  duration_ms: 8502
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-flkilA/vitest-packages-templates.json
+
+--- stderr ---
+
+
+$ npm test -w packages/journal -- --reporter=json --outputFile="/tmp/tezgah-gate-flkilA/vitest-packages-journal.json"
+exit: 0  duration_ms: 24126
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-flkilA/vitest-packages-journal.json
+
+--- stderr ---
+
