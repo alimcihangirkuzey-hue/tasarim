@@ -143,6 +143,16 @@ export function materialTypeOf(id: string): MaterialType {
   return getTemplate(id).manifest.type;
 }
 
+/** Kayıtsız id için null döner, FIRLATMAZ (C-P1). Sunucu uçları kayıt
+    defterinde olmayan bir template_id'de eski sniff'in düşme davranışını
+    korumalıdır (prefill {} · svg-export 400); fırlatan sorgu orada belge
+    oluşturmayı 500'e çevirirdi. Kimliği ZORUNLU kılan yol materialTypeOf'tur.
+    Object.hasOwn: prototip zinciri kimlik değildir — "toString" gibi bir id,
+    miras alınmış fonksiyonu şablon sanıp .manifest okumaya kalkmamalı. */
+export function materialTypeOfOrNull(id: string): MaterialType | null {
+  return Object.hasOwn(TEMPLATES, id) ? TEMPLATES[id].manifest.type : null;
+}
+
 /** Kayıtlı şablonu OLAN materyal türleri (MATERIAL_TYPES sırasıyla) */
 export function registeredMaterialTypes(): MaterialType[] {
   const kayitli = new Set(Object.values(TEMPLATES).map((e) => e.manifest.type));

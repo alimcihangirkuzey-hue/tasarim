@@ -110,6 +110,12 @@ describe("surfacePrefillParams (F8-A / D6) — belge ölçü ön-dolumu", () => 
     expect(surfacePrefillParams(db, "cli1", "garment")).toEqual({}); // garment ön-dolumu yok
   });
 
+  it("KAYITSIZ şablon id → {} — fırlatmaz (C-P1: belge oluşturma 500'e dönemez)", () => {
+    /* Süreç ayaktayken üretilen fabrika şablonu kayıt defterinde henüz yoktur;
+       ön-dolum sessizce atlanır, oluşturma akışı yaşar (eski sniff davranışı) */
+    expect(surfacePrefillParams(db, "cli1", "kayitsiz-taze-fabrika")).toEqual({});
+  });
+
   it("yüzey yoksa → {}", () => {
     const empty = freshDb();
     expect(surfacePrefillParams(empty, "cli1", "vitro-centre")).toEqual({});

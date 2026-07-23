@@ -9,6 +9,9 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 >
 > **Ritüel eki (F7-A dersi):** Onaylı plan, koşu başında dala/scratchpad'e kalıcılaştırılır (oturum kaybına dayanıklılık — plan sohbette kalırsa bağlam özetlenince/oturum düşünce kaybolur; F7-A'da plan önceki oturum transkriptinden kurtarıldı).
 
+### C-P1 sonrası açılan borç (2026-07-23, kimlik bağlama paketi)
+- [ ] **`@tezgah/templates` manifest-only subpath çıkarımı.** C-P1, sunucu sniff'lerini kimlik katmanına bağlarken bağımlılık modelini **bilinçli kabul** ile çözdü: `apps/server` paketi TAM import eder, react çalışma zamanı server modül grafiğine girer (gerekçe + kabul edilen sonuçlar: journal `2026-07-23-c-p1-sniff-binding` seq 15-16). Saf uç durum: `./identity` subpath'i yalnız manifest'leri dışa verir, server react'sız kalır. Ön koşullar bugün kısmen hazır (5 el yazımı aile + fabrika emit'i `manifest.ts`'i zaten ayırıyor); kalan iş: vitrophanie/enseigne/garment manifest ayrımı · fabrikanın generated manifest-barrel'ı da üretmesi (emit değişikliği — C-B-1 emsali: ürün sahibi yetkisi) · iki kayıt defteri arasında referans-eşitliği invaryantı · `package.json` `exports` haritası. Ayrı paket; server tarafında tek import satırı döner.
+
 ### Composition Engine sonrası açılan borçlar (2026-07-19, B paketi)
 - [ ] **`menu-trifold` ve `menu-grid-cells` motora bağlanacak.** Bugün beş manifestin `repeater.overflow` ilanını yalnız ikisi okuyor (`menu-liste-premium`, `flyer`); kalan ikisi davranışını sabit kodluyor — ilan orada hâlâ ölü sözleşme. Bağlama çıktılarını değiştirebilir → kendi altın kaydını + GT turunu ister. Ayrı paket.
 - [ ] **`generated/kabul-fabrika` manifesti** de ilan ediyor ama fabrika şablonları motoru kullanmıyor; yukarıdaki paketle birlikte değerlendirilecek.

@@ -9,6 +9,7 @@ import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
+import { svgExportKind } from "../material-routing.js";
 import { EXTRACT_TEXT_RUNS, injectPaths, type TextRun } from "../vector.js";
 
 const PRINT_BASE = process.env.PRINT_BASE ?? "http://localhost:5173";
@@ -21,12 +22,13 @@ export function vectorRoutes(app: FastifyInstance): void {
       if (!found) return reply.code(404).send({ error: "not_found" });
       const docDTO = rowToDocument(found.row, found.clientId);
 
-      const isVitro = docDTO.template_id.startsWith("vitro-");
-      const isGarment = docDTO.template_id === "garment";
-      if (!isVitro && !isGarment) {
+      /* C-P1: tür manifest'ten okunur (cam → découpe, tekstil → broderie);
+         kayıtsız/diğer id eskisi gibi 400'e düşer */
+      const kind = svgExportKind(docDTO.template_id);
+      if (kind === null) {
         return reply.code(400).send({ error: "svg_export_only_vitro_or_garment" });
       }
-      const kind = isGarment ? "broderie" : "decoupe";
+      const isVitro = kind === "decoupe";
 
       const client = db
         .prepare("SELECT slug FROM clients WHERE id = ?")
