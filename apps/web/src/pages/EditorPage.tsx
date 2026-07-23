@@ -310,14 +310,15 @@ export function EditorPage() {
     },
   });
   const doExport = useMutation({
-    /* tip bazlı yönlendirme: garment → PNG/broderie paketi; vitro decoupe → SVG;
-       diğerleri → print+preview PDF */
+    /* tür bazlı yönlendirme — C-P1: tür manifest'ten okunur, id ön-ekinden
+       değil; sunucudaki svgExportKind ile aynı ayrım (tekstil → PNG/broderie
+       paketi; cam + decoupe → SVG; diğerleri → print+preview PDF) */
     mutationFn: async (warnings: LayoutWarning[]) => {
-      if (doc?.template_id === "garment") {
+      if (entry?.manifest.type === "tekstil") {
         const res = await api.exportGarment(id);
         return [res.record];
       }
-      if (doc?.template_id.startsWith("vitro-") && doc.params["mode"] === "decoupe") {
+      if (entry?.manifest.type === "cam" && doc?.params["mode"] === "decoupe") {
         return [await api.exportSvg(id)];
       }
       return api.exportDocument(id, warnings);

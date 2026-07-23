@@ -10,6 +10,7 @@ import {
   type ClientSurfaceDTO,
   type IntakeSurface,
 } from "@tezgah/shared";
+import { surfacePrefillKind } from "./material-routing.js";
 
 export interface ClientSurfaceRow {
   id: string;
@@ -105,20 +106,17 @@ export function upsertClientSurfaces(
   return { inserted, updated, total: surfaces.length };
 }
 
-/* F8-A (D6): belge oluşturmada ölçü ön-dolumu. vitro-* → vitrine, enseigne-panneau
-   → tabela yüzeyi; en güncel (updated_at) eşleşen kaydın w_cm/h_cm'i param olarak
-   döner (varsa). Eşleşme/yüzey yoksa {} (şablon varsayılanı geçerli). garment
-   ön-dolumu YOK (alan-preset'li, w/h paramı değil — F8 devam notu). */
+/* F8-A (D6): belge oluşturmada ölçü ön-dolumu. cam → vitrine, tabela → tabela
+   yüzeyi (C-P1: tür manifest'ten; eski id-sniff "vitro-*"/"enseigne-panneau"
+   aynı kümeye çözülüyordu); en güncel (updated_at) eşleşen kaydın w_cm/h_cm'i
+   param olarak döner (varsa). Eşleşme/yüzey yoksa {} (şablon varsayılanı
+   geçerli). garment (tekstil) ön-dolumu YOK (alan-preset'li — F8 devam notu). */
 export function surfacePrefillParams(
   db: Database,
   clientId: string,
   templateId: string
 ): Record<string, number> {
-  const kind = templateId.startsWith("vitro-")
-    ? "vitrine"
-    : templateId === "enseigne-panneau"
-      ? "tabela"
-      : null;
+  const kind = surfacePrefillKind(templateId);
   if (!kind) return {};
   const row = db
     .prepare(

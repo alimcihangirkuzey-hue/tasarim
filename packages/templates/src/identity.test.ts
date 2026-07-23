@@ -19,6 +19,7 @@ import {
   listTemplates,
   listTemplatesByType,
   materialTypeOf,
+  materialTypeOfOrNull,
   registeredMaterialTypes,
   type MaterialType,
 } from "./index.js";
@@ -181,6 +182,20 @@ describe("sorgu API'si — tür artık manifest'ten okunur, id-sniff'ten değil"
     expect(materialTypeOf("enseigne-panneau")).toBe("tabela");
     expect(materialTypeOf("flyer")).toBe("flyer");
     expect(() => materialTypeOf("olmayan-sablon")).toThrow(/Bilinmeyen şablon/);
+  });
+
+  it("materialTypeOfOrNull kayıtlı id'de materialTypeOf ile AYNI türü döner", () => {
+    for (const e of listTemplates()) {
+      expect(materialTypeOfOrNull(e.manifest.id)).toBe(materialTypeOf(e.manifest.id));
+    }
+  });
+
+  it("materialTypeOfOrNull kayıtsız id'de null döner, FIRLATMAZ (C-P1 sunucu ucu)", () => {
+    expect(materialTypeOfOrNull("olmayan-sablon")).toBe(null);
+    expect(materialTypeOfOrNull("")).toBe(null);
+    /* prototip zinciri kimlik DEĞİLDİR: Object.prototype anahtarı şablon sayılmaz */
+    expect(materialTypeOfOrNull("toString")).toBe(null);
+    expect(materialTypeOfOrNull("constructor")).toBe(null);
   });
 
   it("registeredMaterialTypes kayıtlı 6 türün 6'sını MATERIAL_TYPES sırasıyla döner", () => {
