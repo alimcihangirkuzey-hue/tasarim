@@ -15,6 +15,7 @@ import {
   resolveSelection,
   blockersOf,
   exportRouteOf,
+  sahneSkoru,
   severityOf,
   warningEmphasis,
   type LayoutWarning,
@@ -788,20 +789,16 @@ export function EditorPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             {(() => {
               const all = scenesQ.data ?? [];
-              const isGarment = doc.template_id === "garment";
-              const fabric = String(doc.params["fabric_color"] ?? "");
-              const sorted = [...all].sort((a, b) => {
-                const score = (s: (typeof all)[number]) => {
-                  if (isGarment) {
-                    return (
-                      (s.kind === "garment" ? 2 : 0) +
-                      (s.settings.fabric_color && s.settings.fabric_color === fabric ? 1 : 0)
-                    );
-                  }
-                  return s.kind === "vitrine" || s.kind === "facade" ? 1 : 0;
-                };
-                return score(b) - score(a);
-              });
+              /* Sahne sıralama kararı manifest İLANINDAN okunur
+                 (2026-07-26-onizleme-turleri) — eski template_id==="garment"
+                 sert kodu referans-kopya golden'la çivili (mockup-tercihi.test.ts). */
+              const skor = (s: (typeof all)[number]) =>
+                sahneSkoru(
+                  entry.manifest.mockup_tercihi,
+                  { kind: s.kind, fabric_color: s.settings.fabric_color },
+                  doc.params
+                );
+              const sorted = [...all].sort((a, b) => skor(b) - skor(a));
               if (sorted.length === 0) {
                 return (
                   <>

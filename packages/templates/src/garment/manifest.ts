@@ -52,4 +52,10 @@ export const manifest: TemplateManifest = {
      nöbetçiyle çivili (profil-siddet.test.ts); kalem eklemek o nöbetçiyi
      ve journal kaydını birlikte ister. */
   severity_overrides: { "mono-suggest": "warning", "low-dpi": "blocker" },
+  /* Mockup sahne tercihi (7.2 "Önizleme türleri"): tekstil belgesine garment
+     sahnesi 2 puanla öne gelir; sahnenin fabric_color'ı belgenin fabric_color
+     paramıyla eşleşirse +1 (koyu/renkli kumaş sahne eşleşmesi) — eski
+     EditorPage skorlamasının birebir taşınmışı (referans-kopya golden:
+     mockup-tercihi.test.ts). */
+  mockup_tercihi: { sahne_turleri: ["garment"], sahne_puani: 2, eslesme_parami: "fabric_color" },
 };

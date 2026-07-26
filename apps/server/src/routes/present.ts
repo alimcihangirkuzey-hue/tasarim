@@ -21,6 +21,7 @@ import {
   type SceneKind,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { sunumDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
 import { sceneById } from "./scenes.js";
@@ -97,7 +98,8 @@ export function presentRoutes(app: FastifyInstance): void {
     const day = nowISO().slice(0, 10);
     const dir = path.join(EXPORTS_DIR, project.client_slug);
     await fs.mkdir(dir, { recursive: true });
-    const filename = `${day}_${slugify(project.name)}_a4_v${version}_presentation.pdf`;
+    /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) */
+    const filename = sunumDosyaAdi({ day, projeSlug: slugify(project.name), version });
     const abs = path.join(dir, filename);
 
     let url =

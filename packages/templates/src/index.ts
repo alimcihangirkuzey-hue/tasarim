@@ -19,6 +19,7 @@ export * from "./engine/binding.js";
 export * from "./engine/layout.js";
 export * from "./engine/severity.js";
 export * from "./engine/channels.js";
+export * from "./engine/mockup-tercihi.js";
 export * from "./engine/params.js";
 export * from "./engine/qr.js";
 export * from "./engine/custom-size.js";

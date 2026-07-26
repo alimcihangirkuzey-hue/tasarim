@@ -9,6 +9,13 @@
    okuyucudur; cmyk bağlaşımı round-trip nöbetçisiyle çivilidir
    (dosya-adi.test.ts). AD ŞEMASI DEĞİŞMEDİ — bu modül yalnız ilan.
 
+   SUNUM KANALLARI DA SÖZLEŞMEYE GİRER (8.5'in "her çıktı türü ... uyar"
+   hükmü; journal 2026-07-26-onizleme-turleri): mockup / mockup_hires /
+   presentation / digital_menu adları da satır-içi kuruluyordu (mockup.ts,
+   present.ts, digital-menu.ts) — dosya-adlandirma paketinin "sunum kanalları
+   ayrı karar" şerhi bu ekle KAPANIYOR; dört uç daha okuyucu olur.
+   AD ŞEMASI YİNE DEĞİŞMEDİ — referans-kopya testleri birebirliği çiviler.
+
    Saf ve deterministiktir: fs/path/db yok — birim-test edilebilir. */
 
 /** Belge exportu (print/preview PDF · decoupe/broderie SVG):
@@ -41,4 +48,44 @@ export function garmentDosyaTabani(p: {
 export function cmykTuretilmisAd(printYolu: string): string | null {
   const turetilmis = printYolu.replace(/_print\.pdf$/, "_print-cmyk.pdf");
   return turetilmis === printYolu ? null : turetilmis;
+}
+
+/** Mockup JPG'si: `{gün}_{şablon}_{format}_v{sürüm}_{tür}.jpg` — belge
+    şablonuyla aynı kalıp, uzantı jpg. ÖLÇÜM: iki mockup ucu (mockup.ts)
+    AYNI şablonu kuruyordu, yalnız tür soneki farklıydı — o yüzden ayrı
+    fonksiyon değil TEK fonksiyon + kind paramı. DİKKAT: dosya soneki
+    "mockup-hires" (tire), export_records kind'ı "mockup_hires" (alt çizgi) —
+    bugünkü ayrım birebir korunur. */
+export function mockupDosyaAdi(p: {
+  day: string;
+  templateId: string;
+  format: string;
+  version: number;
+  kind: "mockup" | "mockup-hires";
+}): string {
+  return `${p.day}_${p.templateId}_${p.format}_v${p.version}_${p.kind}.jpg`;
+}
+
+/** Sunum PDF'i (BAT): `{gün}_{proje-slug}_a4_v{sürüm}_presentation.pdf` —
+    format SABİT "a4" (sunum sayfası A4 basar). projeSlug çağıranda
+    slugify(project.name) ile üretilir (slugify @tezgah/shared'de; modül
+    saf/bağımsız kalsın diye slug burada parametredir). */
+export function sunumDosyaAdi(p: {
+  day: string;
+  projeSlug: string;
+  version: number;
+}): string {
+  return `${p.day}_${p.projeSlug}_a4_v${p.version}_presentation.pdf`;
+}
+
+/** Dijital menü HTML'i: `{gün}_{müşteri-slug}_menu-digital_v{sürüm}.html` —
+    tür soneki YOK ("menu-digital" format konumundadır). musteriSlug çağıranda
+    slugify(client.name) ile üretilir (kayıtlı client.slug alanı DEĞİL —
+    bugünkü davranış birebir; klasör adı slug'dan, dosya adı isimden gelir). */
+export function dijitalMenuDosyaAdi(p: {
+  day: string;
+  musteriSlug: string;
+  version: number;
+}): string {
+  return `${p.day}_${p.musteriSlug}_menu-digital_v${p.version}.html`;
 }

@@ -16,6 +16,12 @@ import {
   type TemplateManifest,
 } from "./types.js";
 
+/* Mockup sahne türü sözlüğü — shared'daki SceneKindSchema ile EŞ KÜME.
+   Bilerek LİTERAL: bu dosya @tezgah/shared'a runtime bağ TAŞIMAZ (identity
+   alt-yolunun grafiği büyümez); eş-kümelik testte SceneKindSchema.options ile
+   çapraz doğrulanır (mockup-tercihi.test.ts — sürüklenme sessiz kalamaz). */
+export const MOCKUP_SAHNE_TURLERI = ["vitrine", "facade", "garment", "generic"] as const;
+
 function dogrulaManifest(key: string, m: TemplateManifest): void {
   if (!isMaterialType(m.type)) {
     throw new Error(
@@ -95,6 +101,38 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
           );
         }
       }
+    }
+  }
+  /* Mockup sahne tercihi İLANI (7.2 "Önizleme türleri"): OPSİYONEL — yokluk =
+     çekirdek tercih (severity_overrides emsali); tanımlıysa bozuk ilan
+     YÜKLENEMEZ. eslesme_parami GERÇEK bağ ister: o id'li param manifest'te
+     olmalı — olmayan parama bağlanan eşleşme ölü ilandır. */
+  if (m.mockup_tercihi !== undefined) {
+    const tercih = m.mockup_tercihi;
+    if (!Array.isArray(tercih.sahne_turleri) || tercih.sahne_turleri.length === 0) {
+      throw new Error(
+        `Şablon "${key}": mockup_tercihi.sahne_turleri boş olamaz — türsüz tercih ilan değildir (izinli: ${MOCKUP_SAHNE_TURLERI.join(", ")})`
+      );
+    }
+    for (const tur of tercih.sahne_turleri) {
+      if (!(MOCKUP_SAHNE_TURLERI as readonly string[]).includes(tur)) {
+        throw new Error(
+          `Şablon "${key}": mockup_tercihi bilinmeyen sahne türü "${String(tur)}" içeriyor (izinli: ${MOCKUP_SAHNE_TURLERI.join(", ")})`
+        );
+      }
+    }
+    if (typeof tercih.sahne_puani !== "number" || !Number.isFinite(tercih.sahne_puani) || tercih.sahne_puani <= 0) {
+      throw new Error(
+        `Şablon "${key}": mockup_tercihi.sahne_puani pozitif sonlu sayı olmalı (bulunan: ${String(tercih.sahne_puani)})`
+      );
+    }
+    if (
+      tercih.eslesme_parami !== undefined &&
+      !m.params.some((p) => p.id === tercih.eslesme_parami)
+    ) {
+      throw new Error(
+        `Şablon "${key}": mockup_tercihi.eslesme_parami "${tercih.eslesme_parami}" manifest params listesinde yok (olmayan parama bağlanan eşleşme ölü ilandır)`
+      );
     }
   }
 }
