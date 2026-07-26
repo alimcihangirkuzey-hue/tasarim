@@ -1,3 +1,15 @@
+/* DONMUŞ TABAN — REFACTOR ÖNCESİ KOD. ELLE DÜZENLENMEZ.
+   ============================================================================
+   Bu dosya `git show origin/main:packages/templates/src/menu-grid-cells/analyze.ts`
+   (d229849, CE-bağlama paketi ÖNCESİ) çıktısıdır ve YALNIZCA
+   `composition-differential.test.ts` tarafından kullanılır: eski davranış ile
+   yeni davranış yan yana koşturulup birebir karşılaştırılır.
+
+   NEDEN REPODA DURUYOR: köken iddiası ("çıktı birebir korundu") aksi halde
+   tekrar üretilemez bir ölçüme dayanırdı; sonraki geliştirici iddiayı KENDİ
+   koşturarak doğrular. Üretime dahil değildir. Motor davranışı bilinçli
+   değiştiğinde bu dosya GÜNCELLENMEZ — diferansiyel o değişikliği görünür
+   kılmalıdır; onaylanınca taban yeni commit'ten yeniden çıkarılır. */
 /* menu-grid-cells analiz: yerleşim + uyarılar TEK yerde hesaplanır; hem bileşen
    hem editör paneli bunu okur (M3 tek kaynak, M4 görünür uyarılar, M8 determinizm). */
 
@@ -21,11 +33,6 @@ import {
   type WrapResult,
 } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
-import {
-  resolveOverflowStrategy,
-  strategyDropsContent,
-  type OverflowStrategy,
-} from "../engine/composition.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
 import { CAT_STRIP_H, GRID_GAP, gridRowHeight, pageGeometry, type PageGeometry } from "../parts/geometry.js";
@@ -90,26 +97,6 @@ const CELL_PAD = 4;
 const PRICE_ROW_H = 6;
 const CONT_BAND_H = 14;
 
-/* CE-bağlama: strateji manifest'in `repeater.overflow` ilanından OKUNUR ve
-   düşürme raporlamasını sürer (ilan = davranış, Canonical 4.1). Izgara
-   MEKANİĞİ layoutGrid'de kalır — bilinçli sınır: kategori şeritleri ve
-   multipage devam-sayfası geometrisi, composeGrid'in tekdüze hücre
-   sözleşmesinde ifade edilemez; `flow` (single/multipage) da KULLANICI
-   parametresidir, ilana bağlanmaz (FAZ4 §8 ürün davranışı). İlanın canlı
-   etkisi: düşürme İZNİ ve taşmanın nasıl raporlandığı. */
-
-/** Taşma raporu — composeGrid.strategyViolation sözleşmesinin aynısı:
-    ilan düşürmeye izin veriyorsa görünür taşma uyarısı; "ürün düşmez" ilan
-    edilmişse (flow/shrink-then-flow) sabit yüzeydeki düşme SÖZLEŞME İHLALİ
-    olarak raporlanır — sessizce yutulmaz. Dışarı alındı ki bugün ölü-yol olan
-    ihlal dalı izole birim-testle sınanabilsin (ilan bugün "shrink-then-warn"). */
-export function gridOverflowWarning(strategy: OverflowStrategy, dropped: number): LayoutWarning | null {
-  if (dropped <= 0) return null;
-  return strategyDropsContent(strategy)
-    ? { type: "overflow-items", count: dropped }
-    : { type: "overflow-strategy-violation", declared: strategy, dropped };
-}
-
 export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0): GridAnalysis {
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const theme = resolveTheme(doc.theme_id, client.brandkit);
@@ -159,11 +146,6 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0
   const selected = resolveSelection(client.catalog, doc.selection);
   const flow = selectionFlow(selected);
 
-  /* Strateji manifest'ten (ilan bugün "shrink-then-warn": düşürme izinli —
-     bugünkü davranışla birebir aynı; ilan "ürün düşmez"e çevrilirse düşme
-     ihlal uyarısına döner, sessiz kalmaz) */
-  const strategy = resolveOverflowStrategy(manifest.repeater.overflow, "shrink-then-warn");
-
   let layout: GridLayout;
   let pages = 1;
   if (flowMode === "multipage") {
@@ -173,13 +155,15 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0
     layout = paged[pi];
     pageIndex = pi;
     /* taşma uyarısı yok: sayfa eklendi (M8) — 30 sayfa tavanı aşılırsa yine uyar */
-    const w = gridOverflowWarning(strategy, paged[pages - 1].overflow.length);
-    if (w) warnings.push(w);
+    if (paged[pages - 1].overflow.length > 0) {
+      warnings.push({ type: "overflow-items", count: paged[pages - 1].overflow.length });
+    }
   } else {
     pageIndex = 0;
     layout = layoutGrid(flow, spec);
-    const w = gridOverflowWarning(strategy, layout.overflow.length);
-    if (w) warnings.push(w);
+    if (layout.overflow.length > 0) {
+      warnings.push({ type: "overflow-items", count: layout.overflow.length });
+    }
   }
   if (!assetById(client, chromeSlotValue("logo", doc, scope).value)) {
     warnings.push({ type: "empty-required", slotId: "logo" });
