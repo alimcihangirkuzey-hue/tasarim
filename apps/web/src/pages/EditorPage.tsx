@@ -299,7 +299,8 @@ export function EditorPage() {
   const doCmyk = useMutation({
     mutationFn: () => api.exportCmyk(id),
     onSuccess: (r) => {
-      showToast(`CMYK hazır: v${r.version}`);
+      /* 8.5 dürüstlük: DeviceCMYK dönüşümü gerçek; ICC/PDF-X iddia edilmez */
+      showToast(tf("editor.cmyk_done_honest", { v: r.version }));
       void qc.invalidateQueries({ queryKey: ["exports", id] });
     },
     onError: (e) => showToast((e as Error).message),
@@ -725,6 +726,9 @@ export function EditorPage() {
       {showExportModal && (() => {
         const engeller = blockersOf(warnings, entry.manifest.severity_overrides);
         const digerleri = warnings.filter((w) => severityOf(w, entry.manifest.severity_overrides) !== "blocker");
+        /* 8.5 dürüstlük: rota-farkında nitelik bildirimi — sağlanmayan
+           nitelik (CMYK/PDF-X/ICC) sessiz geçilmez, INFO ile söylenir */
+        const rota = exportRouteOf(entry.manifest.production_channels, doc?.params["mode"]);
         return (
         <div className="modal-back" onClick={() => setShowExportModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -753,6 +757,9 @@ export function EditorPage() {
                 </div>
               </>
             )}
+            <div className="warn-list">
+              <div className="warn info">{t(`editor.honesty_${rota}`)}</div>
+            </div>
             <div className="row" style={{ justifyContent: "flex-end" }}>
               <button className="ghost" onClick={() => setShowExportModal(false)}>
                 {t("editor.cancel")}
