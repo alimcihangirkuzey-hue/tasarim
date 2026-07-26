@@ -22,6 +22,8 @@ export const manifest = {
       default: 10,
       label_tr: "Damga sayısı",
     },
+    /* Canonical 4.4 kontrollü benzersizlik — damga çerçeve dili (flyer/grid emsali) */
+    { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
   ],
   slots: [
     { id: "title", kind: "text", bind: null, default_fr: "CARTE DE FIDÉLITÉ", font_mm: { min: 4.5, max: 6 }, maxLines: 1 },

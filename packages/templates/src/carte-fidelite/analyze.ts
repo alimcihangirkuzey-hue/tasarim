@@ -4,6 +4,7 @@ import type { ClientDTO, DocumentState } from "@tezgah/shared";
 import { assetById, resolveSlotValue, type BindScope } from "../engine/binding.js";
 import { estimateWidth, solveFontScale, type LayoutWarning } from "../engine/layout.js";
 import { paramValue } from "../engine/params.js";
+import { seededVariant } from "../engine/seed.js";
 import { resolveTheme, type Theme } from "../themes.js";
 import { manifest } from "./manifest.js";
 
@@ -19,6 +20,27 @@ export interface Stamp {
   h: number;
 }
 
+/* Canonical 4.4 designSeed — DAMGA ÇERÇEVE DİLİ (flyer/grid deseninin
+   üçüncü ailesi, journal 2026-07-26-designseed-carte). Kartın en görünür
+   tasarım elemanı damga kutularıdır; tek karar tüm damgalara tutarlı
+   uygulanır (4.3), yerleşim/sayı HİÇ etkilenmez. Tuz "carte-cerceve". */
+export interface CarteFrame {
+  stampRx: number;
+  /** null = düz çizgi (strokeDasharray verilmez) */
+  stampDash: string | null;
+}
+
+/** TABAN = bugünkü sabitler birebir (Template damga çerçevesinden taşındı) */
+export const CARTE_CERCEVE_TABAN: CarteFrame = { stampRx: 1.2, stampDash: "1.2 1" };
+
+const CERCEVE = [
+  { stampRx: 0.5, stampDash: "0.9 0.7" },
+  CARTE_CERCEVE_TABAN,
+  { stampRx: 2.2, stampDash: "1.2 1" },
+  { stampRx: 1.2, stampDash: null },
+  { stampRx: 2.2, stampDash: null },
+] as const satisfies readonly CarteFrame[];
+
 export interface FideliteAnalysis {
   theme: Theme;
   scope: BindScope;
@@ -26,6 +48,7 @@ export interface FideliteAnalysis {
   pages: 2;
   stampCount: number;
   stamps: Stamp[];
+  frame: CarteFrame;
   title: { text: string; detached: boolean };
   subtitle: { text: string; detached: boolean };
   reward: { text: string; detached: boolean };
@@ -74,6 +97,14 @@ export function analyzeFidelite(client: ClientDTO, doc: DocumentState): Fidelite
     fits: (f) => estimateWidth(reward.text, f, theme.ratios.heading) <= CARD_W - 10,
   });
 
+  /* designSeed okuma — v1 doğrulaması birebir (doğrudan doc.params; pozitif
+     tamsayı değilse 0 → TABAN NESNESİ aynen) */
+  const rawSeed = doc.params["designSeed"];
+  const designSeed =
+    typeof rawSeed === "number" && Number.isInteger(rawSeed) && rawSeed > 0 ? rawSeed : 0;
+  const frame =
+    designSeed === 0 ? CARTE_CERCEVE_TABAN : seededVariant(designSeed, CERCEVE, "carte-cerceve");
+
   return {
     theme,
     scope,
@@ -81,6 +112,7 @@ export function analyzeFidelite(client: ClientDTO, doc: DocumentState): Fidelite
     pages: 2,
     stampCount,
     stamps,
+    frame,
     title: text("title"),
     subtitle: text("subtitle"),
     reward,
