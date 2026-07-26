@@ -120,8 +120,13 @@ export interface ColumnCompositionRequest<T> {
   /* NOT — burada bir `seed?: string` alanı vardı ve KALDIRILDI: gövdede hiç
      okunmuyordu, farklı seed birebir aynı çıktıyı veriyordu. Bu dosyanın tezi
      "ilan edilen ama uygulanmayan sözleşme olmaz" iken, kapatılan ölü
-     sözleşmenin yerine yenisi açılamaz. Tohumlu varyasyon (Canonical 4.4)
-     eklendiğinde alan `designSeed` adıyla ve GERÇEK etkisiyle gelir.
+     sözleşmenin yerine yenisi açılamaz.
+     ŞERH (designSeed v1 GELDİ, 2026-07-26): tohumlu varyasyon Canonical 4.4
+     uyarınca eklendi ama alan BURAYA GERİ AÇILMADI — motor tohumu tüketmez;
+     tohumlu kararlar şablonun build kapanışında verilir (engine/seed.ts
+     çekirdeği + menu-liste-premium `designSeed` paramı, boşluk ritmi).
+     Tüketilmeyen bir request alanı, kaldırılan ölü sözleşmenin geri
+     açılması olurdu; ihtiyaç doğarsa alan TÜKETEN gövdeyle birlikte gelir.
 
      NOT-2 — burada bir `balanceLastColumn?: boolean` alanı (+ balanceColumns
      işlevi) vardı ve GERİ ÇEKİLDİ (ürün sahibi kararı, 2026-07-26; journal

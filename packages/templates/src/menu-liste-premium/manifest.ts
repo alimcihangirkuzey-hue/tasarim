@@ -53,6 +53,10 @@ export const manifest = {
       default: "review",
       label_tr: "QR kaynağı",
     },
+    /* Canonical 4.4 kontrollü benzersizlik: 0 = taban ritim (bugünkü yerleşim
+       birebir); 1+ tohumları boşluk ritmini KAPALI varyant kümesinden seçer
+       (deterministik, belgeyle taşınır, kullanıcı kilitleyebilir) */
+    { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
   ],
   slots: [
     ...CHROME_SLOTS,
