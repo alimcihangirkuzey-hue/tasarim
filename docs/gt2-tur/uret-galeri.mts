@@ -133,7 +133,7 @@ function listeKartlari(n: number, c: ClientDTO): Kart[] {
     for (let p = 0; p < a.pages.length; p++) {
       kartlar.push({
         baslik: `liste · ${n} ürün · ${columns} sütun · sayfa ${p + 1}/${a.pages.length}`,
-        olcum: `font ${r2(a.nameFont)}mm · ${a.pages.length} sayfa`,
+        olcum: `font ${r2(a.nameFont)}mm · ${a.pages.length} sayfa · denge ${r2(a.imbalance_mm)}mm`,
         uyarilar: p === 0 ? a.warnings.map((w) => JSON.stringify(w)) : [],
         svg: svgOf("menu-liste-premium", d, c, p),
       });

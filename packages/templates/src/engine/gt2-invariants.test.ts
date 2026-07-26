@@ -102,6 +102,10 @@ describe("GT-2 — menu-liste-premium (flow: ürün düşmez)", () => {
             if (son) expect(son.y + son.row.h).toBeLessThanOrEqual(colH + EPS);
           }
         }
+
+        /* denge ÖLÇÜMÜ dışa verilir (4.3 — yargı değil veri; galeri gösterir) */
+        expect(Number.isFinite(a.imbalance_mm)).toBe(true);
+        expect(a.imbalance_mm).toBeGreaterThanOrEqual(0);
       });
     }
   }

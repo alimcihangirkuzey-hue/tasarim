@@ -108,6 +108,9 @@ export interface ListAnalysis {
   /** FAZ5 §3: yoğun (3 sütun) mod metrikleri — Template aynısını okur */
   metrics: ListMetrics;
   qr: QrRender | null;
+  /** Canonical 4.3 denge ÖLÇÜMÜ (son sayfa sütun doluluk farkı, mm) — yargı
+      değil veri: GT-2 galerisi kart altında gösterir, simetri yargısı insanda */
+  imbalance_mm: number;
 }
 
 const COL_GAP = 8;
@@ -336,5 +339,6 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
     nameFont: composed.font_mm,
     metrics,
     qr,
+    imbalance_mm: composed.metrics.imbalance_mm,
   };
 }

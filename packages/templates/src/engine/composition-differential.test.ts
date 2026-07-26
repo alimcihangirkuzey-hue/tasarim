@@ -17,7 +17,10 @@
 
 import { describe, expect, it } from "vitest";
 import { analyzeList } from "../menu-liste-premium/analyze.js";
-import { analyzeList as analyzeListEski } from "../menu-liste-premium/__baseline.js";
+import { analyzeList as analyzeListEskiHam } from "../menu-liste-premium/__baseline.js";
+/* Taban ELLE DÜZENLENMEZ; sonradan eklenen additive alanlar (imbalance_mm)
+   tabanda yoktur — parmak izi onları okumadığı için tip burada genişletilir */
+const analyzeListEski = analyzeListEskiHam as unknown as typeof analyzeList;
 import { analyzeFlyer } from "../flyer/analyze.js";
 import { analyzeFlyer as analyzeFlyerEski } from "../flyer/__baseline.js";
 import { analyzeTrifold } from "../menu-trifold/analyze.js";
