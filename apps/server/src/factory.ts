@@ -126,6 +126,7 @@ ${slots}
   ],${repeater}
   production_channels: ["print", "preview"],
   production_techniques: ["impression"],
+  production_substrate: "kagit",
   themes: ["or-noir", "aras-orange", "velours-rouge"],${provenance}
 };
 `;

@@ -87,6 +87,7 @@ describe("yük-zamanı bağ İCRASI — ayrışan ilan yüklenemez", () => {
       themes: [],
       production_channels: ["print", "preview"],
       production_techniques: ["impression"],
+      production_substrate: "kagit",
       ...patch,
     },
     Component: (() => null) as unknown as TemplateEntry["Component"],
@@ -132,6 +133,9 @@ describe("yük-zamanı bağ İCRASI — ayrışan ilan yüklenemez", () => {
         sahteGiris({
           production_channels: ["print", "preview", "decoupe"] as readonly ProductionChannel[],
           production_techniques: ["impression", "decoupe"],
+          /* uretim-substrati çapraz bağı: decoupe'u taşıyan substrat vinildir —
+             sahte taban "kagit"te kalsaydı tutarlı ilan haksız yere düşerdi */
+          production_substrate: "vinil",
           params: [
             { id: "mode", type: "choice", options: ["impression", "decoupe"], default: "impression", label_tr: "Mod" },
           ] as TemplateManifest["params"],

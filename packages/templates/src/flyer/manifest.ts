@@ -51,5 +51,7 @@ export const manifest: TemplateManifest = {
   },
   production_channels: ["print", "preview"],
   production_techniques: ["impression"],
+  /* substrat (7.2/501 malzeme yarısı): el ilanı baskı kâğıdı — yalnız impression taşır */
+  production_substrate: "kagit",
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 };

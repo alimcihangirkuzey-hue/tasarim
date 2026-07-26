@@ -41,6 +41,27 @@ export const KANAL_GEREKTIRIR: Record<ProductionChannel, ProductionTechnique> = 
   broderie: "broderie",
 };
 
+/* ── İzinli üretim substratları (7.2/501 "İzinli üretim teknikleri ve
+   malzemeler" maddesinin MALZEME yarısı; 4.5/327 "teknik uygunluk (hangi
+   teknik hangi malzemede)"; 8.5/643 "teknik–malzeme uyumu") ───────────────
+   Kapalı sözlük: kâğıt (kagit) · karton (karton) · vinil (vinil) · panel
+   (panel) · kumaş (kumas). Substrat FİZİKSEL TAŞIYICIDIR ve teknikle zorunlu
+   ilişkilidir: her teknik her taşıyıcıda uygulanamaz (kâğıda nakış atılmaz,
+   kartona kesim kanalı açılmaz) — SUBSTRAT_TEKNIKLERI bu ilişkinin İLANIDIR
+   (KANAL_GEREKTIRIR emsali) ve registry-core çapraz bağı yük zamanında
+   doğrular: substratın taşıyamadığı teknik ilan edilemez. */
+export const PRODUCTION_SUBSTRATES = ["kagit", "karton", "vinil", "panel", "kumas"] as const;
+export type ProductionSubstrate = (typeof PRODUCTION_SUBSTRATES)[number];
+
+/** Substrat → üzerinde uygulanabilir teknikler (teknik–malzeme bağının tek kaynağı) */
+export const SUBSTRAT_TEKNIKLERI: Record<ProductionSubstrate, readonly ProductionTechnique[]> = {
+  kagit: ["impression"],
+  karton: ["impression"],
+  vinil: ["impression", "decoupe"],
+  panel: ["impression"],
+  kumas: ["impression", "broderie"],
+};
+
 /* ── Mockup sahne tercihi İLANI (Canonical 7.2 "Önizleme türleri") ────────
    Önizleme TÜRLERİ bugün tür-bağımsız ölçüldü: dört sunum rotası (mockup/
    mockup_hires/presentation/digital_menu) şablon/materyal bekçisiz çalışır
@@ -222,6 +243,18 @@ export interface TemplateManifest {
    * paramlarının seçenekleri bu kümenin alt kümesi olmalı.
    */
   production_techniques: readonly ProductionTechnique[];
+  /**
+   * Üretim substratı İLANI (7.2/501 "İzinli üretim teknikleri ve malzemeler"
+   * maddesinin MALZEME yarısı; 4.5/327 "hangi teknik hangi malzemede";
+   * 8.5/643 "teknik–malzeme uyumu"). ZORUNLU ve TEKİL — taşıyıcısını
+   * bildirmeyen profil, fiziği bilinmeyen profildir. Registry bilinmeyen
+   * üyeyi reddeder ve çapraz bağı doğrular: her ilanlı teknik
+   * SUBSTRAT_TEKNIKLERI[substrat] içinde olmalı — ilan ile fizik ayrışamaz.
+   * ŞERH: "kumas" adı bilinçlidir — MaterialType."tekstil" ürün-ailesi
+   * kimliğidir, substrat fiziksel taşıyıcıdır; ad çakışması iki boyutu tek
+   * boyut sanmaya yol açardı.
+   */
+  production_substrate: ProductionSubstrate;
   /** Fabrika üretimi şablonlarda içe alma künyesi (mimar #20); el yazımıda yoktur */
   provenance?: TemplateProvenance;
 }

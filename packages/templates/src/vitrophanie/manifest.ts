@@ -38,6 +38,9 @@ export function makeManifest(variant: VitroVariant, name_tr: string): TemplateMa
     production_channels: ["print", "preview", "decoupe"],
     /* mode paramının seçenekleriyle birebir: baskı + kesim (registry bağı) */
     production_techniques: ["impression", "decoupe"],
+    /* substrat (7.2/501 malzeme yarısı): cam kaplama vinili — impression VE
+       decoupe taşıyan tek taşıyıcı; üç vitro kompozisyonu TEK noktadan ilan */
+    production_substrate: "vinil",
     themes: ["or-noir", "aras-orange", "velours-rouge"],
   };
 }
