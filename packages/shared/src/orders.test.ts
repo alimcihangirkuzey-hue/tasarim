@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  OPENING_KIT, canTransition, dueLevel, missingFields, needsMiroirWarning } from "./orders.js";
+  OPENING_KIT, PRICING_INPUTS, canTransition, dueLevel, missingFields, needsMiroirWarning,
+  pricingInputsOf } from "./orders.js";
 import type { OrderItemLike } from "./orders.js";
+import { ProductTypeSchema, type ProductType } from "./schemas.js";
 
 const base = (p: Partial<OrderItemLike>): OrderItemLike => ({
   product_type: "diger",
@@ -50,6 +52,132 @@ describe("missingFields (FAZ2-GOREV §2.2 matrisi)", () => {
 
   it("diger: zorunlu alan yok", () => {
     expect(missingFields(base({}))).toEqual([]);
+  });
+});
+
+/* ── Fiyatlandırma girdileri İLANI (7.2/4.5; journal 2026-07-26) ─────────── */
+
+describe("NÖBETÇİ: girdi ilanı tablosu TAM olarak bu (tür tür, elle)", () => {
+  it("PRICING_INPUTS beklenen tabloyla BİREBİR eşleşir", () => {
+    expect(
+      PRICING_INPUTS,
+      "Girdi matrisi değişmiş: sipariş şeması/fiyat girdisi eklemek ürün kararıdır — " +
+        "journal kaydı ister; form uygulanabilirliği ve durum kapısı bu ilandan okur"
+    ).toEqual({
+      menu: [{ alan: "format", zorunlu: true }],
+      flyer: [{ alan: "format", zorunlu: true }],
+      trifold: [{ alan: "format", zorunlu: true }],
+      fidelite: [{ alan: "format", zorunlu: true }],
+      vitrophanie: [
+        { alan: "width_cm", zorunlu: true },
+        { alan: "height_cm", zorunlu: true },
+        { alan: "side", zorunlu: true },
+        { alan: "mode", zorunlu: true },
+      ],
+      tabela: [
+        { alan: "width_cm", zorunlu: true },
+        { alan: "height_cm", zorunlu: true },
+      ],
+      tisort: [
+        { alan: "qty", zorunlu: true },
+        { alan: "technique", zorunlu: true },
+        { alan: "sizes", zorunlu: false },
+      ],
+      onluk: [
+        { alan: "qty", zorunlu: true },
+        { alan: "technique", zorunlu: true },
+        { alan: "sizes", zorunlu: false },
+      ],
+      diger: [],
+    });
+  });
+
+  it("opsiyonel ilan (sizes) missingFields'a HİÇBİR doluluk durumunda girmez", () => {
+    expect(missingFields(base({ product_type: "tisort", qty: 2, details: { technique: "impression" } }))).toEqual([]);
+    expect(
+      missingFields(base({ product_type: "tisort", qty: 2, details: { technique: "impression", sizes: "M:2" } }))
+    ).toEqual([]);
+  });
+});
+
+describe("DİFERANSİYEL: jenerik okuyucu ≡ sökülen switch (tam kombinasyon taraması)", () => {
+  /* FAZ2 §2.2 switch'inin REFERANS KOPYASI — orders.ts'ten sökülen hâl, birebir */
+  function eskiMissingFields(item: OrderItemLike): string[] {
+    const out: string[] = [];
+    const d = item.details ?? {};
+    switch (item.product_type) {
+      case "vitrophanie":
+        if (!item.width_cm) out.push("width_cm");
+        if (!item.height_cm) out.push("height_cm");
+        if (!d.side) out.push("side");
+        if (!d.mode) out.push("mode");
+        break;
+      case "tabela":
+        if (!item.width_cm) out.push("width_cm");
+        if (!item.height_cm) out.push("height_cm");
+        break;
+      case "tisort":
+      case "onluk":
+        if (!item.qty || item.qty < 1) out.push("qty");
+        if (!d.technique) out.push("technique");
+        break;
+      case "menu":
+      case "trifold":
+      case "flyer":
+      case "fidelite":
+        if (!d.format) out.push("format");
+        break;
+      case "diger":
+        break;
+    }
+    return out;
+  }
+
+  it("9 tür × tüm doluluk kombinasyonlarında (sıra dahil) birebir aynı", () => {
+    const qtyler = [0, 1, 5];
+    const olculer = [null, 120] as const;
+    const detayVaryantlari = [
+      {},
+      { side: "interieur" as const },
+      { mode: "decoupe" as const },
+      { technique: "broderie" as const },
+      { format: "a3" },
+      { sizes: "M:2, L:3" },
+      { side: "exterieur" as const, mode: "impression" as const, technique: "impression" as const, format: "a4", sizes: "S:1" },
+    ];
+    let sayac = 0;
+    for (const product_type of ProductTypeSchema.options) {
+      for (const qty of qtyler)
+        for (const width_cm of olculer)
+          for (const height_cm of olculer)
+            for (const details of detayVaryantlari) {
+              const item = { product_type, qty, width_cm, height_cm, details };
+              expect(missingFields(item), JSON.stringify(item)).toEqual(eskiMissingFields(item));
+              sayac++;
+            }
+    }
+    expect(sayac).toBe(9 * 3 * 2 * 2 * 7); /* 756 kombinasyon — tarama boş dönmedi */
+  });
+});
+
+describe("pricingInputsOf — formun uygulanabilirlik kaynağı", () => {
+  it("her tür için tabloyla aynı referansı döner (kopya değil)", () => {
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      expect(pricingInputsOf(t)).toBe(PRICING_INPUTS[t]);
+    }
+  });
+
+  it("eski form koşullarının küme karşılığı: vitro∪tabela=w/h · yalnız vitro=side/mode · tekstil=qty/technique/sizes · baskı dörtlüsü=format", () => {
+    const iceren = (t: ProductType, alan: string): boolean =>
+      pricingInputsOf(t).some((g) => g.alan === alan);
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      expect(iceren(t, "width_cm"), t).toBe(t === "vitrophanie" || t === "tabela");
+      expect(iceren(t, "side"), t).toBe(t === "vitrophanie");
+      expect(iceren(t, "mode"), t).toBe(t === "vitrophanie");
+      expect(iceren(t, "technique"), t).toBe(t === "tisort" || t === "onluk");
+      expect(iceren(t, "sizes"), t).toBe(t === "tisort" || t === "onluk");
+      expect(iceren(t, "format"), t).toBe(["menu", "trifold", "flyer", "fidelite"].includes(t));
+    }
   });
 });
 
