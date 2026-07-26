@@ -40,6 +40,10 @@ export const manifest: TemplateManifest = {
   production_channels: ["png", "broderie"],
   /* technique paramının seçenekleriyle birebir: baskı + nakış (registry bağı) */
   production_techniques: ["impression", "broderie"],
+  /* substrat (7.2/501 malzeme yarısı): kumaş — impression VE broderie taşıyan
+     tek taşıyıcı. Ad "tekstil" DEĞİL bilinçli: type:"tekstil" ürün-ailesi
+     kimliğidir, "kumas" fiziksel taşıyıcı (şerh: types.ts production_substrate) */
+  production_substrate: "kumas",
   themes: ["or-noir", "aras-orange", "velours-rouge"],
   /* Profil şiddet katmanı (4.5): koyu kumaşta renkli logo tekstilde salt bir
      "öneri" değil, üretim riskidir (baskı/nakış sonucu ekranda görünenden

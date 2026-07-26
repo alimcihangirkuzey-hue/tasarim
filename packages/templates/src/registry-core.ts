@@ -9,7 +9,9 @@ import {
   KANAL_GEREKTIRIR,
   MATERIAL_TYPES,
   PRODUCTION_CHANNELS,
+  PRODUCTION_SUBSTRATES,
   PRODUCTION_TECHNIQUES,
+  SUBSTRAT_TEKNIKLERI,
   isMaterialType,
   type ProductionChannel,
   type ProductionTechnique,
@@ -88,6 +90,23 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
     if (!kanallar.some((k) => KANAL_GEREKTIRIR[k] === teknik)) {
       throw new Error(
         `Şablon "${key}": "${teknik}" tekniği ilanlı ama onu üreten hiçbir kanal ilanlı değil (kanalsız teknik ölü ilandır)`
+      );
+    }
+  }
+  /* Üretim substratı (7.2/501 MALZEME yarısı; 4.5/8.5 teknik–malzeme uyumu):
+     taşıyıcısını bildirmeyen/bilinmeyen bildiren profil yüklenemez */
+  if (!(PRODUCTION_SUBSTRATES as readonly string[]).includes(m.production_substrate)) {
+    throw new Error(
+      `Şablon "${key}": bilinmeyen substrat "${String(m.production_substrate)}" (izinli: ${PRODUCTION_SUBSTRATES.join(", ")})`
+    );
+  }
+  /* Çapraz bağ: substratın taşıyamadığı teknik ilan edilemez — kâğıda nakış
+     atılmaz; ilan ile fizik ayrışırsa yük zamanında patlar, sessiz kalmaz */
+  const substratTeknikleri = SUBSTRAT_TEKNIKLERI[m.production_substrate];
+  for (const teknik of m.production_techniques) {
+    if (!substratTeknikleri.includes(teknik)) {
+      throw new Error(
+        `Şablon "${key}": teknik "${teknik}" substrat "${m.production_substrate}" üzerinde uygulanamaz (izinli: ${substratTeknikleri.join(", ")})`
       );
     }
   }

@@ -28,5 +28,7 @@ export const manifest: TemplateManifest = {
   slots: SLOTS,
   production_channels: ["print", "preview"],
   production_techniques: ["impression"],
+  /* substrat (7.2/501 malzeme yarısı): rijit tabela paneli — yalnız impression taşır */
+  production_substrate: "panel",
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 };

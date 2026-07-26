@@ -37,8 +37,14 @@ export type { KanalNitelikBildirimi } from "../engine/channels.js";
 export { PRODUCTION_CHANNELS } from "../types.js";
 export type { ProductionChannel } from "../types.js";
 
+/* Üretim substratı katmanı (7.2/501 malzeme yarısı; 4.5/8.5 teknik–malzeme
+   uyumu): sözlük ve teknik–substrat bağı types.ts'ten aynen geçer — type-only
+   olmayan iki sabit de saf veridir, alt-yolun react'sız grafiği bozulmaz. */
+export { PRODUCTION_SUBSTRATES, SUBSTRAT_TEKNIKLERI } from "../types.js";
+export type { ProductionSubstrate } from "../types.js";
+
 import type { SeverityOverrides } from "../engine/severity.js";
-import type { ProductionChannel } from "../types.js";
+import type { ProductionChannel, ProductionSubstrate } from "../types.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -92,6 +98,15 @@ export function severityOverridesOf(id: string): SeverityOverrides | undefined {
     belgeleri print/preview üretmeye devam eder; kayıtlı sınır, journal). */
 export function productionChannelsOf(id: string): readonly ProductionChannel[] | null {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_channels : null;
+}
+
+/** Üretim substratı ilanı sorgusu (7.2/501 malzeme yarısı; 4.5/8.5 teknik–
+    malzeme uyumu) — şablonun fiziksel taşıyıcısı. Kayıtsız id (fabrika/
+    generated ve süreç sonrası taze kayıt) null döner, FIRLATMAZ —
+    productionChannelsOf ile aynı sözleşme (Object.hasOwn: prototip zinciri
+    kimlik değildir). */
+export function productionSubstrateOf(id: string): ProductionSubstrate | null {
+  return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_substrate : null;
 }
 
 /* ── SİPARİŞ→BELGE KÖPRÜSÜ (7.2/4.5; journal 2026-07-26-siparis-belge-koprusu)

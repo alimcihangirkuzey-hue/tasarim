@@ -37,5 +37,7 @@ export const manifest = {
   ],
   production_channels: ["print", "preview"],
   production_techniques: ["impression"],
+  /* substrat (7.2/501 malzeme yarısı): sadakat kartı gövdesi karton — yalnız impression taşır */
+  production_substrate: "karton",
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 } satisfies TemplateManifest;

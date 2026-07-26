@@ -144,6 +144,7 @@ describe("bozuk mockup_tercihi ilanı kayıt defterinden geçemez", () => {
       themes: [],
       production_channels: ["print", "preview"],
       production_techniques: ["impression"],
+      production_substrate: "kagit",
       ...patch,
     },
     Component: (() => null) as unknown as TemplateEntry["Component"],
