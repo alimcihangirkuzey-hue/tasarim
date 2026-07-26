@@ -5,7 +5,8 @@ import {
   defaultBrandKit,
   type ClientDTO,
 } from "@tezgah/shared";
-import { analyzeGrid } from "./analyze.js";
+import { analyzeGrid, gridOverflowWarning } from "./analyze.js";
+import { manifest } from "./manifest.js";
 
 function makeClient(overrides: Partial<ClientDTO> = {}): ClientDTO {
   return {
@@ -166,5 +167,33 @@ describe("analyzeGrid", () => {
     target.prices = []; // fiyat-bekliyor
     const a = analyzeGrid(client, baseDoc());
     expect(a.warnings.some((w) => w.type === "empty-price" && w.itemId === target.id)).toBe(true);
+  });
+});
+
+describe("gridOverflowWarning — strateji ilanı taşma raporunu sürer (CE-bağlama)", () => {
+  it("düşürme izinli ilan (bugünkü manifest) → overflow-items; taşma yoksa null", () => {
+    expect(gridOverflowWarning("shrink-then-warn", 3)).toEqual({ type: "overflow-items", count: 3 });
+    expect(gridOverflowWarning("truncate-with-warning", 1)).toEqual({ type: "overflow-items", count: 1 });
+    expect(gridOverflowWarning("shrink-then-warn", 0)).toBe(null);
+  });
+
+  it("'ürün düşmez' ilanı + sabit yüzeyde düşme → SÖZLEŞME İHLALİ uyarısı (bugün ölü-yol, dal kilitli)", () => {
+    /* İlan bugün "shrink-then-warn" olduğu için bu dal canlıda hiç koşmaz;
+       ilan bir gün flow'a çevrilirse düşme SESSİZ overflow-items'a değil,
+       görünür ihlale döner — composeGrid.strategyViolation sözleşmesinin aynısı */
+    expect(gridOverflowWarning("flow", 5)).toEqual({
+      type: "overflow-strategy-violation",
+      declared: "flow",
+      dropped: 5,
+    });
+    expect(gridOverflowWarning("shrink-then-flow", 2)).toEqual({
+      type: "overflow-strategy-violation",
+      declared: "shrink-then-flow",
+      dropped: 2,
+    });
+  });
+
+  it("manifest ilanı bugün 'shrink-then-warn' — canlı davranışın ihlal DEĞİL düz taşma ürettiğinin dayanağı", () => {
+    expect(manifest.repeater.overflow).toBe("shrink-then-warn");
   });
 });

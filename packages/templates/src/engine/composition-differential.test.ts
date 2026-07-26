@@ -20,6 +20,10 @@ import { analyzeList } from "../menu-liste-premium/analyze.js";
 import { analyzeList as analyzeListEski } from "../menu-liste-premium/__baseline.js";
 import { analyzeFlyer } from "../flyer/analyze.js";
 import { analyzeFlyer as analyzeFlyerEski } from "../flyer/__baseline.js";
+import { analyzeTrifold } from "../menu-trifold/analyze.js";
+import { analyzeTrifold as analyzeTrifoldEski } from "../menu-trifold/__baseline.js";
+import { analyzeGrid } from "../menu-grid-cells/analyze.js";
+import { analyzeGrid as analyzeGridEski } from "../menu-grid-cells/__baseline.js";
 import {
   BrandKitSchema,
   CatalogSchema,
@@ -178,6 +182,146 @@ describe("DİFERANSİYEL — flyer: eski kod ≡ yeni kod", () => {
         const yeni = analyzeFlyer(c, doc).warnings.filter((w) => w.type === "overflow-items");
         const eski = analyzeFlyerEski(c, doc).warnings.filter((w) => w.type === "overflow-items");
         expect(yeni, `${format} n=${n}`).toEqual(eski);
+      }
+    }
+  });
+});
+
+/* ── CE-bağlama paketi: menu-trifold + menu-grid-cells ─────────────────────
+   Tabanlar origin/main@d229849'dan (bağlama ÖNCESİ) çıkarıldı. */
+
+function fpTrifold(fn: typeof analyzeTrifold, c: ClientDTO, params: Record<string, unknown>) {
+  const a = fn(c, DocumentStateSchema.parse({ template_id: "menu-trifold", params }));
+  return JSON.stringify({
+    colH: r3(a.colH),
+    showDesc: a.showDesc,
+    overflowCount: a.overflowCount,
+    warnings: a.warnings.map((w) => JSON.stringify(w)).sort(),
+    flap: a.flapItems,
+    columns: a.innerColumns.map((col) => ({
+      x: r3(col.x),
+      w: r3(col.w),
+      rows: col.rows.map((pl) => ({
+        k: pl.row.kind,
+        y: r3(pl.y),
+        h: r3(pl.row.h),
+        /* metin içeriği de karşılaştırılır: sarma/font kayması yakalanır */
+        t:
+          pl.row.kind === "item"
+            ? [
+                pl.row.item!.id,
+                pl.row.nameLines!.join("|"),
+                r3(pl.row.nameFont!),
+                (pl.row.descLines ?? []).join("|"),
+                r3(pl.row.descFont ?? 0),
+                pl.row.priceText,
+              ].join("//")
+            : [pl.row.name, pl.row.note ?? ""].join("//"),
+      })),
+    })),
+  });
+}
+
+describe("DİFERANSİYEL — menu-trifold: eski kod ≡ yeni kod", () => {
+  const eskiT = analyzeTrifoldEski as unknown as typeof analyzeTrifold;
+  const desc = [undefined, true, false];
+  for (const [ad, cats, per, opts] of SEKILLER) {
+    it(`${ad}: showDesc kombinasyonlarında birebir aynı`, () => {
+      const c = client(cats, per, opts);
+      for (const showDesc of desc) {
+        const params: Record<string, unknown> = {};
+        if (showDesc !== undefined) params.showDesc = showDesc;
+        const etiket = `${ad} ${JSON.stringify(params)}`;
+        expect(fpTrifold(analyzeTrifold, c, params), etiket).toBe(fpTrifold(eskiT, c, params));
+      }
+    }, 60_000);
+  }
+
+  it("taşma uyarısı ve sayısı eski davranışla aynı (yoğunluk taraması)", () => {
+    for (const per of [1, 5, 10, 20, 40, 80]) {
+      const c = client(3, per);
+      const doc = DocumentStateSchema.parse({ template_id: "menu-trifold", params: {} });
+      const yeni = analyzeTrifold(c, doc);
+      const eski = analyzeTrifoldEski(c, doc);
+      expect(yeni.overflowCount, `per=${per}`).toBe(eski.overflowCount);
+      expect(
+        yeni.warnings.filter((w) => w.type === "overflow-items"),
+        `per=${per}`
+      ).toEqual(eski.warnings.filter((w) => w.type === "overflow-items"));
+    }
+  });
+});
+
+function fpGrid(fn: typeof analyzeGrid, c: ClientDTO, params: Record<string, unknown>, pageIndex = 0) {
+  const a = fn(c, DocumentStateSchema.parse({ template_id: "menu-grid-cells", params }), pageIndex);
+  return JSON.stringify({
+    format: a.format,
+    cols: a.cols,
+    pages: a.pages,
+    pageIndex: a.pageIndex,
+    flowMode: a.flowMode,
+    contBand: a.contBand,
+    warnings: a.warnings.map((w) => JSON.stringify(w)).sort(),
+    placed: a.layout.placed.map((p) =>
+      p.kind === "cell"
+        ? { k: "cell", id: p.item.id, x: r3(p.x), y: r3(p.y), w: r3(p.w), h: r3(p.h) }
+        : { k: "cat", id: p.category.id, x: r3(p.x), y: r3(p.y), w: r3(p.w), h: r3(p.h) }
+    ),
+    overflow: a.layout.overflow.map((o) => o.item.id),
+    cells: [...a.cells.entries()].map(([id, cell]) => ({
+      id,
+      n: [cell.name.lines.join("|"), r3(cell.name.font_mm), cell.name.truncated].join("//"),
+      d: cell.desc ? [cell.desc.lines.join("|"), r3(cell.desc.font_mm)].join("//") : null,
+      p: cell.prices.length,
+      f: cell.photoBox ? [r3(cell.photoBox.x), r3(cell.photoBox.y), r3(cell.photoBox.w), r3(cell.photoBox.h)].join(",") : null,
+    })),
+  });
+}
+
+describe("DİFERANSİYEL — menu-grid-cells: eski kod ≡ yeni kod", () => {
+  const eski = analyzeGridEski as unknown as typeof analyzeGrid;
+  const formatlar = ["a4-portrait", "a4-landscape", "a3-portrait"];
+  const kolonlar = [undefined, 2, 3, 4, 5];
+  const akis = [undefined, "single", "multipage"];
+
+  for (const [ad, cats, per, opts] of SEKILLER) {
+    it(`${ad}: format × kolon × akış kombinasyonlarında birebir aynı`, () => {
+      const c = client(cats, per, opts);
+      let n = 0;
+      for (const format of formatlar) {
+        for (const cols of kolonlar) {
+          for (const flow of akis) {
+            const params: Record<string, unknown> = { format };
+            if (cols !== undefined) params.cols = cols;
+            if (flow !== undefined) params.flow = flow;
+            const etiket = `${ad} ${JSON.stringify(params)}`;
+            expect(fpGrid(analyzeGrid, c, params), etiket).toBe(fpGrid(eski, c, params));
+            n++;
+          }
+        }
+      }
+      expect(n).toBeGreaterThan(30);
+    }, 60_000);
+  }
+
+  it("multipage DEVAM sayfaları da birebir aynı (bant + yerleşim)", () => {
+    const c = client(10, 20);
+    const params = { flow: "multipage", cols: 3 };
+    const doc = DocumentStateSchema.parse({ template_id: "menu-grid-cells", params });
+    const pages = analyzeGrid(c, doc).pages;
+    expect(pages).toBe((eski(c, doc) as ReturnType<typeof analyzeGrid>).pages);
+    for (let pi = 0; pi < pages; pi++) {
+      expect(fpGrid(analyzeGrid, c, params, pi), `sayfa ${pi}`).toBe(fpGrid(eski, c, params, pi));
+    }
+    expect(pages).toBeGreaterThan(1); // tarama gerçekten çok sayfa ölçtü
+  });
+
+  it("showDesc + priceStyle kombinasyonları da birebir aynı", () => {
+    const c = client(4, 9);
+    for (const showDesc of [true, false]) {
+      for (const priceStyle of ["arrow", "plain"]) {
+        const params = { showDesc, priceStyle };
+        expect(fpGrid(analyzeGrid, c, params), JSON.stringify(params)).toBe(fpGrid(eski, c, params));
       }
     }
   });

@@ -1,13 +1,23 @@
-/* menu-trifold analiz — iç yüz 3 sütunlu liste akışı; ÖNCE fonta biner,
-   3 sütuna da sığmazsa sığmayanı görünür taşma uyarısıyla dışarıda bırakır
-   (M8). Trifold fiziksel olarak tek yüzdür; sayfa eklenemez.
+/* DONMUŞ TABAN — REFACTOR ÖNCESİ KOD. ELLE DÜZENLENMEZ.
+   ============================================================================
+   Bu dosya `git show origin/main:packages/templates/src/menu-trifold/analyze.ts`
+   (d229849, CE-bağlama paketi ÖNCESİ) çıktısıdır ve YALNIZCA
+   `composition-differential.test.ts` tarafından kullanılır: eski davranış ile
+   yeni davranış yan yana koşturulup birebir karşılaştırılır.
 
-   CE-bağlama: strateji artık manifest'in `repeater.overflow` ilanından OKUNUR
-   ve kompozisyon paylaşılan motorda (composeColumns) koşar — ilan ile davranış
-   ayrışamaz (Canonical 4.1). Eski `flowColumns`un SABİT KODLADIĞI kategori
-   yapıştırması (kategori sütun sonunda tek başına kalmaz) motorun keepWithNext
-   callback'iyle birebir taşındı; çıktı eşdeğerliği refactor-öncesi __baseline
-   ile diferansiyel testte kanıtlıdır (composition-differential.test.ts). */
+   NEDEN REPODA DURUYOR: köken iddiası ("çıktı birebir korundu") aksi halde
+   tekrar üretilemez bir ölçüme dayanırdı; sonraki geliştirici iddiayı KENDİ
+   koşturarak doğrular. Üretime dahil değildir. Motor davranışı bilinçli
+   değiştiğinde bu dosya GÜNCELLENMEZ — diferansiyel o değişikliği görünür
+   kılmalıdır; onaylanınca taban yeni commit'ten yeniden çıkarılır. */
+/* menu-trifold analiz — iç yüz 3 sütunlu liste akışı (satır motoru yeniden kullanımı);
+   ÖNCE fonta biner, 3 sütuna da sığmazsa sığmayanı görünür taşma uyarısıyla
+   dışarıda bırakır (M8) — yani "shrink-then-warn". Trifold fiziksel olarak tek
+   yüzdür; sayfa eklenemez.
+
+   ŞERH: bu şablon manifest'teki `repeater.overflow` ilanını HENÜZ OKUMUYOR,
+   davranışı burada sabit kodlu. İlan ile davranış (manifest.ts'te) hizalandı
+   ama bağ kurulmadı — motora bağlama ayrı pakettir. */
 
 import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
@@ -17,10 +27,12 @@ import {
   selectionFlow,
   type BindScope,
 } from "../engine/binding.js";
-import { composeColumns, resolveOverflowStrategy } from "../engine/composition.js";
 import {
   estimateWidth,
+  flowColumns,
+  solveFontScale,
   wrapText,
+  type FlowBlock,
   type LayoutWarning,
 } from "../engine/layout.js";
 import { paramValue } from "../engine/params.js";
@@ -169,32 +181,38 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
     return rows;
   };
 
-  /* KOMPOZİSYON — strateji manifest'ten OKUNUR (ilan = davranış). Bu şablonun
-     ilanı "shrink-then-warn": 3 sütunlu TEK yüze sığdırmak için fonta biner;
-     min'de de sığmıyorsa taşanlar görünür uyarıya döner (targetPages/maxPages 1
-     — trifold sayfa ekleyemez). keepWithNext: kategori, eski flowColumns'un
-     sabit kodladığı yapıştırmanın birebir taşınmışıdır. */
-  const strategy = resolveOverflowStrategy(manifest.repeater.overflow, "shrink-then-warn");
-  const composed = composeColumns<TriRow>(
-    {
-      build: (font) => buildRows(font).map((r) => ({ entry: r, h_mm: r.h })),
-      typography: { min: nameSlot.font_mm!.min, max: nameSlot.font_mm!.max },
-      columns: { kind: "fixed", count: 3 },
-      columnHeight_mm: colH,
-      strategy,
-      targetPages: 1,
-      maxPages: 1,
-    },
-    (r) => r.kind === "category" /* kategori sütun sonunda tek başına kalmaz */
-  );
+  const toBlocks = (rows: TriRow[]): FlowBlock[] =>
+    rows.map((r) => ({
+      h_mm: r.h,
+      entry:
+        r.kind === "category"
+          ? { kind: "category", category: { id: "c", name_fr: r.name ?? "", order: 0, items: [] } }
+          : { kind: "item", item: r.item!, category: { id: "c", name_fr: "", order: 0, items: [] } },
+    }));
 
-  const firstPage = composed.pages[0]?.columns ?? [];
+  /* shrink: 3 sütunlu TEK yüze sığdır; min'de de sığmıyorsa taşanlar uyarıya döner */
+  const fit = solveFontScale({
+    min: nameSlot.font_mm!.min,
+    max: nameSlot.font_mm!.max,
+    fits: (f) => flowColumns(toBlocks(buildRows(f)), colH, 3).pages.length <= 1,
+  });
+  const rows = buildRows(fit.font_mm);
+  const flown = flowColumns(toBlocks(rows), colH, 3);
+
+  let cursor = 0;
+  const firstPage = flown.pages[0] ?? [];
   const innerColumns = INNER_PANELS.map((panel, ci) => {
     const col = firstPage[ci] ?? [];
-    const placed = col.map((b) => ({ row: b.entry, y: b.y_mm }));
+    let y = 0;
+    const placed = col.map((blk) => {
+      const row = rows[cursor++];
+      const out = { row, y };
+      y += blk.h_mm;
+      return out;
+    });
     return { x: panel.x + PANEL_PAD, w: panel.w - 2 * PANEL_PAD, rows: placed };
   });
-  const overflowCount = composed.overflow.length;
+  const overflowCount = rows.length - cursor;
   if (overflowCount > 0) warnings.push({ type: "overflow-items", count: overflowCount });
 
   return {
