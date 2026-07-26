@@ -41,8 +41,13 @@ export const manifest: TemplateManifest = {
   themes: ["or-noir", "aras-orange", "velours-rouge"],
   /* Profil şiddet katmanı (4.5): koyu kumaşta renkli logo tekstilde salt bir
      "öneri" değil, üretim riskidir (baskı/nakış sonucu ekranda görünenden
-     ayrışır) — çekirdek info bu profilde warning'e sıkılaşır. Tablo
-     kayıt-defteri-geneli nöbetçiyle çivili (profil-siddet.test.ts); kalem
-     eklemek o nöbetçiyi ve journal kaydını birlikte ister. */
-  severity_overrides: { "mono-suggest": "warning" },
+     ayrışır) — çekirdek info bu profilde warning'e sıkılaşır. low-dpi ise
+     BLOCKER (ürün sahibi onayı 2026-07-26): tekstilde 300 DPI altı logo
+     üretilemez kalitede çıktıdır, baskı geri alınamaz, ürün ziyan olur —
+     4.7 "kabul edilemez; istisna verilemez" birebir uyar; garment bunu
+     zaten yalnız impression tekniğinde ve HEP red düzeyinde üretir. Diğer
+     ailelerde low-dpi çekirdek warning KALIR. Tablo kayıt-defteri-geneli
+     nöbetçiyle çivili (profil-siddet.test.ts); kalem eklemek o nöbetçiyi
+     ve journal kaydını birlikte ister. */
+  severity_overrides: { "mono-suggest": "warning", "low-dpi": "blocker" },
 };
