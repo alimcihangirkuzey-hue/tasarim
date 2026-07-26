@@ -289,7 +289,9 @@ const PROTO_STATIC = \`${esc(p.staticChunk)}\`;`;
           ${cellPos}
           return (
             <g key={it.id} transform={\`translate(\${PROTO.x + col * PROTO.colW}, \${PROTO.y + row * PROTO.rowH})\`}>
-              <g dangerouslySetInnerHTML={{ __html: PROTO_STATIC }} />
+              {/* F-B-1: statik parça SVG-mutlak koordinat taşır; hücre-yerel
+                  uzaya normalize edilir (itemSlot'lar zaten hücre-yerel) */}
+              <g transform={\`translate(\${-PROTO.x}, \${-PROTO.y})\`} dangerouslySetInnerHTML={{ __html: PROTO_STATIC }} />
 ${itemSlotRenders}
             </g>
           );

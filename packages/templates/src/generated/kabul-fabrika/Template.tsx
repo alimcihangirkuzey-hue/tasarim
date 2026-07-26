@@ -119,7 +119,10 @@ export function GeneratedTemplate(props: TemplateProps): ReactNode {
           const col = i % PROTO.cols; const row = Math.floor(i / PROTO.cols);
           return (
             <g key={it.id} transform={`translate(${PROTO.x + col * PROTO.colW}, ${PROTO.y + row * PROTO.rowH})`}>
-              <g dangerouslySetInnerHTML={{ __html: PROTO_STATIC }} />
+              {/* F-B-1 düzeltmesi: statik parça SVG-mutlak koordinat taşır;
+                  hücre-yerel uzaya normalize edilir — çerçeve içeriğini sarar
+                  (itemSlot metinleri zaten hücre-yerel emit edilir) */}
+              <g transform={`translate(${-PROTO.x}, ${-PROTO.y})`} dangerouslySetInnerHTML={{ __html: PROTO_STATIC }} />
             <text x={12} y={24} fontSize={15} textAnchor="start"
           fill="#FFFFFF" style={{ fontFamily: "var(--f-item)" }}>{it.name_fr}</text>
             <text x={252} y={24} fontSize={15} textAnchor="end"

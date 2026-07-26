@@ -92,6 +92,9 @@ describe("şablon fabrikası kod üreticisi", () => {
     expect(t).toContain("a.shown.map");
     expect(t).not.toContain("items.slice");
     expect(t).toContain("analyzeGenerated(client, doc)");
+    /* F-B-1: statik parça hücre-yerel uzaya normalize edilir — çerçeve
+       içeriğini sarar (mutlak koordinatlı chunk çift-ofsetlenmez) */
+    expect(t).toContain("translate(${-PROTO.x}, ${-PROTO.y})");
     expect(t).not.toContain("<script");
     /* okunabilirlik: üretildi başlığı + rafine notu */
     expect(t).toContain("ÜRETİLDİ");
