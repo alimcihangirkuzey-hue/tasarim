@@ -11,6 +11,7 @@ import {
 import { composeGrid, resolveOverflowStrategy } from "../engine/composition.js";
 import type { LayoutWarning } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
+import { seededVariant } from "../engine/seed.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { resolveTheme, type Theme } from "../themes.js";
 import { manifest } from "./manifest.js";
@@ -19,6 +20,36 @@ const MARGIN = 10;
 /* Bir mini hücrenin okunabilir kaldığı en küçük yükseklik (foto + ad + fiyat).
    Izgara kapasitesi bundan türer — sabit ürün sayısı yerine ölçülebilir sınır. */
 const MIN_CELL_H = 34;
+
+/* Canonical 4.4 designSeed — ÇERÇEVE DİLİ varyasyonu. Liste'nin ritim emsali
+   (satır aralığı) flyer'da yok: ön yüz sabit kampanya paneli + motor-
+   kompozisyonlu mini grid. Grid ölçü/gap varyasyonu BİLEREK reddedildi:
+   kapasiteyi değiştirir, shrink-then-warn'da tohum ürün DÜŞÜRÜRDÜ — tohum
+   içerik miktarına dokunamaz. Seçilen alan görsel kimliğin çerçevesi:
+   kampanya paneli köşe yarıçapı + mini hücre köşe yarıçapı + hücre çizgi
+   deseni. TEK karar tüm çerçevelere tutarlı uygulanır (4.3: tek tasarım
+   dili); yerleşim/metin/kapasite HİÇ etkilenmez (yalnız-frame-değişir
+   invaryantı seed-variation.test.ts'te derin-eşitlikle çivili). */
+export interface FlyerFrame {
+  campaignRx: number;
+  cellRx: number;
+  /** null = düz çizgi (strokeDasharray verilmez) */
+  cellDash: string | null;
+}
+
+/** TABAN = bugünkü sabitler birebir (Template.tsx'ten taşındı — tek kaynak) */
+export const CERCEVE_TABAN: FlyerFrame = { campaignRx: 2.5, cellRx: 1.8, cellDash: "1.7 1.2" };
+
+/* KAPALI varyant kümesi (kontrollü benzersizlik ≠ rastgelelik): keskin /
+   taban / yumuşak köşeler × kesikli / düz çizgi — her üye baskı güvenli
+   (stroke kalınlıkları sabit), taban kümenin üyesidir (RITIM emsali). */
+const CERCEVE = [
+  { campaignRx: 1.2, cellRx: 0.8, cellDash: "1.1 0.9" },
+  CERCEVE_TABAN,
+  { campaignRx: 4.0, cellRx: 2.6, cellDash: "1.7 1.2" },
+  { campaignRx: 2.5, cellRx: 1.8, cellDash: null },
+  { campaignRx: 4.0, cellRx: 2.6, cellDash: null },
+] as const satisfies readonly FlyerFrame[];
 
 export interface FlyerMiniItem {
   id: string;
@@ -45,6 +76,7 @@ export interface FlyerAnalysis {
     sub: { text: string; detached: boolean };
   };
   mini: { items: FlyerMiniItem[]; cols: number };
+  frame: FlyerFrame;
   phone: string;
   address: string;
   hours: string;
@@ -140,6 +172,14 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
     };
   });
 
+  /* designSeed okuma — liste-premium v1 doğrulaması birebir: paramValue
+     DEĞİL doğrudan (serbest-sayı paramında paramValue varsayılana düşer);
+     seed=0/eksik/geçersiz → TABAN NESNESİ AYNEN (bugünkü çizim birebir). */
+  const rawSeed = doc.params["designSeed"];
+  const designSeed =
+    typeof rawSeed === "number" && Number.isInteger(rawSeed) && rawSeed > 0 ? rawSeed : 0;
+  const frame = designSeed === 0 ? CERCEVE_TABAN : seededVariant(designSeed, CERCEVE, "flyer-cerceve");
+
   return {
     theme,
     scope,
@@ -154,6 +194,7 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
       sub: text("campaign_sub"),
     },
     mini: { items, cols },
+    frame,
     phone: text("phone").text,
     address: text("address").text,
     hours: text("hours").text,

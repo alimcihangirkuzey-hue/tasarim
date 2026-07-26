@@ -107,7 +107,8 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
           <>
             {/* KAMPANYA BLOĞU */}
             <g transform={`translate(0, 22)`}>
-              <rect x={M - 2} y={0} width={PW - 2 * M + 4} height={66} rx={2.5}
+              {/* köşe yarıçapı ÇERÇEVE DİLİNDEN (designSeed, analyze.frame) */}
+              <rect x={M - 2} y={0} width={PW - 2 * M + 4} height={66} rx={a.frame.campaignRx}
                 fill="var(--c-panel)" stroke="var(--c-accent)" strokeWidth={0.8} />
               <Slot id="campaign_title" {...interact} selected={selectedSlot === "campaign_title"}
                 detached={a.campaign.title.detached} box={{ x: M + 2, y: 4, w: PW - 2 * M - 4, h: 18 }}>
@@ -135,8 +136,9 @@ export function FlyerTemplate(props: TemplateProps): ReactNode {
                 selected={selectedSlot === `item:${it.id}`} onSlotClick={onSlotClick}
                 box={{ x: it.x, y: it.y, w: it.w, h: it.h }}>
                 <g transform={`translate(${it.x}, ${it.y})`}>
-                  <rect x={0.25} y={0.25} width={it.w - 0.5} height={it.h - 0.5} rx={1.8}
-                    fill="none" stroke="var(--c-line)" strokeWidth={0.45} strokeDasharray="1.7 1.2" />
+                  <rect x={0.25} y={0.25} width={it.w - 0.5} height={it.h - 0.5} rx={a.frame.cellRx}
+                    fill="none" stroke="var(--c-line)" strokeWidth={0.45}
+                    strokeDasharray={a.frame.cellDash ?? undefined} />
                   {it.photoUrl && (
                     <image href={it.photoUrl} x={3} y={3} width={it.w - 6} height={it.h * 0.52}
                       preserveAspectRatio="xMidYMid meet" />
