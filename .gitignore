@@ -3,3 +3,6 @@ dist/
 data/
 *.log
 .DS_Store
+
+# GT-2 tur galerisi — turetilmis artefakt (uret-galeri.mts yeniden uretir)
+docs/gt2-tur/cikti/
