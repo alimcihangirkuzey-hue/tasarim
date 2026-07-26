@@ -2,6 +2,7 @@
 
 import type { ComponentType } from "react";
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
+import type { LayoutWarning } from "./engine/layout.js";
 
 export type RenderMode = "edit" | "print";
 
@@ -162,4 +163,12 @@ export interface TemplateEntry {
   pageSizeMMAt?: (client: ClientDTO, doc: DocumentState, pageIndex: number) => { w_mm: number; h_mm: number; bleed_mm: number };
   /** true → print sayfası zemini şeffaf (garment alfa PNG exportu) */
   transparentBg?: boolean;
+  /**
+   * Editör uyarı paneli için analiz köprüsü (CE bağlaması — fabrika şablonları).
+   * El yazımı aileler analiz fonksiyonlarını ADLA dışa verir ve analyzeDoc
+   * onları doğrudan çağırır; fabrika şablonları dinamik üretildiğinden adla
+   * import edilemez — uyarı üretimi entry üzerinden taşınır. Alan yoksa
+   * analyzeDoc'un eski davranışı geçerlidir (davranış donuk).
+   */
+  warnings?: (client: ClientDTO, doc: DocumentState) => LayoutWarning[];
 }

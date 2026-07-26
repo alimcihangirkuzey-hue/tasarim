@@ -1,19 +1,18 @@
 /* ÜRETİLDİ — şablon fabrikası (mimar kararı #12), kaynak: "Kabul Fabrika Menü".
    Bu dosya OKUNABİLİR ve elle rafine edilebilir; yeniden üretim ÜZERİNE YAZAR.
-   Yerleşim orijinal SVG birimindedir; kök grup scale(0.35) ile mm'ye oturur. */
+   Yerleşim orijinal SVG birimindedir; kök grup scale(0.35) ile mm'ye oturur.
+   CE bağlaması: kapasite/taşma analyze.ts'te (motor + manifest ilanı) yaşar;
+   buradaki eski sessiz slice kaldırıldı, çizim konumları DEĞİŞMEDİ. */
 
 import type { ReactNode } from "react";
 import { formatPrice, type Item } from "@tezgah/shared";
-import { assetById, resolveSelection, resolveSlotValue, type BindScope } from "../../engine/binding.js";
+import { assetById, resolveSlotValue, type BindScope } from "../../engine/binding.js";
 import { buildQr } from "../../engine/qr.js";
 import { resolveTheme, themeStyle } from "../../themes.js";
 import type { TemplateProps } from "../../types.js";
 import { Slot } from "../../parts/svg.js";
 import { manifest } from "./manifest.js";
-
-const W = 210;
-const H = 297;
-const K = 0.35; /* orijinal birim → mm */
+import { K, PROTO, W, H, analyzeGenerated } from "./analyze.js";
 
 /* Temizlenmiş taban tasarım (işaretli slotlar çıkarıldı) */
 const STATIC = `
@@ -55,8 +54,6 @@ const PROTO_STATIC = `<g id="proto-cell" data-tf-id="tf12" style="">
     
     
   </g>`;
-const PROTO = { x: 24, y: 160, w: 264, h: 120, cols: 2, colW: 280, rowH: 136 };
-
 const str = (x: unknown): string => (typeof x === "string" ? x : x == null ? "" : String(x));
 
 export function GeneratedTemplate(props: TemplateProps): ReactNode {
@@ -73,13 +70,10 @@ export function GeneratedTemplate(props: TemplateProps): ReactNode {
   }
 
 
-  const items: Item[] = resolveSelection(client.catalog, doc.selection).flatMap((s) => s.items);
+  /* CE bağlaması: kapasite/taşma motor + manifest ilanından (analyze.ts) */
+  const a = analyzeGenerated(client, doc);
   const priceText = (it: Item) =>
     it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "";
-  const rowsPerCol = Math.max(1, Math.floor((H / K - PROTO.y) / PROTO.rowH));
-  const capacity = PROTO.cols * rowsPerCol;
-  void rowsPerCol;
-  void capacity;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={`${W}mm`} height={`${H}mm`}
@@ -119,8 +113,9 @@ export function GeneratedTemplate(props: TemplateProps): ReactNode {
           <text x={300} y={826} fontSize={10} textAnchor="middle"
           fill="#B7B0A5" style={{ fontFamily: "var(--f-item)" }}>{str(v.footnote)}</text>
         </Slot>
-        {/* repeater: seçili ürünler prototip hücreye satır satır akar (kapasite üstü kırpılır + uyarı, M8) */}
-        {items.slice(0, capacity).map((it, i) => {
+        {/* repeater: seçili ürünler prototip hücreye satır satır akar; kapasite
+            üstü analyze'da GÖRÜNÜR uyarıya döner (M8 — eski sessiz slice kalktı) */}
+        {a.shown.map((it, i) => {
           const col = i % PROTO.cols; const row = Math.floor(i / PROTO.cols);
           return (
             <g key={it.id} transform={`translate(${PROTO.x + col * PROTO.colW}, ${PROTO.y + row * PROTO.rowH})`}>

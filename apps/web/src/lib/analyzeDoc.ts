@@ -1,6 +1,7 @@
 /* Şablon-bağımsız analiz erişimi: uyarılar + sayfa sayısı (editör paneli için) */
 
 import {
+  TEMPLATES,
   analyzeEnseigne,
   analyzeGarment,
   analyzeFidelite,
@@ -51,6 +52,13 @@ export function analyzeDoc(client: ClientDTO, doc: DocumentState): DocAnalysis {
       return { warnings: a.warnings, pages: a.areas.length };
     }
     default: {
+      /* CE bağlaması: fabrika şablonları uyarılarını KENDİ analizlerinden verir
+         (entry.warnings köprüsü) — eski hâlde bu dal fabrika belgelerini
+         menu-grid-cells analizine yönlendiriyordu ve panel ALAKASIZ kapasite
+         matematiğinin uyarılarını gösteriyordu. Köprüsüz id'lerde eski
+         davranış aynen (donuk). */
+      const entry = TEMPLATES[doc.template_id];
+      if (entry?.warnings) return { warnings: entry.warnings(client, doc), pages: 1 };
       const a = analyzeGrid(client, doc);
       return { warnings: a.warnings, pages: 1 };
     }

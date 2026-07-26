@@ -9,22 +9,22 @@
    `repeater.overflow` alanı ise ilan ediliyor ama HİÇBİR kod tarafından
    okunmuyordu (ölü sözleşme).
 
-   BUGÜNKÜ DURUM — `repeater.overflow` ilan eden BEŞ manifest var, DÖRDÜ okunuyor:
-   · menu-liste-premium      ✓ ilanı okur (composeColumns)
-   · flyer                   ✓ ilanı okur (composeGrid)
-   · menu-trifold            ✓ ilanı okur (composeColumns — CE-bağlama paketi;
-                               eşdeğerlik __baseline diferansiyeliyle kanıtlı)
-   · menu-grid-cells         ✓ ilanı okur (strateji sözlüğü + düşürme izni +
-                               ihlal raporu; ızgara MEKANİĞİ layoutGrid'de kalır
-                               — kategori şeritleri ve multipage devam geometrisi
-                               composeGrid'in tekdüze hücre sözleşmesinde ifade
-                               edilemez, bilinçli ve belgeli sınır)
-   · generated/kabul-fabrika ✗ motoru hiç kullanmıyor — fabrika şablonlarının
-                               bağlanması fabrika emit değişikliği ister (C-B-1
-                               emsali: ürün sahibi yetkisi); TODO'da açık borç.
-   Bu envanter satırı kabul-fabrika bağlanana kadar silinmemelidir — aksi halde
-   motor sağlamadığı bir bütünlüğü iddia eder. (Sayı ölçüldü: `repeater.overflow`
-   geçen manifest sayısı 5; `carte-fidelite` repeater içermez.)
+   BUGÜNKÜ DURUM — `repeater.overflow` ilan eden BEŞ manifestin BEŞİ DE okunuyor:
+   · menu-liste-premium      ✓ composeColumns
+   · flyer                   ✓ composeGrid
+   · menu-trifold            ✓ composeColumns (CE-bağlama; __baseline diferansiyeli)
+   · menu-grid-cells         ✓ strateji sözlüğü + düşürme izni + ihlal raporu
+                               (ızgara MEKANİĞİ layoutGrid'de: kategori şeritleri
+                               ve multipage devam geometrisi composeGrid'in tekdüze
+                               hücre sözleşmesinde ifade edilemez — belgeli sınır)
+   · generated/kabul-fabrika ✓ composeGrid (fabrika-motor bağlaması, ürün sahibi
+                               yetkisiyle; emit artık her prototipli şablona
+                               analyze.ts üretir — kapasite/taşma motordan,
+                               strateji ilandan, uyarı entry.warnings köprüsüyle
+                               editöre). "İlan = davranış" repeater ailesinin
+                               tamamında geçerli. (Sayı ölçüldü: `repeater.overflow`
+                               geçen manifest sayısı 5; `carte-fidelite` repeater
+                               içermez.)
 
    İKİ KOMPOZİSYON BİÇİMİ
    · composeColumns — değişken yükseklikli blokların sütun/sayfa akışı
