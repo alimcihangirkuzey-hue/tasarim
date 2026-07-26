@@ -31,6 +31,7 @@ import {
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
+import { SektorluSablonSecenekleri } from "../components/DocumentsPanel";
 import { SlotPanel } from "../components/SlotPanel";
 import { SelectionPanel } from "../components/SelectionPanel";
 import { useEditor } from "../store/editorStore";
@@ -397,12 +398,11 @@ export function EditorPage() {
         <span className="pill">{client.currency}</span>
 
         <label className="kbd-hint">{t("editor.template")}</label>
+        {/* Sektör başlıklı gruplama (7.2/495): üyelik hedef sektör İLANINDAN
+            okunur — desen DocumentsPanel'deki tek kaynaktan gelir; seçili
+            değer ve onChange birebir korunur. */}
         <select value={doc.template_id} onChange={(e) => switchTemplate(e.target.value)}>
-          {Object.values(TEMPLATES).map((e) => (
-            <option key={e.manifest.id} value={e.manifest.id}>
-              {e.manifest.name_tr}
-            </option>
-          ))}
+          <SektorluSablonSecenekleri entries={Object.values(TEMPLATES)} />
         </select>
 
         <label className="kbd-hint">{t("editor.theme")}</label>

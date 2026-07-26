@@ -43,8 +43,16 @@ export type { ProductionChannel } from "../types.js";
 export { PRODUCTION_SUBSTRATES, SUBSTRAT_TEKNIKLERI } from "../types.js";
 export type { ProductionSubstrate } from "../types.js";
 
+/* Hedef sektör katmanı (7.2/495 "Hedef kullanıcı ve sektör" maddesinin SEKTÖR
+   yarısı; 7.1/481 görünürlük): sözlük ve tür→sektör eşlemesi types.ts'ten
+   aynen geçer — PRODUCTION_SUBSTRATES emsali, saf veri, alt-yolun react'sız
+   grafiği bozulmaz. Web'in şablon seçici gruplaması bunları buradan okur. */
+export { SEKTORLER, HEDEF_SEKTOR } from "../types.js";
+export type { Sektor } from "../types.js";
+
 import type { SeverityOverrides } from "../engine/severity.js";
-import type { ProductionChannel, ProductionSubstrate } from "../types.js";
+import { HEDEF_SEKTOR } from "../types.js";
+import type { ProductionChannel, ProductionSubstrate, Sektor } from "../types.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -107,6 +115,19 @@ export function productionChannelsOf(id: string): readonly ProductionChannel[] |
     kimlik değildir). */
 export function productionSubstrateOf(id: string): ProductionSubstrate | null {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_substrate : null;
+}
+
+/** Hedef sektör ilanı sorgusu (7.2/495 "Hedef kullanıcı ve sektör" maddesinin
+    SEKTÖR yarısı; 7.1/481 "kullanıcı yalnızca yaptığı işi görür") — şablonun
+    hitap ettiği iş kolu. İlan MaterialType DÜZEYİNDEDİR (types.ts şerhi:
+    per-manifest alan türetilebilir = ölü ilan olurdu); sorgu bu yüzden
+    materialTypeOfOrNull üzerinden okur. Kayıtsız id (fabrika/generated ve
+    süreç sonrası taze kayıt) null döner, FIRLATMAZ — productionSubstrateOf
+    ile aynı sözleşme (uydurma sektör üretilmez; okuyucu null'da grupsuz
+    bırakır). */
+export function hedefSektorOf(id: string): Sektor | null {
+  const tur = materialTypeOfOrNull(id);
+  return tur === null ? null : HEDEF_SEKTOR[tur];
 }
 
 /* ── SİPARİŞ→BELGE KÖPRÜSÜ (7.2/4.5; journal 2026-07-26-siparis-belge-koprusu)
