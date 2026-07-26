@@ -15,6 +15,7 @@ const { newId, nowISO } = await import("@tezgah/shared");
 let app: FastifyInstance;
 let menuDocId: string;
 let garmentDocId: string;
+let fabrikaDocId: string;
 
 beforeAll(async () => {
   migrate();
@@ -37,6 +38,8 @@ beforeAll(async () => {
   };
   menuDocId = await olustur("menu-liste-premium");
   garmentDocId = await olustur("garment");
+  /* kimlik-yalnız kayıtta OLMAYAN aile (generated/) — asimetri çivisi için */
+  fabrikaDocId = await olustur("kabul-fabrika");
 });
 
 describe("POST /api/documents/:id/export — kanal bekçisi (print/preview ilanı)", () => {
@@ -70,6 +73,24 @@ describe("POST /api/documents/:id/export — kanal bekçisi (print/preview ilan�
     const res = await app.inject({
       method: "POST",
       url: `/api/documents/${garmentDocId}/export`,
+      payload: { variants: [] },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "no_variants" });
+  });
+
+  it("ATÖLYE/MAKİNE ASİMETRİSİ ÇİVİSİ: kayıtsız profil (fabrika) atölye ucunda GEÇER", async () => {
+    /* entegrasyon-siniri paketi /render'da kayıtsız profili 400
+       profile_not_registered'a çevirdi; ATÖLYE ucu bilinçli olarak ESKİ
+       düşme davranışını korur (operatör sorumludur, UI fabrika belgesini
+       export edebilmeye devam eder). Bu ayrım bir ürün kararıdır ve burada
+       ÇİVİLİDİR: biri "tutarlılık" adına exports.ts'i sıkılaştırırsa bu test
+       patlar ve karar journal'sız değiştirilemez (journal
+       2026-07-26-entegrasyon-siniri-karari). Kanıt sıralamadan: istek kanal
+       reddi GÖRMEZ, variants kapısına iner. */
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/documents/${fabrikaDocId}/export`,
       payload: { variants: [] },
     });
     expect(res.statusCode).toBe(400);
