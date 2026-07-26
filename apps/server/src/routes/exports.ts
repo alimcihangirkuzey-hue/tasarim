@@ -14,6 +14,7 @@ import {
   severityOverridesOf,
 } from "@tezgah/templates/identity";
 import { db } from "../db.js";
+import { exportDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 
@@ -153,7 +154,10 @@ export function exportRoutes(app: FastifyInstance): void {
             pages: number;
           };
 
-          const filename = `${day}_${docDTO.template_id}_${format}_v${version}_${variant}.pdf`;
+          /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) — cmyk türevi bu ada güvenir */
+          const filename = exportDosyaAdi({
+            day, templateId: docDTO.template_id, format, version, kind: variant, uzanti: "pdf",
+          });
           const abs = path.join(dir, filename);
           const pdf = await page.pdf({
             width: `${size.w}mm`,

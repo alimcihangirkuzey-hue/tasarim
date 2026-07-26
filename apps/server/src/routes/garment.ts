@@ -7,6 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { GarmentParamsSchema, cmToPx300, newId, nowISO } from "@tezgah/shared";
 import { kanalNitelikleriOf, productionChannelsOf } from "@tezgah/templates/identity";
+import { garmentDosyaTabani } from "../dosya-adi.js";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -55,7 +56,8 @@ export function garmentRoutes(app: FastifyInstance): void {
     const day = nowISO().slice(0, 10);
     const dir = path.join(EXPORTS_DIR, client.slug);
     await fs.mkdir(dir, { recursive: true });
-    const base = `${day}_garment-${params.garment_kind}_v${version}`;
+    /* taban ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) — alan/fiche ekleri aşağıda */
+    const base = garmentDosyaTabani({ day, garmentKind: params.garment_kind, version });
 
     const browser = await getBrowser();
     const files: string[] = [];

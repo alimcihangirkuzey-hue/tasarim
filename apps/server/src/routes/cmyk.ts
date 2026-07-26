@@ -9,6 +9,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { newId, nowISO } from "@tezgah/shared";
 import { kanalNitelikleriOf } from "@tezgah/templates/identity";
+import { cmykTuretilmisAd } from "../dosya-adi.js";
 import { db } from "../db.js";
 import { ROOT_DIR } from "../paths.js";
 import { toDTO, type ExportRow } from "./exports.js";
@@ -58,8 +59,10 @@ export function cmykRoutes(app: FastifyInstance): void {
     if (!src) return reply.code(400).send({ error: "no_print_export", detail: "Önce print PDF al" });
 
     const srcAbs = path.join(ROOT_DIR, src.filepath);
-    const outAbs = srcAbs.replace(/_print\.pdf$/, "_print-cmyk.pdf");
-    if (outAbs === srcAbs) return reply.code(500).send({ error: "bad_filename" });
+    /* türev ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) — print kalıbına bağlaşım
+       artık İLANLI ve round-trip nöbetçisiyle testli (sessiz kırılma yok) */
+    const outAbs = cmykTuretilmisAd(srcAbs);
+    if (outAbs === null) return reply.code(500).send({ error: "bad_filename" });
 
     const r = spawnSync(
       gs.bin,
