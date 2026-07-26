@@ -13,6 +13,7 @@ import {
   paramOptions,
   paramValue,
   resolveSelection,
+  blockersOf,
   severityOf,
   warningEmphasis,
   type LayoutWarning,
@@ -711,35 +712,60 @@ export function EditorPage() {
         </div>
       </div>
 
-      {/* EXPORT ONAY MODALI — uyarılara rağmen export kayda geçer (M4) */}
-      {showExportModal && (
+      {/* EXPORT ONAY MODALI — WARNING'ler kayıtlı onayla geçer (snapshot izi, M4);
+          BLOCKER'lar Canonical 4.7 gereği İSTİSNASIZ durdurur (severity.ts) */}
+      {showExportModal && (() => {
+        const engeller = blockersOf(warnings);
+        const digerleri = warnings.filter((w) => severityOf(w) !== "blocker");
+        return (
         <div className="modal-back" onClick={() => setShowExportModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: 0 }}>{t("editor.export_warn_title")}</h3>
-            <div className="warn-list">
-              {warnings.map((w, i) => (
-                /* Export özeti de aynı şiddet katmanını okur (tek kaynak) */
-                <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
-                  {warnText(w)}
+            {engeller.length > 0 && (
+              <>
+                <h3 style={{ margin: 0 }}>{t("editor.export_blocked_title")}</h3>
+                <div className="warn-list">
+                  {engeller.map((w, i) => (
+                    <div key={i} className="warn red">{warnText(w)}</div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+                  {t("editor.export_blocked_note")}
+                </p>
+              </>
+            )}
+            {digerleri.length > 0 && (
+              <>
+                <h3 style={{ margin: engeller.length > 0 ? "12px 0 0" : 0 }}>{t("editor.export_warn_title")}</h3>
+                <div className="warn-list">
+                  {digerleri.map((w, i) => (
+                    <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
+                      {warnText(w)}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="row" style={{ justifyContent: "flex-end" }}>
               <button className="ghost" onClick={() => setShowExportModal(false)}>
                 {t("editor.cancel")}
               </button>
-              <button
-                onClick={() => {
-                  setShowExportModal(false);
-                  doExport.mutate(warnings);
-                }}
-              >
-                {t("editor.export_anyway")}
-              </button>
+              {/* İstisna yolu BİLEREK yok: blocker varken buton hiç çizilmez
+                  (devre dışı düğme "belki" vadeder; 4.7 "istisna verilemez") */}
+              {engeller.length === 0 && (
+                <button
+                  onClick={() => {
+                    setShowExportModal(false);
+                    doExport.mutate(warnings);
+                  }}
+                >
+                  {t("editor.export_anyway")}
+                </button>
+              )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* MOCKUP SAHNE SEÇİMİ (Faz 3, mimar #5/#6) */}
       {showMockupModal && (

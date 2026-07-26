@@ -1,10 +1,18 @@
-/* Şiddet katmanı testleri — Canonical 4.7 v1.
-   Nöbetçi: blocker tier'ı BOŞ kalmalıdır — bir türü blocker ilan etmek,
-   o yolu gerçekten durduran enforcement ile AYNI pakette gelir. */
+/* Şiddet katmanı testleri — Canonical 4.7.
+   Nöbetçi: blocker kümesi TAM OLARAK çivilenir — kümeye tür eklemek, o yolu
+   gerçekten durduran enforcement ile AYNI pakette gelmek zorundadır
+   (bugünkü küme + enforcement: blocker-enforcement paketi, ürün sahibi onaylı). */
 
 import { describe, expect, it } from "vitest";
 import type { LayoutWarning } from "./layout.js";
-import { WARNING_SEVERITIES, WARNING_TYPES, severityOf, warningEmphasis } from "./severity.js";
+import {
+  WARNING_SEVERITIES,
+  WARNING_TYPES,
+  blockersOf,
+  isBlockerType,
+  severityOf,
+  warningEmphasis,
+} from "./severity.js";
 
 /** Her türden temsilî bir uyarı örneği (payload'lı türler dahil) */
 const ORNEKLER: LayoutWarning[] = [
@@ -41,14 +49,30 @@ describe("severityOf — bildirilmiş, eksiksiz sınıflandırma", () => {
     expect([...new Set(info)].sort()).toEqual(["broderie-info", "empty-price", "mono-suggest"]);
   });
 
-  it("NÖBETÇİ: blocker tier'ı BOŞ — enforcement'sız blocker ilan edilemez", () => {
+  it("NÖBETÇİ: blocker kümesi TAM {empty-required, overflow-strategy-violation}", () => {
     const blockerlar = ORNEKLER.filter((w) => severityOf(w) === "blocker").map((w) => w.type);
     expect(
-      blockerlar,
-      "Bir tür blocker ilan edilmiş: o yolu GERÇEKTEN durduran enforcement bu pakette mi? " +
-        "(Canonical 4.7 kayıtlı onay modeli + ürün sahibi kararı olmadan blocker açılamaz — " +
-        "bloklamayan blocker yalan ilandır)"
-    ).toEqual([]);
+      [...new Set(blockerlar)].sort(),
+      "Blocker kümesi değişmiş: yeni tür eklemek/çıkarmak, o yolu GERÇEKTEN durduran " +
+        "enforcement değişikliğiyle (export modalı + 409 backstop) ve ürün sahibi " +
+        "kararıyla AYNI pakette gelmek zorundadır — bloklamayan blocker yalan ilandır"
+    ).toEqual(["empty-required", "overflow-strategy-violation"]);
+  });
+
+  it("blockersOf yalnız blocker'ları süzer (export kapısının okuduğu küme)", () => {
+    const b = blockersOf(ORNEKLER);
+    expect(b.map((w) => w.type).sort()).toEqual(["empty-required", "overflow-strategy-violation"]);
+    expect(blockersOf(ORNEKLER.filter((w) => severityOf(w) !== "blocker"))).toEqual([]);
+  });
+
+  it("isBlockerType (sunucu backstop'u, tipsiz giriş): blocker türleri true, gerisi ve çöp false", () => {
+    expect(isBlockerType("empty-required")).toBe(true);
+    expect(isBlockerType("overflow-strategy-violation")).toBe(true);
+    expect(isBlockerType("overflow-items")).toBe(false);
+    expect(isBlockerType("broderie-info")).toBe(false);
+    expect(isBlockerType("olmayan-tur")).toBe(false);
+    expect(isBlockerType("")).toBe(false);
+    expect(isBlockerType("toString")).toBe(false); // prototip zinciri sınıf değildir
   });
 });
 

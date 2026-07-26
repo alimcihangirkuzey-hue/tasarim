@@ -204,6 +204,8 @@
     "export_done": "Export tamam — v{n}",
     "export_error": "Export hatası",
     "export_warn_title": "Bu belgede uyarılar var:",
+    "export_blocked_title": "Üretim engellendi — önce şu engeller çözülmeli:",
+    "export_blocked_note": "Engeller (zorunlu alan boş / strateji ihlali) istisna kabul etmez; eksik içerik tamamlanınca export açılır.",
     "export_anyway": "Yine de export et",
     "cancel": "Vazgeç",
     "open_print": "print",

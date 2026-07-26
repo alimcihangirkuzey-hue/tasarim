@@ -7,6 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer";
 import { newId, nowISO, type ExportRecordDTO } from "@tezgah/shared";
+import { isBlockerType } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -61,6 +62,26 @@ export function exportRoutes(app: FastifyInstance): void {
       if (!client) return reply.code(404).send({ error: "client_not_found" });
 
       const body = (req.body ?? {}) as { variants?: string[]; warnings?: unknown[] };
+
+      /* BLOCKER backstop (Canonical 4.7: istisna verilemez) — istemcinin
+         bildirdiği uyarılarda blocker sınıfı varsa üretim serbest bırakılmaz;
+         asıl kapı web modalındadır, bu denetim UI hatalarına karşı savunmadır
+         (sunucu tam analiz KOŞAMAZ: tam registry react taşır — C-P2 sınırı,
+         journal'da kayıtlı). Rotanın İLK kapısıdır ve browser'dan ÖNCE
+         fırlar → inject-testli. */
+      const engeller = (body.warnings ?? []).filter(
+        (w): w is { type: string } =>
+          typeof w === "object" && w !== null && "type" in w &&
+          typeof (w as { type: unknown }).type === "string" &&
+          isBlockerType((w as { type: string }).type)
+      );
+      if (engeller.length > 0) {
+        return reply.code(409).send({
+          error: "blocker_present",
+          detail: engeller.map((w) => w.type),
+        });
+      }
+
       const variants = (body.variants ?? ["print", "preview"]).filter(
         (v): v is "print" | "preview" => v === "print" || v === "preview"
       );

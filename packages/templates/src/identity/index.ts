@@ -23,6 +23,12 @@
 import { birlestirVeDogrula } from "../registry-core.js";
 import type { MaterialType, TemplateManifest } from "../types.js";
 
+/* Şiddet katmanı re-export'u (blocker-enforcement paketi): severity.ts yalnız
+   TYPE-ONLY import taşır (silinir) — alt-yolun react'sız grafiği bozulmaz
+   (esbuild metafile kanıtı paket kapanışında yeniden ölçüldü). Sunucunun
+   export backstop'u isBlockerType'ı buradan okur. */
+export { isBlockerType, severityOf, blockersOf, WARNING_SEVERITIES } from "../engine/severity.js";
+
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
 import { manifest as menuTrifoldManifest } from "../menu-trifold/manifest.js";
