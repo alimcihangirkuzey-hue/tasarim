@@ -6,9 +6,13 @@
 
 import { dogrulaSeverityOverrides } from "./engine/severity.js";
 import {
+  KANAL_GEREKTIRIR,
   MATERIAL_TYPES,
   PRODUCTION_CHANNELS,
+  PRODUCTION_TECHNIQUES,
   isMaterialType,
+  type ProductionChannel,
+  type ProductionTechnique,
   type TemplateManifest,
 } from "./types.js";
 
@@ -46,6 +50,52 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
   }
   if (new Set(m.production_channels).size !== m.production_channels.length) {
     throw new Error(`Şablon "${key}": production_channels tekrarlı kanal içeriyor`);
+  }
+  /* İzinli üretim teknikleri (7.2/4.5): tekniksiz profil üretimsiz profildir;
+     teknik↔kanal ÇİFT YÖNLÜ bağ — ayrışma yüklenemez */
+  if (!Array.isArray(m.production_techniques) || m.production_techniques.length === 0) {
+    throw new Error(
+      `Şablon "${key}": production_techniques boş olamaz (izinli: ${PRODUCTION_TECHNIQUES.join(", ")})`
+    );
+  }
+  for (const teknik of m.production_techniques) {
+    if (!(PRODUCTION_TECHNIQUES as readonly string[]).includes(teknik)) {
+      throw new Error(
+        `Şablon "${key}": bilinmeyen üretim tekniği "${String(teknik)}" (izinli: ${PRODUCTION_TECHNIQUES.join(", ")})`
+      );
+    }
+  }
+  if (new Set(m.production_techniques).size !== m.production_techniques.length) {
+    throw new Error(`Şablon "${key}": production_techniques tekrarlı teknik içeriyor`);
+  }
+  /* Array.isArray daraltması any[]'e düşürür — sözleşme tipi geri bildirilir */
+  const kanallar = m.production_channels as readonly ProductionChannel[];
+  for (const kanal of kanallar) {
+    const gereken = KANAL_GEREKTIRIR[kanal];
+    if (!m.production_techniques.includes(gereken)) {
+      throw new Error(
+        `Şablon "${key}": "${kanal}" kanalı "${gereken}" tekniğini gerektirir ama teknik ilan edilmemiş (kanal tekniksiz üretilemez)`
+      );
+    }
+  }
+  for (const teknik of m.production_techniques) {
+    if (!kanallar.some((k) => KANAL_GEREKTIRIR[k] === teknik)) {
+      throw new Error(
+        `Şablon "${key}": "${teknik}" tekniği ilanlı ama onu üreten hiçbir kanal ilanlı değil (kanalsız teknik ölü ilandır)`
+      );
+    }
+  }
+  /* technique/mode paramları teknik-değerlidir: seçenekleri ilanın alt kümesi */
+  for (const p of m.params) {
+    if ((p.id === "technique" || p.id === "mode") && "options" in p && Array.isArray(p.options)) {
+      for (const secenek of p.options) {
+        if (!m.production_techniques.includes(secenek as ProductionTechnique)) {
+          throw new Error(
+            `Şablon "${key}": "${p.id}" paramı "${String(secenek)}" seçeneği izinli teknikler dışında (ilan: ${m.production_techniques.join(", ")})`
+          );
+        }
+      }
+    }
   }
 }
 

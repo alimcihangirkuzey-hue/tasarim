@@ -38,6 +38,8 @@ export const manifest: TemplateManifest = {
      technique'ten). print/preview bilinçli YOK — exports.ts kanal bekçisi
      bu ilana dayanarak tekstile PDF üretimini reddeder. */
   production_channels: ["png", "broderie"],
+  /* technique paramının seçenekleriyle birebir: baskı + nakış (registry bağı) */
+  production_techniques: ["impression", "broderie"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
   /* Profil şiddet katmanı (4.5): koyu kumaşta renkli logo tekstilde salt bir
      "öneri" değil, üretim riskidir (baskı/nakış sonucu ekranda görünenden
