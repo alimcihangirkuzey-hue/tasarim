@@ -22,7 +22,12 @@ import { analyzeList as analyzeListEskiHam } from "../menu-liste-premium/__basel
    tabanda yoktur — parmak izi onları okumadığı için tip burada genişletilir */
 const analyzeListEski = analyzeListEskiHam as unknown as typeof analyzeList;
 import { analyzeFlyer } from "../flyer/analyze.js";
-import { analyzeFlyer as analyzeFlyerEski } from "../flyer/__baseline.js";
+/* Taban FlyerAnalysis `frame` alanını bilmez (designSeed-flyer paketi ekledi);
+   taban "elle düzenlenmez" — imbalance_mm emsaliyle test tarafında genişletilir.
+   fpFlyer frame'i zaten İZDÜŞÜME ALMAZ: diferansiyel yerleşim/uyarı eşitliğini
+   ölçer, çerçeve dili tohum kapsamındadır (seed-variation.test.ts). */
+import { analyzeFlyer as analyzeFlyerEskiHam } from "../flyer/__baseline.js";
+const analyzeFlyerEski = analyzeFlyerEskiHam as unknown as typeof analyzeFlyer;
 import { analyzeTrifold } from "../menu-trifold/analyze.js";
 import { analyzeTrifold as analyzeTrifoldEski } from "../menu-trifold/__baseline.js";
 import { analyzeGrid } from "../menu-grid-cells/analyze.js";

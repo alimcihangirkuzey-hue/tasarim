@@ -22,6 +22,8 @@ export const manifest: TemplateManifest = {
       default: "review",
       label_tr: "QR kaynağı",
     },
+    /* Canonical 4.4 kontrollü benzersizlik — çerçeve dili (liste emsali) */
+    { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
   ],
   slots: [
     { id: "logo", kind: "image", bind: "brand.logo_primary" },
