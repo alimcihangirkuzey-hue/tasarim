@@ -16,6 +16,7 @@ import path from "node:path";
 import { nowISO } from "@tezgah/shared";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
+import { productionChannelsOf } from "@tezgah/templates/identity";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser } from "./exports.js";
 import {
@@ -49,6 +50,22 @@ export function renderRoutes(app: FastifyInstance): void {
       | undefined;
     if (!client) return reply.code(404).send({ error: "client_not_found" });
     const docDTO = rowToDocument(found.row, found.clientId);
+
+    /* KANAL BEKÇİSİ (7.2/8.5; journal 2026-07-26-render-kanal-bekcisi):
+       exports.ts'teki channel_not_declared kapısının eşi — MAKİNE KANALI da
+       profil ilanının dışına çıkamaz (önizleme-türleri keşfinin borcu: imzalı
+       istemci, PDF kanalı ilan etmeyen tekstile print üretebiliyordu ve uç
+       kayıt yazmadığından iz yalnız yanıt meta'sındaydı). Kayıtsız id null →
+       GEÇER (fabrika düşme deseni). CONTRACT SÜRÜMÜ KORUNUR: istek şeması ve
+       kanonik imza dizesi değişmedi, hata kodu eklemek additive guard'dır
+       (CD1-2 emsali) → RENDER_CONTRACT_V=1. Browser'dan ÖNCE → inject-testli. */
+    const kanallar = productionChannelsOf(docDTO.template_id);
+    if (kanallar !== null && !kanallar.includes(body.variant)) {
+      return reply.code(400).send({
+        error: "channel_not_declared",
+        detail: { requested: [body.variant], declared: kanallar },
+      });
+    }
 
     /* Engine iç çağrısı: mevcut /print sayfası (M3 tek render kaynağı) —
        exports.ts rotasıyla aynı desen, exports.ts DEĞİŞTİRİLMEDEN. */
