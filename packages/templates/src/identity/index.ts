@@ -92,3 +92,114 @@ export function severityOverridesOf(id: string): SeverityOverrides | undefined {
 export function productionChannelsOf(id: string): readonly ProductionChannel[] | null {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_channels : null;
 }
+
+/* ── SİPARİŞ→BELGE KÖPRÜSÜ (7.2/4.5; journal 2026-07-26-siparis-belge-koprusu)
+   Sipariş katmanının ürün türü sözlüğü (ProductType) ile profil kimliği
+   (C-P0 MaterialType + kayıt defteri) arasındaki bağ. Önceden WEB-YEREL iki
+   tür-koşulluydu (ProjectsPanel.DESIGNABLE + paramsFromItem) ve HİÇBİR
+   tutarlılık denetimi yoktu: köprü yanlış aileyi gösterse test kırılmazdı.
+   Artık İLAN burada yaşar ve modül yüklenirken doğrulanır (fail-loud). */
+
+import type { OrderItemLike, ProductType } from "@tezgah/shared";
+
+/** Ürün türü → beklenen MATERYAL (kimlik bağı). null = tasarlanamaz (diger). */
+export const SIPARIS_MATERYALI: Record<ProductType, MaterialType | null> = {
+  menu: "menu",
+  trifold: "menu",
+  flyer: "flyer",
+  fidelite: "kart",
+  vitrophanie: "cam",
+  tabela: "tabela",
+  tisort: "tekstil",
+  onluk: "tekstil",
+  diger: null,
+};
+
+/** Ürün türü → şablon SEÇENEKLERİ: 0 = tasarlanamaz (UI uyarır), 1 = doğrudan,
+    ≥2 = kullanıcı seçer (bugün yalnız menu: grid|liste — eski `""` sihirli
+    değerinin açık hâli). Varsayılan aile temsilcileri (vitro-centre,
+    enseigne-panneau) ürün kararı olarak AYNEN korunur. */
+export const SIPARIS_SABLONLARI: Record<ProductType, readonly string[]> = {
+  menu: ["menu-grid-cells", "menu-liste-premium"],
+  trifold: ["menu-trifold"],
+  flyer: ["flyer"],
+  fidelite: ["carte-fidelite"],
+  vitrophanie: ["vitro-centre"],
+  tabela: ["enseigne-panneau"],
+  tisort: ["garment"],
+  onluk: ["garment"],
+  diger: [],
+};
+
+/** Köprü tutarlılığı: her seçenek KAYITLI olmalı ve materyali türün ilanıyla
+    EŞLEŞMELİ; tasarlanamaz tür seçenek taşıyamaz. Modül yüklemede gerçek
+    tablolarla çalışır — bozuk köprü uygulamayı ayağa kaldırmaz (testler red
+    yollarını sahte tablolarla İCRA eder). */
+export function dogrulaSiparisKoprusu(
+  sablonlar: Record<ProductType, readonly string[]>,
+  materyaller: Record<ProductType, MaterialType | null>
+): void {
+  for (const [tur, secenekler] of Object.entries(sablonlar) as Array<
+    [ProductType, readonly string[]]
+  >) {
+    const beklenen = materyaller[tur];
+    if (beklenen === null && secenekler.length > 0) {
+      throw new Error(`Sipariş köprüsü "${tur}": tasarlanamaz tür şablon seçeneği taşıyamaz`);
+    }
+    for (const id of secenekler) {
+      const gercek = materialTypeOfOrNull(id);
+      if (gercek === null) {
+        throw new Error(`Sipariş köprüsü "${tur}": şablon "${id}" kayıt defterinde yok`);
+      }
+      if (gercek !== beklenen) {
+        throw new Error(
+          `Sipariş köprüsü "${tur}": şablon "${id}" "${gercek}" materyalinde, ilan "${String(beklenen)}" bekler`
+        );
+      }
+    }
+  }
+}
+dogrulaSiparisKoprusu(SIPARIS_SABLONLARI, SIPARIS_MATERYALI);
+
+/** Ürün türünün şablon seçenekleri — startDesign bunun okuyucusudur */
+export function siparisSablonlari(t: ProductType): readonly string[] {
+  return SIPARIS_SABLONLARI[t];
+}
+
+/* Kalem→belge param AKIŞI: dispatch İLANDIR (exhaustive Record — yeni ürün
+   türü akışını beyan etmeden derlenemez; null = ön-dolum yok), gövdeler
+   ProjectsPanel.paramsFromItem'dan birebir taşınan küçük saf eşlemeler
+   (varsayılanlar ürün kararı: 100×100 cam, 300×60 tabela, tshirt/apron
+   alan kümeleri). Diferansiyel referans-kopya testli. */
+const PARAM_AKISI: Record<
+  ProductType,
+  ((item: OrderItemLike) => Record<string, unknown>) | null
+> = {
+  vitrophanie: (it) => ({
+    w_cm: it.width_cm ?? 100,
+    h_cm: it.height_cm ?? 100,
+    mode: it.details.mode ?? "impression",
+    miroir: it.details.side === "interieur", // içten uygulama → otomatik öneri
+  }),
+  tabela: (it) => ({ w_cm: it.width_cm ?? 300, h_cm: it.height_cm ?? 60 }),
+  tisort: (it) => ({
+    garment_kind: "tshirt",
+    technique: it.details.technique ?? "impression",
+    areas: ["chest_left", "back_full"],
+  }),
+  onluk: (it) => ({
+    garment_kind: "apron_bavette",
+    technique: it.details.technique ?? "impression",
+    areas: ["chest"],
+  }),
+  menu: null,
+  trifold: null,
+  flyer: null,
+  fidelite: null,
+  diger: null,
+};
+
+/** Kalemden belge paramları — akışı olmayan tür null döner (ön-dolum yok) */
+export function siparisParamlari(item: OrderItemLike): Record<string, unknown> | null {
+  return PARAM_AKISI[item.product_type]?.(item) ?? null;
+}

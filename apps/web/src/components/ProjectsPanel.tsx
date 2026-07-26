@@ -20,6 +20,7 @@ import {
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
+import { siparisParamlari, siparisSablonlari } from "@tezgah/templates/identity";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 
@@ -31,46 +32,11 @@ const TYPE_ICON: Record<ProductType, string> = {
   menu: "📋", flyer: "📄", trifold: "🗞", fidelite: "💳",
   vitrophanie: "🪟", tabela: "🪧", tisort: "👕", onluk: "🥽", diger: "📦",
 };
-/* Faz 3: tüm tipler gerçek akış (FAZ3-GOREV §7). "" → grid|liste seçimi sorulur */
-const DESIGNABLE: Partial<Record<ProductType, string>> = {
-  menu: "",
-  trifold: "menu-trifold",
-  flyer: "flyer",
-  fidelite: "carte-fidelite",
-  vitrophanie: "vitro-centre",
-  tabela: "enseigne-panneau",
-  tisort: "garment",
-  onluk: "garment",
-};
-
-/** Kalem verileri belge paramlarına akar (ölçü, mode, miroir önerisi, teknik) */
-function paramsFromItem(item: OrderItemDTO): Record<string, unknown> | null {
-  switch (item.product_type) {
-    case "vitrophanie":
-      return {
-        w_cm: item.width_cm ?? 100,
-        h_cm: item.height_cm ?? 100,
-        mode: item.details.mode ?? "impression",
-        miroir: item.details.side === "interieur", // içten uygulama → otomatik öneri
-      };
-    case "tabela":
-      return { w_cm: item.width_cm ?? 300, h_cm: item.height_cm ?? 60 };
-    case "tisort":
-      return {
-        garment_kind: "tshirt",
-        technique: item.details.technique ?? "impression",
-        areas: ["chest_left", "back_full"],
-      };
-    case "onluk":
-      return {
-        garment_kind: "apron_bavette",
-        technique: item.details.technique ?? "impression",
-        areas: ["chest"],
-      };
-    default:
-      return null;
-  }
-}
+/* Sipariş→belge köprüsü artık İLANDAN okunur (identity katmanı,
+   siparis-belge-koprusu paketi): eski web-yerel DESIGNABLE tablosu ve
+   paramsFromItem switch'i oraya taşındı — köprü, kayıt defteri ve materyal
+   ilanıyla YÜK-ZAMANI tutarlılık denetiminden geçer (yanlış aile gösteren
+   köprü uygulamayı ayağa kaldırmaz). */
 
 function itemSummary(it: OrderItemDTO): string {
   const parts: string[] = [];
@@ -108,16 +74,21 @@ function ItemRow({ item, client, showToast }: {
 
   const startDesign = useMutation({
     mutationFn: async () => {
-      let templateId = DESIGNABLE[item.product_type];
-      if (templateId === undefined) {
+      /* 0 seçenek → tasarlanamaz; 1 → doğrudan; ≥2 → kullanıcı seçer
+         (bugün yalnız menu: OK=grid, İptal=liste — eski davranış birebir) */
+      const secenekler = siparisSablonlari(item.product_type);
+      if (secenekler.length === 0) {
         showToast(t("orders.no_template_warn"));
         return null;
       }
-      if (templateId === "") {
-        templateId = window.confirm(t("orders.menu_template_q")) ? "menu-grid-cells" : "menu-liste-premium";
-      }
+      const templateId =
+        secenekler.length === 1
+          ? secenekler[0]
+          : window.confirm(t("orders.menu_template_q"))
+            ? secenekler[0]
+            : secenekler[1];
       const doc = await api.createDocument(client.id, templateId, item.project_id);
-      const params = paramsFromItem(item);
+      const params = siparisParamlari(item);
       if (params) await api.updateDocument(doc.id, { params });
       await api.updateOrderItem(item.id, { document_id: doc.id, status: "tasarimda" });
       return doc.id;
