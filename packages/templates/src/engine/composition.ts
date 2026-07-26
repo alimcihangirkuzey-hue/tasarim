@@ -117,13 +117,20 @@ export interface ColumnCompositionRequest<T> {
   targetPages?: number;
   /** Düşüren stratejilerde tutulacak sayfa tavanı (varsayılan targetPages) */
   maxPages?: number;
-  /** Son sütun dengeleme (Canonical 4.3) — GÖRSEL DEĞİŞİKLİKTİR, opt-in */
-  balanceLastColumn?: boolean;
   /* NOT — burada bir `seed?: string` alanı vardı ve KALDIRILDI: gövdede hiç
      okunmuyordu, farklı seed birebir aynı çıktıyı veriyordu. Bu dosyanın tezi
      "ilan edilen ama uygulanmayan sözleşme olmaz" iken, kapatılan ölü
      sözleşmenin yerine yenisi açılamaz. Tohumlu varyasyon (Canonical 4.4)
-     eklendiğinde alan `designSeed` adıyla ve GERÇEK etkisiyle gelir. */
+     eklendiğinde alan `designSeed` adıyla ve GERÇEK etkisiyle gelir.
+
+     NOT-2 — burada bir `balanceLastColumn?: boolean` alanı (+ balanceColumns
+     işlevi) vardı ve GERİ ÇEKİLDİ (ürün sahibi kararı, 2026-07-26; journal
+     `2026-07-26-balance-geri-cekme`): hiçbir üretim çağıranı geçirmiyordu,
+     Canonical 4.3 simetri şartıyla ilişkisi hiç kurulmadı — ilan edilen ama
+     tüketilmeyen sözleşmeydi. Simetri bugün şablon-düzeyi tasarımla ve
+     `metrics.imbalance_mm` ölçümüyle yaşar. Gerçek son-sütun dengelemesi
+     gerekirse GÖRSEL değişikliktir: bir şablona bağlanarak ve insan GT
+     turundan geçerek geri gelir, boşta ilan olarak değil. */
 }
 
 export interface CompositionMetrics {
@@ -185,65 +192,6 @@ function flowIntoColumns<T>(
   return pages.length > 0 ? pages : [[[]]];
 }
 
-/**
- * Sütunları eşit yüksekliğe yaklaştırır (yalnız tek sayfada, opt-in).
- *
- * İKİ AYRI SINIR VARDIR ve karıştırılmamalıdır:
- * · `target` — DENGE kaygısıdır, yumuşaktır. Son sütunda göz ardı edilebilir.
- * · `colH_mm` — SAYFA sınırıdır, serttir. Hiçbir koşulda aşılamaz; aşılırsa
- *   içerik sayfa dışına basılır ve — taşma listesine de girmediği için —
- *   görünür uyarı bile üretmez. Sessiz kayıptan beterdir.
- *
- * Dengeleme yalnız KOZMETİK bir iyileştirmedir: zaten sığan bir yerleşimi
- * daha dengeli kılar. Sığdıramıyorsa `null` döner ve çağıran dengelenmemiş
- * akışa geri düşer — dengeleme hiçbir zaman durumu KÖTÜLEŞTİREMEZ.
- */
-function balanceColumns<T>(
-  blocks: Array<CompositionBlock<T>>,
-  colsPerPage: number,
-  colH_mm: number,
-  keepWithNext: (entry: T) => boolean
-): Array<Array<CompositionBlock<T>>> | null {
-  const total = blocks.reduce((s, b) => s + b.h_mm, 0);
-  const target = total / colsPerPage;
-  const cols: Array<Array<CompositionBlock<T>>> = [];
-  let col: Array<CompositionBlock<T>> = [];
-  let used = 0;
-
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    const isLastCol = colsPerPage - cols.length <= 1;
-    const next = blocks[i + 1];
-    const glued = keepWithNext(b.entry) && next !== undefined;
-    /* keep-with-next: blok tek başına değil, ardılıyla birlikte ölçülür.
-       Aksi halde yapıştırma kararı sütunu tavanın üstüne itiyordu (kırılımı
-       bastırmak yerine İLERİ BAKARIZ ve gerekirse ÖNCE kapatırız). */
-    const gereken = glued ? b.h_mm + next.h_mm : b.h_mm;
-    const asarDenge = used > 0 && used + gereken > target;
-    const asarTavan = used > 0 && used + gereken > colH_mm;
-
-    if ((!isLastCol && asarDenge) || asarTavan) {
-      /* Tavanı aşıyoruz ama taşıyacak sütun kalmadı → dengeleme başarısız */
-      if (isLastCol) return null;
-      cols.push(col);
-      col = [];
-      used = 0;
-    }
-    col.push(b);
-    used += b.h_mm;
-  }
-  cols.push(col);
-  while (cols.length < colsPerPage) cols.push([]);
-
-  /* Son güvence: keep-with-next yapıştırması tavanı aşmış olabilir */
-  for (const c of cols) {
-    let h = 0;
-    for (const b of c) h += b.h_mm;
-    if (h > colH_mm) return null;
-  }
-  return cols;
-}
-
 const heightOf = <T,>(col: Array<CompositionBlock<T>>): number =>
   col.reduce((s, b) => s + b.h_mm, 0);
 
@@ -290,15 +238,8 @@ export function composeColumns<T>(
 
   const blocks = req.build(fit.font_mm, columns);
 
-  /* 3) Akış (gerekiyorsa dengeli) */
-  const akis = flowIntoColumns(blocks, req.columnHeight_mm, columns, keepWithNext);
-  /* Dengeleme yalnız tek sayfaya sığan yerleşimde denenir; başarısız olursa
-     (tavanı aşacaksa) dengelenmemiş akışa geri düşülür. */
-  const dengeli =
-    req.balanceLastColumn === true && akis.length === 1
-      ? balanceColumns(blocks, columns, req.columnHeight_mm, keepWithNext)
-      : null;
-  const pageCols: Array<Array<Array<CompositionBlock<T>>>> = dengeli ? [dengeli] : akis;
+  /* 3) Akış */
+  const pageCols = flowIntoColumns(blocks, req.columnHeight_mm, columns, keepWithNext);
 
   /* 4) Strateji: düşüren stratejilerde sayfa tavanı uygulanır */
   const overflow: T[] = [];
