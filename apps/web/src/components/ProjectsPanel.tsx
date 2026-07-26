@@ -20,7 +20,7 @@ import {
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
-import { siparisParamlari, siparisSablonlari } from "@tezgah/templates/identity";
+import { siparisParamlari, siparisSablonlari, siparisSubstratlari } from "@tezgah/templates/identity";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 
@@ -47,6 +47,11 @@ function itemSummary(it: OrderItemDTO): string {
   if (it.details.mode) parts.push(it.details.mode);
   if (it.details.side) parts.push(it.details.side);
   if (it.details.technique) parts.push(it.details.technique);
+  /* Substrat İLANDAN türetilir (3.1/202 ticari bilgi; siparis-substrat-bagi):
+     girdi DEĞİL — küme her türde tek elemanlı ölçüldü (girdi bilgi taşımaz);
+     çok-elemanlı gün homojenlik nöbetçisi kırılır, girdi kararı o gün verilir */
+  const substratlar = siparisSubstratlari(it.product_type);
+  if (substratlar.length === 1) parts.push(t(`orders.substrat_${substratlar[0]}`));
   return parts.join(" · ");
 }
 

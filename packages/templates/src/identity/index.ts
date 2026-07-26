@@ -182,6 +182,44 @@ export function siparisSablonlari(t: ProductType): readonly string[] {
   return SIPARIS_SABLONLARI[t];
 }
 
+/* ── Sipariş katmanı substrat BAĞI (3.1/202 "seçilen materyaller"; journal
+   2026-07-26-siparis-substrat-bagi) — TÜRETİLMİŞ sabit, el yazımı İKİNCİ
+   KAYNAK DEĞİL: SIPARIS_SABLONLARI × production_substrate zaten iki ayrı
+   ilan; burada yalnız bileşimleri yük zamanında dondurulur (çift-kaynak
+   sürüklenemez — sürüklenecek ikinci el yoktur). KEŞİF DÜZELTMESİ ŞERHİ:
+   TODO'nun önerdiği "opsiyonel substrat GİRDİSİ" ölçümle reddedildi — bu
+   küme bugün her tasarlanabilir türde TEK elemanlıdır, girdi bilgi taşımaz
+   (preview_types emsali: ölü sözleşme yasak). Küme çok-elemanlı olduğu gün
+   homojenlik nöbetçisi (identity.test.ts) kırılır ve girdi kararı print_qty
+   emsaliyle gündeme gelir. Kuruluş dogrulaSiparisKoprusu'nden SONRA koşar:
+   her seçenek kayıtlıdır, substrat null olamaz — yine de fail-loud denetim
+   korunur (sessiz düşme yasak). */
+export const SIPARIS_SUBSTRATLARI: Record<ProductType, readonly ProductionSubstrate[]> = (() => {
+  /* `{} as Record` kasti: anahtar kümesi SIPARIS_SABLONLARI'ndan (kendisi
+     exhaustive Record) birebir kopyalanır — döngü her anahtarı doldurur */
+  const sonuc = {} as Record<ProductType, readonly ProductionSubstrate[]>;
+  for (const [tur, secenekler] of Object.entries(SIPARIS_SABLONLARI) as Array<
+    [ProductType, readonly string[]]
+  >) {
+    const kume: ProductionSubstrate[] = [];
+    for (const id of secenekler) {
+      const s = productionSubstrateOf(id);
+      if (s === null) {
+        throw new Error(`Sipariş substrat bağı "${tur}": şablon "${id}" kayıt defterinde yok`);
+      }
+      if (!kume.includes(s)) kume.push(s);
+    }
+    sonuc[tur] = kume;
+  }
+  return sonuc;
+})();
+
+/** Ürün türünün üretileceği substrat kümesi (şablon seçeneği sırasıyla,
+    tekrarsız; diger boş) — kalem kartı ticari bilgisi bunun okuyucusudur */
+export function siparisSubstratlari(t: ProductType): readonly ProductionSubstrate[] {
+  return SIPARIS_SUBSTRATLARI[t];
+}
+
 /* Kalem→belge param AKIŞI: dispatch İLANDIR (exhaustive Record — yeni ürün
    türü akışını beyan etmeden derlenemez; null = ön-dolum yok), gövdeler
    ProjectsPanel.paramsFromItem'dan birebir taşınan küçük saf eşlemeler

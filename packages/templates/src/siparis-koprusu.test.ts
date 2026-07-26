@@ -19,10 +19,13 @@ import type { MaterialType } from "./types.js";
 import {
   SIPARIS_MATERYALI,
   SIPARIS_SABLONLARI,
+  SIPARIS_SUBSTRATLARI,
   dogrulaSiparisKoprusu,
   materialTypeOfOrNull,
+  productionSubstrateOf,
   siparisParamlari,
   siparisSablonlari,
+  siparisSubstratlari,
 } from "./identity/index.js";
 
 describe("NÖBETÇİ: köprü tabloları TAM olarak bunlar", () => {
@@ -59,6 +62,46 @@ describe("NÖBETÇİ: köprü tabloları TAM olarak bunlar", () => {
       for (const id of siparisSablonlari(t)) {
         expect(materialTypeOfOrNull(id), `${t} → ${id}`).toBe(SIPARIS_MATERYALI[t]);
       }
+    }
+  });
+});
+
+/* ── Substrat bağı (3.1/202; journal 2026-07-26-siparis-substrat-bagi) ──── */
+
+describe("NÖBETÇİ: sipariş substrat kümesi TAM olarak bu (türetilmiş, elle çivili)", () => {
+  it("tür tür birebir — türetim kaynağı değişirse (şablon seçeneği/manifest ilanı) burası kırılır", () => {
+    expect(SIPARIS_SUBSTRATLARI).toEqual({
+      menu: ["kagit"],
+      trifold: ["kagit"],
+      flyer: ["kagit"],
+      fidelite: ["karton"],
+      vitrophanie: ["vinil"],
+      tabela: ["panel"],
+      tisort: ["kumas"],
+      onluk: ["kumas"],
+      diger: [],
+    });
+  });
+
+  it("türetim doğrulaması: küme = seçenek şablonlarının substratları (sıralı, tekrarsız)", () => {
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      const beklenen: string[] = [];
+      for (const id of siparisSablonlari(t)) {
+        const s = productionSubstrateOf(id);
+        if (s !== null && !beklenen.includes(s)) beklenen.push(s);
+      }
+      expect(siparisSubstratlari(t), t).toEqual(beklenen);
+    }
+  });
+
+  it("HOMOJENLİK NÖBETÇİSİ: her küme bugün ≤1 elemanlı — büyüdüğü gün substrat GİRDİSİ kararı gündeme gelir", () => {
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      expect(
+        siparisSubstratlari(t).length,
+        `${t}: substrat kümesi çok-elemanlı oldu — "opsiyonel substrat girdisi" artık bilgi taşır; ` +
+          "print_qty emsaliyle PRICING_INPUTS paketi açılmalı (TODO 'Malzeme cinsi sonrası şerhler' (1) " +
+          "ve journal 2026-07-26-siparis-substrat-bagi keşif düzeltmesi)"
+      ).toBeLessThanOrEqual(1);
     }
   });
 });
