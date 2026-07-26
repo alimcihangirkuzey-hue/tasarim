@@ -101,10 +101,10 @@ describe("POST /api/documents/:id/export — blocker backstop", () => {
 describe("profil-farkında backstop (4.5) — belgenin ŞABLONUNUN override tablosu okunur", () => {
   it("garment'ın warning-düzeyi override'ı (mono-suggest) 409 ÜRETMEZ — sıkılaştırma blocker değil", async () => {
     /* Profil yolu ÇALIŞIR (severityOverridesOf('garment') tablo döner) ama
-       etkin sınıf warning'dir: istek 409 yemeden bir sonraki kapıya düşer
-       (variants: [] → 400). Bugün blocker-düzeyi override YOK (nöbetçi:
-       packages/templates/src/profil-siddet.test.ts) — o gün geldiğinde bu
-       hat veri değişikliğiyle 409'a dönüşür, kod değişikliği gerekmez. */
+       mono-suggest'in etkin sınıfı warning'dir: istek 409 yemeden bir sonraki
+       kapıya düşer (variants: [] → 400). Blocker-düzeyi override'lar ayrı
+       nöbetçiyle çivili (profil-siddet.test.ts); bugünkü tek kalem low-dpi —
+       aşağıdaki test o hattın 409 kanıtıdır. */
     const res = await app.inject({
       method: "POST",
       url: `/api/documents/${garmentDocId}/export`,
@@ -122,5 +122,35 @@ describe("profil-farkında backstop (4.5) — belgenin ŞABLONUNUN override tabl
     });
     expect(res.statusCode).toBe(409);
     expect(res.json()).toEqual({ error: "blocker_present", detail: ["empty-required"] });
+  });
+
+  it("PROFİL BLOCKER'ı CANLI: garment + low-dpi → 409 (veri değişikliği, kod değişikliği YOK)", async () => {
+    /* low-dpi@tekstil ürün sahibi onayıyla (2026-07-26) blocker'a yükseldi;
+       profil-siddet paketinin vaadi burada ölçülür: backstop koduna
+       DOKUNULMADI, garment manifest tablosuna eklenen satır sunucuda 409'a
+       dönüştü. Aynı uyarı menu belgesinde 409 ÜRETMEZ (çekirdek warning) —
+       hemen alttaki test bunu çiviler. */
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/documents/${garmentDocId}/export`,
+      payload: {
+        warnings: [{ type: "low-dpi", slotId: "area:chest_left:logo", effectiveDpi: 32, level: "red" }],
+      },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: "blocker_present", detail: ["low-dpi"] });
+  });
+
+  it("AYNI uyarı menu belgesinde 409 üretmez — çekirdek warning kalır, katman profile özgü", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/documents/${docId}/export`,
+      payload: {
+        variants: [],
+        warnings: [{ type: "low-dpi", slotId: "photo", effectiveDpi: 32, level: "red" }],
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "no_variants" });
   });
 });
