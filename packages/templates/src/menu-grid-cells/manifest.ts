@@ -1,7 +1,7 @@
 /* menu-grid-cells — "resimli ızgara" (FAZ1-GOREV §4, MADO'S iskeleti) */
 
 import type { TemplateManifest } from "../types.js";
-import { CHROME_SLOTS } from "../parts/PageChrome.js";
+import { CHROME_SLOTS } from "../parts/chrome-slots.js";
 
 export const manifest = {
   id: "menu-grid-cells",

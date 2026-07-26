@@ -1,7 +1,8 @@
 /* Şablon kayıt defteri — CONSTITUTION §5.7: editör ve print yalnızca buradan okur.
    Yeni şablon eklemek = klasör ekle + aşağıdaki haritaya yaz; başka dosyaya dokunulmaz. */
 
-import { MATERIAL_TYPES, isMaterialType, type MaterialType, type TemplateEntry } from "./types.js";
+import { MATERIAL_TYPES, type MaterialType, type TemplateEntry } from "./types.js";
+import { birlestirVeDogrula } from "./registry-core.js";
 import { menuGridCells } from "./menu-grid-cells/index.js";
 import { menuListePremium } from "./menu-liste-premium/index.js";
 import { menuTrifold } from "./menu-trifold/index.js";
@@ -71,48 +72,21 @@ const EL_YAZIMI: readonly TemplateEntry[] = [
   garment,
 ];
 
-function dogrulaGiris(key: string, entry: TemplateEntry): void {
-  const m = entry.manifest;
-  if (!isMaterialType(m.type)) {
-    throw new Error(
-      `Şablon "${key}": bilinmeyen materyal türü "${String(m.type)}" (izinli: ${MATERIAL_TYPES.join(", ")})`
-    );
-  }
-  if (!Number.isInteger(m.profile_version) || m.profile_version < 1) {
-    throw new Error(
-      `Şablon "${key}": profile_version pozitif tamsayı olmalı (bulunan: ${String(m.profile_version)})`
-    );
-  }
-  /* Harita anahtarı ile manifest.id ayrışamaz: ayrışırsa getTemplate(id)
-     başka bir manifest'in kimliğiyle cevap verir. */
-  if (m.id !== key) {
-    throw new Error(`Şablon "${key}": manifest.id "${m.id}" harita anahtarıyla uyuşmuyor`);
-  }
-}
-
 /**
  * Kayıt defterini KURAR ve YÜKLENİRKEN doğrular — tek geçiş.
  * `generated` (fabrika) üzerine el yazımı yazılır (el yazımı kazanır, kasıtlı).
  * El yazımı KÜME İÇİ çift-id REDDEDİLİR (B3: obje-literali sessizce ezerdi).
+ *
+ * İnvaryantın kendisi (`birlestirVeDogrula`) registry-core.ts'te yaşar (C-P1
+ * backlog: manifest-yalnız kimlik alt-yolu da AYNI çekirdeği kullanır — iki
+ * ayrı yerde yazılıp sürüklenmez). Bu fonksiyon yalnız TemplateEntry'ye
+ * özgü ince bir sarmalayıcıdır; imza ve davranış ÖNCEKİYLE BİREBİR aynıdır.
  */
 export function kurVeDogrula(
   generated: Record<string, TemplateEntry>,
   elYazimi: readonly TemplateEntry[]
 ): Record<string, TemplateEntry> {
-  const defter: Record<string, TemplateEntry> = { ...generated };
-  const gorulen = new Set<string>();
-  for (const entry of elYazimi) {
-    const id = entry.manifest.id;
-    if (gorulen.has(id)) {
-      throw new Error(`Şablon id çakışması: "${id}" iki kez kayıtlı (el yazımı)`);
-    }
-    gorulen.add(id);
-    defter[id] = entry; /* GENERATED'i ezmesi kasıtlı — yerleşik kimlik kazanır */
-  }
-  for (const [key, entry] of Object.entries(defter)) {
-    dogrulaGiris(key, entry);
-  }
-  return defter;
+  return birlestirVeDogrula(generated, elYazimi, (e) => e.manifest);
 }
 
 /* Fabrika üretimi şablonlar (mimar #12) el yazımı kayıtlarla birleşir;

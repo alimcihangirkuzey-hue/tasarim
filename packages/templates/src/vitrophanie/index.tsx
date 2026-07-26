@@ -16,8 +16,13 @@ import { relToMM, scaleRule, type RelBox } from "../engine/ratio.js";
 import { resolveTheme, themeStyle, type Theme } from "../themes.js";
 import type { TemplateEntry, TemplateManifest, TemplateProps } from "../types.js";
 import { Guides, Slot, TextLines, ls } from "../parts/svg.js";
-
-type VitroVariant = "bandeau" | "centre" | "colonne";
+import {
+  SLOT_DEFS,
+  VITRO_BANDEAU_MANIFEST,
+  VITRO_CENTRE_MANIFEST,
+  VITRO_COLONNE_MANIFEST,
+  type VitroVariant,
+} from "./manifest.js";
 
 export interface VitroAnalysis {
   theme: Theme;
@@ -34,37 +39,6 @@ export interface VitroAnalysis {
   slogan: { text: string; detached: boolean };
   phone: string;
   items: Array<{ name: string; price: string }>;
-}
-
-const SLOT_DEFS = [
-  { id: "logo", kind: "image" as const, bind: "brand.logo_primary" },
-  { id: "logo_mono", kind: "image" as const, bind: "brand.logo_mono" },
-  { id: "hours", kind: "text" as const, bind: "brand.contact.hours", maxLines: 1 },
-  { id: "slogan", kind: "text" as const, bind: "brand.slogan_fr", maxLines: 2 },
-  { id: "phone", kind: "text" as const, bind: "brand.contact.phone", maxLines: 1 },
-];
-
-function makeManifest(variant: VitroVariant, name_tr: string): TemplateManifest {
-  return {
-    id: `vitro-${variant}`,
-    type: "cam",
-    profile_version: 1,
-    name_tr,
-    bleed_mm: 0, // gerçek bleed param'dan; manifest değeri taban
-    safe_mm: 0,
-    formats: { libre: { w_mm: 1000, h_mm: 1000, label_tr: "Serbest (cm)" } },
-    defaultFormat: "libre",
-    params: [
-      { id: "w_cm", type: "number", default: 100, min: 10, max: 2000, step: 1, label_tr: "Genişlik (cm)" },
-      { id: "h_cm", type: "number", default: 100, min: 10, max: 2000, step: 1, label_tr: "Yükseklik (cm)" },
-      { id: "mode", type: "choice", options: ["impression", "decoupe"], default: "impression", label_tr: "Mod" },
-      { id: "miroir", type: "toggle", default: false, label_tr: "Miroir (içten uygulama)" },
-      { id: "cut_color", type: "color", default: "#1A1A1A", label_tr: "Kesim rengi" },
-      { id: "bleed_mm", type: "choice", options: [0, 3, 5], default: 0, label_tr: "Bleed (mm)" },
-    ],
-    slots: SLOT_DEFS,
-    themes: ["or-noir", "aras-orange", "velours-rouge"],
-  };
 }
 
 export function analyzeVitro(client: ClientDTO, doc: DocumentState): VitroAnalysis {
@@ -321,24 +295,21 @@ function VitroLogo({ a, b, decoupe, interact, selectedSlot, name }: {
   );
 }
 
-const entryFor = (variant: VitroVariant, name_tr: string): TemplateEntry => {
-  const manifest = makeManifest(variant, name_tr);
-  return {
-    manifest,
-    Component: VitroTemplate(variant),
-    pageCount: () => 1,
-    pageSizeMM: (_c, doc) => {
-      const p = VitroParamsSchema.parse(doc.params);
-      const { scale } = scaleRule(p.w_cm * 10, p.h_cm * 10);
-      return {
-        w_mm: (p.w_cm * 10) / scale,
-        h_mm: (p.h_cm * 10) / scale,
-        bleed_mm: p.bleed_mm / scale,
-      };
-    },
-  };
-};
+const entryFor = (variant: VitroVariant, manifest: TemplateManifest): TemplateEntry => ({
+  manifest,
+  Component: VitroTemplate(variant),
+  pageCount: () => 1,
+  pageSizeMM: (_c, doc) => {
+    const p = VitroParamsSchema.parse(doc.params);
+    const { scale } = scaleRule(p.w_cm * 10, p.h_cm * 10);
+    return {
+      w_mm: (p.w_cm * 10) / scale,
+      h_mm: (p.h_cm * 10) / scale,
+      bleed_mm: p.bleed_mm / scale,
+    };
+  },
+});
 
-export const vitroBandeau = entryFor("bandeau", "Vitrophanie — Saat Bandı");
-export const vitroCentre = entryFor("centre", "Vitrophanie — Merkez Logo");
-export const vitroColonne = entryFor("colonne", "Vitrophanie — Menü Kolonu");
+export const vitroBandeau = entryFor("bandeau", VITRO_BANDEAU_MANIFEST);
+export const vitroCentre = entryFor("centre", VITRO_CENTRE_MANIFEST);
+export const vitroColonne = entryFor("colonne", VITRO_COLONNE_MANIFEST);
