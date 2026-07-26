@@ -22,6 +22,50 @@ export const PRODUCTION_CHANNELS = [
 ] as const satisfies readonly ExportRecordDTO["kind"][];
 export type ProductionChannel = (typeof PRODUCTION_CHANNELS)[number];
 
+/* ── DIŞA AÇIK KANAL kümesi (Canonical 7.2/507 "Diğer modüllerle entegrasyon
+   sınırları"; 7.4/524 bağlayıcı katmanı; journal
+   2026-07-26-entegrasyon-siniri-karari) ──────────────────────────────────────
+   İmzalı MAKİNE KANALINDAN (POST /render — B→C sözleşmesi, styva FLYER M7)
+   istenebilecek üretim kanalları. Kümenin DIŞINDA kalanlar (decoupe, broderie,
+   png) atölye içidir: yalnız oturum açmış kullanıcının kendi export uçlarından
+   üretilir. Entegrasyon sınırı budur — "profil ne üretir" (production_channels)
+   ile "dış sistem ne isteyebilir" AYRI iki sorudur.
+
+   7.2/507 RED KARARI — profil manifest'ine ayrı bir entegrasyon/dış-kanal
+   alanı BİLEREK EKLENMEDİ. Ölçülmüş DÖRT gerekçe:
+   (a) TÜRETİLEBİLİR: dışa açık küme = production_channels ∩ render contract
+       enum'u (aşağıdaki DIS_KANALLAR). El yazımı İKİNCİ KAYNAK türetilebileni
+       kopyalar ve sürüklenir — ilan bir şey der, bekçi başkasını uygular.
+   (b) FARKLILAŞMIYOR: print/preview ilan eden 9 kayıtlı ailenin HİÇBİRİ
+       "print ilan ederim ama dışa kapalı olsun" demiyor; per-manifest alan
+       bugün bilgi taşımaz — ölü sözleşme yazılmaz.
+   (c) KANONİK BEYAN BAŞKA KATMANLARDA: protokol entegrasyon bildirimini
+       eklenti manifestine (7.3/516: yetenek beyanı · gerekli izinler · gerekli
+       entitlement) ve bağlayıcı bildirimine (7.4/524: kimlik doğrulama yöntemi ·
+       sözleşme sürümü · hız sınırı · denetim kaydı) VERMİŞTİR. EK-D sözlüğü
+       üretim profilini "geometri, kural, teknik ve çıktı sözleşmesi" diye
+       tanımlar — tanımda entegrasyon YOKTUR.
+   (d) YETKİ PLATFORM KATMANININDIR: 9.5/696 erişimi entitlement'a bağlar
+       ("kod içinde sabit premium kontrolü yapılmaz") ve 9.5/699 kontrol
+       noktaları arasında "profil kullanımı"nı sayar; hangi tenant'ın hangi
+       ucu çağırabileceği profilin işi değildir. Profilin cevapladığı tek soru
+       ÇIKTI sözleşmesidir ve o zaten ilanlıdır.
+   EMSAL ZİNCİRİ: preview_types (aşağıdaki MockupTercihi şerhi) ve 7.2/495'in
+   "hedef kullanıcı" yarısı (aşağıdaki HEDEF_SEKTOR şerhi) aynı ölçüyle ilan
+   dışı kaldı — bu ÜÇÜNCÜSÜDÜR. Bir profil ilanlı kanalını dışa kapatmak
+   istediği gün farklılaşma doğar ve alan eklenir; karar journal ister.
+
+   NEDEN LİTERAL (türetme değil): contract enum (RenderRequestV1Schema.variant)
+   apps/server'da yaşar ve templates→server bağı YOKTUR — bağımlılık ters yönde
+   akar (server templates'i okur; identity alt-yolu bunun için var). Bu yüzden
+   küme burada elle yazılır, enum ile EŞ-KÜMELİK server tarafında testle
+   çivilenir: MOCKUP_SAHNE_TURLERI ≡ SceneKindSchema.options emsali (bilinçli
+   literal — sürüklenme sessiz kalamaz, test yüksek sesle patlar).
+   ALT-KÜME KİLİDİ: `satisfies` PRODUCTION_CHANNELS dışı bir adı derlemede
+   yakalar — dışa açık kanal, önce ÜRETİM KANALI olmak zorundadır. */
+export const DIS_KANALLAR = ["print", "preview"] as const satisfies readonly ProductionChannel[];
+export type DisKanal = (typeof DIS_KANALLAR)[number];
+
 /* ── İzinli üretim teknikleri (7.2; 4.5 "hangi teknik hangi malzemede") ───
    Kapalı sözlük: baskı (impression) · nakış (broderie) · kesim (decoupe).
    Teknik ile ÇIKTI KANALI zorunlu ilişkilidir (garment.ts kanalı teknikten

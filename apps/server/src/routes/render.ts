@@ -16,7 +16,7 @@ import path from "node:path";
 import { nowISO } from "@tezgah/shared";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
-import { productionChannelsOf } from "@tezgah/templates/identity";
+import { disaAcikKanallar, productionChannelsOf } from "@tezgah/templates/identity";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser } from "./exports.js";
 import {
@@ -51,19 +51,70 @@ export function renderRoutes(app: FastifyInstance): void {
     if (!client) return reply.code(404).send({ error: "client_not_found" });
     const docDTO = rowToDocument(found.row, found.clientId);
 
-    /* KANAL BEKÇİSİ (7.2/8.5; journal 2026-07-26-render-kanal-bekcisi):
-       exports.ts'teki channel_not_declared kapısının eşi — MAKİNE KANALI da
-       profil ilanının dışına çıkamaz (önizleme-türleri keşfinin borcu: imzalı
-       istemci, PDF kanalı ilan etmeyen tekstile print üretebiliyordu ve uç
-       kayıt yazmadığından iz yalnız yanıt meta'sındaydı). Kayıtsız id null →
-       GEÇER (fabrika düşme deseni). CONTRACT SÜRÜMÜ KORUNUR: istek şeması ve
-       kanonik imza dizesi değişmedi, hata kodu eklemek additive guard'dır
-       (CD1-2 emsali) → RENDER_CONTRACT_V=1. Browser'dan ÖNCE → inject-testli. */
-    const kanallar = productionChannelsOf(docDTO.template_id);
-    if (kanallar !== null && !kanallar.includes(body.variant)) {
+    /* KANAL BEKÇİSİ — DIŞ KANAL DARALTMASI (Canonical 7.2/507, 9.5/699, 114;
+       journal 2026-07-26-entegrasyon-siniri-karari; taban: 2026-07-26-render-
+       kanal-bekcisi). exports.ts'teki channel_not_declared kapısının MAKİNE
+       eşi, iki noktada sıkılaştırıldı:
+
+       (i) KAYITSIZ PROFİL REDDİ. Önceki hâl `kanallar === null → GEÇER`
+       diyordu; o "fabrika düşme deseni" ATÖLYE ucu için yazılmıştı, MAKİNE
+       KANALI için değil. İmzalı DIŞ istemci, ilan denetiminden geçmemiş bir
+       profile üretim yaptıramaz — kayıtsız id artık 400 profile_not_registered
+       (fail-loud; sessiz "üretiliyor" yok). ATÖLYE/MAKİNE ASİMETRİSİ BİLİNÇLİ
+       ve kayıtlı: UI kanadı fabrika belgesini export etmeye DEVAM EDER
+       (exports.ts'in null→geçer davranışı DEĞİŞMEDİ — atölyede operatör
+       sorumludur; asimetri exports-channel.test.ts'te ÇİVİLİDİR), dış dünya
+       YALNIZ ilanlı profillere erişir (9.5/699 kontrol noktaları arasında
+       "profil kullanımı" sayılır; 114 "entegrasyon yalnızca sürümlü
+       sözleşmelerle" — sözleşmenin öznesi ilanlı profildir).
+
+       (ii) disa_acik ALANI (M8 dürüstlük). Eski yanıt garment reddinde
+       `declared:["png","broderie"]` diyordu; ikisi de DIŞ kanal DEĞİL — dış
+       istemciye YANLIŞ sınır bildiriliyordu ("png isteseydim geçerdi" yanılgısı,
+       oysa contract enum'u yalnız print|preview taşır). declared ham profil
+       ilanı olarak KALIR (tanı değeri: profil ne ilan ediyor), disa_acik ise
+       istemcinin GERÇEKTEN isteyebileceği kesişimi bildirir — additive alan.
+       ŞERH: bugün ulaşılabilir tek değeri boş dizidir (contract enum'u
+       print|preview, DIS_KANALLAR ile eş küme → variant her zaman dış
+       kanaldır; dolayısıyla bu dala yalnız hiçbir dış kanal açmayan profil
+       düşer: garment). Alan yine de bilgi taşır — "yanlış kanal istedin"
+       ile "bu profil dışa kapalı" ayrımını söyler; enum bir gün genişlerse
+       (decoupe/png) ayrışır.
+
+       (iii) SÜRÜM DEĞERLENDİRMESİ — DÜRÜST AD: disa_acik alanı additive'dir,
+       ama profile_not_registered ADDITIVE DEĞİL, DAVRANIŞ DARALTMASIDIR:
+       dün 201 dönen bir istek (kayıtsız profil) bugün 400 alır. İstek şeması
+       ve kanonik imza dizesi değişmediği için istemci kodu kırılmaz ve
+       RENDER_CONTRACT_V=1 korunur; daralan şey başarı kümesidir — bilinçli
+       GÜVENLİK sıkılaştırması (ilan denetimsiz üretim kapatıldı). MULTI_REPO
+       "kırıcı değişiklik = MAJOR" kuralı açısından çağıran tarafa BİLDİRİM
+       borcu doğar (TODO şerhi); styva FLYER M7 çağıranı ilanlı flyer profili
+       üzerinden geçtiği için bugün etkilenmez.
+
+       (iv) SIRA: imza/belge/müşteri kapılarının ARKASINDA (kayıtsız profil
+       bilgisi imzasız istemciye sızmaz), getBrowser'ın ÖNÜNDE → puppeteer'siz
+       inject-testli. */
+    /* İki sorgu TEK null kapısında toplanır: disaAcikKanallar zaten
+       productionChannelsOf üzerinden türer (biri null ise diğeri de null) —
+       ayrı bir `?? []` yedeği ULAŞILAMAZ ölü dal olurdu ve okuyucuya
+       "burada null olabilir" diye yanlış sinyal verirdi (ölü sözleşme
+       yasağının kod hâli). declared ham ilan, disa_acik kesişim. */
+    const ilan = productionChannelsOf(docDTO.template_id);
+    const disaAcik = disaAcikKanallar(docDTO.template_id);
+    if (ilan === null || disaAcik === null) {
+      return reply.code(400).send({
+        error: "profile_not_registered",
+        detail: { template_id: docDTO.template_id },
+      });
+    }
+    if (!disaAcik.includes(body.variant)) {
       return reply.code(400).send({
         error: "channel_not_declared",
-        detail: { requested: [body.variant], declared: kanallar },
+        detail: {
+          requested: [body.variant],
+          declared: ilan,
+          disa_acik: disaAcik,
+        },
       });
     }
 

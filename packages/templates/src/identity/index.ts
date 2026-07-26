@@ -43,6 +43,14 @@ export type { ProductionChannel } from "../types.js";
 export { PRODUCTION_SUBSTRATES, SUBSTRAT_TEKNIKLERI } from "../types.js";
 export type { ProductionSubstrate } from "../types.js";
 
+/* Entegrasyon sınırı katmanı (7.2/507 "Diğer modüllerle entegrasyon sınırları";
+   7.4/524 makine kanalı): dışa açık kanal sözlüğü types.ts'ten aynen geçer —
+   PRODUCTION_SUBSTRATES emsali, saf veri, alt-yolun react'sız grafiği
+   bozulmaz. /render bekçisi hem sözlüğü hem disaAcikKanallar sorgusunu
+   BURADAN okur (sunucunun templates'e tek kapısı bu alt-yoldur). */
+export { DIS_KANALLAR } from "../types.js";
+export type { DisKanal } from "../types.js";
+
 /* Hedef sektör katmanı (7.2/495 "Hedef kullanıcı ve sektör" maddesinin SEKTÖR
    yarısı; 7.1/481 görünürlük): sözlük ve tür→sektör eşlemesi types.ts'ten
    aynen geçer — PRODUCTION_SUBSTRATES emsali, saf veri, alt-yolun react'sız
@@ -51,8 +59,8 @@ export { SEKTORLER, HEDEF_SEKTOR } from "../types.js";
 export type { Sektor } from "../types.js";
 
 import type { SeverityOverrides } from "../engine/severity.js";
-import { HEDEF_SEKTOR } from "../types.js";
-import type { ProductionChannel, ProductionSubstrate, Sektor } from "../types.js";
+import { DIS_KANALLAR, HEDEF_SEKTOR } from "../types.js";
+import type { DisKanal, ProductionChannel, ProductionSubstrate, Sektor } from "../types.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -101,11 +109,54 @@ export function severityOverridesOf(id: string): SeverityOverrides | undefined {
 }
 
 /** Üretim kanalı ilanı sorgusu (7.2/8.5) — uçların bekçileri buradan okur.
-    Kayıtsız id (fabrika/generated ve süreç sonrası taze kayıt) null döner:
-    bekçiler null'da GEÇİRİR (bugünkü düşme davranışı korunur — fabrika
-    belgeleri print/preview üretmeye devam eder; kayıtlı sınır, journal). */
+    Kayıtsız id (fabrika/generated ve süreç sonrası taze kayıt) null döner;
+    null'da ne yapılacağı ARTIK UCA GÖRE DEĞİŞİR (entegrasyon-siniri paketi,
+    ATÖLYE/MAKİNE ASİMETRİSİ): atölye uçları (exports/garment/vector) null'da
+    GEÇİRİR — fabrika belgeleri UI'dan print/preview üretmeye devam eder,
+    operatör sorumludur; MAKİNE kanalı (/render) null'da 400
+    profile_not_registered ile DURUR — imzalı dış istemci ilan denetiminden
+    geçmemiş profile üretim yaptıramaz. Asimetri iki tarafta da testle
+    çivilidir (exports-channel.test.ts · render-channel.test.ts). */
 export function productionChannelsOf(id: string): readonly ProductionChannel[] | null {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_channels : null;
+}
+
+/** Şablonun DIŞA AÇIK kanalları (7.2/507 "Diğer modüllerle entegrasyon
+    sınırları"; journal 2026-07-26-entegrasyon-siniri-karari) — ilanın
+    DIS_KANALLAR ile KESİŞİMİ, İLAN SIRASIYLA. 7.2/507'nin makine-okunur
+    cevabı budur: profile ayrı bir entegrasyon alanı EKLENMEDİ (types.ts'teki
+    ölçümlü RED KARARI), sınır iki ilanın kesişiminden TÜRETİLİR — türetim tek
+    kaynaklıdır, sürüklenecek ikinci el yoktur.
+
+    TÜKETİCİSİ VARDIR (ölü API yasağı — bu dosyanın başlığındaki
+    listTemplatesByType/YAGNI şerhinin emsali): tek okuyucu POST /render kanal
+    bekçisidir (apps/server/src/routes/render.ts). Bekçi artık "ilanlı mı"
+    değil "DIŞA AÇIK mı" sorar; kayıtsız id'de null → profile_not_registered
+    (400) ile GÖRÜNÜR durur.
+
+    Kayıtsız id null döner, FIRLATMAZ — productionChannelsOf ile aynı sözleşme
+    (Object.hasOwn: prototip zinciri kimlik değildir). null "kanalı yok"
+    DEĞİL, "profil tanınmıyor" demektir; boş dizi (garment) ise TANINAN ama
+    dışa hiçbir şey açmayan profildir — iki hâl karıştırılamaz, uçlar ikisine
+    ayrı hata kodu verir.
+
+    VİTROPHANIE ŞERHİ: vitro aileleri decoupe ilan eder ama decoupe DIŞ
+    KÜMEDE YOKTUR — kesim dosyası imzalı makine kanalından İSTENEMEZ (dış
+    sistem cam giydirmenin kesim yolunu sipariş edemez; kesim atölye içi
+    üretim adımıdır). Bu, render contract enum'unun (variant: print|preview)
+    kararıdır ve genişletmek MAJOR sözleşme değişikliğidir — enum'a decoupe
+    eklemek yeni çıktı türü, yeni imza yüzeyi ve yeni denetim kaydı demektir
+    (7.4/524 bağlayıcı bildirimi). */
+export function disaAcikKanallar(id: string): readonly DisKanal[] | null {
+  const kanallar = productionChannelsOf(id);
+  if (kanallar === null) return null;
+  /* Kesişim İLAN SIRASINI korur (dış sözlüğün sırasını DEĞİL): hata
+     mesajlarında ve istemci hata ayıklamasında profilin kendi okuması görünür.
+     Tip daraltıcı predicate: dönen dizi DisKanal[]'dir — "dışa açık kanal"
+     bilgisi tipte taşınır, DisKanal ölü tip olarak kalmaz (ölü ilan yasağı). */
+  return kanallar.filter((k): k is DisKanal =>
+    (DIS_KANALLAR as readonly ProductionChannel[]).includes(k)
+  );
 }
 
 /** Üretim substratı ilanı sorgusu (7.2/501 malzeme yarısı; 4.5/8.5 teknik–
