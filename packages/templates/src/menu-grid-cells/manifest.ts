@@ -54,6 +54,8 @@ export const manifest = {
     },
     /* Mimar kararı #2 (FAZ2-GOREV §5): opsiyonel QR, default kapalı */
     { id: "showQr", type: "toggle", default: false, label_tr: "QR göster" },
+    /* Canonical 4.4 kontrollü benzersizlik — hücre çerçeve dili (flyer emsali) */
+    { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
     {
       id: "qrSource",
       type: "choice",
