@@ -53,6 +53,7 @@ export const manifest = {
     ],
   },
   production_channels: ["print", "preview"],
+  production_techniques: ["impression"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 } satisfies TemplateManifest;
 

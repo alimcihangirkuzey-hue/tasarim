@@ -36,6 +36,8 @@ export function makeManifest(variant: VitroVariant, name_tr: string): TemplateMa
     /* impression modu bugün print+preview PDF üretir (doExport varsayılan
        dalı), decoupe modu kesim SVG'si — üç kanal da FİİLİ davranıştır */
     production_channels: ["print", "preview", "decoupe"],
+    /* mode paramının seçenekleriyle birebir: baskı + kesim (registry bağı) */
+    production_techniques: ["impression", "decoupe"],
     themes: ["or-noir", "aras-orange", "velours-rouge"],
   };
 }

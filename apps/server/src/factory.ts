@@ -125,6 +125,7 @@ export const manifest: TemplateManifest = {
 ${slots}
   ],${repeater}
   production_channels: ["print", "preview"],
+  production_techniques: ["impression"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],${provenance}
 };
 `;

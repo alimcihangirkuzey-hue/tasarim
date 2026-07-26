@@ -72,6 +72,8 @@ describe("şablon fabrikası kod üreticisi", () => {
        BEYAN eder — alan zorunlu, kanalsız manifest registry'den geçemez;
        fabrika ailesi print+preview üretir (bugünkü fiilî davranış) */
     expect(m).toContain(`production_channels: ["print", "preview"],`);
+    /* uretim-teknikleri (7.2/4.5): fabrika ailesi baskı tekniğini beyan eder */
+    expect(m).toContain(`production_techniques: ["impression"],`);
     expect(m).toContain(`{ id: "title", kind: "text", bind: null, default_fr: "NOTRE CARTE", font_mm: { min: 6, max: 12 }, maxLines: 1 },`);
     expect(m).toContain(`bind: "brand.logo_primary"`);
     expect(m).toContain(`bind: "item.name_fr"`);

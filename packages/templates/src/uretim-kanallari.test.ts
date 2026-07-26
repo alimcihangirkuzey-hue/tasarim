@@ -94,6 +94,7 @@ describe("bozuk kanal ilanı kayıt defterinden geçemez", () => {
       slots: [],
       themes: [],
       production_channels: ["print", "preview"],
+      production_techniques: ["impression"],
       ...patch,
     },
     Component: (() => null) as unknown as TemplateEntry["Component"],

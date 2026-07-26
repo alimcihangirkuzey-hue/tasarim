@@ -22,6 +22,25 @@ export const PRODUCTION_CHANNELS = [
 ] as const satisfies readonly ExportRecordDTO["kind"][];
 export type ProductionChannel = (typeof PRODUCTION_CHANNELS)[number];
 
+/* ── İzinli üretim teknikleri (7.2; 4.5 "hangi teknik hangi malzemede") ───
+   Kapalı sözlük: baskı (impression) · nakış (broderie) · kesim (decoupe).
+   Teknik ile ÇIKTI KANALI zorunlu ilişkilidir (garment.ts kanalı teknikten
+   seçer; kesim SVG'si decoupe tekniğinin çıktısıdır) — KANAL_GEREKTIRIR
+   eşlemesi bu ilişkinin İLANIDIR ve registry-core çift yönlü bağı yük
+   zamanında doğrular: tekniği ilansız kanal üretilemez, kanalı ilansız
+   teknik ölü ilandır. */
+export const PRODUCTION_TECHNIQUES = ["impression", "broderie", "decoupe"] as const;
+export type ProductionTechnique = (typeof PRODUCTION_TECHNIQUES)[number];
+
+/** Kanal → onu üreten teknik (çift yönlü bağın tek kaynağı) */
+export const KANAL_GEREKTIRIR: Record<ProductionChannel, ProductionTechnique> = {
+  print: "impression",
+  preview: "impression",
+  png: "impression",
+  decoupe: "decoupe",
+  broderie: "broderie",
+};
+
 export type RenderMode = "edit" | "print";
 
 export type SlotKind = "text" | "image" | "color" | "price" | "qr" | "badge";
@@ -162,6 +181,14 @@ export interface TemplateManifest {
    * ilan ile davranış ayrışamaz.
    */
   production_channels: readonly ProductionChannel[];
+  /**
+   * İzinli üretim teknikleri İLANI (7.2; 4.5 teknik uygunluk). ZORUNLU —
+   * tekniksiz profil üretimsiz profildir. Registry çift yönlü bağı doğrular:
+   * her ilanlı kanalın gerektirdiği teknik ilanlı olmalı VE her ilanlı
+   * tekniğin onu üreten en az bir kanalı ilanlı olmalı; technique/mode
+   * paramlarının seçenekleri bu kümenin alt kümesi olmalı.
+   */
+  production_techniques: readonly ProductionTechnique[];
   /** Fabrika üretimi şablonlarda içe alma künyesi (mimar #20); el yazımıda yoktur */
   provenance?: TemplateProvenance;
 }
