@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GarmentParamsSchema, cmToPx300, newId, nowISO } from "@tezgah/shared";
+import { productionChannelsOf } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -20,8 +21,17 @@ export function garmentRoutes(app: FastifyInstance): void {
     const found = documentWithClient(req.params.id);
     if (!found) return reply.code(404).send({ error: "not_found" });
     const docDTO = rowToDocument(found.row, found.clientId);
-    if (docDTO.template_id !== "garment") {
-      return reply.code(400).send({ error: "not_garment" });
+    /* KANAL BEKÇİSİ (7.2/8.5, uretim-kanali-ilani): eski hâl `template_id
+       !== "garment"` İD-SNİFF'iydi (C-P1'in temizlediği desenin kaçağı) —
+       ikinci bir tekstil ailesi eklense uç onu reddederdi. Bu uç png/broderie
+       kanalları üretir; bekçi artık o İLANI okur. Eski hata adı `not_garment`
+       kanal sözlüğüne emekli edildi (UI hata adını tüketmiyor; journal kaydı). */
+    const kanallar = productionChannelsOf(docDTO.template_id);
+    if (kanallar === null || (!kanallar.includes("png") && !kanallar.includes("broderie"))) {
+      return reply.code(400).send({
+        error: "channel_not_declared",
+        detail: { requested: ["png", "broderie"], declared: kanallar },
+      });
     }
     const params = GarmentParamsSchema.parse(docDTO.params);
     const client = db

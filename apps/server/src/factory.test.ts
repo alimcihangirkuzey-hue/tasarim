@@ -68,6 +68,10 @@ describe("şablon fabrikası kod üreticisi", () => {
        o yetkilendirilen değişikliğin pinidir. Alan zorunlu: sürümsüz manifest
        yük-zamanı invaryantından (templates/index.ts) geçemez. */
     expect(m).toContain(`profile_version: 1,`);
+    /* uretim-kanali-ilani (7.2/8.5): fabrika ürettiği manifest kanallarını da
+       BEYAN eder — alan zorunlu, kanalsız manifest registry'den geçemez;
+       fabrika ailesi print+preview üretir (bugünkü fiilî davranış) */
+    expect(m).toContain(`production_channels: ["print", "preview"],`);
     expect(m).toContain(`{ id: "title", kind: "text", bind: null, default_fr: "NOTRE CARTE", font_mm: { min: 6, max: 12 }, maxLines: 1 },`);
     expect(m).toContain(`bind: "brand.logo_primary"`);
     expect(m).toContain(`bind: "item.name_fr"`);

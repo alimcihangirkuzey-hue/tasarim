@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer";
 import { newId, nowISO, type ExportRecordDTO } from "@tezgah/shared";
-import { isBlockerType, severityOverridesOf } from "@tezgah/templates/identity";
+import { isBlockerType, productionChannelsOf, severityOverridesOf } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -90,6 +90,22 @@ export function exportRoutes(app: FastifyInstance): void {
       );
       if (variants.length === 0) {
         return reply.code(400).send({ error: "no_variants" });
+      }
+
+      /* KANAL BEKÇİSİ (7.2/8.5, uretim-kanali-ilani): bu uç print/preview
+         kanalı üretir; belgenin profili o kanalı İLAN ETMİYORSA üretim
+         reddedilir (bugün yalnız tekstil — PDF üretmeyen profil; UI zaten
+         garment ucuna yönlendirir, bu bekçi doğrudan-API/UI-hatası
+         savunmasıdır, blocker-backstop emsali). Kayıtsız id (fabrika +
+         süreç sonrası taze kayıt) null → GEÇER: bugünkü düşme davranışı
+         korunur, şerh journal'da. Blocker backstop İLK kapı KALIR. */
+      const kanallar = productionChannelsOf(found.row.template_id);
+      const ilansiz = kanallar === null ? [] : variants.filter((v) => !kanallar.includes(v));
+      if (ilansiz.length > 0) {
+        return reply.code(400).send({
+          error: "channel_not_declared",
+          detail: { requested: ilansiz, declared: kanallar },
+        });
       }
 
       const docDTO = rowToDocument(found.row, found.clientId);

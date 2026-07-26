@@ -33,5 +33,6 @@ export const manifest = {
     { id: "services", kind: "text", bind: null, default_fr: "Sur place · à emporter · Livraison", maxLines: 1 },
     { id: "hours", kind: "text", bind: "brand.contact.hours", maxLines: 1 },
   ],
+  production_channels: ["print", "preview"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 } satisfies TemplateManifest;

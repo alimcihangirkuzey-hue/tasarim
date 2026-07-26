@@ -33,6 +33,9 @@ export function makeManifest(variant: VitroVariant, name_tr: string): TemplateMa
       { id: "bleed_mm", type: "choice", options: [0, 3, 5], default: 0, label_tr: "Bleed (mm)" },
     ],
     slots: SLOT_DEFS,
+    /* impression modu bugün print+preview PDF üretir (doExport varsayılan
+       dalı), decoupe modu kesim SVG'si — üç kanal da FİİLİ davranıştır */
+    production_channels: ["print", "preview", "decoupe"],
     themes: ["or-noir", "aras-orange", "velours-rouge"],
   };
 }

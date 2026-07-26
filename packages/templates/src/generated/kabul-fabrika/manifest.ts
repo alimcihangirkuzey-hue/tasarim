@@ -30,5 +30,6 @@ export const manifest: TemplateManifest = {
       { id: "photo", kind: "image", bind: "item.photo" },
     ],
   },
+  production_channels: ["print", "preview"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 };
