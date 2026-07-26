@@ -20,7 +20,8 @@ export function missingCoverageGlyphs(has: (codePoint: number) => boolean): stri
   return out;
 }
 
-/** packages/templates/fonts altındaki yerleşik OFL aileleri (ADR-8).
+/** packages/templates/fonts altındaki yerleşik OFL aileleri
+    (arşiv CONSTITUTION teknoloji ADR-8).
     Fabrika font bekçisi (mimar #19c): sistemde kurulu = bunlar ∪ custom_fonts. */
 export const REPO_FONT_FAMILIES: readonly string[] = [
   "Anton",

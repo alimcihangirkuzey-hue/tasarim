@@ -501,7 +501,8 @@ export function EditorPage() {
         <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>
           {doMockup.isPending ? t("editor.mockup_generating") : t("editor.mockup")}
         </button>
-        {/* FAZ4 §13: gs varsa aktif; yoksa pasif + kurulum yönlendirmesi (ADR-4) */}
+        {/* FAZ4 §13: gs varsa aktif; yoksa pasif + kurulum yönlendirmesi
+            (arşiv CONSTITUTION teknoloji ADR-4) */}
         <button
           className="ghost"
           disabled={!cmykQ.data?.available || doCmyk.isPending}

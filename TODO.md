@@ -3,7 +3,7 @@
 Bu dosya, geliştirme sırasında "hazırken yapılmayan" işlerin kaydıdır.
 Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
-- [ ] **A-08 devir işi (C-P0'dan, mekanik niteleme turu):** arşiv teknoloji ADR serisine çıplak atıf yapan **9 canlı dosyada** yorum/belge nitelemesi (`arşiv CONSTITUTION teknoloji ADR-n` biçimine) — davranış-dışı: `apps/web/src/store/editorStore.ts:1` (ADR-6) · `apps/server/src/routes/cmyk.ts:1` + `apps/web/src/api.ts:244` + `apps/web/src/i18n/tr.json:257` + `apps/web/src/pages/EditorPage.tsx:503` + `docs/export-kinds.md:18` (ADR-4) · `apps/web/src/main.tsx:28` + `packages/templates/fonts/fonts.css:2` (ADR-3) · `packages/shared/src/fonts.ts:23` (ADR-8). Kanonik disambigüasyon zaten var (Canonical §0.3 + EK-B/K-21); bu tur yalnız yorumları hizalar. C-P0 Adım A yalnız `assets.ts`+`TODO.md` nitelemişti (kapsam darlığı).
+- [x] **A-08 devir işi — KAPANDI (2026-07-26, journal `2026-07-26-a08-niteleme-turu`):** 9 canlı dosyadaki çıplak atıfların tamamı `arşiv CONSTITUTION teknoloji ADR-n` biçimine nitelendi; envanter kapanış öncesi ve sonrası bağımsız grep'le ölçüldü (kalan çıplak atıf: 0). Tek özel durum kayıtlı: `tr.json` `cmyk_missing` operatöre görünen dizeydi — niteleme görüntülenen metni değiştirdi (TODO bu dosyayı açıkça tura dahil ettiği için kapsam-içi; journal notu seq 3).
 
 > **Ritüel:** origin/main'e KOD push'u yalnız mimar merge onayından SONRA; docs/pilot-kayıt commit'leri istisna. Koşu, mimarın "başla"sı olmadan başlamaz.
 >

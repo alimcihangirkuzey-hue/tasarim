@@ -15,7 +15,7 @@ Bu sözlük insan-okur özet; yeni kind eklenirken İKİSİ birlikte güncelleni
 | `broderie_fiche` | garment broderie export'u | Nakış teknik fişi |
 | `png` | SVG/PNG export hattı | PNG görsel |
 | `snapshot` | belge geri-yükleme güvenlik kaydı | Durum snapshot'ı |
-| `print_cmyk` | `POST /api/documents/:id/export-cmyk` (ADR-4) | CMYK matbaa PDF'i |
+| `print_cmyk` | `POST /api/documents/:id/export-cmyk` (arşiv CONSTITUTION teknoloji ADR-4) | CMYK matbaa PDF'i |
 | `digital_menu` | `POST /api/clients/:id/menu-digital` | Tek dosyalık statik HTML menü |
 
 Versiyon sayacı: belge-bazlı kind'larda belge+kind başına, `presentation`'da proje+kind

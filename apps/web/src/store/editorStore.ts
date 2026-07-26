@@ -1,4 +1,5 @@
-/* Editör belge state'i — Zustand + undo/redo geçmişi (CONSTITUTION §6.2, ADR-6).
+/* Editör belge state'i — Zustand + undo/redo geçmişi (CONSTITUTION §6.2,
+   arşiv CONSTITUTION teknoloji ADR-6 — canlı program ADR-006 DEĞİL; Canonical §0.3).
    Otomatik kayıt EditorPage'de 2 sn debounce ile yapılır. */
 
 import { create } from "zustand";

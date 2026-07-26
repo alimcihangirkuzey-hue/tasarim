@@ -254,7 +254,7 @@
     "garment_auto": "otomatik (kumaşa göre)",
     "garment_line_source": "Metin kaynağı (marka kiti)",
     "cmyk": "Print (CMYK)",
-    "cmyk_missing": "Ghostscript kurulu değil — gswin64c/gs PATH'te olmalı (ghostscript.com). RGB PDF matbaaların çoğuna yeter (ADR-4).",
+    "cmyk_missing": "Ghostscript kurulu değil — gswin64c/gs PATH'te olmalı (ghostscript.com). RGB PDF matbaaların çoğuna yeter (arşiv CONSTITUTION teknoloji ADR-4).",
     "cmyk_need_print": "Önce print PDF al",
     "warn_min_font": "Yoğun düzen: yazı okunabilirlik tabanına indi (min font) — sütun/format artırmayı ya da içeriği azaltmayı düşünün",
     "warn_empty_price": "Fiyat bekliyor: bu ürünün fiyatı boş — menüde fiyatsız basılır (fiyat girilince kaybolur)",

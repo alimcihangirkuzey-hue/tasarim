@@ -1,5 +1,6 @@
 /* TEZGÂH şablon fontları — OFL lisanslı, latin + latin-ext (M9: ğşİı + éèçœ aynı dosyada)
-   font-display: block → PDF üretiminde fallback font kareleri basılmaz (ADR-3/§9.1) */
+   font-display: block → PDF üretiminde fallback font kareleri basılmaz
+   (arşiv CONSTITUTION teknoloji ADR-3/§9.1) */
 
 @font-face {
   font-family: "Oswald";
