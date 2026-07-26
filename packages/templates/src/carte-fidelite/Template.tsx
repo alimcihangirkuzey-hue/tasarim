@@ -42,8 +42,10 @@ export function CarteFideliteTemplate(props: TemplateProps): ReactNode {
             {/* NUMARALI damga grid'i */}
             {a.stamps.map((s) => (
               <g key={s.n} transform={`translate(${s.x}, ${s.y})`}>
-                <rect x={0.2} y={0.2} width={s.w - 0.4} height={s.h - 0.4} rx={1.2}
-                  fill="none" stroke="var(--c-line)" strokeWidth={0.4} strokeDasharray="1.2 1" />
+                {/* damga çerçevesi — dil İLANDAN (designSeed, analyze.frame) */}
+                <rect x={0.2} y={0.2} width={s.w - 0.4} height={s.h - 0.4} rx={a.frame.stampRx}
+                  fill="none" stroke="var(--c-line)" strokeWidth={0.4}
+                  strokeDasharray={a.frame.stampDash ?? undefined} />
                 <text x={s.w / 2} y={s.h / 2 + 1.6} fontSize={4} textAnchor="middle"
                   fill="var(--c-desc)" opacity={0.9}
                   style={{ fontFamily: "var(--f-item)", fontWeight: a.theme.weights.item }}>
