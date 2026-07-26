@@ -13,6 +13,8 @@ import {
   paramOptions,
   paramValue,
   resolveSelection,
+  severityOf,
+  warningEmphasis,
   type LayoutWarning,
 } from "@tezgah/templates";
 import {
@@ -624,7 +626,11 @@ export function EditorPage() {
             <div className="warn-list">
               {warnings.length === 0 && <div className="warn ok">{t("editor.no_warnings")}</div>}
               {warnings.map((w, i) => (
-                <div key={i} className={`warn ${w.type === "broderie-info" ? "info" : w.type === "overflow-items" || ("level" in w && w.level === "red") ? "red" : ""}`}>
+                /* Şiddet İLANDAN okunur (Canonical 4.7, severity.ts) — eski
+                   satır-içi sezgi merkezî katmana taşındı; kırmızı vurgu
+                   birebir aynı, info sınıfına empty-price + mono-suggest
+                   de girdi (kayıtlı niyet: bilgi/öneri) */
+                <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
                   {warnText(w)}
                 </div>
               ))}
@@ -712,7 +718,10 @@ export function EditorPage() {
             <h3 style={{ margin: 0 }}>{t("editor.export_warn_title")}</h3>
             <div className="warn-list">
               {warnings.map((w, i) => (
-                <div key={i} className="warn">{warnText(w)}</div>
+                /* Export özeti de aynı şiddet katmanını okur (tek kaynak) */
+                <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
+                  {warnText(w)}
+                </div>
               ))}
             </div>
             <div className="row" style={{ justifyContent: "flex-end" }}>
