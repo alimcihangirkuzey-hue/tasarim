@@ -130,6 +130,25 @@ describe("yük-zamanı invaryant — bozuk kimlik kayıt defterinden geçemez", 
     ).toThrow(/harita anahtarıyla uyuşmuyor/);
   });
 
+  it("BOZUK severity_overrides reddedilir — invaryant kurVeDogrula İÇİNDE İCRA edilir", () => {
+    /* Profil katmanı (4.5) yalnız sıkılaştırabilir; bilinmeyen tür, gevşetme
+       ve çekirdeği tekrarlayan ölü ilan kayıt defterine GİREMEZ (birim
+       testleri engine/severity.test.ts'te; burada İCRA kanıtlanır) */
+    expect(
+      kur("t", { severity_overrides: { "empty-required": "warning" } })
+    ).toThrow(/GEVŞETİYOR/);
+    expect(
+      kur("t", { severity_overrides: { "mono-suggest": "info" } })
+    ).toThrow(/ölü ilan/);
+    expect(
+      kur("t", { severity_overrides: { "mono-sugest": "warning" } as TemplateManifest["severity_overrides"] })
+    ).toThrow(/bilinmeyen uyarı türü/);
+    /* geçerli sıkılaştırma geçer */
+    expect(() =>
+      kurVeDogrula({}, [sahteGiris({ id: "t", severity_overrides: { "mono-suggest": "blocker" } })])
+    ).not.toThrow();
+  });
+
   it("EL-YAZIMI ÇİFT-ID reddedilir (obje-literali sessizce ezerdi — B3)", () => {
     expect(() =>
       kurVeDogrula({}, [sahteGiris({ id: "cift" }), sahteGiris({ id: "cift" })])

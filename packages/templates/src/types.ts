@@ -3,6 +3,7 @@
 import type { ComponentType } from "react";
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
 import type { LayoutWarning } from "./engine/layout.js";
+import type { SeverityOverrides } from "./engine/severity.js";
 
 export type RenderMode = "edit" | "print";
 
@@ -128,6 +129,13 @@ export interface TemplateManifest {
   repeater?: RepeaterDef;
   /** Önerilen hazır temalar (brand her zaman ilk seçenek) */
   themes: string[];
+  /**
+   * Profil-katmanı şiddet override'ları (Canonical 4.5 "çekirdek → profil";
+   * 7.2 "Kalite kapıları kümesi" bildirimi). Yalnız SIKILAŞTIRABİLİR —
+   * yük-zamanı doğrulanır (registry-core → dogrulaSeverityOverrides), bozuk
+   * tablo uygulamayı ayağa kaldırmaz. Yokluk = çekirdek sözlük aynen geçerli.
+   */
+  severity_overrides?: SeverityOverrides;
   /** Fabrika üretimi şablonlarda içe alma künyesi (mimar #20); el yazımıda yoktur */
   provenance?: TemplateProvenance;
 }

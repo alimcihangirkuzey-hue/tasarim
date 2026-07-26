@@ -26,8 +26,11 @@ import type { MaterialType, TemplateManifest } from "../types.js";
 /* Şiddet katmanı re-export'u (blocker-enforcement paketi): severity.ts yalnız
    TYPE-ONLY import taşır (silinir) — alt-yolun react'sız grafiği bozulmaz
    (esbuild metafile kanıtı paket kapanışında yeniden ölçüldü). Sunucunun
-   export backstop'u isBlockerType'ı buradan okur. */
+   export backstop'u isBlockerType + severityOverridesOf'u buradan okur. */
 export { isBlockerType, severityOf, blockersOf, WARNING_SEVERITIES } from "../engine/severity.js";
+export type { SeverityOverrides, WarningSeverity } from "../engine/severity.js";
+
+import type { SeverityOverrides } from "../engine/severity.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -66,4 +69,11 @@ export const MANIFESTS: Record<string, TemplateManifest> = birlestirVeDogrula(
     ile aynı sözleşme (Object.hasOwn: prototip zinciri kimlik değildir). */
 export function materialTypeOfOrNull(id: string): MaterialType | null {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].type : null;
+}
+
+/** Profil şiddet katmanı sorgusu (4.5) — sunucu backstop'u belge şablonunun
+    override tablosunu buradan okur. Kayıtsız id (fabrika/generated dahil —
+    yukarıdaki kapsam sınırı) undefined döner: çekirdek sözlük geçerli kalır. */
+export function severityOverridesOf(id: string): SeverityOverrides | undefined {
+  return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].severity_overrides : undefined;
 }
