@@ -24,6 +24,7 @@ import {
   type LayoutWarning,
 } from "../engine/layout.js";
 import { paramValue } from "../engine/params.js";
+import { seededVariant } from "../engine/seed.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { resolveTheme, type Theme } from "../themes.js";
 import { INNER_PANELS, manifest } from "./manifest.js";
@@ -51,6 +52,34 @@ export interface TriRow {
   priceText?: string;
 }
 
+/* Canonical 4.4 designSeed — PANEL ÇERÇEVE DİLİ (flyer/grid/carte deseninin
+   dördüncü ailesi, journal 2026-07-26-designseed-trifold). Keşif kaydı:
+   trifold'un tasarım dili İKİ dekoratif panel çerçevesinde yaşar (dış yüz
+   kapak çerçevesi + ön panel kampanya çerçevesi); fold işaretleri ve teal
+   kılavuz ÜRETİM KILAVUZUDUR (kapsam dışı); panel geometrisi (97/100/100mm
+   roll-fold haritası) FİZİKSEL sözleşmedir — tohumla oynanamaz ("panel
+   ritmi" adayı bu gerekçeyle reddedildi). KEŞİF DÜZELTMESİ (uygulamada
+   ölçüldü): ön paneldeki çerçeve YALNIZ edit modunda çizilen kapak-foto YER
+   TUTUCUSU çıktı — baskı tasarım dili değil, kapsam dışı bırakıldı. Baskıda
+   görünen tek tasarım çerçevesi KAPAK (flap) çerçevesidir; dil tek karardır
+   (4.3). Tuz "trifold-cerceve". */
+export interface TrifoldFrame {
+  flapRx: number;
+  /** null = düz çizgi */
+  flapDash: string | null;
+}
+
+/** TABAN = bugünkü sabitler birebir (Template.tsx kapak çerçevesinden taşındı) */
+export const TRIFOLD_CERCEVE_TABAN: TrifoldFrame = { flapRx: 2, flapDash: "1.8 1.3" };
+
+const CERCEVE = [
+  { flapRx: 0.8, flapDash: "1.1 0.9" },
+  TRIFOLD_CERCEVE_TABAN,
+  { flapRx: 3.2, flapDash: "1.8 1.3" },
+  { flapRx: 2, flapDash: null },
+  { flapRx: 3.2, flapDash: null },
+] as const satisfies readonly TrifoldFrame[];
+
 export interface TrifoldAnalysis {
   theme: Theme;
   scope: BindScope;
@@ -72,6 +101,8 @@ export interface TrifoldAnalysis {
   overflowCount: number;
   showDesc: boolean;
   colH: number;
+  /** designSeed panel çerçeve dili — Template iki çerçeveyi buradan çizer */
+  frame: TrifoldFrame;
 }
 
 export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAnalysis {
@@ -197,6 +228,14 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
   const overflowCount = composed.overflow.length;
   if (overflowCount > 0) warnings.push({ type: "overflow-items", count: overflowCount });
 
+  /* designSeed okuma — v1 doğrulaması birebir (doğrudan doc.params; pozitif
+     tamsayı değilse 0 → TABAN NESNESİ aynen) */
+  const rawSeed = doc.params["designSeed"];
+  const designSeed =
+    typeof rawSeed === "number" && Number.isInteger(rawSeed) && rawSeed > 0 ? rawSeed : 0;
+  const frame =
+    designSeed === 0 ? TRIFOLD_CERCEVE_TABAN : seededVariant(designSeed, CERCEVE, "trifold-cerceve");
+
   return {
     theme,
     scope,
@@ -216,5 +255,6 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
     overflowCount,
     showDesc,
     colH,
+    frame,
   };
 }

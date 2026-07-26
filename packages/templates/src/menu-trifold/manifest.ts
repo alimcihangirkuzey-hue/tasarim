@@ -17,6 +17,8 @@ export const manifest = {
   defaultFormat: "a4-landscape",
   params: [
     { id: "showDesc", type: "toggle", default: false, label_tr: "Açıklamaları göster" },
+    /* Canonical 4.4 kontrollü benzersizlik — panel çerçeve dili (flyer/grid/carte emsali) */
+    { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
     {
       id: "qrSource",
       type: "choice",

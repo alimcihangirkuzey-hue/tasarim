@@ -61,8 +61,10 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
           <>
             {/* ---- İÇ KANAT (97): öne çıkanlar ---- */}
             <g transform={`translate(${flap.x}, 0)`}>
-              <rect x={4} y={12} width={flap.w - 8} height={PAGE_H - 24} rx={2}
-                fill="none" stroke="var(--c-line)" strokeWidth={0.5} strokeDasharray="1.8 1.3" />
+              {/* kapak çerçevesi — dil İLANDAN (designSeed, analyze.frame) */}
+              <rect x={4} y={12} width={flap.w - 8} height={PAGE_H - 24} rx={a.frame.flapRx}
+                fill="none" stroke="var(--c-line)" strokeWidth={0.5}
+                strokeDasharray={a.frame.flapDash ?? undefined} />
               <Slot id="flap_title" {...interact} selected={selectedSlot === "flap_title"}
                 detached={a.flapTitle.detached} box={{ x: 8, y: 18, w: flap.w - 16, h: 16 }}>
                 <TextLines
@@ -154,6 +156,8 @@ export function MenuTrifoldTemplate(props: TemplateProps): ReactNode {
                 {a.coverUrl ? (
                   <image href={a.coverUrl} x={14} y={104} width={front.w - 28} height={82} preserveAspectRatio="xMidYMid meet" />
                 ) : mode === "edit" ? (
+                  /* kapak-foto YER TUTUCUSU (yalnız edit) — tasarım dili DEĞİL,
+                     designSeed kapsamı dışı (keşif düzeltmesi, journal) */
                   <rect x={14} y={104} width={front.w - 28} height={82} rx={2} fill="none"
                     stroke="var(--c-line)" strokeWidth={0.4} strokeDasharray="2 1.5" />
                 ) : null}
