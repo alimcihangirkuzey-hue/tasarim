@@ -87,7 +87,12 @@ function slotDefLine(m: FactorySlotMark): string {
   if (m.default_fr) parts.push(`default_fr: ${JSON.stringify(m.default_fr)}`);
   if (m.font_mm) parts.push(`font_mm: { min: ${m.font_mm.min}, max: ${m.font_mm.max} }`);
   if (m.maxLines) parts.push(`maxLines: ${m.maxLines}`);
-  if (m.kind === "qr" || m.kind === "badge") parts.push("optional: true");
+  /* Dosya gereksinimi İLANI (7.2/502): marka logosuna bağlı image slot fabrika
+     ailesinde de zorunludur — empty-required'ı jenerik motor bu ilandan üretir
+     (generated/kabul-fabrika manifest'i emitter'la BİRLİKTE güncellenir,
+     sürüklenmez). Eski `optional: true` basımı KALDIRILDI: süs alandı
+     (0 tüketici; SlotDef'ten silindi). */
+  if (m.kind === "image" && m.bind === "brand.logo_primary") parts.push(`gereklilik: "zorunlu"`);
   return `    { ${parts.join(", ")} },`;
 }
 

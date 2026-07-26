@@ -12,6 +12,7 @@
 import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
   assetById,
+  eksikZorunluVarliklar,
   resolveSelection,
   resolveSlotValue,
   selectionFlow,
@@ -118,7 +119,9 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
   };
 
   const logoAsset = assetById(client, sv("logo").value);
-  if (!logoAsset) warnings.push({ type: "empty-required", slotId: "logo" });
+  /* Dosya gereksinimi — İLANDAN (7.2/502): eski elle logo if'i jenerik motora
+     döndü; cover_photo ilansızdır (boş kalabilir) — çıktı birebir */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
   const coverAsset = assetById(client, sv("cover_photo").value);
 
   /* QR standart: seçili kaynak boşsa tel'e düşer; o da yoksa boş + uyarı */

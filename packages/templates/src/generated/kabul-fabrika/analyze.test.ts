@@ -67,10 +67,20 @@ describe("kabul-fabrika — motor bağlaması eşdeğerliği", () => {
   });
 
   it("kapasite üstü artık SESSİZ değil: görünür overflow-items uyarısı (eskiden uyarı HİÇ üretilmiyordu)", () => {
+    /* ÇİVİ GÜNCELLEMESİ (dosya-gereklilik v1; journal 2026-07-26-dosya-gereklilik-ilani):
+       test müşterisi logosuzdur — logo slotu artık `gereklilik:"zorunlu"` İLANLI ve
+       BAĞLI olduğundan diziye empty-required eklenir (taşma bloğundan sonra).
+       Eski çivi "ilan var, davranış yok" boşluğunun pini idi; ürün kararıyla
+       aynı pakette güncellendi (fabrika sessiz-kırpma kapanışı emsali). */
     const a = analyzeGenerated(client(30), doc());
-    expect(a.warnings).toEqual([{ type: "overflow-items", count: 20 }]);
-    /* kapasite altı: uyarı yok */
-    expect(analyzeGenerated(client(4), doc()).warnings).toEqual([]);
+    expect(a.warnings).toEqual([
+      { type: "overflow-items", count: 20 },
+      { type: "empty-required", slotId: "logo" },
+    ]);
+    /* kapasite altı: taşma yok, logosuzluk kalır */
+    expect(analyzeGenerated(client(4), doc()).warnings).toEqual([
+      { type: "empty-required", slotId: "logo" },
+    ]);
   });
 
   it("manifest ilanı bugün 'shrink-then-warn' — düşürme izinli, ihlal DEĞİL düz taşma", () => {
@@ -78,9 +88,14 @@ describe("kabul-fabrika — motor bağlaması eşdeğerliği", () => {
   });
 
   it("entry.warnings köprüsü bağlı: editör paneli şablonun KENDİ analizini okur", () => {
+    /* logosuz test müşterisinde empty-required köprüden de akar (çivi
+       güncellemesi — yukarıdaki gerekçe; journal 2026-07-26-dosya-gereklilik-ilani) */
     const entry = TEMPLATES["kabul-fabrika"];
     expect(entry.warnings).toBeDefined();
-    expect(entry.warnings!(client(30), doc())).toEqual([{ type: "overflow-items", count: 20 }]);
-    expect(entry.warnings!(client(2), doc())).toEqual([]);
+    expect(entry.warnings!(client(30), doc())).toEqual([
+      { type: "overflow-items", count: 20 },
+      { type: "empty-required", slotId: "logo" },
+    ]);
+    expect(entry.warnings!(client(2), doc())).toEqual([{ type: "empty-required", slotId: "logo" }]);
   });
 });

@@ -14,8 +14,8 @@ export const manifest: TemplateManifest = {
   params: [],
   slots: [
     { id: "title", kind: "text", bind: null, default_fr: "NOTRE CARTE", font_mm: { min: 3, max: 14 }, maxLines: 1 },
-    { id: "logo", kind: "image", bind: "brand.logo_primary" },
-    { id: "halal", kind: "badge", bind: "brand.badges.halal", optional: true },
+    { id: "logo", kind: "image", bind: "brand.logo_primary", gereklilik: "zorunlu" },
+    { id: "halal", kind: "badge", bind: "brand.badges.halal" },
     { id: "phone", kind: "text", bind: "brand.contact.phone", font_mm: { min: 3, max: 14 }, maxLines: 1 },
     { id: "hours", kind: "text", bind: "brand.contact.hours", font_mm: { min: 3, max: 14 }, maxLines: 1 },
     { id: "footnote", kind: "text", bind: "catalog.footnote_fr", font_mm: { min: 3, max: 14 }, maxLines: 1 },

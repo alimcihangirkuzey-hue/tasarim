@@ -5,6 +5,7 @@
 import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
   assetById,
+  eksikZorunluVarliklar,
   resolveSelection,
   resolveSlotValue,
   selectionFlow,
@@ -15,7 +16,6 @@ import { composeColumns, resolveOverflowStrategy } from "../engine/composition.j
 import { currentFormat, paramValue } from "../engine/params.js";
 import { seededVariant } from "../engine/seed.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
-import { chromeSlotValue } from "../parts/PageChrome.js";
 import { pageGeometry, type PageGeometry } from "../parts/geometry.js";
 import { columnLabels, hasMixedVariants } from "../parts/price.js";
 import { resolveTheme, type Theme } from "../themes.js";
@@ -128,9 +128,10 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
   const priceLayout = String(paramValue(manifest, doc, "priceLayout")) as "inline" | "columns";
 
   const warnings: LayoutWarning[] = [];
-  if (!assetById(client, chromeSlotValue("logo", doc, scope).value)) {
-    warnings.push({ type: "empty-required", slotId: "logo" });
-  }
+  /* Dosya gereksinimi — İLANDAN (7.2/502): eski elle logo if'i jenerik motora
+     döndü; deco1-3 ilansızdır (boş kalabilir), tek zorunlu image chrome
+     logosudur — çıktı birebir */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
 
   /* Dekor slotları */
   const decor: ListAnalysis["decor"] = [];

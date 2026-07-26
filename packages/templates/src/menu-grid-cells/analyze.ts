@@ -4,6 +4,7 @@
 import type { ClientDTO, DocumentState, Item } from "@tezgah/shared";
 import {
   assetById,
+  eksikZorunluVarliklar,
   resolveSelection,
   selectionFlow,
   type BindScope,
@@ -206,9 +207,9 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0
     const w = gridOverflowWarning(strategy, layout.overflow.length);
     if (w) warnings.push(w);
   }
-  if (!assetById(client, chromeSlotValue("logo", doc, scope).value)) {
-    warnings.push({ type: "empty-required", slotId: "logo" });
-  }
+  /* Dosya gereksinimi — İLANDAN (7.2/502): eski elle logo if'i jenerik motora
+     döndü; bu ailede tek zorunlu image slot chrome logosudur, çıktı birebir */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
 
   /* Devam bandı içeriği (yalnız pageIndex > 0) */
   let contBand: ContBand | null = null;

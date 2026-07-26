@@ -60,11 +60,12 @@ export const manifest = {
   ],
   slots: [
     ...CHROME_SLOTS,
-    /* Dekor foto slotları: sabit konumlu, boş bırakılabilir (dekupe PNG) */
-    { id: "deco1", kind: "image", bind: null, optional: true },
-    { id: "deco2", kind: "image", bind: null, optional: true },
-    { id: "deco3", kind: "image", bind: null, optional: true },
-    { id: "qr", kind: "qr", bind: null, optional: true },
+    /* Dekor foto slotları: sabit konumlu, boş bırakılabilir (dekupe PNG) —
+       gereklilik ilânı yok (ölü `optional` alanı kaldırıldı); qr de boş kalabilir */
+    { id: "deco1", kind: "image", bind: null },
+    { id: "deco2", kind: "image", bind: null },
+    { id: "deco3", kind: "image", bind: null },
+    { id: "qr", kind: "qr", bind: null },
   ],
   repeater: {
     id: "items",

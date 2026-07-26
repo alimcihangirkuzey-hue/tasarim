@@ -110,7 +110,30 @@ export interface SlotDef {
   default_fr?: string;
   font_mm?: FontRangeMM;
   maxLines?: number;
-  optional?: boolean;
+  /**
+   * Dosya gereksinimi İLANI (Canonical 7.2/502 "dosya gereksinimleri";
+   * journal 2026-07-26-dosya-gereklilik-ilani). "zorunlu" = bu slotun varlığı
+   * olmadan belge ÜRETİME çıkamaz; yokluk = slot boş kalabilir. 276 modeli:
+   * eksik dosya TASARIMI tutmaz, ÜRETİM KAPISINI tutar — empty-required
+   * çekirdek BLOCKER'dır (6.2/426 kalite kapıları zinciri aynen), editör
+   * çizmeye devam eder. Tek okuyucu jenerik motor eksikZorunluVarliklar'dır
+   * (engine/binding.ts): uyarı elle if satırından değil BU ilandan üretilir —
+   * ilan ile davranış ayrışamaz.
+   *
+   * ŞERH (koşullu-v2): vitrophanie (logo/logo_mono ← mode paramı) ve garment
+   * (logo/logo_mono ← kumaş rengi + alan seçimi) zorunluluğu KOŞULLU olduğundan
+   * v1 düz ilanına SIĞMAZ ve bilerek ilan etmez — elle if satırları o ailelerde
+   * AYNEN yaşar; koşullu gereklilik ayrı (v2) karardır (sipariş şeması
+   * 'koşullu' düzey emsali).
+   *
+   * ŞERH (rol ilanı): "slot hangi asset türünü kabul eder" (AssetPicker
+   * filtresi) AYRI bir ilan boyutudur — bu alan onu taşımaz, ayrı paket adayı.
+   *
+   * NOT: eski `optional?: boolean` alanı KALDIRILDI — süs alandı (0 tüketici
+   * ölçüldü; fabrika emitter'i basıyor ama kimse okumuyordu). Tek eksen kaldı:
+   * gereklilik var/yok.
+   */
+  gereklilik?: "zorunlu";
 }
 
 export type ParamValue = string | number | boolean;

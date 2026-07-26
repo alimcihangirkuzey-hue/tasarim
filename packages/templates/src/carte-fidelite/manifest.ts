@@ -29,7 +29,9 @@ export const manifest = {
     { id: "title", kind: "text", bind: null, default_fr: "CARTE DE FIDÉLITÉ", font_mm: { min: 4.5, max: 6 }, maxLines: 1 },
     { id: "subtitle", kind: "text", bind: null, default_fr: "1 menu acheté = 1 tampon", font_mm: { min: 2.2, max: 2.8 }, maxLines: 2 },
     { id: "reward", kind: "text", bind: null, default_fr: "11ᵉ KEBAB OU PIZZA OFFERT !", font_mm: { min: 3, max: 4.2 }, maxLines: 1 },
-    { id: "logo", kind: "image", bind: "brand.logo_primary" },
+    /* Dosya gereksinimi İLANI (7.2/502): kart logosuz üretime çıkamaz —
+       analyze empty-required'ı jenerik motordan bu ilanla üretir */
+    { id: "logo", kind: "image", bind: "brand.logo_primary", gereklilik: "zorunlu" },
     { id: "phone", kind: "text", bind: "brand.contact.phone" },
     { id: "address", kind: "text", bind: "brand.contact.address", maxLines: 2 },
     { id: "services", kind: "text", bind: null, default_fr: "Sur place · à emporter · Livraison", maxLines: 1 },

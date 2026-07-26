@@ -28,9 +28,12 @@ export const manifest = {
     },
   ],
   slots: [
-    { id: "logo", kind: "image", bind: "brand.logo_primary" },
+    /* Dosya gereksinimi İLANI (7.2/502): trifold logosuz üretime çıkamaz —
+       analyze empty-required'ı jenerik motordan bu ilanla üretir */
+    { id: "logo", kind: "image", bind: "brand.logo_primary", gereklilik: "zorunlu" },
     { id: "slogan", kind: "text", bind: "brand.slogan_fr", font_mm: { min: 4, max: 6.5 }, maxLines: 2 },
-    { id: "cover_photo", kind: "image", bind: null, optional: true },
+    /* boş kalabilir (gereklilik ilânı yok — ölü `optional` alanı kaldırıldı) */
+    { id: "cover_photo", kind: "image", bind: null },
     { id: "flap_title", kind: "text", bind: null, default_fr: "NOS INCONTOURNABLES", font_mm: { min: 5, max: 7 }, maxLines: 2 },
     { id: "phone", kind: "text", bind: "brand.contact.phone" },
     { id: "address", kind: "text", bind: "brand.contact.address", maxLines: 3 },
