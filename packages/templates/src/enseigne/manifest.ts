@@ -5,7 +5,10 @@
 import type { TemplateManifest } from "../types.js";
 
 export const SLOTS = [
-  { id: "logo", kind: "image" as const, bind: "brand.logo_primary" },
+  /* Dosya gereksinimi İLANI (7.2/502): tabela logosuz üretime çıkamaz —
+     analyze empty-required'ı jenerik motordan bu ilanla üretir (dpi dalı
+     elle kalır; yalnız YOKLUK dalı ilandan) */
+  { id: "logo", kind: "image" as const, bind: "brand.logo_primary", gereklilik: "zorunlu" as const },
   { id: "title", kind: "text" as const, bind: null, maxLines: 1 },
   { id: "services", kind: "text" as const, bind: null, default_fr: "kebab · tacos · burger", maxLines: 1 },
   { id: "phone", kind: "text" as const, bind: "brand.contact.phone", maxLines: 1 },

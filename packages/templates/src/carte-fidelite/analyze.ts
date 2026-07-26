@@ -1,7 +1,7 @@
 /* carte-fidelite analiz — damga grid'i deterministik: 2 satır × (N/2) sütun */
 
 import type { ClientDTO, DocumentState } from "@tezgah/shared";
-import { assetById, resolveSlotValue, type BindScope } from "../engine/binding.js";
+import { assetById, eksikZorunluVarliklar, resolveSlotValue, type BindScope } from "../engine/binding.js";
 import { estimateWidth, solveFontScale, type LayoutWarning } from "../engine/layout.js";
 import { paramValue } from "../engine/params.js";
 import { seededVariant } from "../engine/seed.js";
@@ -72,7 +72,9 @@ export function analyzeFidelite(client: ClientDTO, doc: DocumentState): Fidelite
   };
 
   const logoAsset = assetById(client, resolveSlotValue(slotDef("logo"), doc.overrides, scope).value);
-  if (!logoAsset) warnings.push({ type: "empty-required", slotId: "logo" });
+  /* Dosya gereksinimi — İLANDAN (7.2/502): eski elle logo if'i jenerik motora
+     döndü; tek zorunlu image slot logodur — çıktı birebir */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
 
   const stampCount = Number(paramValue(manifest, doc, "stampCount"));
   const cols = stampCount / 2;

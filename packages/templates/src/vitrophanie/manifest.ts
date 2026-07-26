@@ -7,6 +7,10 @@ import type { TemplateManifest } from "../types.js";
 export type VitroVariant = "bandeau" | "centre" | "colonne";
 
 export const SLOT_DEFS = [
+  /* ŞERH (dosya-gereklilik v1, 7.2/502): logo/logo_mono zorunluluğu KOŞULLUDUR
+     — mode paramı belirler (impression→logo, decoupe→logo_mono; index.tsx elle
+     if'leri). Düz `gereklilik:"zorunlu"` ilanına sığmaz; v1 BİLEREK ilan etmez,
+     elle if'ler AYNEN yaşar. Koşullu gereklilik v2 kararıdır (TODO şerhi). */
   { id: "logo", kind: "image" as const, bind: "brand.logo_primary" },
   { id: "logo_mono", kind: "image" as const, bind: "brand.logo_mono" },
   { id: "hours", kind: "text" as const, bind: "brand.contact.hours", maxLines: 1 },

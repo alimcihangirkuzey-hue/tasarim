@@ -64,7 +64,8 @@ export const manifest = {
       label_tr: "QR kaynağı",
     },
   ],
-  slots: [...CHROME_SLOTS, { id: "qr", kind: "qr", bind: null, optional: true }],
+  /* qr boş kalabilir (gereklilik ilânı yok — ölü `optional` alanı kaldırıldı) */
+  slots: [...CHROME_SLOTS, { id: "qr", kind: "qr", bind: null }],
   repeater: {
     id: "items",
     bind: "selection.items",

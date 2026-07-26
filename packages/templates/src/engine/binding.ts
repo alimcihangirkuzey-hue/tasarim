@@ -129,6 +129,38 @@ export function assetById(client: ClientDTO, assetId: unknown): AssetDTO | null 
   return client.assets.find((a) => a.id === assetId) ?? null;
 }
 
+/**
+ * Dosya gereksinimleri motoru (Canonical 7.2/502; journal
+ * 2026-07-26-dosya-gereklilik-ilani). SAF — react yok, yan etki yok.
+ *
+ * empty-required uyarısı elle yazılmış if satırlarından değil SlotDef.gereklilik
+ * İLANINDAN üretilir (ilan = davranış). v1 kapsamı BİLEREK dar:
+ * - yalnız gereklilik === "zorunlu" && kind === "image" slotlar (dosya
+ *   gereksinimi; metin/rozet alan eksikliği bu ilanın dışı),
+ * - çözüm mevcut bind zinciriyle birebir: resolveSlotValue (override > bind >
+ *   default) → assetById (chrome/brand logo deseni — grid/liste'nin
+ *   chromeSlotValue'lu, trifold/flyer/carte/enseigne'nin resolveSlotValue'lu
+ *   elle if'leriyle aynı çözümleme),
+ * - QR empty-required'ları DOSYA değil brandkit ALAN gereksinimidir (boş
+ *   instagram/tel kaynağı) — bu motora bağlanmaz, elle üretim sürer.
+ * Çıktı slot sırasıyla döner (deterministik).
+ */
+export function eksikZorunluVarliklar(
+  slots: readonly SlotDef[],
+  client: ClientDTO,
+  doc: DocumentState
+): Array<{ type: "empty-required"; slotId: string }> {
+  const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
+  const out: Array<{ type: "empty-required"; slotId: string }> = [];
+  for (const slot of slots) {
+    if (slot.gereklilik !== "zorunlu" || slot.kind !== "image") continue;
+    if (!assetById(client, resolveSlotValue(slot, doc.overrides, scope).value)) {
+      out.push({ type: "empty-required", slotId: slot.id });
+    }
+  }
+  return out;
+}
+
 /** Belgenin seçimindeki fotoğrafsız ürünler — Eksik Görsel Akışı §8.2 */
 export function missingPhotoItems(selected: SelectedCategory[]): Array<{ item: Item; category: Category }> {
   const out: Array<{ item: Item; category: Category }> = [];

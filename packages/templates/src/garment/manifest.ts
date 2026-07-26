@@ -30,6 +30,10 @@ export const manifest: TemplateManifest = {
     },
   ],
   slots: [
+    /* ŞERH (dosya-gereklilik v1, 7.2/502): logo/logo_mono zorunluluğu KOŞULLUDUR
+       — kumaş rengi + alan seçimi belirler (koyu kumaş+mono varsa logo_mono,
+       yoksa logo; index.tsx elle if'i alan başına üretir). Düz ilana sığmaz;
+       v1 BİLEREK ilan etmez, elle if'ler AYNEN yaşar (koşullu gereklilik v2). */
     { id: "logo", kind: "image", bind: "brand.logo_primary" },
     { id: "logo_mono", kind: "image", bind: "brand.logo_mono" },
   ],

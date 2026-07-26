@@ -26,16 +26,19 @@ export const manifest: TemplateManifest = {
     { id: "designSeed", type: "number", default: 0, min: 0, max: 9999, step: 1, label_tr: "Tasarım tohumu (0 = taban)" },
   ],
   slots: [
-    { id: "logo", kind: "image", bind: "brand.logo_primary" },
+    /* Dosya gereksinimi İLANI (7.2/502): flyer logosuz üretime çıkamaz —
+       analyze empty-required'ı jenerik motordan bu ilanla üretir */
+    { id: "logo", kind: "image", bind: "brand.logo_primary", gereklilik: "zorunlu" },
     /* Kampanya slotu: katalogdan kopyalanabilir ya da serbest yazılır (override) */
     { id: "campaign_title", kind: "text", bind: null, default_fr: "OFFRE SPÉCIALE", font_mm: { min: 7, max: 12 }, maxLines: 2 },
     { id: "campaign_price", kind: "text", bind: null, default_fr: "10€", font_mm: { min: 14, max: 26 }, maxLines: 1 },
-    { id: "campaign_sub", kind: "text", bind: null, default_fr: "2 dürüm + boisson", font_mm: { min: 3.4, max: 5 }, maxLines: 2, optional: true },
+    /* boş kalabilir (gereklilik ilânı yok — ölü `optional` alanı kaldırıldı) */
+    { id: "campaign_sub", kind: "text", bind: null, default_fr: "2 dürüm + boisson", font_mm: { min: 3.4, max: 5 }, maxLines: 2 },
     { id: "phone", kind: "text", bind: "brand.contact.phone" },
     { id: "address", kind: "text", bind: "brand.contact.address", maxLines: 3 },
     { id: "hours", kind: "text", bind: "brand.contact.hours", maxLines: 2 },
     /* Teslimat bloğu: bölgeler + minimum sipariş serbest metni; boşsa gizlenir */
-    { id: "delivery_note", kind: "text", bind: null, optional: true, maxLines: 4 },
+    { id: "delivery_note", kind: "text", bind: null, maxLines: 4 },
     { id: "qr", kind: "qr", bind: null },
     { id: "footnote", kind: "text", bind: "catalog.footnote_fr", font_mm: { min: 2.2, max: 3 } },
   ],

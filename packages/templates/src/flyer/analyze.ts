@@ -4,6 +4,7 @@
 import { formatPrice, type ClientDTO, type DocumentState } from "@tezgah/shared";
 import {
   assetById,
+  eksikZorunluVarliklar,
   resolveSelection,
   resolveSlotValue,
   type BindScope,
@@ -103,7 +104,10 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
   };
 
   const logoAsset = assetById(client, sv("logo").value);
-  if (!logoAsset) warnings.push({ type: "empty-required", slotId: "logo" });
+  /* Dosya gereksinimi — İLANDAN (7.2/502): eski elle logo if'i jenerik motora
+     döndü; tek zorunlu image slot logodur — çıktı birebir. QR empty-required'ı
+     aşağıda ELLE kalır: dosya değil brandkit ALAN gereksinimi (ilan dışı) */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
 
   const source = String(paramValue(manifest, doc, "qrSource")) as QrSource;
   const url = qrSourceUrl(source, client.brandkit) ?? qrSourceUrl("tel", client.brandkit);

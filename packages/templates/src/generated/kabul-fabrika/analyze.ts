@@ -9,8 +9,15 @@
    ÇİZİME SOKULMAZ: hücreler prototip damgasının sabit adımıyla çizilir
    (fabrika tasarım sözleşmesi; Template.tsx'teki translate matematiği). */
 
+/* Dosya-gereklilik v1 (7.2/502; journal 2026-07-26-dosya-gereklilik-ilani):
+   logo slotu `gereklilik: "zorunlu"` İLANLI ve BAĞLI — logosuz müşteride
+   empty-required üretilir. Bu, İLAN VARDI/DAVRANIŞ YOKTU boşluğunun kapanışıdır
+   (bilinçli davranış değişikliği; sessiz-kırpma kapanışı emsali): fabrika
+   belgeleri artık el yazımı ailelerle aynı üretim kapısına tabidir. Yandaki
+   testin eski birebir çivileri aynı pakette ürün kararıyla güncellendi. */
+
 import type { ClientDTO, DocumentState, Item } from "@tezgah/shared";
-import { resolveSelection } from "../../engine/binding.js";
+import { eksikZorunluVarliklar, resolveSelection } from "../../engine/binding.js";
 import { composeGrid, resolveOverflowStrategy } from "../../engine/composition.js";
 import type { LayoutWarning } from "../../engine/layout.js";
 import { manifest } from "./manifest.js";
@@ -55,6 +62,9 @@ export function analyzeGenerated(client: ClientDTO, doc: DocumentState): Generat
   } else if (g.overflow.length > 0) {
     warnings.push({ type: "overflow-items", count: g.overflow.length });
   }
+  /* zorunlu varlıklar İLANDAN (taşma bloğundan sonra — el yazımı ailelerin
+     uyarı sırası deseni) */
+  warnings.push(...eksikZorunluVarliklar(manifest.slots, client, doc));
 
   return {
     shown: g.cells.map((c) => c.entry),

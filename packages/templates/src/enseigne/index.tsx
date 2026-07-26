@@ -8,7 +8,7 @@ import {
   type DocumentState,
   type TabelaParams,
 } from "@tezgah/shared";
-import { assetById, resolveSlotValue, type BindScope } from "../engine/binding.js";
+import { assetById, eksikZorunluVarliklar, resolveSlotValue, type BindScope } from "../engine/binding.js";
 import { contrastRatio } from "../engine/qr.js";
 import { checkDpi, type LayoutWarning } from "../engine/layout.js";
 import { relToMM, scaleRule } from "../engine/ratio.js";
@@ -54,9 +54,11 @@ export function analyzeEnseigne(client: ClientDTO, doc: DocumentState): Enseigne
     if (dpi.level !== "ok") {
       warnings.push({ type: "low-dpi", slotId: "logo", effectiveDpi: dpi.effectiveDpi, level: dpi.level });
     }
-  } else {
-    warnings.push({ type: "empty-required", slotId: "logo" });
   }
+  /* Dosya gereksinimi — İLANDAN (7.2/502): dpi dalı ELLE aynen kalır (varlık
+     varken kalite kontrolü ilanın işi değil); yalnız eski `else` YOKLUK dalı
+     jenerik motora döndü — logo varsa motor boş döner, çıktı birebir */
+  warnings.push(...eksikZorunluVarliklar(SLOTS, client, doc));
 
   return {
     theme, params, w_mm, h_mm, scale, stamp, warnings,
