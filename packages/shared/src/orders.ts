@@ -34,6 +34,7 @@ export const PRICING_INPUT_FIELDS = [
   "technique",
   "sizes",
   "format",
+  "print_qty",
 ] as const;
 export type PricingInputField = (typeof PRICING_INPUT_FIELDS)[number];
 
@@ -51,10 +52,14 @@ const O = (alan: PricingInputField): PricingInputDecl => ({ alan, zorunlu: false
    eklemektir). SIRA SÖZLEŞMEDİR: missingFields çıktı sırası = tablo sırası
    (mevcut testler sırayı pinler). */
 export const PRICING_INPUTS: Record<ProductType, readonly PricingInputDecl[]> = {
-  menu: [Z("format")],
-  flyer: [Z("format")],
-  trifold: [Z("format")],
-  fidelite: [Z("format")],
+  /* print_qty (tiraj) OPSIYONEL — 2026-07-26 ürün sahibi onayı: baskıda
+     fiyatın birincil belirleyicisi, toplanabilir olur ama fiyat MODELİ
+     gelmeden duruma-geçiş kapısına GİRMEZ (zorunluya yükseltme o gün tek
+     satır veri; mevcut kalemleri geriye dönük kırmızıya düşürmemek için) */
+  menu: [Z("format"), O("print_qty")],
+  flyer: [Z("format"), O("print_qty")],
+  trifold: [Z("format"), O("print_qty")],
+  fidelite: [Z("format"), O("print_qty")],
   vitrophanie: [Z("width_cm"), Z("height_cm"), Z("side"), Z("mode")],
   tabela: [Z("width_cm"), Z("height_cm")],
   tisort: [Z("qty"), Z("technique"), O("sizes")],
@@ -79,6 +84,7 @@ const DOLU_MU: Record<PricingInputField, (item: OrderItemLike) => boolean> = {
   technique: (it) => !!(it.details ?? {}).technique,
   sizes: (it) => !!(it.details ?? {}).sizes,
   format: (it) => !!(it.details ?? {}).format,
+  print_qty: (it) => !!(it.details ?? {}).print_qty,
 };
 
 /**

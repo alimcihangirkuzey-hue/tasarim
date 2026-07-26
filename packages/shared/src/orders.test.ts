@@ -64,10 +64,10 @@ describe("NÖBETÇİ: girdi ilanı tablosu TAM olarak bu (tür tür, elle)", () 
       "Girdi matrisi değişmiş: sipariş şeması/fiyat girdisi eklemek ürün kararıdır — " +
         "journal kaydı ister; form uygulanabilirliği ve durum kapısı bu ilandan okur"
     ).toEqual({
-      menu: [{ alan: "format", zorunlu: true }],
-      flyer: [{ alan: "format", zorunlu: true }],
-      trifold: [{ alan: "format", zorunlu: true }],
-      fidelite: [{ alan: "format", zorunlu: true }],
+      menu: [{ alan: "format", zorunlu: true }, { alan: "print_qty", zorunlu: false }],
+      flyer: [{ alan: "format", zorunlu: true }, { alan: "print_qty", zorunlu: false }],
+      trifold: [{ alan: "format", zorunlu: true }, { alan: "print_qty", zorunlu: false }],
+      fidelite: [{ alan: "format", zorunlu: true }, { alan: "print_qty", zorunlu: false }],
       vitrophanie: [
         { alan: "width_cm", zorunlu: true },
         { alan: "height_cm", zorunlu: true },
@@ -97,6 +97,16 @@ describe("NÖBETÇİ: girdi ilanı tablosu TAM olarak bu (tür tür, elle)", () 
     expect(
       missingFields(base({ product_type: "tisort", qty: 2, details: { technique: "impression", sizes: "M:2" } }))
     ).toEqual([]);
+  });
+
+  it("opsiyonel print_qty (tiraj) da kapıya girmez: boşken eksik sayılmaz, doluyken listelenmez", () => {
+    /* 2026-07-26 onayı: girdi TOPLANIR ama fiyat modeli gelmeden durum
+       kapısına girmez — mevcut baskı kalemleri geriye dönük kırmızılaşmaz */
+    expect(missingFields(base({ product_type: "flyer", details: { format: "21x21" } }))).toEqual([]);
+    expect(
+      missingFields(base({ product_type: "flyer", details: { format: "21x21", print_qty: 5000 } }))
+    ).toEqual([]);
+    expect(missingFields(base({ product_type: "menu", details: { print_qty: 500 } }))).toEqual(["format"]);
   });
 });
 
@@ -177,6 +187,7 @@ describe("pricingInputsOf — formun uygulanabilirlik kaynağı", () => {
       expect(iceren(t, "technique"), t).toBe(t === "tisort" || t === "onluk");
       expect(iceren(t, "sizes"), t).toBe(t === "tisort" || t === "onluk");
       expect(iceren(t, "format"), t).toBe(["menu", "trifold", "flyer", "fidelite"].includes(t));
+      expect(iceren(t, "print_qty"), t).toBe(["menu", "trifold", "flyer", "fidelite"].includes(t));
     }
   });
 });

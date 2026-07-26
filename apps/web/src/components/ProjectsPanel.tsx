@@ -42,6 +42,7 @@ function itemSummary(it: OrderItemDTO): string {
   const parts: string[] = [];
   if (it.width_cm && it.height_cm) parts.push(`${it.width_cm}×${it.height_cm} cm`);
   if (it.details.format) parts.push(String(it.details.format).toUpperCase());
+  if (it.details.print_qty) parts.push(`${it.details.print_qty} ${t("orders.print_qty")}`);
   if (it.qty > 1) parts.push(`${it.qty} ${t("orders.qty")}`);
   if (it.details.mode) parts.push(it.details.mode);
   if (it.details.side) parts.push(it.details.side);
@@ -191,6 +192,12 @@ function ItemRow({ item, client, showToast }: {
             className={missing.includes("format") ? "field-missing" : ""}
             onBlur={(e) => upd.mutate({ details: { ...item.details, format: e.target.value || undefined } })}
             style={{ width: 150 }} />
+        )}
+        {alanVar("print_qty") && (
+          <input type="number" min={1} placeholder={t("orders.print_qty")}
+            defaultValue={item.details.print_qty ?? ""}
+            onBlur={(e) => upd.mutate({ details: { ...item.details, print_qty: Number(e.target.value) || undefined } })}
+            style={{ width: 90 }} />
         )}
         {item.notes && (
           <span className="muted" title={item.notes} style={{ fontStyle: "italic" }}>
