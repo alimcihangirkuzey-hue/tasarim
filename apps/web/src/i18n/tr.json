@@ -187,6 +187,11 @@
     "status_approved": "Onaylı",
     "status_printed": "Basıldı"
   },
+  "sektor_menu-uretici": "menü üreticisi",
+  "sektor_matbaa": "matbaa",
+  "sektor_tabelaci": "tabelacı",
+  "sektor_tekstil-baski": "tekstil baskı",
+  "sektor_cam-giydirme": "cam giydirme",
   "editor": {
     "back": "← Müşteri",
     "template": "Şablon",

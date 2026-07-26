@@ -187,6 +187,49 @@ export function isMaterialType(x: string): x is MaterialType {
   return (MATERIAL_TYPES as readonly string[]).includes(x);
 }
 
+/* ── Hedef sektör İLANI (Canonical 7.2/495 "Hedef kullanıcı ve sektör"
+   maddesinin SEKTÖR yarısı; 7.1/481 "kullanıcı yalnızca yaptığı işi görür") ──
+   Kapalı sözlük: menü üreticisi · matbaa · tabelacı · tekstil baskı · cam
+   giydirme. Web'in şablon seçicileri grup başlıklarını BU ilandan okur —
+   sert kodlu grup listesi yazılamaz; ilan ile gruplama ayrışamaz.
+
+   ŞERH 1 — İLAN MATERIALTYPE DÜZEYİNDEDİR, manifest'e alan BİLEREK eklenmedi:
+   sektör bugün MaterialType'ın FONKSİYONU ölçüldü (altı türün her biri tek
+   sektöre düşer); per-manifest bir alan türden TÜRETİLEBİLİR olurdu =
+   ölü ilan (preview_types emsali, yukarıda). Aynı materyalden farklı sektörlü
+   profil doğduğu gün karar yeniden değerlendirilir.
+
+   ŞERH 2 — 7.2/495 maddesinin "Hedef kullanıcı" yarısı İLAN DIŞI: 1.3/95 rol
+   listesi (pazarlamacı/operatör/tasarımcı...) profil-başına FARKLILAŞMIYOR —
+   farklılaşmayan boyutun alanı bilgi taşımaz (preview_types emsali).
+
+   ŞERH 3 — shared'daki SECTOR_PACKS MÜŞTERİ işletmesinin gastronomi
+   kataloğudur (kebap/pizza/café...), TEZGÂH kullanıcısının İŞ KOLU sektörü
+   DEĞİL; bu küme ondan bağımsızdır — ad benzerliği iki boyutu tek boyut
+   sanmaya yol açmasın ("kumas"/"tekstil" ayrımı emsali, aşağıda).
+
+   Ürün kararı: flyer + kart → "matbaa" (kanonik 1.1/70 iş kolu listesi:
+   matbaa tek kalemdir, ayrı bir "kartvizitçi" iş kolu yoktur). */
+export const SEKTORLER = [
+  "menu-uretici",
+  "matbaa",
+  "tabelaci",
+  "tekstil-baski",
+  "cam-giydirme",
+] as const;
+export type Sektor = (typeof SEKTORLER)[number];
+
+/** Materyal türü → hedef sektör (exhaustive Record: yeni MaterialType
+    sektörünü beyan etmeden derlenemez — iş kolu ataması ürün kararıdır) */
+export const HEDEF_SEKTOR: Record<MaterialType, Sektor> = {
+  menu: "menu-uretici",
+  flyer: "matbaa",
+  kart: "matbaa",
+  tabela: "tabelaci",
+  tekstil: "tekstil-baski",
+  cam: "cam-giydirme",
+};
+
 export interface TemplateManifest {
   id: string;
   /** Materyal türü — profil kimliğinin çekirdeği. Artık literal "menu" değil. */

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TEMPLATES, listTemplates } from "@tezgah/templates";
+import { TEMPLATES, listTemplates, type TemplateEntry } from "@tezgah/templates";
+import { SEKTORLER, hedefSektorOf } from "@tezgah/templates/identity";
 import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
@@ -21,6 +22,41 @@ const GUIDE_OPTIONS: Array<{ tid: string; titleKey: string; descKey: string }> =
   { tid: "flyer", titleKey: "guide.opt_flyer_t", descKey: "guide.opt_flyer_d" },
   { tid: "carte-fidelite", titleKey: "guide.opt_fidelite_t", descKey: "guide.opt_fidelite_d" },
 ];
+
+/* Hedef sektör ilanına göre gruplanmış şablon seçenekleri (7.2/495 sektör
+   yarısı; 7.1/481 "kullanıcı yalnızca yaptığı işi görür" yönünde ilk görünür
+   adım: seçici sektör başlıklı). Grup üyeliği İLANDAN okunur (hedefSektorOf)
+   — sert kodlu grup listesi YOK; boş grup çizilmez. Kimlik-yalnız kayıtta
+   OLMAYAN şablonlar (fabrika/generated — identity kapsam sınırı, C-P2) null'a
+   düşer ve grupsuz listelenir: hiçbir şablon seçilemez hâle gelmez, seçim
+   davranışı değişmez. EditorPage'in üst-bar değiştiricisi de BUNU kullanır —
+   desen iki yerde ayrı yazılıp sürüklenmez. */
+export function SektorluSablonSecenekleri({ entries }: { entries: TemplateEntry[] }) {
+  return (
+    <>
+      {SEKTORLER.map((s) => {
+        const uyeler = entries.filter((e) => hedefSektorOf(e.manifest.id) === s);
+        if (uyeler.length === 0) return null;
+        return (
+          <optgroup key={s} label={t(`sektor_${s}`)}>
+            {uyeler.map((e) => (
+              <option key={e.manifest.id} value={e.manifest.id}>
+                {e.manifest.name_tr}
+              </option>
+            ))}
+          </optgroup>
+        );
+      })}
+      {entries
+        .filter((e) => hedefSektorOf(e.manifest.id) === null)
+        .map((e) => (
+          <option key={e.manifest.id} value={e.manifest.id}>
+            {e.manifest.name_tr}
+          </option>
+        ))}
+    </>
+  );
+}
 
 export function DocumentsPanel({ client }: { client: ClientDTO }) {
   const qc = useQueryClient();
@@ -98,11 +134,7 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
       ) : (
         <div className="row">
           <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-            {listTemplates().map((e) => (
-              <option key={e.manifest.id} value={e.manifest.id}>
-                {e.manifest.name_tr}
-              </option>
-            ))}
+            <SektorluSablonSecenekleri entries={listTemplates()} />
           </select>
           <button onClick={() => create.mutate(templateId)} disabled={create.isPending || !templateId}>
             + {t("documents.new")}
