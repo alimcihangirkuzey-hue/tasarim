@@ -16,6 +16,7 @@ import {
   type ClientDTO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { dijitalMenuDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { toDTO, type ExportRow } from "./exports.js";
 
@@ -62,7 +63,8 @@ export function digitalMenuRoutes(app: FastifyInstance): void {
     const day = nowISO().slice(0, 10);
     const dir = path.join(EXPORTS_DIR, row.slug);
     await fs.mkdir(dir, { recursive: true });
-    const filename = `${day}_${slugify(row.name)}_menu-digital_v${version}.html`;
+    /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) */
+    const filename = dijitalMenuDosyaAdi({ day, musteriSlug: slugify(row.name), version });
     const abs = path.join(dir, filename);
     await fs.writeFile(abs, html, "utf8");
 

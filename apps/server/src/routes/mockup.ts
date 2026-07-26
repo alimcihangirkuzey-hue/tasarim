@@ -23,6 +23,7 @@ import {
   nowISO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { mockupDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -93,7 +94,11 @@ export function mockupRoutes(app: FastifyInstance): void {
       typeof docDTO.params["format"] === "string" ? (docDTO.params["format"] as string) : "default";
     const dir = path.join(EXPORTS_DIR, client.slug);
     await fs.mkdir(dir, { recursive: true });
-    const abs = path.join(dir, `${day}_${docDTO.template_id}_${format}_v${version}_mockup.jpg`);
+    /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) */
+    const abs = path.join(
+      dir,
+      mockupDosyaAdi({ day, templateId: docDTO.template_id, format, version, kind: "mockup" })
+    );
     await fs.writeFile(abs, jpg);
 
     const row: ExportRow = {
@@ -169,7 +174,11 @@ export function mockupRoutes(app: FastifyInstance): void {
       typeof docDTO.params["format"] === "string" ? (docDTO.params["format"] as string) : "default";
     const dir = path.join(EXPORTS_DIR, client.slug);
     await fs.mkdir(dir, { recursive: true });
-    const abs = path.join(dir, `${day}_${docDTO.template_id}_${format}_v${version}_mockup-hires.jpg`);
+    /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) */
+    const abs = path.join(
+      dir,
+      mockupDosyaAdi({ day, templateId: docDTO.template_id, format, version, kind: "mockup-hires" })
+    );
     await fs.writeFile(abs, jpg);
 
     const row: ExportRow = {

@@ -1,7 +1,7 @@
 /* Şablon sözleşmeleri — CONSTITUTION §5 alan adlarıyla birebir (§14.1/3) */
 
 import type { ComponentType } from "react";
-import type { ClientDTO, DocumentState, ExportRecordDTO } from "@tezgah/shared";
+import type { ClientDTO, DocumentState, ExportRecordDTO, SceneKind } from "@tezgah/shared";
 import type { LayoutWarning } from "./engine/layout.js";
 import type { SeverityOverrides } from "./engine/severity.js";
 
@@ -40,6 +40,29 @@ export const KANAL_GEREKTIRIR: Record<ProductionChannel, ProductionTechnique> = 
   decoupe: "decoupe",
   broderie: "broderie",
 };
+
+/* ── Mockup sahne tercihi İLANI (Canonical 7.2 "Önizleme türleri") ────────
+   Önizleme TÜRLERİ bugün tür-bağımsız ölçüldü: dört sunum rotası (mockup/
+   mockup_hires/presentation/digital_menu) şablon/materyal bekçisiz çalışır
+   ve profil-başına tür listesi FARKLILAŞMADIĞINDAN bir preview_types alanı
+   bilgi taşımazdı — ölü sözleşme eklenmedi; farklılaşma doğunca alan eklenir
+   (journal şerhi: 2026-07-26-onizleme-turleri). Profil-başına farklılaşan
+   TEK önizleme boyutu MOCKUP SAHNE TERCİHİDİR ve o da EditorPage'de
+   template_id==="garment" SERT KODUYLA yaşıyordu — C-P1'de temizlenen
+   id-sniff deseninin önizleme katmanındaki kaçağı. Bu alan o kararı İLAN
+   eder; tek okuyucusu sahneSkoru'dur (engine/mockup-tercihi.ts) ve eski
+   satır-içi skorlamayla birebir eşdeğerlik referans-kopya golden'la çivilidir
+   (mockup-tercihi.test.ts). */
+export interface MockupTercihi {
+  /** Tercih edilen sahne türleri — sahne bu listedeyse sahne_puani kazanır */
+  sahne_turleri: readonly SceneKind[];
+  /** Tercihli sahne türünün sıralama puanı (pozitif sonlu; registry doğrular) */
+  sahne_puani: number;
+  /** Tanımlıysa: sahnenin fabric_color'ı belgenin BU id'li paramıyla eşleşince
+      +1 (koyu/renkli kumaş sahne eşleşmesi). Param manifest'te OLMALI —
+      olmayan parama bağlanan eşleşme ölü ilandır (registry reddeder). */
+  eslesme_parami?: string;
+}
 
 export type RenderMode = "edit" | "print";
 
@@ -172,6 +195,16 @@ export interface TemplateManifest {
    * tablo uygulamayı ayağa kaldırmaz. Yokluk = çekirdek sözlük aynen geçerli.
    */
   severity_overrides?: SeverityOverrides;
+  /**
+   * Mockup sahne tercihi İLANI (7.2 "Önizleme türleri" bildirimi). OPSİYONEL —
+   * severity_overrides emsali: yokluk = çekirdek tercih (vitrine/facade,
+   * engine/mockup-tercihi.ts → CEKIRDEK_TERCIH) aynen geçerli. Yük-zamanı
+   * doğrulanır (registry-core): boş liste, bilinmeyen sahne türü, pozitif
+   * olmayan puan ve params'ta karşılığı olmayan eslesme_parami YÜKLENEMEZ.
+   * Editörün sahne sıralaması (sahneSkoru) BU ilanı okur — ilan ile davranış
+   * ayrışamaz.
+   */
+  mockup_tercihi?: MockupTercihi;
   /**
    * Üretim kanalları İLANI (7.2 "Üretim çıktıları ve teslim biçimleri";
    * 8.5 kanal taksonomisi). ZORUNLU — C-B-1 emsali: kanal bildirmeyen profil,
