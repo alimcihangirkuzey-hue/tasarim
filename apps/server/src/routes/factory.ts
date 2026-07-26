@@ -10,6 +10,7 @@ import { z } from "zod";
 import { nowISO } from "@tezgah/shared";
 import { ROOT_DIR } from "../paths.js";
 import {
+  generateAnalyzeTs,
   generateBarrel,
   generateIndexTs,
   generateManifestTs,
@@ -107,7 +108,12 @@ export function factoryRoutes(app: FastifyInstance): void {
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "manifest.ts"), generateManifestTs(input), "utf8");
     await fs.writeFile(path.join(dir, "Template.tsx"), generateTemplateTsx(input), "utf8");
-    await fs.writeFile(path.join(dir, "index.ts"), generateIndexTs(), "utf8");
+    await fs.writeFile(path.join(dir, "index.ts"), generateIndexTs(input), "utf8");
+    /* CE bağlaması: prototipli şablon kapasite/taşma analizini motor + manifest
+       ilanından okur; analiz modülü yalnız prototip varken üretilir */
+    if (input.proto) {
+      await fs.writeFile(path.join(dir, "analyze.ts"), generateAnalyzeTs(input), "utf8");
+    }
 
     const ids = await generatedIds();
     await fs.writeFile(path.join(GENERATED_DIR, "index.ts"), generateBarrel(ids), "utf8");
@@ -119,6 +125,7 @@ export function factoryRoutes(app: FastifyInstance): void {
         `packages/templates/src/generated/${input.id}/manifest.ts`,
         `packages/templates/src/generated/${input.id}/Template.tsx`,
         `packages/templates/src/generated/${input.id}/index.ts`,
+        ...(input.proto ? [`packages/templates/src/generated/${input.id}/analyze.ts`] : []),
         "packages/templates/src/generated/index.ts",
       ],
     };

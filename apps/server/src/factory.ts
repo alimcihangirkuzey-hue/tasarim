@@ -129,6 +129,73 @@ ${slots}
 `;
 }
 
+/** CE bağlaması: prototipli şablonlar için analiz modülü — kapasite/taşma
+    paylaşılan motorda (composeGrid), strateji manifest İLANINDAN okunur.
+    Yalnız `input.proto` varken çağrılır (prototipsiz şablonun repeater'ı yok). */
+export function generateAnalyzeTs(input: FactoryInput): string {
+  const p = input.proto!;
+  const K = input.w_mm / input.viewBox.w;
+  const kRound = Math.round(K * 1e6) / 1e6;
+  const rowH = p.bbox.h + p.gap;
+  const colW = p.bbox.w + p.gap;
+  return `/* ÜRETİLDİ — şablon fabrikası, motor bağlaması (CE; Canonical 4.1).
+   Kapasite/taşma muhasebesi paylaşılan motordadır (composeGrid) ve strateji
+   manifest'in \`repeater.overflow\` İLANINDAN okunur — ilan ile davranış
+   ayrışamaz. minCellH=rowH ve gap=0: satır sayısı floor(avail/rowH). Motorun
+   türettiği hücre yüksekliği ÇİZİME SOKULMAZ: hücreler prototip damgasının
+   sabit adımıyla çizilir (Template.tsx). Elle rafine edilebilir. */
+
+import type { ClientDTO, DocumentState, Item } from "@tezgah/shared";
+import { resolveSelection } from "../../engine/binding.js";
+import { composeGrid, resolveOverflowStrategy } from "../../engine/composition.js";
+import type { LayoutWarning } from "../../engine/layout.js";
+import { manifest } from "./manifest.js";
+
+export const W = ${input.w_mm};
+export const H = ${input.h_mm};
+export const K = ${kRound}; /* orijinal birim → mm */
+export const PROTO = { x: ${p.bbox.x}, y: ${p.bbox.y}, w: ${p.bbox.w}, h: ${p.bbox.h}, cols: ${p.cols}, colW: ${colW}, rowH: ${rowH} };
+
+export interface GeneratedAnalysis {
+  /** Kapasiteye sığan ürünler — Template yalnız bunları çizer (sıra korunur) */
+  shown: Item[];
+  overflowCount: number;
+  capacity: number;
+  warnings: LayoutWarning[];
+}
+
+export function analyzeGenerated(client: ClientDTO, doc: DocumentState): GeneratedAnalysis {
+  const items: Item[] = resolveSelection(client.catalog, doc.selection).flatMap((s) => s.items);
+  const strategy = resolveOverflowStrategy(manifest.repeater?.overflow, "shrink-then-warn");
+  const g = composeGrid<Item>({
+    entries: items,
+    cols: PROTO.cols,
+    availableH_mm: H / K - PROTO.y,
+    minCellH_mm: PROTO.rowH,
+    gap_mm: 0,
+    cellW_mm: PROTO.w,
+    originX_mm: PROTO.x,
+    originY_mm: PROTO.y,
+    strategy,
+  });
+
+  const warnings: LayoutWarning[] = [];
+  if (g.strategyViolation) {
+    warnings.push({ type: "overflow-strategy-violation", declared: g.strategyViolation, dropped: g.overflow.length });
+  } else if (g.overflow.length > 0) {
+    warnings.push({ type: "overflow-items", count: g.overflow.length });
+  }
+
+  return {
+    shown: g.cells.map((c) => c.entry),
+    overflowCount: g.overflow.length,
+    capacity: g.capacity,
+    warnings,
+  };
+}
+`;
+}
+
 function textRender(varName: string, t: FactoryTextAttrs, sizeExpr: string): string {
   return `<text x={${t.x}} y={${t.y}} fontSize={${sizeExpr}} textAnchor="${t.anchor || "start"}"
           fill="${t.fill || "var(--c-item)"}" style={{ fontFamily: "var(--f-item)" }}>{${varName}}</text>`;
@@ -194,12 +261,10 @@ export function generateTemplateTsx(input: FactoryInput): string {
   let protoRender = "";
   if (input.proto) {
     const p = input.proto;
-    const rowH = p.bbox.h + p.gap;
-    const colW = p.bbox.w + p.gap;
     protoConst = `
-/* Prototip hücrenin statik kısmı (item-slot'lar çıkarıldı) — elle rafine edilebilir */
-const PROTO_STATIC = \`${esc(p.staticChunk)}\`;
-const PROTO = { x: ${p.bbox.x}, y: ${p.bbox.y}, w: ${p.bbox.w}, h: ${p.bbox.h}, cols: ${p.cols}, colW: ${colW}, rowH: ${rowH} };`;
+/* Prototip hücrenin statik kısmı (item-slot'lar çıkarıldı) — elle rafine edilebilir.
+   PROTO geometrisi analyze.ts'te yaşar (CE bağlaması — tek kaynak). */
+const PROTO_STATIC = \`${esc(p.staticChunk)}\`;`;
     const itemSlotRenders = p.itemSlots
       .map((s) => {
         if (s.slot === "photo") {
@@ -215,11 +280,12 @@ const PROTO = { x: ${p.bbox.x}, y: ${p.bbox.y}, w: ${p.bbox.w}, h: ${p.bbox.h}, 
       .join("\n");
     const cellPos =
       p.yon === "column"
-        ? `const col = Math.floor(i / rowsPerCol); const row = i % rowsPerCol;`
+        ? `const rowsPerCol = Math.max(1, a.capacity / PROTO.cols); const col = Math.floor(i / rowsPerCol); const row = i % rowsPerCol;`
         : `const col = i % PROTO.cols; const row = Math.floor(i / PROTO.cols);`;
     protoRender = `
-        {/* repeater: seçili ürünler prototip hücreye ${p.yon === "column" ? "sütun sütun" : "satır satır"} akar (kapasite üstü kırpılır + uyarı, M8) */}
-        {items.slice(0, capacity).map((it, i) => {
+        {/* repeater: seçili ürünler prototip hücreye ${p.yon === "column" ? "sütun sütun" : "satır satır"} akar; kapasite
+            üstü analyze'da GÖRÜNÜR uyarıya döner (M8 — sessiz slice yok, CE bağlaması) */}
+        {a.shown.map((it, i) => {
           ${cellPos}
           return (
             <g key={it.id} transform={\`translate(\${PROTO.x + col * PROTO.colW}, \${PROTO.y + row * PROTO.rowH})\`}>
@@ -236,17 +302,17 @@ ${itemSlotRenders}
 
 import type { ReactNode } from "react";
 import { formatPrice, type Item } from "@tezgah/shared";
-import { assetById, resolveSelection, resolveSlotValue, type BindScope } from "../../engine/binding.js";
+import { assetById, ${input.proto ? "" : "resolveSelection, "}resolveSlotValue, type BindScope } from "../../engine/binding.js";
 import { buildQr } from "../../engine/qr.js";
 import { resolveTheme, themeStyle } from "../../themes.js";
 import { customSizeMm } from "../../engine/custom-size.js";
 import type { TemplateProps } from "../../types.js";
 import { CropMarks, Guides, Slot } from "../../parts/svg.js";
 import { manifest } from "./manifest.js";
-
+${input.proto ? `import { K, PROTO, W, H, analyzeGenerated } from "./analyze.js";` : `
 const W = ${input.w_mm}; /* doğal en (mm) */
 const H = ${input.h_mm}; /* doğal boy (mm) */
-const K = ${kRound}; /* orijinal birim → mm */
+const K = ${kRound}; /* orijinal birim → mm */`}
 
 /* Temizlenmiş taban tasarım (işaretli slotlar çıkarıldı) */
 const STATIC = \`${esc(input.staticInner)}\`;
@@ -268,13 +334,14 @@ export function GeneratedTemplate(props: TemplateProps): ReactNode {
   }
 ${qrDecls}
 
-  const items: Item[] = resolveSelection(client.catalog, doc.selection).flatMap((s) => s.items);
+  ${input.proto ? `/* CE bağlaması: kapasite/taşma motor + manifest ilanından (analyze.ts) */
+  const a = analyzeGenerated(client, doc);
+  const priceText = (it: Item) =>
+    it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "";` : `const items: Item[] = resolveSelection(client.catalog, doc.selection).flatMap((s) => s.items);
   const priceText = (it: Item) =>
     it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "";
-  ${input.proto ? `const rowsPerCol = Math.max(1, Math.floor((H / K - PROTO.y) / PROTO.rowH));
-  const capacity = PROTO.cols * rowsPerCol;
-  void rowsPerCol;` : "const capacity = items.length;"}
-  void capacity;
+  const capacity = items.length;
+  void capacity;`}
 
   /* #21: bleed 3mm + crop marks; belge override (params.width_mm/height_mm) doğal ölçüyü ezer */
   const B = manifest.bleed_mm;
@@ -306,13 +373,28 @@ ${slotBlocks.join("\n")}${protoRender}
 `;
 }
 
-export function generateIndexTs(): string {
-  return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12) */
+export function generateIndexTs(input: FactoryInput): string {
+  if (!input.proto) {
+    return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12) */
 import type { TemplateEntry } from "../../types.js";
 import { manifest } from "./manifest.js";
 import { GeneratedTemplate } from "./Template.js";
 
 export const entry: TemplateEntry = { manifest, Component: GeneratedTemplate };
+`;
+  }
+  return `/* ÜRETİLDİ — şablon fabrikası (mimar kararı #12) */
+import type { TemplateEntry } from "../../types.js";
+import { manifest } from "./manifest.js";
+import { GeneratedTemplate } from "./Template.js";
+import { analyzeGenerated } from "./analyze.js";
+
+export const entry: TemplateEntry = {
+  manifest,
+  Component: GeneratedTemplate,
+  /* CE bağlaması: editör uyarıları şablonun KENDİ analizinden (motor + ilan) */
+  warnings: (client, doc) => analyzeGenerated(client, doc).warnings,
+};
 `;
 }
 

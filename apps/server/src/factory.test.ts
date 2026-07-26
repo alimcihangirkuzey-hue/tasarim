@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  generateAnalyzeTs,
   generateBarrel,
+  generateIndexTs,
   generateManifestTs,
   generateTemplateTsx,
   validateFactoryInput,
@@ -76,17 +78,55 @@ describe("şablon fabrikası kod üreticisi", () => {
 
   it("template: ölçek, statik taban, Slot sarmalayıcıları, repeater; script yok", () => {
     const t = generateTemplateTsx(makeInput());
-    expect(t).toContain("const K = 0.35;"); /* 210/600 */
+    /* CE bağlaması: geometri (W/H/K/PROTO) analyze.ts'ten import edilir —
+       Template'te yerel K tanımı KALMAZ (tek kaynak) */
+    expect(t).toContain(`import { K, PROTO, W, H, analyzeGenerated } from "./analyze.js";`);
+    expect(t).not.toContain("const K = ");
     expect(t).toContain("dangerouslySetInnerHTML={{ __html: STATIC }}");
     expect(t).toContain(`<Slot id="title"`);
     expect(t).toContain(`<Slot id="logo"`);
     expect(t).toContain("BADGE_HALAL");
     expect(t).toContain("PROTO.cols");
     expect(t).toContain("resolveSlotValue");
+    /* sessiz slice YOK: kapasite analyze'dan gelir, taşma görünür uyarıdır */
+    expect(t).toContain("a.shown.map");
+    expect(t).not.toContain("items.slice");
+    expect(t).toContain("analyzeGenerated(client, doc)");
     expect(t).not.toContain("<script");
     /* okunabilirlik: üretildi başlığı + rafine notu */
     expect(t).toContain("ÜRETİLDİ");
     expect(t).toContain("elle rafine");
+  });
+
+  it("CE bağlaması: analyze.ts motoru + manifest ilanını okur (prototipli girdi)", () => {
+    const a = generateAnalyzeTs(makeInput());
+    expect(a).toContain("export const K = 0.35;"); /* 210/600 — geometri tek kaynak */
+    expect(a).toContain("export const PROTO = ");
+    expect(a).toContain("composeGrid<Item>");
+    expect(a).toContain("resolveOverflowStrategy(manifest.repeater?.overflow");
+    expect(a).toContain("minCellH_mm: PROTO.rowH");
+    expect(a).toContain("gap_mm: 0");
+    expect(a).toContain("overflow-strategy-violation");
+    expect(a).toContain("overflow-items");
+    expect(a).toContain("ÜRETİLDİ");
+  });
+
+  it("CE bağlaması: index.ts prototipli girdide warnings köprüsünü bağlar, prototipsizde bağlamaz", () => {
+    const withProto = generateIndexTs(makeInput());
+    expect(withProto).toContain("warnings: (client, doc) => analyzeGenerated(client, doc).warnings");
+    expect(withProto).toContain(`import { analyzeGenerated } from "./analyze.js";`);
+
+    const noProto = generateIndexTs({ ...makeInput(), proto: null });
+    expect(noProto).not.toContain("warnings:");
+    expect(noProto).not.toContain("analyze.js");
+    expect(noProto).toContain("export const entry: TemplateEntry = { manifest, Component: GeneratedTemplate };");
+  });
+
+  it("CE bağlaması: prototipsiz template analyze import ETMEZ, eski gövdeyi korur", () => {
+    const t = generateTemplateTsx({ ...makeInput(), proto: null });
+    expect(t).not.toContain("analyze.js");
+    expect(t).toContain("const K = 0.35;"); /* yerel sabitler prototipsizde kalır */
+    expect(t).toContain("resolveSelection");
   });
 
   it("#21: template bleed + crop marks + custom ölçü override", () => {
