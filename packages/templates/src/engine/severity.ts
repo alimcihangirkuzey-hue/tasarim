@@ -11,11 +11,13 @@
    · warningEmphasis — GÖRÜNÜM vurgusu (panelin kırmızı sınıfı); bugünkü
      ürün davranışının birebir taşınmışıdır, şiddet İDDİA ETMEZ.
 
-   BLOCKER DİSİPLİNİ: bugün hiçbir uyarı yolu üretimi gerçekten DURDURMUYOR;
-   bu yüzden hiçbir tür blocker İLAN EDEMEZ — bloklamayan "blocker" yalan
-   ilandır. Bir türü blocker'a yükseltmek, o yolu gerçekten durduran
-   enforcement ile AYNI pakette gelmek zorundadır (ürün sahibi kararı;
-   severity.test.ts nöbetçisi bu disiplini kilitler). */
+   BLOCKER DİSİPLİNİ: bir türü blocker ilan etmek, o yolu gerçekten durduran
+   enforcement ile AYNI pakette gelmek zorundadır — bloklamayan "blocker"
+   yalan ilandır (severity.test.ts nöbetçisi kümenin tamamını çiviler).
+   Bugünkü blocker kümesi {empty-required, overflow-strategy-violation}
+   ürün sahibi onayıyla (2026-07-26) yükseldi ve enforcement'ı bu paketle
+   geldi: export modalı blocker varken üretimi DURDURUR (4.7: "istisna
+   verilemez"), sunucu export rotası 409 backstop'u taşır. */
 
 import type { LayoutWarning } from "./layout.js";
 
@@ -47,22 +49,39 @@ const SEVERITY_BY_TYPE: Record<LayoutWarning["type"], WarningSeverity> = {
   "broderie-info": "info",
   "empty-price": "info",
   "mono-suggest": "info",
-  /* warning — görünür kusur; düzeltme ister, üretimi durdurmaz */
+  /* warning — riskli ama kabul edilebilir; kayıtlı onayla geçilir (modal +
+     snapshot gömme o izi tutar: kim/ne zaman/hangi sürüm/ne) */
   "overflow-items": "warning",
   "text-truncated": "warning",
   "low-dpi": "warning",
-  "empty-required": "warning",
   "mixed-variants": "warning",
   "qr-contrast": "warning",
   "contrast": "warning",
   "fine-detail": "warning",
   "min-font": "warning",
-  "overflow-strategy-violation": "warning",
-  /* blocker — BOŞ (bkz. başlık: enforcement'sız blocker ilan edilemez) */
+  /* blocker — istisna verilemez; çözülmeden üretim serbest bırakılamaz
+     (4.7). Zorunlu alan boş = eksik içerikle baskı; strateji ihlali =
+     ilanın söylediğiyle çıktının yaptığı ayrışmış — ikisi de kabul edilemez */
+  "empty-required": "blocker",
+  "overflow-strategy-violation": "blocker",
 };
 
 export function severityOf(w: LayoutWarning): WarningSeverity {
   return SEVERITY_BY_TYPE[w.type];
+}
+
+/** Üretimi durduran uyarılar (4.7 BLOCKER satırı) — export kapısı bunları okur */
+export function blockersOf(warnings: readonly LayoutWarning[]): LayoutWarning[] {
+  return warnings.filter((w) => severityOf(w) === "blocker");
+}
+
+/** Sunucu backstop'u için TİPSİZ giriş: istemcinin JSON gövdesindeki `type`
+    dizesi blocker sınıfında mı? (Sunucu tam analiz KOŞAMAZ — tam registry
+    react taşır, C-P2 kazanımı geri alınmaz; bu denetim istemcinin DÜRÜST
+    bildirdiği engeli yine de basmaya çalışan UI hatalarına karşı savunmadır,
+    kötü niyetli istemciye karşı değil — tek-operatör pilot sınırı kayıtlı.) */
+export function isBlockerType(t: string): boolean {
+  return Object.hasOwn(SEVERITY_BY_TYPE, t) && SEVERITY_BY_TYPE[t as LayoutWarning["type"]] === "blocker";
 }
 
 /** Panelin kırmızı GÖRÜNÜM vurgusu — eski satır-içi kuralın birebir taşınmışı
