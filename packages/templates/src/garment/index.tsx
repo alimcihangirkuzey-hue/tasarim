@@ -16,8 +16,9 @@ import { assetById, type BindScope } from "../engine/binding.js";
 import { relativeLuminance } from "../engine/qr.js";
 import { checkDpi, type LayoutWarning } from "../engine/layout.js";
 import { resolveTheme, themeStyle, type Theme } from "../themes.js";
-import type { TemplateEntry, TemplateManifest, TemplateProps } from "../types.js";
+import type { TemplateEntry, TemplateProps } from "../types.js";
 import { Slot } from "../parts/svg.js";
+import { manifest } from "./manifest.js";
 
 export type LineSource = "none" | "phone" | "address" | "instagram" | "custom";
 
@@ -51,39 +52,6 @@ const FABRIC_HEX: Record<string, string> = {
   black: "#1A1A1A",
   red: "#C8102E",
   blue: "#1D4ED8",
-};
-
-export const manifest: TemplateManifest = {
-  id: "garment",
-  type: "tekstil",
-  profile_version: 1,
-  name_tr: "Tişört / Önlük",
-  bleed_mm: 0,
-  safe_mm: 0,
-  formats: { libre: { w_mm: 300, h_mm: 400, label_tr: "Alan bazlı (cm)" } },
-  defaultFormat: "libre",
-  params: [
-    {
-      id: "garment_kind",
-      type: "choice",
-      options: ["tshirt", "apron_bavette", "apron_taille"],
-      default: "tshirt",
-      label_tr: "Ürün",
-    },
-    { id: "fabric_color", type: "color", default: "#FFFFFF", label_tr: "Kumaş rengi" },
-    {
-      id: "technique",
-      type: "choice",
-      options: ["impression", "broderie"],
-      default: "impression",
-      label_tr: "Teknik",
-    },
-  ],
-  slots: [
-    { id: "logo", kind: "image", bind: "brand.logo_primary" },
-    { id: "logo_mono", kind: "image", bind: "brand.logo_mono" },
-  ],
-  themes: ["or-noir", "aras-orange", "velours-rouge"],
 };
 
 function fabricToHex(v: string): string {

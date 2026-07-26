@@ -7,12 +7,21 @@
        ifadeleri buraya BİLEREK kopyalanmıştır: canlı koddan silinen eski
        davranış, karşılaştırma tabanı olarak testte yaşar.
 
-   (2) RED YOLLARI: kayıt defterinde OLMAYAN id (ör. süreç ayaktayken üretilen
-       fabrika şablonu) eski sniff'te hiçbir ön-eke uymazdı; yeni yol da aynı
-       yere düşer (null) ve ASLA fırlatmaz — belge oluşturma 500'e dönemez. */
+   (2) RED YOLLARI: kayıt defterinde OLMAYAN id (ör. fabrika şablonu, süreç
+       ayaktayken üretilen taze bir kayıt) eski sniff'te hiçbir ön-eke
+       uymazdı; yeni yol da aynı yere düşer (null) ve ASLA fırlatmaz — belge
+       oluşturma 500'e dönemez.
+
+   C-P2: `@tezgah/templates` (TAM, react/jsx-runtime taşır) DEĞİL "/identity"
+   alt-yolu import edilir — bu dosya apps/server/src altında yaşadığı için
+   (typecheck kapsamı), tam registry'yi import etmek server'ın TÜM typecheck
+   grafiğine .tsx dosyalarını geri sızdırırdı (ölçüldü: jsx bayrağı kaldırınca
+   TS6142 patladı, kök neden buydu). "kabul-fabrika" (fabrikanın GERÇEK
+   ürettiği id) red-yolları listesine eklendi: identity/index.test.ts'in
+   "generated hep null" kanıtının bu dosyadaki somut yansıması. */
 
 import { describe, expect, it } from "vitest";
-import { listTemplates } from "@tezgah/templates";
+import { MANIFESTS } from "@tezgah/templates/identity";
 import { surfacePrefillKind, svgExportKind } from "./material-routing.js";
 
 /* Sökülen sniff'ler — canlı koddaki ESKİ davranışın referans kopyası */
@@ -23,28 +32,26 @@ const eskiPrefillKind = (id: string): "vitrine" | "tabela" | null =>
 
 describe("altın eşdeğerlik — kayıtlı HER şablonda yeni yönlendirme == eski sniff", () => {
   it("svgExportKind (routes/vector.ts yönlendirmesi)", () => {
-    for (const e of listTemplates()) {
-      const id = e.manifest.id;
+    for (const id of Object.keys(MANIFESTS)) {
       expect(svgExportKind(id), id).toBe(eskiSvgKind(id));
     }
   });
 
   it("surfacePrefillKind (surfaces.ts ön-dolum yönlendirmesi)", () => {
-    for (const e of listTemplates()) {
-      const id = e.manifest.id;
+    for (const id of Object.keys(MANIFESTS)) {
       expect(surfacePrefillKind(id), id).toBe(eskiPrefillKind(id));
     }
   });
 
   it("kayıt defteri boş değil — döngü gerçekten bir şey ölçtü", () => {
-    /* Boş listTemplates ile iki test de 'yeşil' olurdu; bekçi bunu kapatır */
-    expect(listTemplates().length).toBeGreaterThanOrEqual(11);
+    /* Boş MANIFESTS ile iki test de 'yeşil' olurdu; bekçi bunu kapatır */
+    expect(Object.keys(MANIFESTS).length).toBeGreaterThanOrEqual(10);
   });
 });
 
 describe("red yolları — kayıtsız id düşer, fırlatmaz", () => {
   it("kayıtsız id her iki yönlendirmede null (eski sniff'in düşme davranışı)", () => {
-    for (const id of ["olmayan-sablon", "", "kabul-fabrika-2", "toString"]) {
+    for (const id of ["olmayan-sablon", "", "kabul-fabrika", "kabul-fabrika-2", "toString"]) {
       expect(svgExportKind(id), id).toBe(null);
       expect(surfacePrefillKind(id), id).toBe(null);
     }
