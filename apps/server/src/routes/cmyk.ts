@@ -1,4 +1,5 @@
-/* CMYK export opsiyonu — FAZ4-GOREV §13, ADR-4 (v1 RGB; CMYK opsiyonel).
+/* CMYK export opsiyonu — FAZ4-GOREV §13, arşiv CONSTITUTION teknoloji ADR-4
+   (v1 RGB; CMYK opsiyonel — canlı program ADR-004 DEĞİL; Canonical §0.3).
    Ghostscript varsa son print PDF'i pdfwrite ile DeviceCMYK'ye çevirir;
    yoksa uç 503 döner, arayüz düğmeyi pasif gösterip kurulum yönlendirir. */
 

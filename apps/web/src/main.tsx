@@ -25,7 +25,8 @@ import "./styles.css";
 import "@tezgah/templates/fonts/fonts.css";
 
 /* FAZ5 §7: yüklenen fontların @font-face'i — web VE print aynı /fonts/ kaynağını
-   kullanır (M3). font-display:block → PDF'te fallback kareleri basılmaz (ADR-3). */
+   kullanır (M3). font-display:block → PDF'te fallback kareleri basılmaz
+   (arşiv CONSTITUTION teknoloji ADR-3). */
 function customFontFaceCss(fonts: Array<{ family: string; filename: string }>): string {
   return fonts
     .map((f) => {
