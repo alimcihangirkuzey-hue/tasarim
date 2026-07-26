@@ -21,6 +21,7 @@ import {
   type WrapResult,
 } from "../engine/layout.js";
 import { currentFormat, paramValue } from "../engine/params.js";
+import { seededVariant } from "../engine/seed.js";
 import {
   resolveOverflowStrategy,
   strategyDropsContent,
@@ -63,6 +64,28 @@ export interface ContBand {
   pageLabel: string;
 }
 
+/* Canonical 4.4 designSeed — HÜCRE ÇERÇEVE DİLİ (flyer paketinin aynası,
+   journal 2026-07-26-designseed-grid). Tek karar tüm hücrelere tutarlı
+   uygulanır (4.3); yerleşim/kapasite/sayfalama HİÇ etkilenmez (yalnız-
+   frame-değişir invaryantı seed-variation.test.ts'te). Tuz "grid-cerceve":
+   aynı belge tohumunda flyer'dan BAĞIMSIZ karar (tuzlar ayrıştırır). */
+export interface GridFrame {
+  cellRx: number;
+  /** null = düz çizgi (strokeDasharray verilmez) */
+  cellDash: string | null;
+}
+
+/** TABAN = bugünkü sabitler birebir (Template.tsx hücre çerçevesinden taşındı) */
+export const GRID_CERCEVE_TABAN: GridFrame = { cellRx: 2, cellDash: "1.8 1.3" };
+
+const CERCEVE = [
+  { cellRx: 0.9, cellDash: "1.2 0.9" },
+  GRID_CERCEVE_TABAN,
+  { cellRx: 3, cellDash: "1.8 1.3" },
+  { cellRx: 2, cellDash: null },
+  { cellRx: 3, cellDash: null },
+] as const satisfies readonly GridFrame[];
+
 export interface GridAnalysis {
   theme: Theme;
   geo: PageGeometry;
@@ -83,6 +106,8 @@ export interface GridAnalysis {
   flowMode: "single" | "multipage";
   /** yalnız devam sayfalarında dolu (pageIndex > 0) */
   contBand: ContBand | null;
+  /** designSeed çerçeve dili — Template hücre çerçevesini buradan çizer */
+  frame: GridFrame;
   qr: QrRender | null;
 }
 
@@ -344,10 +369,18 @@ export function analyzeGrid(client: ClientDTO, doc: DocumentState, pageIndex = 0
     });
   }
 
+  /* designSeed okuma — v1 doğrulaması birebir (doğrudan doc.params; pozitif
+     tamsayı değilse 0 → TABAN NESNESİ aynen, bugünkü çizim birebir) */
+  const rawSeed = doc.params["designSeed"];
+  const designSeed =
+    typeof rawSeed === "number" && Number.isInteger(rawSeed) && rawSeed > 0 ? rawSeed : 0;
+  const frame =
+    designSeed === 0 ? GRID_CERCEVE_TABAN : seededVariant(designSeed, CERCEVE, "grid-cerceve");
+
   return {
     theme, geo: activeGeo, spec, layout, cells, warnings,
     format, formatDef, cols, showDesc, priceStyle, flow, scope,
-    pages, pageIndex, flowMode, contBand,
+    pages, pageIndex, flowMode, contBand, frame,
     /* QR yalnız ilk sayfada çizilir (multipage) */
     qr: pageIndex === 0 ? qr : null,
   };

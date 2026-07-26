@@ -6,7 +6,7 @@ import { themeStyle } from "../themes.js";
 import type { TemplateProps } from "../types.js";
 import { CropMarks, Guides, Slot, TextLines } from "../parts/svg.js";
 import { PageChrome } from "../parts/PageChrome.js";
-import { analyzeGrid, type CellLayout } from "./analyze.js";
+import { analyzeGrid, type CellLayout, type GridFrame } from "./analyze.js";
 import { manifest } from "./manifest.js";
 
 const PAD = 4;
@@ -22,8 +22,9 @@ function Cell(props: {
   selectedSlot?: string | null;
   onSlotClick?: (id: string) => void;
   photoWaiting: string;
+  frame: GridFrame;
 }): ReactNode {
-  const { cell, w, h, priceStyle, weights, priceRatio, mode, selectedSlot, onSlotClick, photoWaiting } = props;
+  const { cell, w, h, priceStyle, weights, priceRatio, mode, selectedSlot, onSlotClick, photoWaiting, frame } = props;
   const { item } = cell;
   const innerW = w - 2 * PAD;
 
@@ -43,17 +44,17 @@ function Cell(props: {
       onSlotClick={onSlotClick}
       box={{ x: 0, y: 0, w, h }}
     >
-      {/* kesikli hücre çerçevesi */}
+      {/* hücre çerçevesi — dil ÇERÇEVE İLANINDAN (designSeed, analyze.frame) */}
       <rect
         x={0.25}
         y={0.25}
         width={w - 0.5}
         height={h - 0.5}
-        rx={2}
+        rx={frame.cellRx}
         fill="none"
         stroke="var(--c-line)"
         strokeWidth={0.5}
-        strokeDasharray="1.8 1.3"
+        strokeDasharray={frame.cellDash ?? undefined}
       />
 
       {/* ürün adı */}
@@ -385,6 +386,7 @@ export function MenuGridCellsTemplate(props: TemplateProps): ReactNode {
                   selectedSlot={selectedSlot}
                   onSlotClick={onSlotClick}
                   photoWaiting={photoWaiting}
+                  frame={a.frame}
                 />
               </g>
             );
