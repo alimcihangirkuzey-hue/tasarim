@@ -13,6 +13,7 @@ import {
 import { estimateWidth, wrapText, type LayoutWarning } from "../engine/layout.js";
 import { composeColumns, resolveOverflowStrategy } from "../engine/composition.js";
 import { currentFormat, paramValue } from "../engine/params.js";
+import { seededVariant } from "../engine/seed.js";
 import { buildQr, qrSourceUrl, type QrRender, type QrSource } from "../engine/qr.js";
 import { chromeSlotValue } from "../parts/PageChrome.js";
 import { pageGeometry, type PageGeometry } from "../parts/geometry.js";
@@ -176,7 +177,26 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
 
   const nameSlot = manifest.repeater.itemSlots.find((s) => s.id === "name")!;
   const descSlot = manifest.repeater.itemSlots.find((s) => s.id === "desc")!;
-  const metrics = listMetrics(columns, nameSlot.font_mm!.max, descSlot.maxLines!);
+  const tabanMetrics = listMetrics(columns, nameSlot.font_mm!.max, descSlot.maxLines!);
+
+  /* Canonical 4.4 designSeed: BOŞLUK RİTMİ varyasyonu — KAPALI çarpan kümesi
+     (kontrollü benzersizlik ≠ rastgelelik), TÜM satır/kategori boşluklarına
+     AYNI çarpan (ritim simetrik kalır, 4.3). Okuma paramValue ile DEĞİL
+     doğrudandır: paramValue serbest-sayı paramında daima varsayılana düşer
+     (vitro w_cm emsali de zod/doğrudan okur). seed=0/eksik/geçersiz → çarpan
+     TAM 1 ve metrics NESNESİ AYNEN (bugünkü yerleşim birebir — diferansiyel
+     testler bu yolu çiviler). Ölçekli metrics DÖNDÜRÜLÜR: Template aynı
+     ritimle çizer (tek kaynak). Taşma sözleşmesi değişmez: shrink-then-flow
+     ürün düşürmez, gerekirse sayfa ekler. */
+  const rawSeed = doc.params["designSeed"];
+  const designSeed =
+    typeof rawSeed === "number" && Number.isInteger(rawSeed) && rawSeed > 0 ? rawSeed : 0;
+  const RITIM = [0.88, 0.94, 1, 1.06, 1.12] as const;
+  const ritim = designSeed === 0 ? 1 : seededVariant(designSeed, RITIM, "liste-ritim");
+  const metrics: ListMetrics =
+    ritim === 1
+      ? tabanMetrics
+      : { ...tabanMetrics, rowPad: tabanMetrics.rowPad * ritim, catH: tabanMetrics.catH * ritim };
 
   /* Satır üretimi: verilen ad fontuna VE sütun sayısına göre yükseklikler.
      `cols` argümanı motorun `build(font, columns)` sözleşmesinden gelir; sütun
