@@ -10,6 +10,7 @@ import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
 import { svgExportKind } from "../material-routing.js";
+import { exportDosyaAdi } from "../dosya-adi.js";
 import { kanalNitelikleriOf } from "@tezgah/templates/identity";
 import { EXTRACT_TEXT_RUNS, injectPaths, type TextRun } from "../vector.js";
 
@@ -85,7 +86,11 @@ export function vectorRoutes(app: FastifyInstance): void {
           : `${String(docDTO.params["w_cm"] ?? "x")}x${String(docDTO.params["h_cm"] ?? "x")}cm`;
       const dir = path.join(EXPORTS_DIR, client.slug);
       await fs.mkdir(dir, { recursive: true });
-      const abs = path.join(dir, `${day}_${docDTO.template_id}_${format}_v${version}_${kind}.svg`);
+      /* ad SÖZLEŞMEDEN (8.5, dosya-adi.ts) */
+      const abs = path.join(
+        dir,
+        exportDosyaAdi({ day, templateId: docDTO.template_id, format, version, kind, uzanti: "svg" })
+      );
       await fs.writeFile(
         abs,
         `<?xml version="1.0" encoding="UTF-8"?>\n` + svgOut,
