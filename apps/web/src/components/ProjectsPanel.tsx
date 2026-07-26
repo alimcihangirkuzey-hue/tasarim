@@ -11,10 +11,12 @@ import {
   missingFields,
   needsMiroirWarning,
   parseOrderText,
+  pricingInputsOf,
   type ClientDTO,
   type OrderItemDTO,
   type OrderStatus,
   type ParsedOrder,
+  type PricingInputField,
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
@@ -161,9 +163,16 @@ function ItemRow({ item, client, showToast }: {
         <button className="icon" onClick={() => del.mutate()}>✕</button>
       </div>
 
-      {/* tip bazlı alan editörleri — eksikler kırmızı çerçeveli */}
+      {/* Alan editörleri — görünürlük GİRDİ İLANINDAN (7.2/4.5: pricingInputsOf;
+          eski 4 tür-koşulu bu ilana bağlandı, matrisle drift edemez); widget'lar
+          alan başına elle. Eksik zorunlular kırmızı çerçeveli (missingFields,
+          aynı ilanın jenerik okuyucusu). */}
+      {(() => {
+        const alanVar = (a: PricingInputField): boolean =>
+          pricingInputsOf(item.product_type).some((g) => g.alan === a);
+        return (
       <div className="row" style={{ gap: 6, fontSize: 12 }}>
-        {(item.product_type === "vitrophanie" || item.product_type === "tabela") && (
+        {alanVar("width_cm") && (
           <>
             <input type="number" placeholder="en (cm)" defaultValue={item.width_cm ?? ""}
               className={missing.includes("width_cm") ? "field-missing" : ""}
@@ -174,7 +183,7 @@ function ItemRow({ item, client, showToast }: {
               onBlur={(e) => upd.mutate({ height_cm: num(e.target.value) })} style={{ width: 84 }} />
           </>
         )}
-        {item.product_type === "vitrophanie" && (
+        {alanVar("side") && (
           <>
             <select value={item.details.side ?? ""} className={missing.includes("side") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, side: e.target.value || undefined } })}>
@@ -190,7 +199,7 @@ function ItemRow({ item, client, showToast }: {
             </select>
           </>
         )}
-        {(item.product_type === "tisort" || item.product_type === "onluk") && (
+        {alanVar("qty") && (
           <>
             <input type="number" min={1} defaultValue={item.qty}
               className={missing.includes("qty") ? "field-missing" : ""}
@@ -206,7 +215,7 @@ function ItemRow({ item, client, showToast }: {
               style={{ width: 140 }} />
           </>
         )}
-        {["menu", "trifold", "flyer", "fidelite"].includes(item.product_type) && (
+        {alanVar("format") && (
           <input type="text" placeholder="format (a4/a3/21x21...)" defaultValue={item.details.format ?? ""}
             className={missing.includes("format") ? "field-missing" : ""}
             onBlur={(e) => upd.mutate({ details: { ...item.details, format: e.target.value || undefined } })}
@@ -218,6 +227,8 @@ function ItemRow({ item, client, showToast }: {
           </span>
         )}
       </div>
+        );
+      })()}
     </div>
   );
 }
