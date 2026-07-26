@@ -1,9 +1,26 @@
 /* Şablon sözleşmeleri — CONSTITUTION §5 alan adlarıyla birebir (§14.1/3) */
 
 import type { ComponentType } from "react";
-import type { ClientDTO, DocumentState } from "@tezgah/shared";
+import type { ClientDTO, DocumentState, ExportRecordDTO } from "@tezgah/shared";
 import type { LayoutWarning } from "./engine/layout.js";
 import type { SeverityOverrides } from "./engine/severity.js";
+
+/* ── Üretim kanalı taksonomisi (Canonical 8.5; 7.2 "Üretim çıktıları") ────
+   Her çıktı türü adlandırılmış bir KANALDIR. v1 İLAN sözlüğü yalnız üretim
+   kanallarını kapsar; türev/sunum kanalları (print_cmyk print'ten türer,
+   mockup/presentation üretim dosyası YERİNE GEÇMEZ — 8.5, snapshot güvenlik
+   kaydı, digital_menu müşteri-düzeyli, broderie_fiche broderie'nin eki)
+   bilinçli ilan dışı — journal şerhi. ALT-KÜME KİLİDİ: buradaki her değer
+   kayıt sözlüğünde (ExportRecordDTO["kind"]) OLMAK ZORUNDA — satisfies,
+   uydurma kanal adını derlemede yakalar. */
+export const PRODUCTION_CHANNELS = [
+  "print",
+  "preview",
+  "decoupe",
+  "broderie",
+  "png",
+] as const satisfies readonly ExportRecordDTO["kind"][];
+export type ProductionChannel = (typeof PRODUCTION_CHANNELS)[number];
 
 export type RenderMode = "edit" | "print";
 
@@ -136,6 +153,15 @@ export interface TemplateManifest {
    * tablo uygulamayı ayağa kaldırmaz. Yokluk = çekirdek sözlük aynen geçerli.
    */
   severity_overrides?: SeverityOverrides;
+  /**
+   * Üretim kanalları İLANI (7.2 "Üretim çıktıları ve teslim biçimleri";
+   * 8.5 kanal taksonomisi). ZORUNLU — C-B-1 emsali: kanal bildirmeyen profil,
+   * çıktısı bilinmeyen profildir. Boş liste, tekrar ve bilinmeyen kanal
+   * registry kurulumunda reddedilir. Üretim uçları (export/export-svg/
+   * export-garment) ve web yönlendirmesi (exportRouteOf) BU ilanı okur —
+   * ilan ile davranış ayrışamaz.
+   */
+  production_channels: readonly ProductionChannel[];
   /** Fabrika üretimi şablonlarda içe alma künyesi (mimar #20); el yazımıda yoktur */
   provenance?: TemplateProvenance;
 }

@@ -26,5 +26,6 @@ export const manifest: TemplateManifest = {
     { id: "bleed_mm", type: "choice", options: [0, 3, 5], default: 0, label_tr: "Bleed (mm)" },
   ],
   slots: SLOTS,
+  production_channels: ["print", "preview"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 };

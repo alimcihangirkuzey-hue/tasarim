@@ -21,13 +21,16 @@
    "menu"yu null'a çözüyor, kayıtlı/kayıtsız fark etmez (identity/index.test.ts
    yüksek sesli nöbetçiyle kilitli). */
 
-import { materialTypeOfOrNull } from "@tezgah/templates/identity";
+import { materialTypeOfOrNull, productionChannelsOf, svgKindOf } from "@tezgah/templates/identity";
 
-/** SVG (vektör) export ucunun tür yönlendirmesi: cam → découpe (kesim),
-    tekstil → broderie (nakış); diğer/kayıtsız → null (uç 400 döner). */
+/** SVG (vektör) export ucunun yönlendirmesi — ÜRETİM KANALI İLANINDAN
+    (7.2/8.5, uretim-kanali-ilani paketi): decoupe ilanı → découpe (kesim),
+    broderie ilanı → broderie (nakış); ilansız/kayıtsız → null (uç 400 döner).
+    Türden türetme kaldırıldı: cam→decoupe/tekstil→broderie eşlemesi artık
+    manifest'in kendi kanal beyanıdır (altın eşdeğerlik testli). */
 export function svgExportKind(templateId: string): "decoupe" | "broderie" | null {
-  const t = materialTypeOfOrNull(templateId);
-  return t === "cam" ? "decoupe" : t === "tekstil" ? "broderie" : null;
+  const kanallar = productionChannelsOf(templateId);
+  return kanallar === null ? null : svgKindOf(kanallar);
 }
 
 /** Belge oluşturmada ölçü ön-dolumunun yüzey türü (F8-A): cam → vitrine,

@@ -47,5 +47,6 @@ export const manifest: TemplateManifest = {
       { id: "price", kind: "price", bind: "item.prices" },
     ],
   },
+  production_channels: ["print", "preview"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
 };

@@ -5,7 +5,12 @@
    iki yerde AYRI yazılıp sürüklenmez. */
 
 import { dogrulaSeverityOverrides } from "./engine/severity.js";
-import { MATERIAL_TYPES, isMaterialType, type TemplateManifest } from "./types.js";
+import {
+  MATERIAL_TYPES,
+  PRODUCTION_CHANNELS,
+  isMaterialType,
+  type TemplateManifest,
+} from "./types.js";
 
 function dogrulaManifest(key: string, m: TemplateManifest): void {
   if (!isMaterialType(m.type)) {
@@ -25,6 +30,23 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
   }
   /* Profil şiddet katmanı yalnız sıkılaştırabilir; bozuk tablo yüklenemez */
   dogrulaSeverityOverrides(`Şablon "${key}"`, m.severity_overrides);
+  /* Üretim kanalı ilanı (7.2/8.5): çıktısız profil olmaz, tekrar ve
+     bilinmeyen kanal sessizce giremez — uçlar bu ilana güvenir */
+  if (!Array.isArray(m.production_channels) || m.production_channels.length === 0) {
+    throw new Error(
+      `Şablon "${key}": production_channels boş olamaz — kanal bildirmeyen profil, çıktısı bilinmeyen profildir (izinli: ${PRODUCTION_CHANNELS.join(", ")})`
+    );
+  }
+  for (const kanal of m.production_channels) {
+    if (!(PRODUCTION_CHANNELS as readonly string[]).includes(kanal)) {
+      throw new Error(
+        `Şablon "${key}": bilinmeyen üretim kanalı "${String(kanal)}" (izinli: ${PRODUCTION_CHANNELS.join(", ")})`
+      );
+    }
+  }
+  if (new Set(m.production_channels).size !== m.production_channels.length) {
+    throw new Error(`Şablon "${key}": production_channels tekrarlı kanal içeriyor`);
+  }
 }
 
 /**

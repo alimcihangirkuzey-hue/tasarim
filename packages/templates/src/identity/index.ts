@@ -30,7 +30,14 @@ import type { MaterialType, TemplateManifest } from "../types.js";
 export { isBlockerType, severityOf, blockersOf, WARNING_SEVERITIES } from "../engine/severity.js";
 export type { SeverityOverrides, WarningSeverity } from "../engine/severity.js";
 
+/* Üretim kanalı katmanı (7.2/8.5): sunucu uçları kanal ilanını ve SVG tür
+   önceliğini buradan okur — channels.ts saf/react'sız (type-only import). */
+export { svgKindOf, exportRouteOf } from "../engine/channels.js";
+export { PRODUCTION_CHANNELS } from "../types.js";
+export type { ProductionChannel } from "../types.js";
+
 import type { SeverityOverrides } from "../engine/severity.js";
+import type { ProductionChannel } from "../types.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -76,4 +83,12 @@ export function materialTypeOfOrNull(id: string): MaterialType | null {
     yukarıdaki kapsam sınırı) undefined döner: çekirdek sözlük geçerli kalır. */
 export function severityOverridesOf(id: string): SeverityOverrides | undefined {
   return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].severity_overrides : undefined;
+}
+
+/** Üretim kanalı ilanı sorgusu (7.2/8.5) — uçların bekçileri buradan okur.
+    Kayıtsız id (fabrika/generated ve süreç sonrası taze kayıt) null döner:
+    bekçiler null'da GEÇİRİR (bugünkü düşme davranışı korunur — fabrika
+    belgeleri print/preview üretmeye devam eder; kayıtlı sınır, journal). */
+export function productionChannelsOf(id: string): readonly ProductionChannel[] | null {
+  return Object.hasOwn(MANIFESTS, id) ? MANIFESTS[id].production_channels : null;
 }

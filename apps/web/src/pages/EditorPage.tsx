@@ -14,6 +14,7 @@ import {
   paramValue,
   resolveSelection,
   blockersOf,
+  exportRouteOf,
   severityOf,
   warningEmphasis,
   type LayoutWarning,
@@ -313,15 +314,20 @@ export function EditorPage() {
     },
   });
   const doExport = useMutation({
-    /* tür bazlı yönlendirme — C-P1: tür manifest'ten okunur, id ön-ekinden
-       değil; sunucudaki svgExportKind ile aynı ayrım (tekstil → PNG/broderie
-       paketi; cam + decoupe → SVG; diğerleri → print+preview PDF) */
+    /* KANAL İLANINDAN yönlendirme (7.2/8.5, uretim-kanali-ilani): eski
+       tür-koşulları (tekstil→garment paketi, cam+decoupe→SVG, gerisi→PDF)
+       exportRouteOf'a referans-kopya eşdeğerliğiyle taşındı — karar artık
+       manifest'in production_channels beyanında, sunucu bekçileriyle aynı
+       kaynaktan */
     mutationFn: async (warnings: LayoutWarning[]) => {
-      if (entry?.manifest.type === "tekstil") {
+      const rota = entry
+        ? exportRouteOf(entry.manifest.production_channels, doc?.params["mode"])
+        : "pdf";
+      if (rota === "garment") {
         const res = await api.exportGarment(id);
         return [res.record];
       }
-      if (entry?.manifest.type === "cam" && doc?.params["mode"] === "decoupe") {
+      if (rota === "svg") {
         return [await api.exportSvg(id)];
       }
       return api.exportDocument(id, warnings);

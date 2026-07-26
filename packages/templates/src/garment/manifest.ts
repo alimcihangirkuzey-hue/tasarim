@@ -33,6 +33,11 @@ export const manifest: TemplateManifest = {
     { id: "logo", kind: "image", bind: "brand.logo_primary" },
     { id: "logo_mono", kind: "image", bind: "brand.logo_mono" },
   ],
+  /* Tekstil PDF ÜRETMEZ: impression tekniği alan başına 300dpi alfa PNG,
+     broderie tekniği text→path SVG paketi üretir (garment.ts kind seçimi
+     technique'ten). print/preview bilinçli YOK — exports.ts kanal bekçisi
+     bu ilana dayanarak tekstile PDF üretimini reddeder. */
+  production_channels: ["png", "broderie"],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
   /* Profil şiddet katmanı (4.5): koyu kumaşta renkli logo tekstilde salt bir
      "öneri" değil, üretim riskidir (baskı/nakış sonucu ekranda görünenden
