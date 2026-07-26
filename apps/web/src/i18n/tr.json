@@ -293,6 +293,7 @@
     "present_done": "Sunum PDF'i hazır — v{n}",
     "no_docs": "Bu projede belge yok — önce bir kalemden tasarıma başla",
     "qty": "adet",
+    "print_qty": "tiraj",
     "size": "ölçü",
     "type_menu": "Menü",
     "type_flyer": "Flyer",
