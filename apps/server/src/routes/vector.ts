@@ -10,6 +10,7 @@ import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
 import { svgExportKind } from "../material-routing.js";
+import { kanalNitelikleriOf } from "@tezgah/templates/identity";
 import { EXTRACT_TEXT_RUNS, injectPaths, type TextRun } from "../vector.js";
 
 const PRINT_BASE = process.env.PRINT_BASE ?? "http://localhost:5173";
@@ -97,7 +98,8 @@ export function vectorRoutes(app: FastifyInstance): void {
         project_id: null,
         kind,
         filepath: path.relative(ROOT_DIR, abs).split(path.sep).join("/"),
-        snapshot_json: JSON.stringify({ state: docDTO }),
+        /* 8.5 dürüstlük: vektör çıktı — renk yönetimi uygulanmaz (denetim izi) */
+        snapshot_json: JSON.stringify({ state: docDTO, nitelikler: kanalNitelikleriOf(kind) }),
         version,
         created_at: nowISO(),
       };

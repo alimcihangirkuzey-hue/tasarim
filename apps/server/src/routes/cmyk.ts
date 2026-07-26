@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { newId, nowISO } from "@tezgah/shared";
+import { kanalNitelikleriOf } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { ROOT_DIR } from "../paths.js";
 import { toDTO, type ExportRow } from "./exports.js";
@@ -91,7 +92,13 @@ export function cmykRoutes(app: FastifyInstance): void {
       project_id: null,
       kind: "print_cmyk",
       filepath: path.relative(ROOT_DIR, outAbs).split(path.sep).join("/"),
-      snapshot_json: JSON.stringify({ source_export: src.id, gs: gs.version }),
+      /* 8.5 dürüstlük: DeviceCMYK dönüşümü GERÇEK ama ICC output intent ve
+         PDF/X yok — iddia edilen nitelik denetim izine gömülür */
+      snapshot_json: JSON.stringify({
+        source_export: src.id,
+        gs: gs.version,
+        nitelikler: kanalNitelikleriOf("print_cmyk"),
+      }),
       version,
       created_at: nowISO(),
     };

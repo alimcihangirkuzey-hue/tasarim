@@ -22,6 +22,54 @@ export function svgKindOf(
   return null;
 }
 
+/* ── KANAL NİTELİK BİLDİRİMİ (Canonical 8.5 dürüstlük kuralı) ─────────────
+   "Sistem, gerçekten sağlamadığı bir çıktı niteliğini (CMYK uygunluğu,
+   PDF/X, ICC) iddia edemez. Doğrulanamayan nitelik sessiz geçilmez; INFO
+   seviyesinde açıkça bildirilir." Bu tablo her üretim kanalının (ve türev
+   print_cmyk kanalının) GERÇEK durumunu beyan eder; UI INFO satırları ve
+   export snapshot denetim izi buradan okur.
+
+   BUGÜNKÜ GERÇEK: hiçbir kanal ICC ya da PDF/X sağlamaz; print/preview/png
+   RGB'dir (puppeteer/tarayıcı), print_cmyk gs pdfwrite DeviceCMYK dönüşümüdür
+   (output intent ve rendering intent YÖNETİLMEZ), decoupe/broderie vektör
+   text→path çıktılarıdır (renk yönetimi uygulanmaz — kesim/nakış makinesi
+   sözleşmesi renkle değil geometriyle çalışır).
+
+   NÖBETÇİ DİSİPLİNİ (kanal-nitelikleri testi): bir niteliği true yapmak,
+   o niteliği GERÇEKTEN üreten/doğrulayan makine ile AYNI pakette gelmek
+   zorundadır — sağlanmayan nitelik iddiası yalan ilandır (bloklamayan
+   blocker emsali). */
+
+export interface KanalNitelikBildirimi {
+  /** Çıktının gerçek renk uzayı/doğası */
+  renk: "rgb" | "device-cmyk" | "vektor";
+  /** ICC profili / output intent yönetimi VAR mı (bugün: hayır) */
+  icc: boolean;
+  /** PDF/X uygunluğu VAR mı (bugün: hayır) */
+  pdfx: boolean;
+}
+
+export const KANAL_NITELIKLERI: Record<
+  ProductionChannel | "print_cmyk",
+  KanalNitelikBildirimi
+> = {
+  print: { renk: "rgb", icc: false, pdfx: false },
+  preview: { renk: "rgb", icc: false, pdfx: false },
+  decoupe: { renk: "vektor", icc: false, pdfx: false },
+  broderie: { renk: "vektor", icc: false, pdfx: false },
+  png: { renk: "rgb", icc: false, pdfx: false },
+  print_cmyk: { renk: "device-cmyk", icc: false, pdfx: false },
+};
+
+/** TİPSİZ giriş (export kayıt türü dizesi) — bilinmeyen/sunum kanalı null
+    (Object.hasOwn: prototip zinciri kanal değildir). Snapshot gömme ve UI
+    INFO satırları bunu okur. */
+export function kanalNitelikleriOf(kind: string): KanalNitelikBildirimi | null {
+  return Object.hasOwn(KANAL_NITELIKLERI, kind)
+    ? KANAL_NITELIKLERI[kind as ProductionChannel | "print_cmyk"]
+    : null;
+}
+
 /** Editörün export düğmesinin yolu — eski tür-koşullu sıranın birebir taşınmışı:
     (1) tekstil paketi (png/broderie ilanlı, print İLANSIZ — PDF üretmeyen profil),
     (2) kesim SVG'si (decoupe ilanlı VE belge decoupe modunda),

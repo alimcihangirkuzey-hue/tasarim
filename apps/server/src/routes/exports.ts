@@ -7,7 +7,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer";
 import { newId, nowISO, type ExportRecordDTO } from "@tezgah/shared";
-import { isBlockerType, productionChannelsOf, severityOverridesOf } from "@tezgah/templates/identity";
+import {
+  isBlockerType,
+  kanalNitelikleriOf,
+  productionChannelsOf,
+  severityOverridesOf,
+} from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -120,8 +125,14 @@ export function exportRoutes(app: FastifyInstance): void {
       const format =
         typeof docDTO.params["format"] === "string" ? (docDTO.params["format"] as string) : "default";
 
-      /* Uyarılar snapshot'a gömülür: "yine de export et" kayda geçer (M4) */
-      const snapshot = JSON.stringify({ state: docDTO, warnings: body.warnings ?? [] });
+      /* Uyarılar snapshot'a gömülür: "yine de export et" kayda geçer (M4).
+         Kanal nitelik bildirimi de gömülür (8.5 dürüstlük): üretim anında
+         NE İDDİA EDİLDİĞİ denetim izine girer — RGB/ICC-yok/PDF-X-yok. */
+      const snapshot = JSON.stringify({
+        state: docDTO,
+        warnings: body.warnings ?? [],
+        nitelikler: Object.fromEntries(variants.map((v) => [v, kanalNitelikleriOf(v)])),
+      });
 
       const browser = await getBrowser();
       const records: ExportRecordDTO[] = [];

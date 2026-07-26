@@ -14,9 +14,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  KANAL_NITELIKLERI,
   PRODUCTION_CHANNELS,
   TEMPLATES,
   exportRouteOf,
+  kanalNitelikleriOf,
   kurVeDogrula,
   listTemplates,
   svgKindOf,
@@ -147,6 +149,45 @@ describe("exportRouteOf — eski web doExport mantığının referans kopyasıyl
 });
 
 /* ── (3) svgKindOf ≡ eski tür→SVG türetimi ───────────────────────────────── */
+
+/* ── Kanal nitelik bildirimi (8.5 dürüstlük; journal 2026-07-26) ─────────── */
+
+describe("NÖBETÇİ: nitelik bildirimi — sistem sağlamadığını iddia edemez", () => {
+  it("tablo TAM olarak bu; bugün HİÇBİR kanal ICC/PDF-X iddia etmez", () => {
+    expect(
+      KANAL_NITELIKLERI,
+      "Nitelik tablosu değişmiş: bir niteliği true yapmak, o niteliği GERÇEKTEN " +
+        "üreten/doğrulayan makine ile (renk dönüşümü, output intent, PDF/X üretimi + " +
+        "doğrulaması) AYNI pakette gelmek zorundadır — sağlanmayan nitelik iddiası " +
+        "yalan ilandır (8.5 dürüstlük kuralı; bloklamayan blocker emsali)"
+    ).toEqual({
+      print: { renk: "rgb", icc: false, pdfx: false },
+      preview: { renk: "rgb", icc: false, pdfx: false },
+      decoupe: { renk: "vektor", icc: false, pdfx: false },
+      broderie: { renk: "vektor", icc: false, pdfx: false },
+      png: { renk: "rgb", icc: false, pdfx: false },
+      print_cmyk: { renk: "device-cmyk", icc: false, pdfx: false },
+    });
+  });
+
+  it("kapsam: tüm üretim kanalları + türev print_cmyk — eksiksiz ve fazlasız", () => {
+    expect(Object.keys(KANAL_NITELIKLERI).sort()).toEqual(
+      [...PRODUCTION_CHANNELS, "print_cmyk"].sort()
+    );
+  });
+
+  it("kanalNitelikleriOf: üretim kanalları tabloyu döner; sunum kanalları ve çöp null", () => {
+    expect(kanalNitelikleriOf("print")).toEqual({ renk: "rgb", icc: false, pdfx: false });
+    expect(kanalNitelikleriOf("print_cmyk")?.renk).toBe("device-cmyk");
+    /* sunum/türev-dışı kanallar bilinçli İLAN DIŞI (üretim dosyası değil — 8.5 ayrımı) */
+    expect(kanalNitelikleriOf("mockup")).toBe(null);
+    expect(kanalNitelikleriOf("presentation")).toBe(null);
+    expect(kanalNitelikleriOf("digital_menu")).toBe(null);
+    expect(kanalNitelikleriOf("olmayan")).toBe(null);
+    expect(kanalNitelikleriOf("toString")).toBe(null); /* prototip zinciri kanal değildir */
+    expect(kanalNitelikleriOf("")).toBe(null);
+  });
+});
 
 describe("svgKindOf — eski cam→decoupe / tekstil→broderie türetimiyle birebir", () => {
   it("kayıtlı TÜM ailelerde aynı sonuç", () => {

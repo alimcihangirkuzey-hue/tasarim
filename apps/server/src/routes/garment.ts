@@ -6,7 +6,7 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GarmentParamsSchema, cmToPx300, newId, nowISO } from "@tezgah/shared";
-import { productionChannelsOf } from "@tezgah/templates/identity";
+import { kanalNitelikleriOf, productionChannelsOf } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -141,9 +141,11 @@ export function garmentRoutes(app: FastifyInstance): void {
       project_id: null,
       kind,
       filepath: path.relative(ROOT_DIR, files[files.length - 1]).split(path.sep).join("/"),
+      /* 8.5 dürüstlük: png=RGB / broderie=vektör, ICC-PDF/X yok (denetim izi) */
       snapshot_json: JSON.stringify({
         state: docDTO,
         files: files.map((f) => path.relative(ROOT_DIR, f).split(path.sep).join("/")),
+        nitelikler: kanalNitelikleriOf(kind),
       }),
       version,
       created_at: nowISO(),
