@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer";
 import { newId, nowISO, type ExportRecordDTO } from "@tezgah/shared";
-import { isBlockerType } from "@tezgah/templates/identity";
+import { isBlockerType, severityOverridesOf } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -68,12 +68,15 @@ export function exportRoutes(app: FastifyInstance): void {
          asıl kapı web modalındadır, bu denetim UI hatalarına karşı savunmadır
          (sunucu tam analiz KOŞAMAZ: tam registry react taşır — C-P2 sınırı,
          journal'da kayıtlı). Rotanın İLK kapısıdır ve browser'dan ÖNCE
-         fırlar → inject-testli. */
+         fırlar → inject-testli. PROFİL-FARKINDA (4.5): belgenin şablonu
+         şiddet override'ı ilan ettiyse etkin sınıf ona göre okunur; kayıtsız
+         id (fabrika dahil) undefined → çekirdek sözlük. */
+      const profilKatmani = severityOverridesOf(found.row.template_id);
       const engeller = (body.warnings ?? []).filter(
         (w): w is { type: string } =>
           typeof w === "object" && w !== null && "type" in w &&
           typeof (w as { type: unknown }).type === "string" &&
-          isBlockerType((w as { type: string }).type)
+          isBlockerType((w as { type: string }).type, profilKatmani)
       );
       if (engeller.length > 0) {
         return reply.code(409).send({

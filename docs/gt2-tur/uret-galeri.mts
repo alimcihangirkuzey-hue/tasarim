@@ -39,8 +39,11 @@ import {
   type LayoutWarning,
 } from "@tezgah/templates";
 
-/* Uyarı satırı: şiddet öneki İLANDAN (Canonical 4.7, severity.ts) */
-const uyariSatiri = (w: LayoutWarning): string => `${severityOf(w)} · ${JSON.stringify(w)}`;
+/* Uyarı satırı: şiddet öneki İLANDAN (Canonical 4.7, severity.ts) ve
+   PROFİL-FARKINDA (4.5): önek, kartın şablonunun severity_overrides'ıyla
+   okunur — galeri de ürünle aynı etkin sınıfı gösterir. */
+const uyariSatiri = (sablonId: string) => (w: LayoutWarning): string =>
+  `${severityOf(w, TEMPLATES[sablonId].manifest.severity_overrides)} · ${JSON.stringify(w)}`;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -139,7 +142,7 @@ function listeKartlari(n: number, c: ClientDTO): Kart[] {
       kartlar.push({
         baslik: `liste · ${n} ürün · ${columns} sütun · sayfa ${p + 1}/${a.pages.length}`,
         olcum: `font ${r2(a.nameFont)}mm · ${a.pages.length} sayfa · denge ${r2(a.imbalance_mm)}mm`,
-        uyarilar: p === 0 ? a.warnings.map(uyariSatiri) : [],
+        uyarilar: p === 0 ? a.warnings.map(uyariSatiri("menu-liste-premium")) : [],
         svg: svgOf("menu-liste-premium", d, c, p),
       });
     }
@@ -158,7 +161,7 @@ function gridKartlari(n: number, c: ClientDTO): Kart[] {
       kartlar.push({
         baslik: `grid · ${n} ürün · 3 kolon · ${flow} · sayfa ${p + 1}/${sayfalar}`,
         olcum: `kapasite/sayfa ölçümü: yerleşen ${a.layout.placed.filter((x) => x.kind === "cell").length}`,
-        uyarilar: p === 0 ? a0.warnings.map(uyariSatiri) : [],
+        uyarilar: p === 0 ? a0.warnings.map(uyariSatiri("menu-grid-cells")) : [],
         svg: svgOf("menu-grid-cells", d, c, p),
       });
     }
@@ -172,7 +175,7 @@ function trifoldKartlari(n: number, c: ClientDTO): Kart[] {
   return [0, 1].map((p) => ({
     baslik: `trifold · ${n} ürün · ${p === 0 ? "dış yüz" : "iç yüz"}`,
     olcum: `taşan ürün: ${a.overflowCount}`,
-    uyarilar: p === 1 ? a.warnings.map(uyariSatiri) : [],
+    uyarilar: p === 1 ? a.warnings.map(uyariSatiri("menu-trifold")) : [],
     svg: svgOf("menu-trifold", d, c, p),
   }));
 }
@@ -184,7 +187,7 @@ function flyerKartlari(n: number, c: ClientDTO): Kart[] {
     {
       baslik: `flyer · ${n} ürün · ön yüz (mini grid ${a.mini.cols} kolon)`,
       olcum: `mini kart: ${a.mini.items.length}`,
-      uyarilar: a.warnings.map(uyariSatiri),
+      uyarilar: a.warnings.map(uyariSatiri("flyer")),
       svg: svgOf("flyer", d, c, 0),
     },
   ];

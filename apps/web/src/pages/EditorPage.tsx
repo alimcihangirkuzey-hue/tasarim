@@ -627,11 +627,11 @@ export function EditorPage() {
             <div className="warn-list">
               {warnings.length === 0 && <div className="warn ok">{t("editor.no_warnings")}</div>}
               {warnings.map((w, i) => (
-                /* Şiddet İLANDAN okunur (Canonical 4.7, severity.ts) — eski
-                   satır-içi sezgi merkezî katmana taşındı; kırmızı vurgu
-                   birebir aynı, info sınıfına empty-price + mono-suggest
-                   de girdi (kayıtlı niyet: bilgi/öneri) */
-                <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
+                /* Şiddet İLANDAN okunur (Canonical 4.7, severity.ts) ve
+                   PROFİL-FARKINDADIR (4.5): şablonun severity_overrides'ı
+                   etkin sınıfı sıkılaştırabilir (ör. tekstilde mono-suggest
+                   info→warning). Kırmızı vurgu görünüm katmanı, profil-dışı. */
+                <div key={i} className={`warn ${severityOf(w, entry.manifest.severity_overrides) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
                   {warnText(w)}
                 </div>
               ))}
@@ -713,10 +713,12 @@ export function EditorPage() {
       </div>
 
       {/* EXPORT ONAY MODALI — WARNING'ler kayıtlı onayla geçer (snapshot izi, M4);
-          BLOCKER'lar Canonical 4.7 gereği İSTİSNASIZ durdurur (severity.ts) */}
+          BLOCKER'lar Canonical 4.7 gereği İSTİSNASIZ durdurur (severity.ts).
+          Şiddet profil-farkında okunur (4.5): şablonun severity_overrides'ı
+          bir türü blocker'a sıkılaştırırsa kapı BURADA da kapanır. */}
       {showExportModal && (() => {
-        const engeller = blockersOf(warnings);
-        const digerleri = warnings.filter((w) => severityOf(w) !== "blocker");
+        const engeller = blockersOf(warnings, entry.manifest.severity_overrides);
+        const digerleri = warnings.filter((w) => severityOf(w, entry.manifest.severity_overrides) !== "blocker");
         return (
         <div className="modal-back" onClick={() => setShowExportModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -738,7 +740,7 @@ export function EditorPage() {
                 <h3 style={{ margin: engeller.length > 0 ? "12px 0 0" : 0 }}>{t("editor.export_warn_title")}</h3>
                 <div className="warn-list">
                   {digerleri.map((w, i) => (
-                    <div key={i} className={`warn ${severityOf(w) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
+                    <div key={i} className={`warn ${severityOf(w, entry.manifest.severity_overrides) === "info" ? "info" : warningEmphasis(w) ? "red" : ""}`}>
                       {warnText(w)}
                     </div>
                   ))}

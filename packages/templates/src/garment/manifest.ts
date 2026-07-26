@@ -34,4 +34,10 @@ export const manifest: TemplateManifest = {
     { id: "logo_mono", kind: "image", bind: "brand.logo_mono" },
   ],
   themes: ["or-noir", "aras-orange", "velours-rouge"],
+  /* Profil şiddet katmanı (4.5): koyu kumaşta renkli logo tekstilde salt bir
+     "öneri" değil, üretim riskidir (baskı/nakış sonucu ekranda görünenden
+     ayrışır) — çekirdek info bu profilde warning'e sıkılaşır. Tablo
+     kayıt-defteri-geneli nöbetçiyle çivili (profil-siddet.test.ts); kalem
+     eklemek o nöbetçiyi ve journal kaydını birlikte ister. */
+  severity_overrides: { "mono-suggest": "warning" },
 };

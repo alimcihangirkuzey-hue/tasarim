@@ -4,6 +4,7 @@
    (identity/index.ts, C-P1 backlog — react-sız) BURADAN türer; invaryant
    iki yerde AYRI yazılıp sürüklenmez. */
 
+import { dogrulaSeverityOverrides } from "./engine/severity.js";
 import { MATERIAL_TYPES, isMaterialType, type TemplateManifest } from "./types.js";
 
 function dogrulaManifest(key: string, m: TemplateManifest): void {
@@ -22,6 +23,8 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
   if (m.id !== key) {
     throw new Error(`Şablon "${key}": manifest.id "${m.id}" harita anahtarıyla uyuşmuyor`);
   }
+  /* Profil şiddet katmanı yalnız sıkılaştırabilir; bozuk tablo yüklenemez */
+  dogrulaSeverityOverrides(`Şablon "${key}"`, m.severity_overrides);
 }
 
 /**
