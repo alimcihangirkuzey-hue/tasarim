@@ -15,8 +15,61 @@ import {
   isMaterialType,
   type ProductionChannel,
   type ProductionTechnique,
+  type SlotKosulu,
   type TemplateManifest,
 } from "./types.js";
+
+/* ── Slot KOŞULU doğrulaması (koşullu gereklilik v2; journal
+   2026-07-26-kosullu-gereklilik-v2) ──────────────────────────────────────────
+   Geçerliyse null, geçersizse Türkçe gerekçe döner (f1-spec validate deseni).
+
+   NEDEN MESAJ DÖNDÜREN FONKSİYON (fırlatan blok değil): dönüş tipi `string |
+   null` olduğu için switch'in HER dalı dönmek ZORUNDADIR — SlotKosulu'na
+   ikinci bir `kind` eklendiği gün burası da eksikZorunluVarliklar'ın
+   değerlendiricisi gibi DERLEMEDE patlar. `default` dalı yazılsaydı yeni biçim
+   sessizce "geçerli" sayılır ve doğrulanmadan yüklenirdi.
+
+   ÜÇ KAPI (hepsi ÖLÜ İLAN kapısıdır — eslesme_parami ve technique/mode
+   alt-küme kapılarının birebir emsali):
+   (a) param VAR MI      — olmayan parama bağlanan koşul ölü ilandır,
+   (b) param SEÇENEKLİ Mİ — seçenek kümesi olmayan paramda koşul KURULAMAZ,
+   (c) değer KÜMEDE Mİ   — asla doğru olamayacak koşul ölü ilandır. */
+function kosulHatasi(m: TemplateManifest, slotId: string, kosul: SlotKosulu): string | null {
+  switch (kosul.kind) {
+    case "param_esittir": {
+      /* (a) OLMAYAN PARAM: eslesme_parami kapısının birebir emsali — koşul
+         gerçek bir parama bağlanmak zorundadır, yoksa hiç değerlendirilemez. */
+      const param = m.params.find((p) => p.id === kosul.param);
+      if (!param) {
+        return `slot "${slotId}" gereklilik koşulu "${kosul.param}" paramına bağlanıyor ama bu param manifest params listesinde yok (olmayan parama bağlanan koşul ölü ilandır)`;
+      }
+      /* (b) SEÇENEKSİZ PARAM (color/number/toggle): koşul KURULAMAZ. İki
+         gerekçe: (1) kapalı bir değer kümesi olmadan koşulun değeri yük
+         zamanında DOĞRULANAMAZ — (c) kapısı anlamsızlaşır ve yazım hatası
+         sessizce yüklenir; (2) bu paramlar `paramValue()` yolunda DEJENEREDİR
+         (engine/params.ts: options boşken belge değerini ATLAR ve hep
+         varsayılanı döner — fabric_color'ı siyah olan belgede bile "#FFFFFF"
+         çözer), yani koşul o yola bağlandığı an sessizce hep aynı cevabı
+         verirdi. Seçeneksiz paramda koşul, doğrulanamaz VE güvenilemez olurdu.
+         ŞERH: yalnız `options` okunur; `optionsByFormat` format-bağımlıdır,
+         koşul ise format-bağımsız değerlendirilir — sadece optionsByFormat
+         taşıyan param bu kapıdan geçemez (bugün örneği yok). */
+      const secenekler = param.options;
+      if (!Array.isArray(secenekler) || secenekler.length === 0) {
+        return `slot "${slotId}" gereklilik koşulu "${kosul.param}" paramına bağlanıyor ama bu param seçenek kümesi ("options") taşımıyor (tip: "${param.type}") — kapalı değer kümesi olmayan paramda koşul kurulamaz: değeri yük zamanında doğrulanamaz ve paramValue() bu paramlarda dejeneredir (options boşken belge değerini atlar, hep varsayılanı döner)`;
+      }
+      /* (c) KÜME DIŞI DEĞER: technique/mode alt-küme kapısının birebir emsali.
+         Karşılaştırma STRICT — seçenekler tipli saklanır (editör
+         `opts.find((o) => String(o) === raw) ?? raw` ile TİPLİ yazar), bu
+         yüzden sayısal seçenekli bir parama string değerle bağlanan koşul da
+         burada yakalanır: belge o paramda hiçbir zaman string tutmaz. */
+      if (!secenekler.some((o) => o === kosul.deger)) {
+        return `slot "${slotId}" gereklilik koşulu "${kosul.param}" paramının "${kosul.deger}" değerini bekliyor ama bu değer paramın seçenekleri arasında yok (izinli: ${secenekler.map((o) => String(o)).join(", ")}) — asla doğru olamayacak koşul ölü ilandır`;
+      }
+      return null;
+    }
+  }
+}
 
 /* Mockup sahne türü sözlüğü — shared'daki SceneKindSchema ile EŞ KÜME.
    Bilerek LİTERAL: bu dosya @tezgah/shared'a runtime bağ TAŞIMAZ (identity
@@ -160,6 +213,25 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
         `Şablon "${key}": mockup_tercihi.eslesme_parami "${tercih.eslesme_parami}" manifest params listesinde yok (olmayan parama bağlanan eşleşme ölü ilandır)`
       );
     }
+  }
+  /* Slot gereklilik KOŞULU (koşullu gereklilik v2): OPSİYONEL — yokluk ve düz
+     "zorunlu" v1 davranışıdır, denetimsiz geçer. Koşul ilan eden slot ise
+     GERÇEK bağ ister: bağlandığı param manifest'te olmalı, kapalı bir seçenek
+     kümesi taşımalı ve beklenen değer o kümede bulunmalı — üçü de ÖLÜ İLAN
+     kapısıdır (gerekçeler kosulHatasi şerhinde). Koşullu gereklilik BLOCKER
+     üretir (empty-required çekirdek blocker'dır); asla ateşlenmeyecek ya da
+     hiç değerlendirilemeyecek bir koşul, kapıyı sessizce açık bırakırdı.
+
+     ŞERH (kapsam): denetim manifest.slots üzerindedir; repeater.itemSlots
+     GEZİLMEZ — `kabul` kapısının birebir emsali ve aynı gerekçe: registry-core
+     bugün itemSlots'a hiç bakmıyor, ilk itemSlots gezintisini eklemek AYRI bir
+     karardır. Boşluk test katmanında kapatılır (kosullu-gereklilik.test.ts
+     itemSlots dâhil koşullu ilanların TAM listesini pinler). */
+  for (const slot of m.slots) {
+    const gereklilik = slot.gereklilik;
+    if (gereklilik === undefined || gereklilik === "zorunlu") continue;
+    const hata = kosulHatasi(m, slot.id, gereklilik.kosul);
+    if (hata) throw new Error(`Şablon "${key}": ${hata}`);
   }
   /* Dosya ROLÜ ilanı (7.2/502 "Dosya gereksinimleri ve ROLLERİ"): OPSİYONEL —
      yokluk = KISITSIZ (mockup_tercihi emsali); tanımlıysa bozuk ilan

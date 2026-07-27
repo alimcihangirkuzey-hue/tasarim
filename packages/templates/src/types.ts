@@ -146,6 +146,79 @@ export interface FontRangeMM {
   max: number;
 }
 
+/* ── Slot koşul dili v2 (Canonical 7.2/496 "koşullu" alan sınıfı; 4.5 "kural
+   bildirimsel, deterministik ve test edilebilir olmalı"; journal
+   2026-07-26-kosullu-gereklilik-v2) ──────────────────────────────────────────
+
+   KAPALI ETİKETLİ BİRLEŞİM — F1Trigger emsali (shared/f1-spec.ts:44-50): tam
+   olarak aynı mekanizma (kapalı union + tüketicide exhaustive switch), çünkü
+   bu deponun koşullu-tetikleyici sorusuna verilmiş KANITLANMIŞ cevabı odur.
+
+   ÖLÇÜM (kararın dayanağı; koşullu zorunluluk taşıyan canlı aileler taranarak):
+   2 aile · 4 manifest · 7 koşul örneği · 5 AYRIK biçim. "param == değer"
+   biçimi örnek uzayının yalnız %28,6'sını (biçimlerin %20'sini) kapsar ve bu
+   kapsama aile aile TAMAMEN AYRIŞIR:
+     · vitrophanie %100 — tek `mode` paramı, kapalı iki değerli küme, iki dal
+       örnek uzayını TAM BÖLER (impression→logo, decoupe→logo_mono; üç
+       kompozisyon bandeau/centre/colonne TEK SLOT_DEFS paylaşır → tek ilan
+       noktası üç manifesti birden kapatır),
+     · garment %0 — beş biçimin HİÇBİRİ eşitlik değil: override eşitliği,
+       luminance-türevi boolean, kardeş slot varlığı, iki param bileşimi +
+       boş-küme fallback, slot-id şablonu.
+
+   NEDEN JENERİK İFADE DİLİ YAZILMADI (üç ölçülmüş gerekçe):
+   (a) DEPODA EMSALİ SIFIR: serbest-ifade taraması (jsonlogic / new Function /
+       eval / ifade ayrıştırıcısı) 0 isabet verdi. Bu depo koşulu HER YERDE
+       kapalı union + exhaustive switch ile çözer (F1Trigger; KANAL_GEREKTIRIR;
+       SUBSTRAT_TEKNIKLERI). Yeni bir paradigma tek bir aile için açılmaz.
+   (b) KANONİK DİL TARİF ETMEZ: 4.5 kuralın "bildirimsel, deterministik ve test
+       edilebilir" olmasını ister — bir İFADE DİLİ tarif etmez; 7.2/496 yalnızca
+       alanların "koşullu" SINIFINI anar, koşulun nasıl yazılacağını değil.
+       Kapalı union üç şartı da sağlar; jenerik dil determinizmi ve test
+       edilebilirliği ZAYIFLATIRDI (sonsuz ifade uzayı nöbetçiyle çivilenemez).
+   (c) SPEKÜLATİF GENİŞLİK YAZILMAZ: AND/OR birleşimi, sayısal karşılaştırma ve
+       iç içe yol yürüme ölçümde ÖRNEĞİ OLMAYAN yeteneklerdir — bu paketin
+       kendi red ölçütü (türetilebilir/tüketicisiz/örneksiz ilan yazılmaz,
+       DIS_KANALLAR şerhi (b) gerekçesi) burada da geçerlidir.
+
+   `kind` ETİKETİ GENİŞLEME KAPISIDIR — tek üyeli bir union'ın etiket taşıması
+   bugün gereksiz görünür, YARIN'IN GÜVENLİĞİDİR: ikinci biçim (ör.
+   `param_iceriyor`, `slot_dolu`) eklendiği anda değerlendiricinin exhaustive
+   switch'i DERLEMEDE patlar ve o biçimi ele almayı zorunlu kılar. Etiketsiz
+   yazılsaydı (düz `{param, deger}`) genişleme sessiz bir tip gevşemesi olurdu.
+
+   GARMENT NEDEN BU PAKETTE DEĞİL — engeli koşul dili DEĞİL, ÜÇ ÖN KOŞUL borcu:
+   (1) `areas` paramı manifest.params'ta YOK (EditorPage sert-kodlu panelden
+       yazar) — koşul bağlanacak param ilanlı değil;
+   (2) `area:*:logo` slotları manifest.slots'ta YOK — motor manifest üzerinden
+       gezerken garment'ın gerçek slotlarını ADLANDIRAMAZ;
+   (3) `paramValue()` (engine/params.ts) color/number paramlarında DEJENERE:
+       `options` boş olduğunda belge değerini ATLAR ve HER ZAMAN varsayılanı
+       döner → fabric_color'ı siyah olan belgede bile "#FFFFFF" çözer, yani
+       fabricDark koşulu asla ateşlenmezdi.
+   Bu üçü kapanmadan garment koşulu bildirimsel ifade edilse bile DOĞRULANAMAZ;
+   ayrı paket(ler)dir. (3) ayrıca bağımsız bir BUG ADAYIDIR — düzeltilmesi
+   davranış değişikliği riski taşır, ölçülmeden dokunulmaz.
+
+   SİPARİŞ KATMANI NEDEN AYRI KALIR: "sipariş şemasının koşullu düzeyi bu v2
+   ailesiyle birlikte ele alınır" beklentisi ÖLÇÜMLE YANLIŞLANDI —
+   PRICING_INPUTS'ta 20 ilan var, KOŞULLU örneği SIFIR; üçüncü düzey bugün
+   örneği olmayan ilan (ölü sözleşme) olurdu. Üstelik özne evrenleri
+   kesişmiyor (slot koşulu: doc.params + overrides + assets; sipariş:
+   OrderItemLike), çıktılar ayrı (BLOCKER empty-required ↔ missingFields/409)
+   ve paket yönü tek yönlü (shared, templates'i import ETMEZ). İlk gerçek
+   örnek doğduğunda açılır. */
+export type SlotKosulu = { kind: "param_esittir"; param: string; deger: string };
+
+/**
+ * Slot zorunluluğu: KOŞULSUZ ya da KOŞULA BAĞLI.
+ * · `"zorunlu"`   → v1 davranışı BİREBİR (koşulsuz zorunlu),
+ * · `{ kosul }`   → koşul DOĞRUYSA zorunlu; değilse slot atlanır (uyarı yok).
+ * v1 değeri aynen geçerli kalır: genişleme additive'dir, mevcut ilanların
+ * hiçbiri yeniden yazılmaz.
+ */
+export type SlotGereklilik = "zorunlu" | { kosul: SlotKosulu };
+
 export interface SlotDef {
   id: string;
   kind: SlotKind;
@@ -164,11 +237,18 @@ export interface SlotDef {
    * (engine/binding.ts): uyarı elle if satırından değil BU ilandan üretilir —
    * ilan ile davranış ayrışamaz.
    *
-   * ŞERH (koşullu-v2): vitrophanie (logo/logo_mono ← mode paramı) ve garment
-   * (logo/logo_mono ← kumaş rengi + alan seçimi) zorunluluğu KOŞULLU olduğundan
-   * v1 düz ilanına SIĞMAZ ve bilerek ilan etmez — elle if satırları o ailelerde
-   * AYNEN yaşar; koşullu gereklilik ayrı (v2) karardır (sipariş şeması
-   * 'koşullu' düzey emsali).
+   * KOŞULLU GENİŞLEME (v2): alan artık SlotGereklilik taşır — `"zorunlu"`
+   * koşulsuz zorunluluktur (v1 davranışı BİREBİR korunur), `{ kosul }` ise
+   * koşul DOĞRUYKEN zorunlu, yanlışken slot atlanır. Koşul dilinin kapalı
+   * union oluşunun gerekçesi ve ölçüm sayıları SlotKosulu şerhindedir
+   * (yukarıda). Değerlendirme tek noktadadır: eksikZorunluVarliklar
+   * (engine/binding.ts) — koşul da elle if'ten değil BU ilandan okunur.
+   *
+   * ŞERH (kapsam): v2 yalnız VİTROPHANIE'yi kapatır (mode paramı: impression→
+   * logo, decoupe→logo_mono). GARMENT koşullu ilanı hâlâ YAZAMAZ ve elle
+   * if'leri AYNEN yaşar — engeli koşul dili değil, üç ön koşul borcudur
+   * (areas paramı ilansız · area:*:logo slotları ilansız · paramValue()
+   * dejenerasyonu); ayrıntı SlotKosulu şerhinde.
    *
    * ŞERH (rol ilanı): "slot hangi asset türünü kabul eder" (AssetPicker
    * filtresi) AYRI bir ilan boyutudur — bu alan onu TAŞIMAZ; aşağıdaki
@@ -179,7 +259,7 @@ export interface SlotDef {
    * ölçüldü; fabrika emitter'i basıyor ama kimse okumuyordu). Tek eksen kaldı:
    * gereklilik var/yok.
    */
-  gereklilik?: "zorunlu";
+  gereklilik?: SlotGereklilik;
   /**
    * Dosya ROLÜ İLANI — "bu slot hangi VARLIK TÜRÜNÜ kabul eder" (Canonical
    * 7.2/502 "Dosya gereksinimleri ve ROLLERİ" maddesinin İKİNCİ yarısı;

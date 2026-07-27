@@ -10,7 +10,13 @@ import {
   type DocumentState,
   type VitroParams,
 } from "@tezgah/shared";
-import { assetById, resolveSelection, resolveSlotValue, type BindScope } from "../engine/binding.js";
+import {
+  assetById,
+  eksikZorunluVarliklar,
+  resolveSelection,
+  resolveSlotValue,
+  type BindScope,
+} from "../engine/binding.js";
 import { checkDpi, type LayoutWarning } from "../engine/layout.js";
 import { relToMM, scaleRule, type RelBox } from "../engine/ratio.js";
 import { resolveTheme, themeStyle, type Theme } from "../themes.js";
@@ -59,12 +65,22 @@ export function analyzeVitro(client: ClientDTO, doc: DocumentState): VitroAnalys
   const logoAsset = assetById(client, resolveSlotValue(slot("logo"), doc.overrides, scope).value);
   const monoAsset = assetById(client, resolveSlotValue(slot("logo_mono"), doc.overrides, scope).value);
 
-  if (params.mode === "decoupe" && !monoAsset) {
-    warnings.push({ type: "empty-required", slotId: "logo_mono" });
-  }
-  if (params.mode === "impression" && !logoAsset) {
-    warnings.push({ type: "empty-required", slotId: "logo" });
-  }
+  /* Dosya gereksinimi — İLANDAN (7.2/502 + 4.5; journal
+     2026-07-26-kosullu-gereklilik-v2): iki elle `if` jenerik motora döndü,
+     koşul manifest'te yaşıyor (`param_esittir mode`). Çağrı elle if'lerin
+     DURDUĞU yerdedir — uyarı dizisi BİREBİR aynı: mode kapalı küme ve iki dal
+     tam bölüm olduğundan bir belgede en çok BİR empty-required doğar (tür +
+     slotId aynı), aşağıdaki low-dpi uyarısı yine ondan SONRA gelir.
+     ŞERH (param çözümü): koşul, ŞEMANIN ÇÖZDÜĞÜ mode üzerinden okunmalıdır —
+     yeni belge `params:{}` ile doğar (documents.ts) ve varsayılan
+     "impression"dır; ham doc.params okunsaydı yeni belgede logo BLOCKER'ı
+     sessizce düşerdi. Çözülmüş değer bu yüzden motora açıkça verilir. */
+  warnings.push(
+    ...eksikZorunluVarliklar(SLOT_DEFS, client, {
+      ...doc,
+      params: { ...doc.params, mode: params.mode },
+    })
+  );
 
   /* Büyük format DPI (§9.2: hedef 100, sarı <100, kırmızı <72) — logo alanı üzerinden */
   const active = params.mode === "decoupe" ? monoAsset : logoAsset;

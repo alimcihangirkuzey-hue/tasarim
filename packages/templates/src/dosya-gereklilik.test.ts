@@ -209,16 +209,41 @@ describe("kabul-fabrika — logo ilanı artık DAVRANIŞTIR (ilan!=davranış ya
 
 /* ── (d) Koşullu aileler pin — v1 sınırı YAPISAL olarak görünür ──────────── */
 
-describe("koşullu aileler (vitrophanie/garment) gereklilik İLAN ETMEZ", () => {
-  it("vitro-centre ve garment manifest'lerinde gereklilik işaretli HİÇBİR slot yok", () => {
-    for (const id of ["vitro-centre", "garment"]) {
+describe("koşullu aileler — v1 sınırı v2'de KISMEN kalktı (vitro kapandı, garment açık)", () => {
+  /* ÇİVİ GÜNCELLEMESİ (journal 2026-07-26-kosullu-gereklilik-v2): eski pin
+     "koşullu ailede HİÇBİR gereklilik ilanı yok" diyordu ve v1'in bilinçli
+     sınırını çiviliyordu. v2 o sınırı ÖLÇÜMLE ve KISMEN kaldırdı: vitrophanie
+     tek `mode` paramına bağlı (tek biçim, iki dal tam bölüm) → koşullu ilana
+     taşındı; garment 4 ayrı biçim ister ve ÜÇ ÖN KOŞULU eksiktir (`areas`
+     paramı manifest'te yok · `area:*:logo` slotları manifest'te yok ·
+     paramValue() color/number'da dejenere) → hâlâ ilan ETMEZ. Pin bu iki
+     durumu AYRI AYRI çiviler; biri diğerine kayarsa test patlar. */
+
+  it("vitrophanie KOŞULLU ilan taşır — düz 'zorunlu' DEĞİL (koşul mode'a bağlı)", () => {
+    for (const id of ["vitro-bandeau", "vitro-centre", "vitro-colonne"]) {
       const isaretli = TEMPLATES[id].manifest.slots.filter((s) => s.gereklilik !== undefined);
-      expect(
-        isaretli.map((s) => s.id),
-        `${id}: koşullu ailede düz gereklilik ilanı — bu aile zorunluluğunu ` +
-          "parametreden türetir (vitrophanie: mode; garment: kumaş+alan); düz ilan " +
-          "eklemek koşullu gereklilik v2 kararını ister (TODO şerhi + journal)"
-      ).toEqual([]);
+      expect(isaretli.map((s) => s.id).sort(), `${id}: koşullu slot kümesi`).toEqual([
+        "logo",
+        "logo_mono",
+      ]);
+      for (const s of isaretli) {
+        expect(
+          s.gereklilik,
+          `${id}/${s.id}: düz "zorunlu" ilanı koşulu SİLER — mode ne olursa olsun ` +
+            "her iki logo da zorunlu olurdu (kesim işinde renkli logo istenmesi gibi)"
+        ).not.toBe("zorunlu");
+        expect(typeof s.gereklilik === "object" && s.gereklilik.kosul.param).toBe("mode");
+      }
     }
+  });
+
+  it("garment HÂLÂ ilan ETMEZ: üç ön koşulu kapanmadan koşulu doğrulanamaz", () => {
+    const isaretli = TEMPLATES["garment"].manifest.slots.filter((s) => s.gereklilik !== undefined);
+    expect(
+      isaretli.map((s) => s.id),
+      "garment: koşulu 4 ayrı biçim ister (override eşitliği · luminance türevi · " +
+        "kardeş slot varlığı · iki param bileşimi) ve ÜÇ ÖN KOŞULU eksik — ilan " +
+        "eklemek bugün doğrulanamaz koşul yazmaktır (TODO + journal ölçümü)"
+    ).toEqual([]);
   });
 });
