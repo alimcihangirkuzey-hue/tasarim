@@ -377,7 +377,8 @@
     "scope_common": "Ortak havuza",
     "tags_placeholder": "etiketler (virgüllü)",
     "delete_confirm": "Görsel silinecek (üç dosya: orig/master/thumb). Devam?",
-    "in_use": "Silinemez — kullanımda:"
+    "in_use": "Silinemez — kullanımda:",
+    "none_accepted": "Bu slot için uygun varlık yok — yalnız şu tür(ler) kabul edilir: {kinds}"
   },
   "missing": {
     "title": "Eksik fotoğraflar ({n})",

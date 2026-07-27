@@ -61,10 +61,14 @@ export const manifest = {
   slots: [
     ...CHROME_SLOTS,
     /* Dekor foto slotları: sabit konumlu, boş bırakılabilir (dekupe PNG) —
-       gereklilik ilânı yok (ölü `optional` alanı kaldırıldı); qr de boş kalabilir */
-    { id: "deco1", kind: "image", bind: null },
-    { id: "deco2", kind: "image", bind: null },
-    { id: "deco3", kind: "image", bind: null },
+       gereklilik ilânı yok (ölü `optional` alanı kaldırıldı); qr de boş kalabilir.
+       Dosya ROLÜ İLANI (7.2/502): bind:null oldukları için rol TÜRETİLEMEZ —
+       kabul ELLE yazılır (bu manifestteki logo slotu türetir, bunlar ilan eder;
+       rolün AYNI manifest içinde farklılaşmasının kanıtı). Dekor bir MARKA
+       LOGOSU değildir: "logo" bilerek dışarıda. */
+    { id: "deco1", kind: "image", bind: null, kabul: ["photo", "other"] },
+    { id: "deco2", kind: "image", bind: null, kabul: ["photo", "other"] },
+    { id: "deco3", kind: "image", bind: null, kabul: ["photo", "other"] },
     { id: "qr", kind: "qr", bind: null },
   ],
   repeater: {

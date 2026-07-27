@@ -65,7 +65,18 @@ export function BrandKitPanel({ client }: { client: ClientDTO }) {
             </button>
             <input ref={logoInput} type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onPickFile} />
             <p className="muted" style={{ marginTop: 8 }}>{t("brandkit.pick")}:</p>
-            <AssetPicker client={client} value={kit.logo_primary} onPick={(id) => patch({ logo_primary: id })} />
+            {/* EN AĞIR NOKTA BURASIYDI: bu seçici düne kadar HİÇBİR filtre
+                geçiremiyordu (eski API yalnız "logo hariç" diyebiliyordu,
+                "yalnız logo" diyemiyordu). Marka kiti tek doğruluk kaynağıdır
+                (M1/M5) — buraya yanlış varlık düşerse `bind: brand.logo_primary`
+                üzerinden 15 slot birden yanlış içerikle dolar; belge bazında
+                override'a bile gerek kalmaz, zehir kaynaktan akar. */}
+            <AssetPicker
+              client={client}
+              value={kit.logo_primary}
+              kabul={["logo"]}
+              onPick={(id) => patch({ logo_primary: id })}
+            />
           </div>
         </div>
         {upload.isError && <p className="error">{(upload.error as Error).message}</p>}
@@ -73,7 +84,14 @@ export function BrandKitPanel({ client }: { client: ClientDTO }) {
 
       <div className="panel">
         <h2>{t("brandkit.logo_mono")}</h2>
-        <AssetPicker client={client} value={kit.logo_mono} onPick={(id) => patch({ logo_mono: id })} />
+        {/* mono logo da aynı kaynak: cam (vitrophanie decoupe) ve tekstil
+            (garment koyu kumaş) dalları buradan beslenir — kabul kümesi ["logo"] */}
+        <AssetPicker
+          client={client}
+          value={kit.logo_mono}
+          kabul={["logo"]}
+          onPick={(id) => patch({ logo_mono: id })}
+        />
       </div>
 
       <div className="panel">

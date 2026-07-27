@@ -24,6 +24,13 @@ import {
    çapraz doğrulanır (mockup-tercihi.test.ts — sürüklenme sessiz kalamaz). */
 export const MOCKUP_SAHNE_TURLERI = ["vitrine", "facade", "garment", "generic"] as const;
 
+/* Varlık türü sözlüğü — shared'daki AssetKindSchema ile EŞ KÜME.
+   MOCKUP_SAHNE_TURLERI emsali ve aynı gerekçe: runtime import bilinçli YOK
+   (identity alt-yolunun bağımlılık grafiği büyümez); eş-kümelik testte
+   AssetKindSchema.options ile çapraz doğrulanır (dosya-rolleri.test.ts) —
+   sürüklenme sessiz kalamaz, test yüksek sesle patlar. */
+export const VARLIK_TURLERI = ["logo", "photo", "other"] as const;
+
 function dogrulaManifest(key: string, m: TemplateManifest): void {
   if (!isMaterialType(m.type)) {
     throw new Error(
@@ -152,6 +159,52 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
       throw new Error(
         `Şablon "${key}": mockup_tercihi.eslesme_parami "${tercih.eslesme_parami}" manifest params listesinde yok (olmayan parama bağlanan eşleşme ölü ilandır)`
       );
+    }
+  }
+  /* Dosya ROLÜ ilanı (7.2/502 "Dosya gereksinimleri ve ROLLERİ"): OPSİYONEL —
+     yokluk = KISITSIZ (mockup_tercihi emsali); tanımlıysa bozuk ilan
+     YÜKLENEMEZ. ÇİFT KAYNAK KAPISI: rol önce BİND'DAN türetilir
+     (kabulEdilenTurler — 22 image slotunun 18'i orada ölçüldü); bind'ı olan
+     slota `kabul` yazmak türetilebileni kopyalayan İKİNCİ KAYNAKTIR ve
+     sürüklenir (ilan bir şey der, filtre başkasını uygular) — yük zamanında
+     reddedilir. Alan yalnız türetimin BİTTİĞİ yerde (bind:null) yazılır.
+
+     ŞERH (kapsam): denetim manifest.slots üzerindedir; repeater.itemSlots
+     GEZİLMEZ — registry-core bugün itemSlots'a hiç bakmıyor (ne gereklilik ne
+     bind ne kind için) ve buraya ilk itemSlots gezintisini eklemek AYRI bir
+     karardır. Boşluk test katmanında kapatılır: dosya-rolleri.test.ts
+     itemSlots dâhil hiçbir bind'lı slotta `kabul` yazılı OLMADIĞINI pinler. */
+  for (const slot of m.slots) {
+    if (slot.kabul === undefined) continue;
+    /* ÖLÜ İLAN KAPISI: kabul yalnız image slotunda ANLAMLIDIR — metin/renk/qr
+       slotuna yazılan kabul kümesini hiçbir okuyucu tüketmez (kabulEdilenTurler
+       null'a düşer, AssetPicker o slot için hiç açılmaz) ve sessizce ölü kalır.
+       Bu paketin kendi doktrini (türetilebilir/tüketicisiz ilan yazılmaz) burada
+       da geçerlidir: yanlış katmana yazılmış ilan yük zamanında REDDEDİLİR. */
+    if (slot.kind !== "image") {
+      throw new Error(
+        `Şablon "${key}": slot "${slot.id}" kind "${slot.kind}" olduğu hâlde "kabul" ilan ediyor — varlık türü kabulü YALNIZ image slotunda okunur, başka kind'da ölü ilandır`
+      );
+    }
+    if (slot.bind) {
+      throw new Error(
+        `Şablon "${key}": slot "${slot.id}" hem "bind" hem "kabul" ilan ediyor — rol bind'dan TÜRETİLİR ("${slot.bind}"), el yazımı "kabul" ikinci kaynaktır ve sürüklenir ("kabul" yalnız bind'sız slotlara yazılır)`
+      );
+    }
+    if (!Array.isArray(slot.kabul) || slot.kabul.length === 0) {
+      throw new Error(
+        `Şablon "${key}": slot "${slot.id}" kabul listesi boş olamaz — türsüz kabul ilan değildir (izinli: ${VARLIK_TURLERI.join(", ")})`
+      );
+    }
+    for (const tur of slot.kabul) {
+      if (!(VARLIK_TURLERI as readonly string[]).includes(tur)) {
+        throw new Error(
+          `Şablon "${key}": slot "${slot.id}" bilinmeyen varlık türü "${String(tur)}" kabul ediyor (izinli: ${VARLIK_TURLERI.join(", ")})`
+        );
+      }
+    }
+    if (new Set(slot.kabul).size !== slot.kabul.length) {
+      throw new Error(`Şablon "${key}": slot "${slot.id}" kabul listesi tekrarlı tür içeriyor`);
     }
   }
 }
