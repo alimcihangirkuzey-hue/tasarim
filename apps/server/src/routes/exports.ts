@@ -15,6 +15,7 @@ import {
 } from "@tezgah/templates/identity";
 import { db } from "../db.js";
 import { exportDosyaAdi } from "../dosya-adi.js";
+import { paramlariDogrula } from "../param-kapisi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 
@@ -115,6 +116,16 @@ export function exportRoutes(app: FastifyInstance): void {
       }
 
       const docDTO = rowToDocument(found.row, found.clientId);
+      /* PARAM KAPISI — İCRA SINIRINDA ERKEN RED (journal 2026-07-27-sunucu-
+         params-dogrulamasi; birebir emsal garment.ts:37'nin parse'ı): bozuk
+         params'la browser'a inmek, /print sayfasında şema parse'ının fırlaması
+         → __PRINT_READY__ hiç atanmaz → 30-45 sn waitForFunction timeout →
+         500 {error:"internal"} demekti (ölçülen eski davranış). Kapı
+         getBrowser'dan ÖNCE fırlar → anında 400 + issues[] (setErrorHandler)
+         ve puppeteer'siz inject-testli. PUT kapısı yeni yazımları tutar; bu
+         kapı ise kapıdan ÖNCE diske girmiş tarihsel bozuk satırları da yakalar
+         — iki sınır birbirinin yedeği değil tamamlayıcısıdır. */
+      paramlariDogrula(docDTO.template_id, docDTO.params);
       const version =
         ((db
           .prepare("SELECT MAX(version) AS v FROM export_records WHERE document_id = ?")

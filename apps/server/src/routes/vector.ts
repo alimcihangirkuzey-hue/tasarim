@@ -9,6 +9,7 @@ import { db } from "../db.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
+import { paramlariDogrula } from "../param-kapisi.js";
 import { svgExportKind } from "../material-routing.js";
 import { exportDosyaAdi } from "../dosya-adi.js";
 import { kanalNitelikleriOf } from "@tezgah/templates/identity";
@@ -31,6 +32,13 @@ export function vectorRoutes(app: FastifyInstance): void {
         return reply.code(400).send({ error: "svg_export_only_vitro_or_garment" });
       }
       const isVitro = kind === "decoupe";
+
+      /* PARAM KAPISI — İCRA SINIRINDA ERKEN RED (journal 2026-07-27-sunucu-
+         params-dogrulamasi; garment.ts:37 emsali, exports.ts ile aynı kapı):
+         kind bekçisinden SONRA (mevcut 400 svg_export_only_vitro_or_garment
+         sırası değişmez), getBrowser'dan ÖNCE — bozuk params'lı belge 30-45 sn
+         Puppeteer timeout + 500 yerine anında 400 + issues[] alır. */
+      paramlariDogrula(docDTO.template_id, docDTO.params);
 
       const client = db
         .prepare("SELECT slug FROM clients WHERE id = ?")

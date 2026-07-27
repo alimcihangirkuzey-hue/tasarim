@@ -354,3 +354,86 @@ describe("GET /api/documents/:id/integration-events — denetim izi OKUNABİLİR
     expect(res.json()).toEqual([]);
   });
 });
+
+describe("POST /render — PARAM KAPISI (journal 2026-07-27-sunucu-params-dogrulamasi)", () => {
+  /* Eski hâlde bozuk params'lı imzalı istek browser'a iner, /print sayfasında
+     şema parse'ı fırlar, __PRINT_READY__ hiç atanmaz, 30sn waitForFunction
+     timeout'u 500 {error:"internal"} üretirdi — ve o timeout dalı
+     integration_events'e HİÇ yazmıyordu (ölçülen denetim izi boşluğu: bozuk
+     params'la gelen makine isteği izsiz kayboluyordu). Kapı getBrowser'dan
+     ÖNCE fırlar (puppeteer'siz inject-testli), yanıt gövdesini setErrorHandler
+     kurar (uçta ikinci hata biçimi yok), iz ise uçta invalid_params koduyla
+     yazılır — bu describe her iki yanı da çiviler. */
+  let bozukVitroDocId: string;
+
+  beforeAll(async () => {
+    /* Belge GERÇEK uçtan doğar (bu dosyanın kurulum deseni); bozuk params ise
+       DOĞRUDAN db ile yazılır — PUT artık param kapılıdır, bozuk veri uçtan
+       yazılamaz; icra kapısının hedefi zaten kapı-öncesi tarihsel satırdır. */
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/clients/${clientId}/documents`,
+      payload: { template_id: "vitro-centre" },
+    });
+    bozukVitroDocId = (res.json() as { id: string }).id;
+    db.prepare("UPDATE documents SET params_json = ? WHERE id = ?").run(
+      JSON.stringify({ cut_color: "kırmızı" }),
+      bozukVitroDocId
+    );
+  });
+
+  it("bozuk params'lı imzalı istek ANINDA 400 validation + invalid_params İZİ (eskiden 30-45sn timeout + 500, İZSİZ)", async () => {
+    const once = izSayisi();
+    const res = await imzali({ doc: bozukVitroDocId, variant: "print" });
+    expect(res.statusCode).toBe(400);
+    const govde = res.json() as { error: string; issues: Array<{ path: string; message: string }> };
+    expect(govde.error).toBe("validation");
+    expect(govde.issues.some((i) => i.path === "cut_color")).toBe(true);
+
+    /* DENETİM İZİ BOŞLUĞU KAPANDI: red satırı diğer ret dallarının alan
+       düzeniyle yazılır (error_code dili: document_not_found /
+       profile_not_registered / channel_not_declared ailesine invalid_params) */
+    expect(izSayisi()).toBe(once + 1);
+    const iz = sonIz();
+    expect(iz).toMatchObject({
+      channel: "render",
+      contract_v: RENDER_CONTRACT_V,
+      outcome: "reddedildi",
+      http_status: 400,
+      error_code: "invalid_params",
+      document_id: bozukVitroDocId,
+      template_id: "vitro-centre",
+      variant: "print",
+      sha256: null,
+      filepath: null,
+    });
+    /* M8: istemciye dönen issues ile izdeki issues AYNI kaynaktan gelir —
+       yanıt uçar, iz kalır ve ikisi birbirini tutar */
+    expect(izPayload(iz)).toEqual({ issues: govde.issues });
+  });
+
+  it("SIRA PİNİ: kanal bekçisi param kapısından ÖNCE kazanır (bozuk params'lı garment yine channel_not_declared)", async () => {
+    /* garment'ın şeması VAR (tekstil→GarmentParamsSchema) ama dışa açık kanalı
+       YOK — bozuk params'la bile red kanal bekçisinden gelmelidir: param
+       kapısı bekçilerin ARKASINDADIR (kayıtsız/kanalsız profile şema mesaisi
+       harcanmaz, redde tek ve doğru sebep bildirilir). Taze belge kurulur;
+       paylaşılan garmentDocId'nin params'ı BOZULMAZ (önceki describe'ların
+       kurulumuna dokunmama disiplini). */
+    const olust = await app.inject({
+      method: "POST",
+      url: `/api/clients/${clientId}/documents`,
+      payload: { template_id: "garment" },
+    });
+    const gid = (olust.json() as { id: string }).id;
+    db.prepare("UPDATE documents SET params_json = ? WHERE id = ?").run(
+      JSON.stringify({ garment_kind: "olmayan-tur" }),
+      gid
+    );
+    const once = izSayisi();
+    const res = await imzali({ doc: gid, variant: "print" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: "channel_not_declared" });
+    expect(izSayisi()).toBe(once + 1);
+    expect(sonIz()).toMatchObject({ error_code: "channel_not_declared", document_id: gid });
+  });
+});

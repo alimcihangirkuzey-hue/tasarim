@@ -103,6 +103,18 @@ function ItemRow({ item, client, showToast }: {
       invalidate();
       if (docId) navigate(`/editor/${docId}`);
     },
+    /* Sunucu artık PUT /api/documents/:id'de params'ı şemayla doğrulayıp 400
+       dönebiliyor (journal 2026-07-27-sunucu-params-dogrulamasi). onError
+       yokken bu 400 sessizce yutuluyordu: kullanıcı "Tasarıma başla"ya basıyor,
+       HİÇBİR ŞEY olmuyordu. Panelin mevcut hata deseni izlenir (present
+       mutation'ı da showToast kullanıyor); mesaj api.ts'in apiErrorMessage ile
+       ürettiği Türkçe-okunur gerekçedir.
+       ŞERH — yetim belge: mutationFn zinciri createDocument → updateDocument →
+       updateOrderItem sırayla koşar; updateDocument 400'lerse create edilmiş
+       belge KALIR ve kaleme bağlanmaz (yetim). Telafi (belgeyi silme ya da
+       parametresiz bağlama) bu paketin KAPSAM DIŞI — declare'da şerhli, ayrı
+       karar. Burada yalnız sessizlik gideriliyor. */
+    onError: (e) => showToast(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
 
   const missing = missingFields(item);
