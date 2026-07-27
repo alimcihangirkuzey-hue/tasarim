@@ -16,9 +16,12 @@
      DAİMA tek komut DİZESİ + shell:true. argv dizisi + shell:true birlikte
      DEP0190 uyarısı üretir; ikisi asla birlikte kullanılmaz.
    · typecheck başarısı SESSİZDİR — ayrıştırılacak sayı yoktur, values null.
-   · kök `npm test` fan-out'u apps/web'i SESSİZCE atlar (web'in test script'i
-     yok) → 4 workspace AYRI koşulur, her biri KENDİ outputFile'ına yazar.
-     Ortak dosya adı ardışık koşumda birbirini ezerdi.
+   · test kapısı kök `npm run test -ws --if-present` fan-out'unu HİÇ
+     KULLANMAZ. Kapsam SABİT KODLU TEST_WORKSPACES listesinden gelir; kapı o
+     listeyi dolaşıp her workspace'i AYRI koşar ve her biri KENDİ
+     outputFile'ına yazar (ortak dosya adı ardışık koşumda birbirini ezerdi).
+     Gerekçe ve bu seçimin bedeli TEST_WORKSPACES'in üstünde yazılıdır.
+     journal 2026-07-27-web-test-altyapisi
    · vite'ın stdout özet satırı AYRIŞTIRILMAZ (U+2502 ayracı, binlik virgülü,
      TTY'ye göre değişen sütunlar, gzip sütununun kaybolabilmesi). Boyut
      diskten okunur: gzipSync(dist/assets/*.js).
@@ -101,7 +104,10 @@ export interface VitestTotals {
 }
 
 /**
- * 4 workspace'in json raporunu TEK toplama indirger.
+ * N adet vitest json raporunu TEK toplama indirger. Sayı BİLEREK YAZILMAZ:
+ * eskiden "4 workspace" diyordu ve TEST_WORKSPACES büyüyünce şerh bayatladı
+ * (journal 2026-07-27-web-test-altyapisi). Bu işlev kapsamı BİLMEZ, yalnız
+ * kendisine verilen raporları katlar; kapsam TEST_WORKSPACES'te ilan edilir.
  * files = testResults.length (DOSYA sayısı). numTotalTestSuites KULLANILMAZ:
  * ölçüldü ki o describe bloklarını sayıyor (shared: 25 dosya, 127 "suite") —
  * "files" adı altında 127 yazmak sayıyı kapsamı kadar dürüst olmaktan çıkarır.
@@ -457,12 +463,41 @@ function shellPath(p: string): string {
   return p.replace(/\\/g, "/");
 }
 
-/** apps/web'in test script'i YOK; kök -ws fan-out'u onu SESSİZCE atlar. */
-const TEST_WORKSPACES = [
+/* TEST kapısının KAPSAMI — sabit kodlu, runtime'da TÜRETİLMEZ.
+
+   NEDEN KÖK FAN-OUT'U DEĞİL: kökteki `npm run test -ws --if-present`
+   script'i, test script'i olmayan bir workspace'i SESSİZCE atlar ve atladığını
+   çıktısında bildirmez. Kapı onu kullansaydı "test kapısı geçti" kaydı, hangi
+   workspace'lerin gerçekten koşulduğunu SÖYLEYEMEZDİ. Kapı bu yüzden fan-out'u
+   hiç çağırmaz; aşağıdaki listeyi dolaşıp her workspace'i tek tek koşar.
+
+   NEDEN SABİT KODLU (bu bir KARAR, eksiklik değil): liste, workspace
+   package.json'larından runtime'da türetilebilirdi. Türetmedik. Türetseydik
+   kapının kapsamı dosya sistemi taramasına bağlanırdı: kapı, ölçtüğü şeyin
+   sınırını her koşumda kendi keşfeder, denetim defterine yazdığı "şu
+   workspace'ler koşuldu" iddiası da o keşfe göre sessizce kayardı. Kapsam bir
+   İLANDIR; ilanı diske sormak kapıyı kırılganlaştırır.
+
+   BU KARARIN BEDELİ — ÖLÇÜLMÜŞ ASİMETRİ: ilan diskten koparsa iki yön aynı
+   şekilde davranmaz.
+     · ÇIKARMA yönü (listede var, diskte test script'i yok) FAIL-SAFE'tir:
+       `npm test -w X` burada --if-present TAŞIMAZ, npm exit≠0 verir, kapı
+       "kaldi" der. Gürültülü hata = görülen hata.
+     · EKLEME yönü (diskte test script'i var, listede yok) FAIL-SILENT'tır:
+       kapı o workspace'i HİÇ koşmaz. Testleri kıpkırmızı olsa bile kapı
+       "gecti" der ve passed/failed/total sayıları sessizce eksik kalır —
+       yani kapı yalan söylemez ama EKSİK ölçer, ki denetim defterinde ikisi
+       aynı kapıya çıkar.
+   Sessiz yönü kapatan tek mekanizma budur: kapi-kapsami.test.ts nöbetçisi bu
+   listeyi diskteki `scripts.test` kümesiyle karşılaştırır. Liste bu yüzden
+   export edilir — nöbetçi ilanı okuyamazsa ilanı denetleyemez.
+   journal 2026-07-27-web-test-altyapisi */
+export const TEST_WORKSPACES = [
   "apps/server",
+  "apps/web",
+  "packages/journal",
   "packages/shared",
   "packages/templates",
-  "packages/journal",
 ] as const;
 
 function gateTypecheck(): JournalGateRun {
@@ -512,7 +547,16 @@ function gateTest(): JournalGateRun {
       const t = summarizeVitestReports(reports);
       return {
         values: { passed: t.passed, failed: t.failed, total: t.total, files: t.files },
-        method: "vitest --reporter=json, 4 workspace ayrı koşuldu, apps/web HARİÇ",
+        /* method APPEND-ONLY denetim defterine yazılır ve geçmişe dönük
+           düzeltilemez. Buradaki cümle elle yazılırsa bir İDDİA olur ve
+           kapsamdan bağımsız yaşar: eski hâli "4 workspace ... apps/web
+           HARİÇ" diyordu; apps/web listeye girdiği an bu cümle YALAN olacak,
+           ama yalan çoktan defterlere düşmüş olacaktı. Denetim izine giren
+           bir iddia elle yazılamaz; listeden TÜRETİLİR ki liste değiştiğinde
+           iddia da onunla birlikte değişsin. Sayı da isimler de tek kaynaktan
+           (TEST_WORKSPACES) gelir — ikisi ayrı ayrı bayatlayamaz.
+           journal 2026-07-27-web-test-altyapisi */
+        method: `vitest --reporter=json, ${TEST_WORKSPACES.length} workspace ayrı koşuldu: ${TEST_WORKSPACES.join(", ")}`,
       };
     },
   });

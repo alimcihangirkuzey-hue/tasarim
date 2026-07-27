@@ -28,7 +28,16 @@ export function analyzeDoc(client: ClientDTO, doc: DocumentState): DocAnalysis {
        ilan etmek, fallback'i dürüstleştirmenin ön koşuludur (aşağıdaki default). */
     case "menu-grid-cells": {
       const a = analyzeGrid(client, doc);
-      return { warnings: a.warnings, pages: 1 };
+      /* pages ARTIK SABİT DEĞİL (journal 2026-07-27-web-test-altyapisi) — ve bu,
+         önceki paketin default dalda kapattığı LATENT ayrışmanın burada CANLI
+         hâliydi. Ölçüm (80 ürün, params.flow="multipage"): analyzeGrid 9,
+         entry.pageCount 9, analyzeDoc 1. Entry'nin kendi şerhi zaten "PDF sayfa
+         sayısı = editör" diyor (menu-grid-cells/index.ts) — editör tam da o
+         ilanı okumayan tek tüketiciydi; PrintPage/PresentPage jenerik okuyor.
+         Sonuç kozmetik değildi: EditorPage sayfa seçicisini `pages > 1` ile
+         gösterir, yani 9 sayfalık menüde operatör 2–9. sayfalara HİÇ geçemiyordu.
+         Bu kusuru, apps/web'i ilk kez ölçebilen kapı buldu (bu paketin sebebi). */
+      return { warnings: a.warnings, pages: a.pages };
     }
     case "menu-liste-premium": {
       const a = analyzeList(client, doc);
