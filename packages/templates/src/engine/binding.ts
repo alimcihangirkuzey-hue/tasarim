@@ -12,7 +12,7 @@ import type {
   Item,
   Selection,
 } from "@tezgah/shared";
-import type { SlotDef } from "../types.js";
+import type { SlotDef, SlotKosulu } from "../types.js";
 
 /** Bind yollarının kökleri: brand.* → marka kiti, catalog.* → katalog, item.* → repeater öğesi */
 export interface BindScope {
@@ -131,8 +131,44 @@ export function assetById(client: ClientDTO, assetId: unknown): AssetDTO | null 
 }
 
 /**
+ * Slot koşulu DOĞRU MU? (koşullu gereklilik v2; journal
+ * 2026-07-26-kosullu-gereklilik-v2). SAF — yalnız belgeyi okur.
+ *
+ * EXHAUSTIVE SWITCH — `default` dalı BİLEREK YOK (isF1TriggerActive emsali,
+ * shared/f1-completeness.ts:100-115). SlotKosulu'na ikinci bir `kind` eklendiği
+ * gün bu switch DERLEMEDE patlar ve yeni biçimi ele almayı zorunlu kılar;
+ * `default` yazılsaydı yeni biçim sessizce "yanlış" sayılır ve BLOCKER kapısı
+ * fark edilmeden gevşerdi.
+ *
+ * PARAM OKUMASI HAMDIR — `doc.params[param]`; paramValue() BİLEREK
+ * KULLANILMADI (ölçülmüş karar):
+ * · paramValue() manifest ister, bu motorun imzası ise yalnız `slots` alır;
+ *   imzayı genişletmek 6 çağrı yerini (flyer · carte-fidelite · menu-grid-cells ·
+ *   menu-trifold · menu-liste-premium · generated/kabul-fabrika) birden
+ *   değiştirirdi — bu paketin kapsamı dışında AYRI bir karardır.
+ * · Ham okumanın BEDELİ ÖLÇÜLDÜ ve şerhlidir: DocumentStateSchema.params
+ *   `z.record(z.unknown()).default({})`'tir — PARAM BAŞINA VARSAYILAN
+ *   UYGULAMAZ. Yeni belge `params: {}` ile doğar (documents create rotası
+ *   yalnız yüzey ön-dolumuyla w_cm/h_cm yazar) ve kullanıcı ilgili denetimi
+ *   ELLEMEDİKÇE param belgede HİÇ BULUNMAZ. Yani manifest/şema varsayılanı
+ *   BURADA UYGULANMAZ.
+ * · KURAL: PARAM YOKSA KOŞUL YANLIŞTIR (slot atlanır). Deterministiktir ve
+ *   testle çivilidir (kosullu-gereklilik.test.ts) — ama davranış eşdeğerliği
+ *   YALNIZ paramı belgede YAZILI olan belgeler için geçerlidir; varsayılana
+ *   dayanan belgede koşul ateşlenmez. Varsayılanı da uygulayan tek doğru yol
+ *   imzaya manifest eklemektir (yukarıdaki ayrı karar).
+ */
+function kosulDogruMu(kosul: SlotKosulu, doc: DocumentState): boolean {
+  switch (kosul.kind) {
+    case "param_esittir":
+      return doc.params[kosul.param] === kosul.deger;
+  }
+}
+
+/**
  * Dosya gereksinimleri motoru (Canonical 7.2/502; journal
- * 2026-07-26-dosya-gereklilik-ilani). SAF — react yok, yan etki yok.
+ * 2026-07-26-dosya-gereklilik-ilani + 2026-07-26-kosullu-gereklilik-v2).
+ * SAF — react yok, yan etki yok.
  *
  * empty-required uyarısı elle yazılmış if satırlarından değil SlotDef.gereklilik
  * İLANINDAN üretilir (ilan = davranış). v1 kapsamı BİLEREK dar:
@@ -145,6 +181,12 @@ export function assetById(client: ClientDTO, assetId: unknown): AssetDTO | null 
  * - QR empty-required'ları DOSYA değil brandkit ALAN gereksinimidir (boş
  *   instagram/tel kaynağı) — bu motora bağlanmaz, elle üretim sürer.
  * Çıktı slot sırasıyla döner (deterministik).
+ *
+ * v2 GENİŞLEMESİ (koşullu gereklilik): `gereklilik` artık `{ kosul }` da
+ * olabilir — koşul DOĞRUYSA slot zorunludur, YANLIŞSA atlanır. v1 yolu
+ * (`"zorunlu"`) BİREBİR korunur: ilansız slot ve image olmayan slot eskisi
+ * gibi hiç değerlendirilmez, koşulsuz zorunlu slot eskisi gibi doğrudan
+ * çözümlenir. Koşul çözümü kosulDogruMu'dadır (param okuma şerhi orada).
  */
 export function eksikZorunluVarliklar(
   slots: readonly SlotDef[],
@@ -154,7 +196,10 @@ export function eksikZorunluVarliklar(
   const scope: BindScope = { brand: client.brandkit, catalog: client.catalog };
   const out: Array<{ type: "empty-required"; slotId: string }> = [];
   for (const slot of slots) {
-    if (slot.gereklilik !== "zorunlu" || slot.kind !== "image") continue;
+    const gereklilik = slot.gereklilik;
+    if (gereklilik === undefined || slot.kind !== "image") continue;
+    /* "zorunlu" → koşulsuz (v1 birebir); { kosul } → koşul yanlışsa slot atlanır */
+    if (gereklilik !== "zorunlu" && !kosulDogruMu(gereklilik.kosul, doc)) continue;
     if (!assetById(client, resolveSlotValue(slot, doc.overrides, scope).value)) {
       out.push({ type: "empty-required", slotId: slot.id });
     }

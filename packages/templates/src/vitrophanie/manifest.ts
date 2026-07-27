@@ -7,12 +7,35 @@ import type { TemplateManifest } from "../types.js";
 export type VitroVariant = "bandeau" | "centre" | "colonne";
 
 export const SLOT_DEFS = [
-  /* ŞERH (dosya-gereklilik v1, 7.2/502): logo/logo_mono zorunluluğu KOŞULLUDUR
-     — mode paramı belirler (impression→logo, decoupe→logo_mono; index.tsx elle
-     if'leri). Düz `gereklilik:"zorunlu"` ilanına sığmaz; v1 BİLEREK ilan etmez,
-     elle if'ler AYNEN yaşar. Koşullu gereklilik v2 kararıdır (TODO şerhi). */
-  { id: "logo", kind: "image" as const, bind: "brand.logo_primary" },
-  { id: "logo_mono", kind: "image" as const, bind: "brand.logo_mono" },
+  /* Dosya gereksinimi İLANI — KOŞULLU (Canonical 7.2/502 dosya gereksinimleri +
+     4.5 "bildirimsel, deterministik, test edilebilir"; journal
+     2026-07-26-kosullu-gereklilik-v2). ESKİ ŞERH KALKTI: v1'de bu aile BİLEREK
+     ilan ETMİYORDU — logo/logo_mono zorunluluğu `mode` paramına bağlı olduğu
+     için yokluk/zorunlu ikilisine sığmıyor, uyarı index.tsx'te iki elle `if`
+     satırından doğuyordu. Koşul dili v2 ile geldi (`param_esittir`) ve
+     zorunluluk artık İLANDADIR: uyarıyı jenerik motor (eksikZorunluVarliklar)
+     bu ilandan üretir — ilan ile davranış ayrışamaz.
+
+     mode KAPALI KÜMEDİR ve iki dal TAM BÖLÜMDÜR (impression|decoupe): her
+     belgede iki slottan tam biri zorunludur, üçüncü hâl yoktur — bu yüzden
+     `param_esittir` bu aileyi %100 kapsar (ölçüm: paket beyanı).
+
+     TEK İLAN NOKTASI ÜÇ MANİFESTİ KAPATIR: bandeau/centre/colonne aynı
+     SLOT_DEFS'i makeManifest üzerinden paylaşır — koşul burada BİR KEZ yazılır,
+     üç profilde birden davranışa döner (production_substrate'in tek noktadan
+     ilanı emsali, aşağıda). */
+  {
+    id: "logo",
+    kind: "image" as const,
+    bind: "brand.logo_primary",
+    gereklilik: { kosul: { kind: "param_esittir" as const, param: "mode", deger: "impression" } },
+  },
+  {
+    id: "logo_mono",
+    kind: "image" as const,
+    bind: "brand.logo_mono",
+    gereklilik: { kosul: { kind: "param_esittir" as const, param: "mode", deger: "decoupe" } },
+  },
   { id: "hours", kind: "text" as const, bind: "brand.contact.hours", maxLines: 1 },
   { id: "slogan", kind: "text" as const, bind: "brand.slogan_fr", maxLines: 2 },
   { id: "phone", kind: "text" as const, bind: "brand.contact.phone", maxLines: 1 },
