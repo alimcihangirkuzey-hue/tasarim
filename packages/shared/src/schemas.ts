@@ -693,11 +693,60 @@ export type GarmentAreaId = z.infer<typeof GarmentAreaIdSchema>;
 
 export const GarmentParamsSchema = z.object({
   garment_kind: GarmentKindSchema.default("tshirt"),
-  fabric_color: z.string().default("white"), // white|black|red|blue|#RRGGBB
+  /* BİLEREK GEVŞEK (z.string) — kabul kümesinin İLANI aşağıda KUMAS_RENKLERI
+     + kumasRengiHex'tedir (journal 2026-07-27-kumas-rengi-birligi). Şemayı
+     birliğe sıkılaştırmak İKİ yerde patlardı: (1) analyzeGarment bu şemayı
+     OKUMA yolunda parse eder — eski "siyah"lı belge render'da çökerdi;
+     (2) sunucu yazma kapısı (param-kapisi) aynı şemayı kullanır — eski belge
+     kaydedilemez olurdu. Yeniden açma koşulu: üretim DB ihlal sayımı + geçiş
+     kararı (sunucu-params paketinin TODO talimatındaki prob). */
+  fabric_color: z.string().default("white"),
   technique: GarmentTechniqueSchema.default("impression"),
   areas: z.array(GarmentAreaIdSchema).min(1).default(["chest_center"]),
 });
 export type GarmentParams = z.infer<typeof GarmentParamsSchema>;
+
+/* KUMAŞ RENGİ BİRLİĞİ (journal 2026-07-27-kumas-rengi-birligi) — fabric_color
+   alanının kabul kümesi TEK yerde: adlandırılmış renkler ∪ #RRGGBB hex.
+
+   NEDEN İLAN GEREKTİ — ölçülen yara: bu küme üç yerde BİRBİRİNDEN HABERSİZ
+   yaşıyordu. Sahne tarafı İSİM yazar (ScenesPanel kapalı select), belge tarafı
+   HEX yazar (<input type="color"> tarayıcıda HEP küçük-harf #rrggbb üretir),
+   garment çizicisi kendi yerel FABRIC_HEX kopyasını tutardı. Mockup tercihi
+   (sahneSkoru) iki tarafı HAM === ile karşılaştırıyordu: isim === hex asla
+   tutmaz, hex === hex bile büyük/küçük harf yüzünden tutmayabilir — yani
+   manifest'in eslesme_parami ilanı UI yolunda HİÇ işlemiyordu.
+
+   İKİ DİL DE GEÇERLİDİR, ÇEVİRMEN TEKTİR: kayıtlı veri yeniden yazılmaz
+   (migration = sessiz mutasyon), sahne isim yazmaya, belge hex yazmaya devam
+   eder; karşılaştıran herkes kumasRengiEsit kullanır. Kanonik hex biçimi
+   BÜYÜK harftir (FABRIC_HEX kopyasının ve garment manifest varsayılanının
+   zaten kullandığı biçim). Not: GarmentParamsSchema varsayılanı "white" ile
+   manifest varsayılanı "#FFFFFF" bu birlik altında AYNI renktir — iki
+   varsayılanın örtüştüğü ilk kez burada görünür oluyor. */
+export const KUMAS_RENKLERI: Record<string, string> = {
+  white: "#FFFFFF",
+  black: "#1A1A1A",
+  red: "#C8102E",
+  blue: "#1D4ED8",
+};
+
+/** Birlik çözücüsü: isim → hex; geçerli hex → kanonik (BÜYÜK harf) hex;
+    tanınmayan değer → null. TAHMİN YOK: null dönmek "bu değeri renk olarak
+    okuyamıyorum" demektir — beyaza düşme kararı ÇİZİCİNİN kendi kararıdır
+    (garment/index.tsx fabricToHex, orada şerhli), çözücünün değil. */
+export function kumasRengiHex(v: string): string | null {
+  if (Object.hasOwn(KUMAS_RENKLERI, v)) return KUMAS_RENKLERI[v];
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : null;
+}
+
+/** İki kumaş rengi aynı mı — iki taraf da çözülebiliyorsa hex eşitliği.
+    Çözülemeyen taraf (boş dize dahil) eşleşmeyi DÜŞÜRÜR: "tanımadığım iki
+    değer birbirine eşittir" demek sessizce yanlış pozitif üretirdi. */
+export function kumasRengiEsit(a: string, b: string): boolean {
+  const ha = kumasRengiHex(a);
+  return ha !== null && ha === kumasRengiHex(b);
+}
 
 /** Alan preset'leri (cm) — FAZ3-GOREV §6 */
 export const GARMENT_AREAS: Record<
