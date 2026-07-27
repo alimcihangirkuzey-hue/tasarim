@@ -47,6 +47,9 @@ export interface GarmentAnalysis {
   fabricDark: boolean;
 }
 
+/* fabric_color KAPALI KÜME DEĞİLDİR: adlandırılmış renkler ∪ hex. Şeması
+   (GarmentParamsSchema) düz `z.string()`tir, yani buraya HER string gelebilir —
+   sunucu da params'ı doğrulamıyor (`z.record(z.unknown())`). */
 const FABRIC_HEX: Record<string, string> = {
   white: "#FFFFFF",
   black: "#1A1A1A",
@@ -55,7 +58,20 @@ const FABRIC_HEX: Record<string, string> = {
 };
 
 function fabricToHex(v: string): string {
-  return FABRIC_HEX[v] ?? (v.startsWith("#") ? v : "#FFFFFF");
+  /* `Object.hasOwn` KASITLI — düz indeksleme `Object.prototype` zincirini de
+     görürdü ve bu ÖLÇÜLMÜŞ bir çökmeydi (journal 2026-07-27-param-gecerli-
+     deger-ilani): fabric_color="constructor" → FABRIC_HEX["constructor"]
+     `Object` FONKSİYONUNU döner, nullish olmadığı için `??` ateşlenmez, string
+     olmayan değer relativeLuminance'a gider ve `hex.trim is not a function`
+     ile patlar. Koşularak doğrulandı: "constructor" ve "toString" fırlatıyordu.
+     Yol erişilebilirdir çünkü değer hiçbir katmanda süzülmüyor.
+
+     `#` kontrolü BİLEREK gevşek bırakıldı (hex biçimi burada doğrulanmıyor):
+     sıkılaştırmak davranış daraltmasıdır ve fabric_color'ın adlandırılmış-renk
+     birliğini ilan etmeden yapılamaz — o ayrı karar, bu paketin kapsamı dışında
+     şerhlendi. Burada kapatılan yalnızca ÇÖKME. */
+  if (Object.hasOwn(FABRIC_HEX, v)) return FABRIC_HEX[v];
+  return v.startsWith("#") ? v : "#FFFFFF";
 }
 
 function lineFor(

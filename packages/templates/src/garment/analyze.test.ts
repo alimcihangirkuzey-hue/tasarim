@@ -127,3 +127,48 @@ describe("analyzeGarment (FAZ3-GOREV §6)", () => {
     expect(garment.transparentBg).toBe(true);
   });
 });
+
+describe("fabricToHex — prototip zinciri çökmesi (journal 2026-07-27-param-gecerli-deger-ilani)", () => {
+  const c = makeClient();
+  const hex = (v: unknown) => analyzeGarment(c, doc({ garment_kind: "tshirt", fabric_color: v })).fabricHex;
+
+  it("Object.prototype ANAHTARLARI artık ÇÖKERTMİYOR, ilanlı varsayılana düşüyor", () => {
+    /* ÖLÇÜLMÜŞ ÇÖKME (bu paket öncesi, koşularak doğrulandı): FABRIC_HEX düz
+       nesne literali olduğu için `FABRIC_HEX["constructor"]` prototip zincirinden
+       `Object` FONKSİYONUNU döndürüyordu. Nullish olmadığı için `??` yedeği
+       ateşlenmiyor, string olmayan değer relativeLuminance'a gidiyor ve
+       `TypeError: hex.trim is not a function` ile patlıyordu.
+
+       Yol ERİŞİLEBİLİR: GarmentParamsSchema `fabric_color`ı düz `z.string()`
+       olarak alır ve sunucu belge params'ını hiç doğrulamaz
+       (`params: z.record(z.unknown())`), yani bu değer API'den yazılabilir.
+       Düzeltme `Object.hasOwn` ile prototip zincirini kapatır. */
+    for (const anahtar of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"]) {
+      expect(() => hex(anahtar), `${anahtar}: prototip zinciri yeniden açıldı`).not.toThrow();
+      expect(hex(anahtar), `${anahtar}: beklenmeyen renk`).toBe("#FFFFFF");
+    }
+  });
+
+  it("adlandırılmış renkler ve hex yolu BİREBİR korunuyor (düzeltme daraltma değil)", () => {
+    /* Düzeltmenin davranış yüzeyi ölçülmüştür: çöken girdiler dışında hiçbir
+       şey değişmez. Bu assert onu çiviler — aksi hâlde `Object.hasOwn`'a geçiş
+       sessiz bir daraltma olabilirdi. */
+    expect(hex("white")).toBe("#FFFFFF");
+    expect(hex("black")).toBe("#1A1A1A");
+    expect(hex("red")).toBe("#C8102E");
+    expect(hex("blue")).toBe("#1D4ED8");
+    expect(hex("#1A1A1A")).toBe("#1A1A1A");
+  });
+
+  it("BİLİNEN SINIR: hex biçimi doğrulanmıyor, adsız metin sessizce BEYAZa düşer", () => {
+    /* Bu bir kusur ilanıdır, sözleşme DEĞİL — ve bu pakette BİLEREK
+       kapatılmadı. "siyah" (BriefPage placeholder'ının davet ettiği Türkçe
+       biçim) beyaz sanılır → fabricDark ters döner → mono-öneri yanlış tarafa
+       gider. Kapatmak fabric_color'ın adlandırılmış-renk BİRLİĞİNİ ilan etmeyi
+       gerektirir (bugün ilansız); ayrı karar, TODO'da şerhli. Test bu sınırı
+       GÖRÜNÜR tutar: birlik ilan edildiği gün burası kırmızıya döner ve
+       kararın alındığı yer aranır. */
+    expect(hex("siyah")).toBe("#FFFFFF");
+    expect(hex("#zzz")).toBe("#zzz");
+  });
+});
