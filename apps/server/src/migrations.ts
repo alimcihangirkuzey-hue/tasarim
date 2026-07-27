@@ -299,4 +299,81 @@ export const MIGRATIONS: string[] = [
      v11 canvas_json emsali birebir: ADDITIVE tek kolon, veri dönüşümü YOK,
      eski satırlar '{}' (yokluk) alır. İçerik şeması shared/f1-spec.ts'te. */
   `ALTER TABLE briefs ADD COLUMN spec_values_json TEXT NOT NULL DEFAULT '{}';`,
+  /* v14 — MAKİNE KANALI DENETİM İZİ (integration_events). Karşılanan kanonik
+     maddeler: 7.4/524 (her bağlayıcı "denetim kaydı" bildirir) · 9.2/673
+     ("entegrasyon hataları" izlenmesi zorunlu alan) · 9.1/665 ("denetim izi
+     değişmezdir") · 5.6/410 ("dış servise gönderilen her veri kayıt altına
+     alınır; hangi verinin nereye gittiği izlenebilir olmalıdır").
+
+     (a) NEDEN AYRI TABLO — export_records'a YAZILMAMA gerekçesi. /render'ın
+     STATELESS kararı (routes/render.ts başlığı) BOZULMAZ; iz AYRI KAYIT
+     SINIFIDIR — 9.2/675'in "denetim izi ≠ telemetri" ayrımının şema hâli.
+     export_records bir ATÖLYE ÜRETİM defteridir; makine kanalının izi oraya
+     yazılsaydı üç somut hasar doğardı:
+       · RED olayları ÜRETİLMEMİŞ dosyalardır — export_records.filepath NOT NULL
+         ve snapshot_json NOT NULL'dır; "dosyası olmayan export kaydı" o tablonun
+         anlamını bozar.
+       · SÜRÜM SAYACI KAYAR: exports.ts:120 `MAX(version)`i kind FİLTRESİZ okur →
+         makine kanalının her satırı atölyenin belge sürüm sayacını ileri iterdi
+         (operatörün "v3" dediği dosya v5 adıyla düşerdi).
+       · UI SIZINTISI: `SELECT *` yapan iki rota (exports.ts:196
+         /api/documents/:id/exports · present.ts:166 /api/projects/:id/exports)
+         satırları olduğu gibi atölye listesine döker → dış istemcinin denetim
+         izi atölye ekranında "export" gibi görünürdü.
+
+     (b) ON DELETE **SET NULL** (CASCADE DEĞİL) — briefs.customer_ref emsali
+     (bu dosyada v12, satır 232-235). Belge ya da müşteri silmek denetim izini
+     YOK ETMEMELİ, yalnız bağı koparmalıdır (9.1/665: iz değişmezdir; silme
+     yoluyla dolaylı imha da bir mutasyondur). Bu yüzden template_id · variant ·
+     target SNAPSHOT değerlerdir, FK değil: bağ koptuktan sonra bile "ne
+     istendi" sorusu cevaplanabilir kalır (5.6/410 izlenebilirlik). document_id
+     NULL'a düşünce satır yetim kalmaz — payload_json ve snapshot alanları
+     olayın kendisini taşır.
+
+     (c) CHECK'LERİN ANLAMI.
+       · channel kapalı kümesi bir KAPIDIR: bugün yalnız 'render'. Yeni bağlayıcı
+         eklemek DB düzeyinde migration + ürün kararı gerektirir (7.4/524 "her
+         bağlayıcı bildirir" — bildirimsiz kanal sessizce iz yazamaz).
+       · outcome ↔ error_code/sha256/filepath tutarlılığı: "üretildi ama dosya
+         izi yok" ya da "reddedildi ama sebep yok" satırı DB düzeyinde İMKÂNSIZ.
+         Yarım kayıt, kaydın hiç olmamasından beterdir (M8: sessiz yokluk yasak).
+       · http_status NOT NULL: dış istemciye ne DÖNDÜĞÜ izin parçasıdır; 201/400/
+         401/404/503 ayrımı sonradan tahmin edilmez.
+
+     (d) ÇAĞIRAN KİMLİĞİ ALANI YOK — BİLİNÇLİ EKSİKLİK. Bugün /render tek
+     PAYLAŞILAN secret ile doğrulanır (RENDER_CONTRACT_SECRET); gerçek caller
+     kimliği YOKTUR. journal.ts:135-141'in dersi ("aktör ASLA null" — brief_audit
+     8 olay türünün 5'inde aktörü NULL bırakıp "kim yaptı"yı geriye dönük
+     cevaplayamaz hâle geldi) gereği SAHTE ya da hep-NULL bir aktör kolonu
+     EKLENMEDİ: var olup boş duran alan, olmayan alandan daha yanıltıcıdır.
+     Per-client secret / key-id geldiğinde kolon ANLAMLI dolabileceği gün eklenir
+     (additive ALTER; v11/v13 emsali).
+
+     (e) APPEND-ONLY: bu tabloya UPDATE/DELETE yolu YAZILMAZ (yazma kapısı
+     integration-audit.ts; brief_audit'te olduğu gibi repo taramalı testle
+     korunur). Index'ler iki okuma ekseni içindir: belge bazlı liste ve zaman
+     bazlı tarama (9.2 gözlemlenebilirlik). */
+  `
+  CREATE TABLE IF NOT EXISTS integration_events (
+    id           TEXT PRIMARY KEY,
+    channel      TEXT NOT NULL CHECK (channel IN ('render')),
+    contract_v   INTEGER NOT NULL,
+    outcome      TEXT NOT NULL CHECK (outcome IN ('uretildi', 'reddedildi')),
+    http_status  INTEGER NOT NULL,
+    error_code   TEXT,
+    document_id  TEXT REFERENCES documents(id) ON DELETE SET NULL,
+    client_id    TEXT REFERENCES clients(id) ON DELETE SET NULL,
+    template_id  TEXT,
+    variant      TEXT,
+    target       TEXT,
+    sha256       TEXT,
+    filepath     TEXT,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    created_at   TEXT NOT NULL,
+    CHECK ((outcome = 'uretildi'   AND error_code IS NULL     AND sha256 IS NOT NULL AND filepath IS NOT NULL)
+        OR (outcome = 'reddedildi' AND error_code IS NOT NULL))
+  );
+  CREATE INDEX IF NOT EXISTS idx_integration_events_doc ON integration_events(document_id);
+  CREATE INDEX IF NOT EXISTS idx_integration_events_created ON integration_events(created_at);
+  `,
 ];
