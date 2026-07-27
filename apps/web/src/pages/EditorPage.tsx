@@ -91,6 +91,20 @@ export function EditorPage() {
   const entry = doc ? TEMPLATES[doc.template_id] : undefined;
 
   /* ---- otomatik kayıt: 2 sn debounce (§6.2) ---- */
+  /* Kayıt hatasının SEBEBİ görünür olsun (journal 2026-07-27-sunucu-params-
+     dogrulamasi): sunucu artık params'ı şemayla doğrulayıp 400 dönebiliyor;
+     eskiden hata nesnesi catch'te atılıyor, ekranda yalnız "Kayıt hatası!"
+     kalıyordu — operatör NEYİ düzelteceğini göremiyordu. api.ts zaten
+     apiErrorMessage ile Türkçe-okunur gerekçe üretip Error.message'a koyuyor;
+     o mesaj saveError'da tutulur ve üst bardaki göstergede sergilenir.
+     Başarılı kayıt eski mesajı temizler ki bayat gerekçe asılı kalmasın. */
+  const [saveError, setSaveError] = useState<string | null>(null);
+  /* ŞERH — yeniden-deneme kilidi (bu pakette BİLEREK değiştirilmiyor; davranış
+     daraltması paketi, UX redesign paketi değil): saveState "error"a düştüğünde
+     bu effect'in koşulu (saveState !== "dirty" → return) yeni bir patch gelip
+     durumu tekrar "dirty" yapana dek PUT'u YENİDEN DENEMEZ — kayıt, kullanıcı
+     bir şeyi değiştirene kadar askıda kalır. saveError göstergesi tam da bu
+     yüzden önemli: kilit çözülene dek sebep ekranda durur. */
   useEffect(() => {
     if (!doc || !docId || saveState !== "dirty") return;
     const h = window.setTimeout(() => {
@@ -105,9 +119,13 @@ export function EditorPage() {
         })
         .then(() => {
           setSaveState("saved");
+          setSaveError(null);
           if (clientId) void qc.invalidateQueries({ queryKey: ["documents", clientId] });
         })
-        .catch(() => setSaveState("error"));
+        .catch((e: unknown) => {
+          setSaveState("error");
+          setSaveError(e instanceof Error ? e.message : String(e));
+        });
     }, 2000);
     return () => window.clearTimeout(h);
   }, [doc, docId, saveState, setSaveState, clientId, qc]);
@@ -434,9 +452,26 @@ export function EditorPage() {
                   max={p.max}
                   step={p.step}
                   style={{ width: 78, padding: "5px 6px" }}
-                  onChange={(e) =>
-                    patch({ params: { ...doc.params, [p.id]: Number(e.target.value) } })
-                  }
+                  onChange={(e) => {
+                    /* Sunucu artık PUT /api/documents/:id'de params'ı şemayla doğrulayıp
+                       bozuksa 400 dönüyor (journal 2026-07-27-sunucu-params-dogrulamasi).
+                       Eski kod alan boşaltılınca Number("")===0'ı yerel state'e yazıyordu;
+                       2 sn debounce sonrası PUT (ör. w_cm:0) → 400 → saveState:"error" ve
+                       otomatik-kayıt effect'i "dirty" olmadan yeniden denemediği için kayıt
+                       KALICI kilitleniyordu. Bu yüzden boş ya da sonlu-sayı-olmayan girdi
+                       hiç PATCH'lenmez: kontrollü input bir önceki geçerli değere geri döner
+                       (snap-back). Bu UX pürüzü BİLEREK kabul ediliyor — görünmez-bozuk-değer
+                       + kalıcı kayıt kilidi, görünür snap-back'ten kötüdür.
+                       Aralık/step İHLALİ ise bilerek PATCH'lenmeye DEVAM eder (ör. min 10
+                       iken 5 yazmak serbest): bu değerler yazım sırasındaki ara hâllerdir
+                       (2→25→250); sunucu yalnız Zod sınırlarını (positive, max 2000)
+                       reddeder ve manifest aralığı Zod'dan dar olduğu için ara hâller
+                       çoğunlukla geçer — tuşa-basışta reddetmek yazmayı imkânsızlaştırırdı. */
+                    const raw = e.target.value;
+                    const n = Number(raw);
+                    if (raw === "" || !Number.isFinite(n)) return;
+                    patch({ params: { ...doc.params, [p.id]: n } });
+                  }}
                 />
               </span>
             );
@@ -506,7 +541,15 @@ export function EditorPage() {
           {saveState === "saving" && t("editor.saving")}
           {saveState === "saved" && t("editor.saved")}
           {saveState === "dirty" && "…"}
-          {saveState === "error" && <span className="error">{t("editor.save_error")}</span>}
+          {saveState === "error" && (
+            /* Başlığın yanında SEBEP de görünür (journal 2026-07-27-sunucu-
+               params-dogrulamasi): saveError, apiErrorMessage'ın ürettiği
+               Türkçe-okunur gerekçedir — salt "Kayıt hatası!" teşhis ettirmez. */
+            <span className="error">
+              {t("editor.save_error")}
+              {saveError ? ` ${saveError}` : ""}
+            </span>
+          )}
         </span>
 
         <button className="ghost" onClick={() => setShowMockupModal(true)} disabled={doMockup.isPending}>

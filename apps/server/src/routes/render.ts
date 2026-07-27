@@ -19,8 +19,10 @@ import type { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { ZodError } from "zod";
 import { IntegrationEventDTOSchema, nowISO, type IntegrationEventDTO } from "@tezgah/shared";
 import { db } from "../db.js";
+import { paramlariDogrula } from "../param-kapisi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { disaAcikKanallar, productionChannelsOf } from "@tezgah/templates/identity";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -270,6 +272,45 @@ export function renderRoutes(app: FastifyInstance): void {
           disa_acik: disaAcik,
         },
       });
+    }
+
+    /* PARAM KAPISI — İCRA SINIRINDA ERKEN RED (journal 2026-07-27-sunucu-
+       params-dogrulamasi; garment.ts:37 emsali). SIRA: kanal bekçilerinin
+       ARKASINDA (profil reddi param reddinden önce kazanır — kayıtsız profile
+       zaten şema çözülmez), getBrowser'ın ÖNÜNDE → bozuk params'lı imzalı
+       istek 30-45 sn Puppeteer timeout + 500 yerine anında 400 alır ve yol
+       puppeteer'siz inject-testlidir.
+
+       DENETİM İZİ BOŞLUĞU KAPANIR: eski hâlde timeout dalı integration_events'e
+       HİÇ yazmıyordu — bozuk params'la gelen makine isteği izsiz kayboluyordu
+       (ölçülen boşluk). Kapı burada diğer ret dallarının writeIntegrationEvent
+       desenini birebir izler (error_code adlandırma dili: document_not_found /
+       profile_not_registered / channel_not_declared → invalid_params).
+       ZodError YUTULMAZ, iz yazılıp yeniden FIRLATILIR: yanıt gövdesini yine
+       global setErrorHandler kurar (400 {error:"validation", issues}) — uçta
+       ikinci bir hata biçimi türetilmez, istemciye dönen issues ile izdeki
+       issues aynı kaynaktan gelir (M8: istemciye ne bildirdiysek izde o durur). */
+    try {
+      paramlariDogrula(docDTO.template_id, docDTO.params);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        writeIntegrationEvent({
+          channel: "render",
+          contract_v: RENDER_CONTRACT_V,
+          outcome: "reddedildi",
+          http_status: 400,
+          error_code: "invalid_params",
+          document_id: found.row.id,
+          client_id: found.clientId,
+          template_id: docDTO.template_id,
+          variant: body.variant,
+          target: body.target,
+          payload: {
+            issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+          },
+        });
+      }
+      throw err;
     }
 
     /* Engine iç çağrısı: mevcut /print sayfası (M3 tek render kaynağı) —

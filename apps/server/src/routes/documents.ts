@@ -13,6 +13,7 @@ import {
   type DocumentSummaryDTO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { paramlariDogrula } from "../param-kapisi.js";
 import { surfacePrefillParams } from "../surfaces.js";
 
 type DocumentRow = {
@@ -120,6 +121,13 @@ export function documentRoutes(app: FastifyInstance): void {
     /* F8-A (D6): vitro/enseigne belgesinde müşteri yüzey ölçüsü ön-dolumu. Yoksa
        {} → şablon varsayılanı geçerli. Değer editör param panelinde görünür (M8). */
     const params = { ...state.params, ...surfacePrefillParams(db, client.id, state.template_id) };
+    /* PARAM KAPISI (journal 2026-07-27-sunucu-params-dogrulamasi): ön-dolum
+       sunucunun kendi ürettiği veri AMA kaynağı client_surfaces tablosudur ve
+       o satırlar tarihsel/elle yazılmış olabilir — intake yolu bugün aynı
+       aralığı (positive, max 2000) doğruluyor diye buradaki kapı gereksiz
+       SAYILMAZ: "kendi verimize güvenmek değil ölçmek" doktrini. Bozuk
+       ön-dolum belge doğumunda 400 olur, diske hiç girmez. */
+    paramlariDogrula(state.template_id, params);
     const now = nowISO();
     const row: DocumentRow = {
       id: newId("doc"),
@@ -158,6 +166,18 @@ export function documentRoutes(app: FastifyInstance): void {
     const { row } = found;
 
     const patch = DocumentUpdateSchema.parse(req.body ?? {});
+    /* PARAM KAPISI (journal 2026-07-27-sunucu-params-dogrulamasi): PUT params'ı
+       REPLACE eder (aşağıda params_json = JSON.stringify(patch.params)) — yani
+       sunucu bu noktada params'ın TAMAMINI görür, tam şema doğrulaması burada
+       uygulanabilir ve uygulanır. Eskiden bozuk param diske girer, faturası
+       icra anında 30-45 sn Puppeteer timeout + 500 olarak kesilirdi; artık
+       yazma anında 400 + issues[] (setErrorHandler). DİKKAT: doğrulama
+       patch.template_id ?? row.template_id ile YENİ şablona göre yapılır —
+       aynı PUT hem template_id hem params değiştirebilir; eski şablona göre
+       doğrulamak menü→vitro geçişinde bozuk cut_color'ı kaçırırdı (testli). */
+    if (patch.params !== undefined) {
+      paramlariDogrula(patch.template_id ?? row.template_id, patch.params);
+    }
     const next: DocumentRow = {
       ...row,
       template_id: patch.template_id ?? row.template_id,
@@ -211,6 +231,15 @@ export function documentRoutes(app: FastifyInstance): void {
         selection: state.selection,
         overrides: state.overrides,
       });
+      /* PARAM KAPISI (journal 2026-07-27-sunucu-params-dogrulamasi): restore da
+         PUT ile aynı REPLACE desenidir — snapshot'taki params diske olduğu gibi
+         yazılır. Kapısız hâlde bozuk bir param, PUT kapısı geldikten sonra bile
+         snapshot üzerinden DİRİLEBİLİRDİ (yazma sınırının arka kapısı); aynı
+         kapı burada da durur, bozuk snapshot restore'u 400 alır. Doğrulama yine
+         patch.template_id ?? mevcut şablon: snapshot şablonu da taşıyabilir. */
+      if (patch.params !== undefined) {
+        paramlariDogrula(patch.template_id ?? found.row.template_id, patch.params);
+      }
 
       const now = nowISO();
       const current = rowToDocument(found.row, found.clientId);
