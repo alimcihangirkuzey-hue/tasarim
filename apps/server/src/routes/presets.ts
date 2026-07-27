@@ -55,6 +55,27 @@ function scanUsages(assetId: string): Usage[] {
     .all(`%${needle}%`) as Array<{ id: string; template_id: string }>;
   for (const d of docs) usages.push({ where: "belge override", label: `${d.template_id} (${d.id.slice(0, 12)}…)` });
 
+  /* BRIEF DOSYASI (journal 2026-07-26-brief-varlik-sinirlari): tarama bu dördü
+     biliyordu ama brief_files'ı BİLMİYORDU — silme serbest görülüyor, FK
+     ON DELETE CASCADE (migrations.ts) brief_files satırını yok ediyor ve brief
+     tamlığı (f1-completeness "valid" dosya sayımı) SESSİZCE geriliyordu:
+     brief-files.ts'in file_invalidated audit yolu hiç koşmadan izsiz bir
+     gerileme. 4.7/354 denetim izini append-only ve değişmez sayar; kayıtsız
+     gerileme onunla çelişir. Artık silme 409 ile durur ve kullanıcı önce
+     brief'te dosyayı geçersizleyip yerine yenisini yükler (o yol audit yazar). */
+  const briefler = db
+    .prepare(
+      `SELECT bf.brief_id AS briefId, bf.role AS role, bf.version AS version
+         FROM brief_files bf WHERE bf.asset_id = ?`
+    )
+    .all(assetId) as Array<{ briefId: string; role: string; version: number }>;
+  for (const b of briefler) {
+    usages.push({
+      where: "brief dosyası",
+      label: `${b.role} v${b.version} (${b.briefId.slice(0, 12)}…)`,
+    });
+  }
+
   return usages;
 }
 

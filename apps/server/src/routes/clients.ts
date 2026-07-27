@@ -69,10 +69,25 @@ export function uniqueSlug(name: string): string {
 
 function clientAssets(clientId: string): AssetDTO[] {
   /* Ortak havuz (client_id NULL) her müşterinin seçicilerinde görünür (FAZ2-GOREV §4);
-     binding assetById de böylece ortak fotoğrafları çözer */
+     binding assetById de böylece ortak fotoğrafları çözer.
+
+     BRIEF DIŞLAMASI (6.3/440 "üretim girdisi olan dosyalar galeri varlığı
+     DEĞİLDİR ve paylaşılan havuzlara sızmaz"; journal
+     2026-07-26-brief-varlik-sinirlari): aynı kural ortak havuz ucunda zaten
+     uygulanıyordu (routes/assets.ts "/api/assets/common") ama BURADA yoktu —
+     brief-files.ts asset'i `brief.customer_ref` ile yazdığı için müşterisi
+     olan bir brief'in üretim girdisi müşteri galerisine (ClientDetailPage) ve
+     AssetPicker'ın "Müşteri" sekmesine düşüyordu. İkincil kanıt: brief
+     yüklemesi yalnız orig+master üretir, THUMB üretmez — assetToDTO koşulsuz
+     thumb yolu döndürdüğü için galeride KIRIK GÖRSEL çıkıyordu; filtre bunu
+     da kapatır. brief_files boş olduğu sürece sonuç birebir eskisi (regresyon
+     nöbetçisi: clients-brief-sizinti.test.ts). */
   const rows = db
     .prepare(
-      "SELECT * FROM assets WHERE client_id = ? OR client_id IS NULL ORDER BY created_at DESC"
+      `SELECT * FROM assets
+        WHERE (client_id = ? OR client_id IS NULL)
+          AND id NOT IN (SELECT asset_id FROM brief_files)
+        ORDER BY created_at DESC`
     )
     .all(clientId) as AssetRow[];
   return rows.map(assetToDTO);
