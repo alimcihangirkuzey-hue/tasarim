@@ -300,7 +300,15 @@ export function ScenesPanel({ client }: { client: ClientDTO }) {
       {picking && (
         <div className="panel">
           <h2>{t("scenes.pick_photo")}</h2>
-          <AssetPicker client={client} value={null} onPick={(id) => id && setPhotoId(id)} excludeLogos />
+          {/* Sahne zemini gerçek bir ortam fotoğrafıdır (vitrin/cephe/kumaş) —
+              eski `excludeLogos` ile DAVRANIŞ BİREBİR (logo hariç ≡ photo+other),
+              yalnız eksen dışlamadan kabule döndü. */}
+          <AssetPicker
+            client={client}
+            value={null}
+            kabul={["photo", "other"]}
+            onPick={(id) => id && setPhotoId(id)}
+          />
         </div>
       )}
 

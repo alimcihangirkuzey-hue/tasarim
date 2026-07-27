@@ -3,6 +3,7 @@
 
 import type {
   AssetDTO,
+  AssetKind,
   BrandKit,
   Catalog,
   Category,
@@ -159,6 +160,54 @@ export function eksikZorunluVarliklar(
     }
   }
   return out;
+}
+
+/* ── Dosya ROLLERİ (7.2/502 "Dosya gereksinimleri ve ROLLERİ" ikinci yarısı;
+   journal 2026-07-26-dosya-rolleri-ilani) ────────────────────────────────────
+   Bind deseni → kabul edilen varlık türleri. Rolün BİRİNCİL kaynağı budur:
+   canlı kayıt defterindeki 22 image slotunun 18'i (%81,8) bu üç desenden
+   birine düşer (brand.logo_primary ×11, brand.logo_mono ×4, item.photo ×3).
+   ŞERH: item.photo "photo|other" kabul eder, yalnız "photo" değil — "other"
+   ürün fotoğrafı olarak yüklenmiş ama sınıflandırılmamış varlıkları içeride
+   tutar (AssetKindSchema.catch("other") deseni: yükleyici tür bilmiyorsa
+   "other" yazar; o varlıkları elemek bugünkü davranışı DARALTIRDI). Logo
+   kümesi bilinçli TEKİL: marka logosu yerine keyfi fotoğraf bağlanması bu
+   ilanın önlemek için var olduğu yaradır. */
+const BIND_ROLLERI: Readonly<Record<string, readonly AssetKind[]>> = {
+  "brand.logo_primary": ["logo"],
+  "brand.logo_mono": ["logo"],
+  "item.photo": ["photo", "other"],
+};
+
+/**
+ * Slotun KABUL ETTİĞİ varlık türleri (Canonical 7.2/502; journal
+ * 2026-07-26-dosya-rolleri-ilani). SAF — react yok, DOM yok, yan etki yok;
+ * varlık seçicilerin filtresi BU sorgudan okunur, sert kodlu tür listesinden
+ * değil (ilan ile davranış ayrışamaz).
+ *
+ * TÜRETİM BİRİNCİLDİR — bu sıranın sebebi ölçümdür: 22 image slotunun 18'inde
+ * rol zaten bind deseninde YAZILIDIR. O 18 slota el yazımı bir rol alanı
+ * yazmak türetilebileni kopyalayan İKİNCİ KAYNAK olurdu ve sürüklenirdi
+ * (ilan bir şey der, filtre başkasını uygular — entegrasyon-sınırı kararının
+ * (a) gerekçesi). Bu yüzden sıra: bind deseni → (bind yoksa) slot.kabul
+ * ilanı → null.
+ *
+ * null "ROL YOK" DEĞİL "KISITSIZ" demektir: çağıran hiçbir türü elemez, tüm
+ * galeriyi gösterir (bugünkü filtresiz davranışın birebir korunması). Üç yol
+ * null döner: (a) kind !== "image" — dosya rolü yalnız GÖRSEL slotların
+ * boyutudur (metin/fiyat/QR/rozet bu eksende yaşamaz), (b) tabloda karşılığı
+ * olmayan bir bind (yeni bind deseni sessizce kısıtsız kalır — kısıtlamak
+ * ürün kararıdır, tabloya kalem eklemek ister), (c) ilansız bind'sız image
+ * slotu.
+ */
+export function kabulEdilenTurler(slot: SlotDef): readonly AssetKind[] | null {
+  if (slot.kind !== "image") return null;
+  if (slot.bind) {
+    /* Object.hasOwn: prototip zinciri rol değildir — "toString" gibi bir bind
+       miras alınmış fonksiyonu rol kümesi sanmamalı (materialTypeOfOrNull emsali) */
+    return Object.hasOwn(BIND_ROLLERI, slot.bind) ? BIND_ROLLERI[slot.bind] : null;
+  }
+  return slot.kabul ?? null;
 }
 
 /** Belgenin seçimindeki fotoğrafsız ürünler — Eksik Görsel Akışı §8.2 */

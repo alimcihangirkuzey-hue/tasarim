@@ -1,7 +1,7 @@
 /* Şablon sözleşmeleri — CONSTITUTION §5 alan adlarıyla birebir (§14.1/3) */
 
 import type { ComponentType } from "react";
-import type { ClientDTO, DocumentState, ExportRecordDTO, SceneKind } from "@tezgah/shared";
+import type { AssetKind, ClientDTO, DocumentState, ExportRecordDTO, SceneKind } from "@tezgah/shared";
 import type { LayoutWarning } from "./engine/layout.js";
 import type { SeverityOverrides } from "./engine/severity.js";
 
@@ -171,13 +171,52 @@ export interface SlotDef {
    * 'koşullu' düzey emsali).
    *
    * ŞERH (rol ilanı): "slot hangi asset türünü kabul eder" (AssetPicker
-   * filtresi) AYRI bir ilan boyutudur — bu alan onu taşımaz, ayrı paket adayı.
+   * filtresi) AYRI bir ilan boyutudur — bu alan onu TAŞIMAZ; aşağıdaki
+   * `kabul` alanı + kabulEdilenTurler sorgusu taşır (7.2/502'nin ikinci
+   * yarısı; journal 2026-07-26-dosya-rolleri-ilani).
    *
    * NOT: eski `optional?: boolean` alanı KALDIRILDI — süs alandı (0 tüketici
    * ölçüldü; fabrika emitter'i basıyor ama kimse okumuyordu). Tek eksen kaldı:
    * gereklilik var/yok.
    */
   gereklilik?: "zorunlu";
+  /**
+   * Dosya ROLÜ İLANI — "bu slot hangi VARLIK TÜRÜNÜ kabul eder" (Canonical
+   * 7.2/502 "Dosya gereksinimleri ve ROLLERİ" maddesinin İKİNCİ yarısı;
+   * gereklilik birinci yarısıydı. Journal 2026-07-26-dosya-rolleri-ilani).
+   * Varlık seçicilerin (AssetPicker) filtresi bu boyuttan okunur — filtre
+   * ÖNLEYİCİDİR: yanlış türü kaynakta eler, sonradan uyarı üretmez.
+   *
+   * ÖNCELİK KURALI — ROL ÖNCE BİND'DAN GELİR. Bind'ı olan bir slotun rolü
+   * zaten bind DESENİNDE yazılıdır (brand.logo_primary / brand.logo_mono →
+   * logo; item.photo → fotoğraf) ve tek okunma yolu kabulEdilenTurler'dir
+   * (engine/binding.ts). Bu alan YALNIZ bind'ı OLMAYAN (bind:null) image
+   * slotları içindir; bind varsa alan YAZILAMAZ — registry-core yük zamanında
+   * reddeder (çift kaynak kapısı).
+   *
+   * ÖLÇÜM (kararın dayanağı; canlı kayıt defteri, 22 image slotu):
+   * 18/22 (%81,8) rol bind'dan DOĞRU türetilir — brand.logo_primary ×11,
+   * brand.logo_mono ×4, item.photo ×3. 4/22 (%18,2) TÜRETİLEMEZ:
+   * menu-liste-premium deco1/deco2/deco3 (dekoratif dekupe) ve menu-trifold
+   * cover_photo (kapak fotoğrafı) — hepsi bind:null. Alan o 18 slota BİLEREK
+   * YAZILMADI: türetilebileni kopyalayan el yazımı alan İKİNCİ KAYNAKTIR ve
+   * sürüklenir — ilan bir şey der, filtre başkasını uygular
+   * (entegrasyon-sınırı kararının (a) gerekçesinin birebir tekrarı, bkz.
+   * DIS_KANALLAR şerhi yukarıda). Rol bu yüzden TÜRETEN SAF SORGUDAN okunur
+   * (disaAcikKanallar / SUBSTRAT_TEKNIKLERI deseni) ve alan yalnız türetimin
+   * BİTTİĞİ yerde — o 4 slotta — yazılır.
+   *
+   * EMSAL FARKI (neden bu ilan meşru, öteki üç red değildi): preview_types,
+   * 7.2/495'in "hedef kullanıcı" yarısı ve entegrasyon sınırı redleri
+   * PROFİL-düzeyi alanlardı ve profil-BAŞINA farklılaşmadıkları için düştü
+   * (farklılaşmayan boyutun alanı bilgi taşımaz). Rol SLOT-düzeyi bir alandır
+   * — gereklilik ile AYNI katman — ve AYNI manifest İÇİNDE farklılaşır:
+   * menu-liste-premium'da logo slotu "logo", deco1-3 "photo|other" kabul
+   * eder. Farklılaşan boyutun alanı bilgi TAŞIR; ölü sözleşme değildir.
+   *
+   * Yokluk = KISITSIZ (mockup_tercihi emsali): çağıran hiçbir türü elemez.
+   */
+  kabul?: readonly AssetKind[];
 }
 
 export type ParamValue = string | number | boolean;

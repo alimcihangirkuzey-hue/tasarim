@@ -6,7 +6,12 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { swapSelectionItem, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
-import { resolveSelection, resolveSlotValue, type TemplateEntry } from "@tezgah/templates";
+import {
+  kabulEdilenTurler,
+  resolveSelection,
+  resolveSlotValue,
+  type TemplateEntry,
+} from "@tezgah/templates";
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { AssetPicker } from "./AssetPicker";
@@ -226,11 +231,15 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
           <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={onFile} />
         </div>
         <div style={{ marginTop: 6 }}>
+          {/* Ürün fotoğrafı = repeater `item.photo` rolü. Eski `excludeLogos`
+              çentiği ile DAVRANIŞ BİREBİR: logo hariç ≡ photo+other (AssetKind
+              üçlüdür), ama artık dışlama değil KABUL ekseninde söyleniyor —
+              yeni bir tür eklenirse sessizce sızmaz, açıkça karar ister. */}
           <AssetPicker
             client={client}
             value={item.photo}
             onPick={(id) => save.mutate({ photo: id })}
-            excludeLogos
+            kabul={["photo", "other"]}
           />
         </div>
 
@@ -436,9 +445,15 @@ export function SlotPanel(props: Props & { selectedSlot: string | null }) {
         <h3>
           {t("editor.slot")}: {slot.id}
         </h3>
+        {/* Rol filtresi İLANDAN okunur (7.2/502) — burada elle küme YAZILMAZ:
+            slot.bind brand.logo_* ise ["logo"], item.photo ise ["photo","other"],
+            bind'siz slot kendi `kabul` ilanına düşer, tanınmayan bağ kısıtsız
+            kalır. Bu dal düne kadar FİLTRESİZDİ (17 sabit image slotu): logo
+            slotuna yemek fotoğrafı bağlanabiliyordu ve sonuç TAMAMEN SESSİZDİ. */}
         <AssetPicker
           client={client}
           value={current}
+          kabul={kabulEdilenTurler(slot)}
           onPick={(id) =>
             patch(id === null ? clearOverride(doc, slot.id) : setOverride(doc, slot.id, id))
           }
