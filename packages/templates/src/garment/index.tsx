@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import {
   GARMENT_AREAS,
   GarmentParamsSchema,
+  KUMAS_RENKLERI,
   areasForKind,
   type ClientDTO,
   type DocumentState,
@@ -49,28 +50,40 @@ export interface GarmentAnalysis {
 
 /* fabric_color KAPALI KÜME DEĞİLDİR: adlandırılmış renkler ∪ hex. Şeması
    (GarmentParamsSchema) düz `z.string()`tir, yani buraya HER string gelebilir —
-   sunucu da params'ı doğrulamıyor (`z.record(z.unknown())`). */
-const FABRIC_HEX: Record<string, string> = {
-  white: "#FFFFFF",
-  black: "#1A1A1A",
-  red: "#C8102E",
-  blue: "#1D4ED8",
-};
+   analyze.test.ts'teki pinler bunu davranışla ölçüyor ("siyah", "#zzz", hatta
+   "constructor" parse'dan geçip bu fonksiyona ulaşıyor).
+
+   Adlandırılmış renklerin KAYNAĞI ARTIK YEREL DEĞİL (journal
+   2026-07-27-kumas-rengi-birligi): buradaki yerel FABRIC_HEX kopyası silindi,
+   isim→hex sözlüğü `@tezgah/shared`daki KUMAS_RENKLERI İLANINDAN okunur.
+   Böylece ScenesPanel'in kumaş seçenekleri ile bu çizicinin anladığı adlar tek
+   ilandan türer ve sessizce ayrışamaz. Bu SAF kaynak-birleştirmedir:
+   fabricToHex'in girdi→çıktı yüzeyi değişiklik ÖNCESİ ve SONRASI aynı girdi
+   kümesiyle (dört ad + "#1A1A1A" + "siyah" + "#zzz" + "constructor") ölçüldü
+   ve birebir aynıdır. */
 
 function fabricToHex(v: string): string {
-  /* `Object.hasOwn` KASITLI — düz indeksleme `Object.prototype` zincirini de
-     görürdü ve bu ÖLÇÜLMÜŞ bir çökmeydi (journal 2026-07-27-param-gecerli-
-     deger-ilani): fabric_color="constructor" → FABRIC_HEX["constructor"]
-     `Object` FONKSİYONUNU döner, nullish olmadığı için `??` ateşlenmez, string
-     olmayan değer relativeLuminance'a gider ve `hex.trim is not a function`
-     ile patlar. Koşularak doğrulandı: "constructor" ve "toString" fırlatıyordu.
-     Yol erişilebilirdir çünkü değer hiçbir katmanda süzülmüyor.
+  /* `Object.hasOwn` KASITLI ve İLANDA DA ZORUNLU — düz indeksleme
+     `Object.prototype` zincirini de görürdü ve bu ÖLÇÜLMÜŞ bir çökmeydi
+     (journal 2026-07-27-param-gecerli-deger-ilani): fabric_color="constructor"
+     → sözlükten `Object` FONKSİYONU döner, nullish olmadığı için `??`
+     ateşlenmez, string olmayan değer relativeLuminance'a gider ve
+     `hex.trim is not a function` ile patlar. Koşularak doğrulanmıştı
+     ("constructor" ve "toString" fırlatıyordu). Kaynak yerel kopyadan ilana
+     taşınırken (journal 2026-07-27-kumas-rengi-birligi) bu koruma aynen
+     taşındı; ölçüldü: KUMAS_RENKLERI de prototipi Object.prototype olan düz
+     bir nesnedir, zincir riski ilanda da birebir aynıdır.
 
-     `#` kontrolü BİLEREK gevşek bırakıldı (hex biçimi burada doğrulanmıyor):
-     sıkılaştırmak davranış daraltmasıdır ve fabric_color'ın adlandırılmış-renk
-     birliğini ilan etmeden yapılamaz — o ayrı karar, bu paketin kapsamı dışında
-     şerhlendi. Burada kapatılan yalnızca ÇÖKME. */
-  if (Object.hasOwn(FABRIC_HEX, v)) return FABRIC_HEX[v];
+     DİKKAT — `#` passthrough birlikten BİLİNÇLİ SAPMADIR ve bu yüzden burası
+     `kumasRengiHex(v) ?? "#FFFFFF"` diye YAZILAMAZ: birlik GEÇERLİ hex ister
+     (`kumasRengiHex("#zzz")` → null, ölçüldü), oysa bu çizici toleranslıdır ve
+     `#` ile başlayan HER metni olduğu gibi geçirir — analyze.test.ts'te
+     `hex("#zzz") === "#zzz"` BİLİNEN SINIR olarak PİNLİDİR. Sıkılaştırmak
+     render çıktısını değiştirir (davranış daraltması) ve AYRI bir karardır;
+     bu paket saf kaynak-birleştirme olduğundan yalnızca isim→hex sözlüğü
+     ortaklandı, `#` toleransı ve adsız metnin BEYAZa düşüşü OLDUĞU GİBİ
+     bırakıldı. */
+  if (Object.hasOwn(KUMAS_RENKLERI, v)) return KUMAS_RENKLERI[v as keyof typeof KUMAS_RENKLERI];
   return v.startsWith("#") ? v : "#FFFFFF";
 }
 

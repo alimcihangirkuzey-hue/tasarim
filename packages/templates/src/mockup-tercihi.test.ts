@@ -6,10 +6,15 @@
    (1) TÜM kayıtlı mockup_tercihi ilanları aile aile çivilenir — ilan
        eklemek/değiştirmek journal kaydı ister; editörün sahne sıralaması bu
        ilana güvenir, sessiz kayma olamaz.
-   (2) sahneSkoru, sökülen EditorPage satır-içi skorlamasının REFERANS
-       KOPYASIYLA birebir aynıdır (ilan değişikliği davranış değişikliği
-       DEĞİLDİR — bu paket yalnız kararı tek kaynağa taşır; exportRouteOf
-       emsali).
+   (2) sahneSkoru, sökülen EditorPage satır-içi skorlamasının referans
+       kopyasıyla TEK BİLİNÇLİ FARK dışında birebir aynıdır: kumaş
+       karşılaştırması artık ham === değil kumaş-rengi BİRLİĞİDİR (journal
+       2026-07-27-kumas-rengi-birligi). Eski golden ham ==='i pinliyordu;
+       ölçüm o pinin ÖLÜ bir yolu çivilediğini gösterdi (sahne İSİM yazar,
+       belge küçük-harf HEX yazar — isim === hex hiç tutmaz). Yeni golden
+       YENİ sözleşmeyi pinler; referans kopyadaki normalizasyon BAĞIMSIZ
+       yazılmıştır — kumasRengiEsit'i çağırmak golden'ı totolojiye çevirirdi
+       (aşağıdaki referans-kopya şerhi).
    (3) Bozuk ilan kayıt defterinden GEÇEMEZ (registry-core icra yolu).
    (4) registry-core'un literal sahne sözlüğü SceneKindSchema ile EŞ kalır
        (runtime import bilinçli yok — çapraz doğrulama burada). */
@@ -58,20 +63,44 @@ describe("NÖBETÇİ: mockup_tercihi ilanları TAM olarak bunlar", () => {
   });
 });
 
-/* ── (2) GOLDEN: sahneSkoru ≡ sökülen EditorPage satır-içi skorlaması ────── */
+/* ── (2) GOLDEN: sahneSkoru ≡ referans kopya (yeni sözleşme) ─────────────── */
 
-describe("sahneSkoru — eski EditorPage skorlamasının referans kopyasıyla birebir", () => {
-  /* EditorPage:791-803'ten SÖKÜLEN ifadenin referans kopyası (id-sniff'li hâl) */
-  const eskiSkor = (
+describe("sahneSkoru — referans kopyayla birebir (kumaş ekseni birliğe bağlı)", () => {
+  /* REFERANS-KOPYA KARARI (journal 2026-07-27-kumas-rengi-birligi): golden'ın
+     değeri BAĞIMSIZLIKTIR — kumaş eşitliği için üretim kodunun çağırdığı
+     kumasRengiEsit'i buradan da çağırmak testi totolojiye çevirirdi (birlik
+     yanlış da olsa test "evet" derdi). O yüzden normalizasyon burada YERİNDE,
+     bağımsız yeniden yazılır: 4 isimlik sözlük + 6 haneli hex → BÜYÜK harf
+     kanonik, aksi null; null taraf eşleşmeyi düşürür. Birlik sürüklenirse
+     (sözlüğe renk eklenir, 3 hane kabul edilir...) bu grid KIRILIR ve
+     sürüklenme sessiz kalamaz — nöbetçi tablosuyla aynı disiplin. */
+  const REFERANS_RENK_TABLOSU: Record<string, string> = {
+    white: "#FFFFFF",
+    black: "#1A1A1A",
+    red: "#C8102E",
+    blue: "#1D4ED8",
+  };
+  const referansKanonikHex = (v: string): string | null =>
+    REFERANS_RENK_TABLOSU[v] ?? (/^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : null);
+
+  /* EditorPage:791-803'ten SÖKÜLEN ifadenin referans kopyası (id-sniff'li
+     hâl). Sökülenden TEK bilinçli fark kumaş eşitliğidir: ham
+     `s.settings.fabric_color === fabric` yerine kanonik-hex eşitliği. Yapı
+     (id-sniff dallanması, 2+1 puanlama, String(... ?? "") zorlaması) bilerek
+     aynen korundu: differential böylece "yalnız eşitlik ekseni değişti,
+     yönlendirme/puanlar değişmedi"yi de kanıtlar. */
+  const referansSkor = (
     doc: { template_id: string; params: Record<string, unknown> },
     s: { kind: string; settings: { fabric_color?: string } }
   ): number => {
     const isGarment = doc.template_id === "garment";
     const fabric = String(doc.params["fabric_color"] ?? "");
     if (isGarment) {
+      const sahneHex = s.settings.fabric_color ? referansKanonikHex(s.settings.fabric_color) : null;
+      const belgeHex = referansKanonikHex(fabric);
       return (
         (s.kind === "garment" ? 2 : 0) +
-        (s.settings.fabric_color && s.settings.fabric_color === fabric ? 1 : 0)
+        (sahneHex !== null && belgeHex !== null && sahneHex === belgeHex ? 1 : 0)
       );
     }
     return s.kind === "vitrine" || s.kind === "facade" ? 1 : 0;
@@ -81,13 +110,16 @@ describe("sahneSkoru — eski EditorPage skorlamasının referans kopyasıyla bi
     const SAHNE_TURLERI = ["vitrine", "facade", "garment", "generic"] as const;
     const DOC_PARAMLARI: Record<string, unknown>[] = [
       { fabric_color: "#8B0000" } /* eşleşme adayı (koyu kumaş) */,
+      { fabric_color: "#ffffff" } /* <input type="color"> gerçek biçimi: küçük harf hex */,
       { fabric_color: "" } /* boş param */,
       {} /* param hiç yok — String(undefined ?? "") yolu */,
     ];
     const SAHNE_KUMASLARI: (string | undefined)[] = [
-      "#8B0000" /* belge paramıyla eşleşen */,
-      "#FFFFFF" /* eşleşmeyen */,
-      "" /* boş dize — falsy, eski kod puanlamazdı */,
+      "#8B0000" /* belge paramıyla eşleşen — iki dönemde de +1 (ölçüldü: pin değişmedi) */,
+      "#FFFFFF" /* #ffffff paramıyla YENİ dönemde eşleşir (harf büyüklüğü canlandı) */,
+      "white" /* ScenesPanel gerçek biçimi: İSİM — #ffffff paramıyla birlik üzerinden eşleşir */,
+      "#111" /* 3 hane — birlikte çözülmez, HİÇBİR paramla eşleşmez (bilinçli daralma) */,
+      "" /* boş dize — falsy, iki dönemde de puanlanmaz */,
       undefined /* sahne kumaş bildirmemiş */,
     ];
     let sayac = 0;
@@ -100,7 +132,7 @@ describe("sahneSkoru — eski EditorPage skorlamasının referans kopyasıyla bi
               sahneSkoru(e.manifest.mockup_tercihi, { kind, fabric_color: fabric }, params),
               `${e.manifest.id} kind=${kind} fabric=${String(fabric)} params=${JSON.stringify(params)}`
             ).toBe(
-              eskiSkor(
+              referansSkor(
                 { template_id: e.manifest.id, params },
                 { kind, settings: { fabric_color: fabric } }
               )
@@ -109,8 +141,8 @@ describe("sahneSkoru — eski EditorPage skorlamasının referans kopyasıyla bi
         }
       }
     }
-    /* 11 aile × 4 tür × 3 param × 4 kumaş = 528 kombinasyon — hepsi tarandı */
-    expect(sayac).toBe(listTemplates().length * 4 * 3 * 4);
+    /* 11 aile × 4 tür × 4 param × 6 kumaş = 1056 kombinasyon — hepsi tarandı */
+    expect(sayac).toBe(listTemplates().length * 4 * 4 * 6);
   });
 
   it("ilansız profil çekirdek tercihle skorlanır (undefined = bilinçli çekirdek beyanı)", () => {
@@ -118,10 +150,91 @@ describe("sahneSkoru — eski EditorPage skorlamasının referans kopyasıyla bi
     expect(sahneSkoru(undefined, { kind: "facade" }, {})).toBe(1);
     expect(sahneSkoru(undefined, { kind: "garment" }, {})).toBe(0);
     expect(sahneSkoru(undefined, { kind: "generic" }, {})).toBe(0);
-    /* çekirdekte eslesme_parami yok: kumaş eşleşse bile bonus YOK */
+    /* çekirdekte eslesme_parami yok: kumaş "eşleşse" bile bonus YOK. Vaka
+       artık İKİ katmandan düşer: (a) çekirdek ilan kumaş ekseni taşımaz,
+       (b) "#111" 3 haneli — birlikte zaten çözülmez (aşağıdaki daralma
+       testi). Pin 1'de KALDI (ölçüldü) — yalnız tür puanı. */
     expect(
       sahneSkoru(undefined, { kind: "vitrine", fabric_color: "#111" }, { fabric_color: "#111" })
     ).toBe(1);
+  });
+});
+
+/* ── (2b) EŞLEŞME CANLANDI: ilanın kumaş ekseni artık UI biçimleriyle işler ─ */
+
+describe("kumaş eşleşmesi birliğe bağlı — isim↔hex canlanması ve bilinçli daralmalar", () => {
+  /* garment ailesinin ilanıyla aynı şekil; sahneSkoru'ya AÇIK geçirilir ki bu
+     blok kayıt defterinden bağımsız, saf davranış pinlesin. `kind: "generic"`
+     bilerek ilan dışı: tür puanı 0 kalır, skor = yalnız kumaş bonusu — vaka
+     +1/+0 olarak doğrudan okunur. */
+  const ILANLI: MockupTercihi = {
+    sahne_turleri: ["garment"],
+    sahne_puani: 2,
+    eslesme_parami: "fabric_color",
+  };
+  const kumasBonusu = (sahneKumasi: string | undefined, params: Record<string, unknown>): number =>
+    sahneSkoru(ILANLI, { kind: "generic", fabric_color: sahneKumasi }, params);
+
+  it('CANLANMA: sahne "white" + belge "#ffffff" → +1 (eski ham === bu vakada 0 verirdi)', () => {
+    /* ESKİ-YENİ FARKININ ÇİVİSİ: sahne tarafı isim yazar (ScenesPanel select),
+       belge tarafı küçük harf hex yazar (<input type="color">). Eski ham ===
+       için "white" === "#ffffff" → 0; yeni davranış birlik üzerinden +1. Bu
+       fark bu paketin İLAN EDİLMİŞ ürün kararıdır (journal
+       2026-07-27-kumas-rengi-birligi): eslesme_parami ilanı UI yolunda ilk
+       kez gerçekten işliyor. */
+    expect(kumasBonusu("white", { fabric_color: "#ffffff" })).toBe(1);
+  });
+
+  it('CANLANMA: sahne "white" + belge "#FFFFFF" → +1 (isim ↔ büyük harf hex)', () => {
+    expect(kumasBonusu("white", { fabric_color: "#FFFFFF" })).toBe(1);
+  });
+
+  it('CANLANMA: sahne "red" + belge "#C8102E" → +1 (birlik sözlüğündeki kırmızı)', () => {
+    expect(kumasBonusu("red", { fabric_color: "#C8102E" })).toBe(1);
+  });
+
+  it("CANLANMA: harf büyüklüğü artık eşleşmeyi düşürmez (#8B0000 ↔ #8b0000)", () => {
+    /* Eski ham === büyük/küçük harfe takılırdı; kanonik BÜYÜK harf üzerinden
+       artık eşit. Color input küçük harf yazdığı için UI'daki asıl kaçak buydu
+       (isim vakasıyla birlikte). */
+    expect(kumasBonusu("#8B0000", { fabric_color: "#8b0000" })).toBe(1);
+  });
+
+  it("tür puanı + kumaş bonusu bileşimi: garment sahnesi + white/#ffffff → 3", () => {
+    /* UI'daki gerçek akış: garment ailesinde garment sahnesi 2 + kumaş 1. */
+    expect(
+      sahneSkoru(ILANLI, { kind: "garment", fabric_color: "white" }, { fabric_color: "#ffffff" })
+    ).toBe(3);
+  });
+
+  it('farklı renkler eşleşmez: sahne "white" + belge "black" → +0', () => {
+    /* İki taraf da çözülür (#FFFFFF vs #1A1A1A) ama renkler farklı — birlik
+       yanlış pozitif üretmez. */
+    expect(kumasBonusu("white", { fabric_color: "black" })).toBe(0);
+  });
+
+  it('boş sahne kumaşı ve eksik belge paramı puanlanmaz: "" → +0, param yok → +0', () => {
+    expect(kumasBonusu("", { fabric_color: "#FFFFFF" })).toBe(0);
+    expect(kumasBonusu(undefined, { fabric_color: "#FFFFFF" })).toBe(0);
+    expect(kumasBonusu("white", {})).toBe(0);
+  });
+
+  it('DARALMA: "siyah" vs "siyah" → +0 (çözülemeyen taraf eşleşmeyi düşürür)', () => {
+    /* Eski ham === burada 1 verirdi ("siyah" === "siyah"). Birlik bilerek
+       reddeder: iki tarafın da AYNI tanınmayan çöpü taşıması renk eşitliği
+       kanıtı değildir — sessiz yanlış pozitif yerine sessiz düşürme (birliğin
+       ilan edilmiş kuralı, kumasRengiEsit sözleşmesi). */
+    expect(kumasBonusu("siyah", { fabric_color: "siyah" })).toBe(0);
+  });
+
+  it('DARALMA: "#111" vs "#111" → +0 (3 haneli hex birlikte yok)', () => {
+    /* Eski ham === burada 1 verirdi — bu dosyanın eski çekirdek testi bile
+       "#111"i eşleşme örneği diye taşıyordu. Birlik yalnız #RRGGBB tanır;
+       kısa hex kullanan sahne/belge artık eşleşme KAYBEDER. Bu bilinçli ve
+       ilan edilmiş bir daralmadır (journal 2026-07-27-kumas-rengi-birligi);
+       birliğe 3-hane genişletmesi AYRI bir ürün kararıdır, buradan sessizce
+       açılamaz. */
+    expect(kumasBonusu("#111", { fabric_color: "#111" })).toBe(0);
   });
 });
 

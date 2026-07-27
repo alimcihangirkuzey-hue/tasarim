@@ -5,6 +5,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  KUMAS_RENKLERI,
   quadTransform,
   type ClientDTO,
   type MockupSceneDTO,
@@ -215,7 +216,17 @@ function QuadEditor(props: {
                 {t("scenes.fabric")}
                 <select value={fabric} onChange={(e) => setFabric(e.target.value)}>
                   <option value="">—</option>
-                  {["white", "black", "red", "blue"].map((c) => (
+                  {/* Kumaş listesi ARTIK İLANDAN (@tezgah/shared KUMAS_RENKLERI,
+                      journal 2026-07-27-kumas-rengi-birligi) — sert kodlu
+                      ["white","black","red","blue"] kopyası silindi. Görsel
+                      davranış BİREBİR: Object.keys nesne literalinin ekleme
+                      sırasını korur ve ölçüldü — ilanın anahtarları aynı dört
+                      ad, aynı sırayla ["white","black","red","blue"] dönüyor.
+                      Kazanç: birliğe renk eklendiği gün bu select otomatik
+                      büyür; garment çizicisi (fabricToHex) ve paketin mockup
+                      eşleşmesi ayağı da aynı ilandan çözüldüğü için panelin
+                      SUNDUĞU ad ile motorun ANLADIĞI ad bir daha ayrışamaz. */}
+                  {Object.keys(KUMAS_RENKLERI).map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>

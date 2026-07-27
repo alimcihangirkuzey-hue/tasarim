@@ -4,13 +4,26 @@
    yaşıyordu (garment: garment-sahnesi 2 puan + fabric_color eşleşmesi 1 puan;
    diğerleri: vitrine|facade 1 puan) — C-P1'de temizlenen id-sniff deseninin
    önizleme katmanındaki kaçağı. Karar artık manifest'in mockup_tercihi
-   İLANINDAN okunur ve TEK yerde yaşar; eski satır-içi skorlamayla birebir
-   eşdeğerlik referans-kopya testiyle çivilidir (mockup-tercihi.test.ts —
-   exportRouteOf/channels.ts emsali).
+   İLANINDAN okunur ve TEK yerde yaşar.
 
-   Bilerek SAF ve react'sız: yalnız type-only import taşır — okuyucu bugün
-   yalnız web (EditorPage) olsa da grafiği büyütmemek channels.ts disipliniyle
-   aynıdır. */
+   ESKİYLE BİREBİRLİK ARTIK İDDİA EDİLMİYOR (journal
+   2026-07-27-kumas-rengi-birligi): eski golden, sökülen satır-içi ifadenin
+   HAM `===` kumaş karşılaştırmasını pinliyordu. Ölçüm o pinin ÖLÜ bir yolu
+   çivilediğini gösterdi — sahne tarafı İSİM yazar (ScenesPanel select:
+   white|black|red|blue), belge tarafı HEX yazar (<input type="color"> →
+   küçük harf #rrggbb); isim === hex hiç tutmaz, hex === hex bile harf
+   büyüklüğünden kaçar. Yani manifest'in eslesme_parami ilanı UI yolunda hiç
+   işlemiyordu. Karşılaştırma artık @tezgah/shared kumaş-rengi BİRLİĞİNE
+   (kumasRengiEsit) bağlıdır: ilanın CANLANMASI bilinçli davranış
+   değişikliğidir, referans-kopya testi de YENİ sözleşmeyi pinler
+   (mockup-tercihi.test.ts).
+
+   React'sız kalır; "yalnız type-only import" iddiası bilerek düştü: birlik
+   runtime fonksiyondur ve yerinde regex/sözlük kopyalamak birliğin varlık
+   sebebini bozar (params.ts'in HexColor kararıyla aynı ölçüm — @tezgah/shared
+   zaten bu paketin bağımlılığı, grafik büyümedi). */
+
+import { kumasRengiEsit } from "@tezgah/shared";
 
 import type { MockupTercihi } from "../types.js";
 
@@ -26,9 +39,22 @@ export const CEKIRDEK_TERCIH: MockupTercihi = {
 /** Sahnenin sıralama puanı — mockup modalının TEK sıralama kaynağı.
     `tercih` manifest'in mockup_tercihi alanıdır; undefined = çekirdek tercih
     (bilinçli "ilan yok" beyanı, severityOf sözleşmesiyle aynı). Kumaş
-    eşleşmesi eski davranışla birebir: sahnenin fabric_color'ı truthy VE
-    belgenin eslesme_parami paramına (String(...) ?? "") eşitse +1 — tür
-    eşleşmesinden BAĞIMSIZ eklenir (eski kod da öyleydi; golden kanıtlar). */
+    eşleşmesi kumaş-rengi BİRLİĞİ üzerinden: sahnenin fabric_color'ı ile
+    belgenin eslesme_parami paramı (String(...) ?? "") kumasRengiEsit'e göre
+    aynı renge çözülüyorsa +1 — tür eşleşmesinden BAĞIMSIZ eklenir (eski kod
+    da öyleydi; bu eksen değişmedi, golden kanıtlar).
+
+    Eski ham `===` bilerek terk edildi (journal 2026-07-27-kumas-rengi-birligi):
+    isim↔hex ve harf-büyüklüğü farkları eşleşmeyi UI yolunda tamamen
+    öldürüyordu. Birliğin "çözülemeyen taraf eşleşmeyi düşürür" kuralı da
+    bilinçli DARALMADIR: "#111" gibi 3 haneli hex eskiden ham === ile kendine
+    eşleşirdi, artık eşleşmez (birlikte 3 hane yok; genişletme ayrı karar).
+
+    `sahne.fabric_color` truthy ön-kontrolü KALDI: kumasRengiEsit(""/undefined)
+    zaten false döndürür, yani davranışa etkisi yok (ölçüldü — golden gridde
+    ""/undefined kumaşlar iki yolda da 0). Ama ön-kontrol "sahne kumaş
+    bildirmemişse eşleşme sorusu hiç doğmaz" niyetini tipte ve okumada açık
+    tutar ve undefined'ı String'e zorlamadan kısa devre eder. */
 export function sahneSkoru(
   tercih: MockupTercihi | undefined,
   sahne: { kind: string; fabric_color?: string },
@@ -41,7 +67,7 @@ export function sahneSkoru(
   if (
     etkin.eslesme_parami !== undefined &&
     sahne.fabric_color &&
-    sahne.fabric_color === String(docParams[etkin.eslesme_parami] ?? "")
+    kumasRengiEsit(sahne.fabric_color, String(docParams[etkin.eslesme_parami] ?? ""))
   ) {
     puan += 1;
   }

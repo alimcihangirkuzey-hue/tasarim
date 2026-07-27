@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DocumentStateSchema,
+  KUMAS_RENKLERI,
   cmToPx300,
   defaultBrandKit,
   defaultCatalog,
@@ -161,14 +162,38 @@ describe("fabricToHex — prototip zinciri çökmesi (journal 2026-07-27-param-g
   });
 
   it("BİLİNEN SINIR: hex biçimi doğrulanmıyor, adsız metin sessizce BEYAZa düşer", () => {
-    /* Bu bir kusur ilanıdır, sözleşme DEĞİL — ve bu pakette BİLEREK
-       kapatılmadı. "siyah" (BriefPage placeholder'ının davet ettiği Türkçe
-       biçim) beyaz sanılır → fabricDark ters döner → mono-öneri yanlış tarafa
-       gider. Kapatmak fabric_color'ın adlandırılmış-renk BİRLİĞİNİ ilan etmeyi
-       gerektirir (bugün ilansız); ayrı karar, TODO'da şerhli. Test bu sınırı
-       GÖRÜNÜR tutar: birlik ilan edildiği gün burası kırmızıya döner ve
-       kararın alındığı yer aranır. */
+    /* Bu bir kusur ilanıdır, sözleşme DEĞİL. Adlandırılmış-renk BİRLİĞİ ARTIK
+       İLAN EDİLDİ: `@tezgah/shared`daki KUMAS_RENKLERI (journal
+       2026-07-27-kumas-rengi-birligi) ve fabricToHex isim aramasını artık o
+       ilandan yapıyor. Eski şerh "birlik ilan edildiği gün burası kırmızıya
+       döner" diyordu — DÖNMEDİ, çünkü o paket SAF kaynak-birleştirmeydi:
+       yalnızca sözlüğün kaynağı ortaklandı, davranış BİLEREK değiştirilmedi.
+       Çizici toleransını kapatmak (adsız metni reddetmek, "#zzz" gibi geçersiz
+       hex'i süzmek) render çıktısını değiştiren AYRI bir karardır ve o karar
+       alınmadı. Pinler bu yüzden yeşil kaldı: "siyah" (BriefPage
+       placeholder'ının davet ettiği Türkçe biçim) hâlâ beyaz sanılır →
+       fabricDark ters döner → mono-öneri yanlış tarafa gider; "#zzz" hâlâ
+       olduğu gibi geçer — birlik geçerli hex isterken (`kumasRengiHex("#zzz")`
+       → null) çizici `#` ile başlayan her şeyi geçirir; bu SAPMA index.tsx'te
+       gerekçesiyle şerhlidir. Test bu sınırı GÖRÜNÜR tutmaya devam eder:
+       toleransı kapatma kararı alındığı gün bu pinler BİLİNÇLİ olarak
+       güncellenir, sessizce değil. */
     expect(hex("siyah")).toBe("#FFFFFF");
     expect(hex("#zzz")).toBe("#zzz");
+  });
+
+  it("mutabakat: ilanın (KUMAS_RENKLERI) her adı fabricToHex'ten ilandaki hex ile döner", () => {
+    /* Yerel FABRIC_HEX kopyası silindiği için (journal
+       2026-07-27-kumas-rengi-birligi) "kopya ile ilan aynı mı" sorusu artık
+       kaynak düzeyinde sorulamaz — bu test onun davranış düzeyindeki
+       karşılığıdır: çizicinin isim araması ilana bağlı KALMALI. Biri
+       fabricToHex'e yerel bir istisna/kopya geri eklerse ya da ilana eklenen
+       yeni bir ad çizicide farklı çözülürse burası kırmızıya döner. Bugünkü
+       ilanla bu, yukarıdaki dört sabit pinin ilan-üzerinden genellenmiş
+       hâlidir; ilan büyüdüğünde otomatik genişler. Sabit pinlere DOKUNULMADI:
+       onlar ilandan bağımsız, mutlak değerleri çiviler. */
+    for (const [ad, beklenen] of Object.entries(KUMAS_RENKLERI)) {
+      expect(hex(ad), `${ad}: çizici ilandan ayrıştı`).toBe(beklenen);
+    }
   });
 });
