@@ -244,6 +244,86 @@ export interface ExportRecordDTO {
 }
 
 /* ------------------------------------------------------------------ */
+/* Makine kanalı denetim izi — integration_events (migration v14)       */
+/* ------------------------------------------------------------------ */
+
+/* Kanonik: 7.4/524 (bağlayıcı "denetim kaydı" bildirir) · 9.2/673
+   ("entegrasyon hataları") · 9.1/665 ("denetim izi değişmezdir") · 5.6/410
+   ("dış servise gönderilen her veri kayıt altına alınır").
+
+   ExportRecordDTO'nun (hemen yukarıda) SALT-INTERFACE ZAAFI TEKRARLANMADI:
+   orada `kind` kapalı kümesi yalnız TS birleşim türüdür — derleme sonrası
+   BUHARLAŞIR, DB'den gelen uydurma bir değer sessizce DTO gibi davranır.
+   Burada kapalı kümeler ZOD ile RUNTIME doğrulanır ve TS türleri z.infer ile
+   şemadan TÜRETİLİR (tek kaynak) — DB CHECK'i ile şema aynı iki değeri söyler,
+   ikisi ayrı ayrı yazılan ve zamanla ayrışan iki liste değildir. */
+
+/** Bağlayıcı kanalı — DB CHECK ile aynı kapalı küme (migration v14).
+    Yeni kanal = migration + ürün kararı; bildirimsiz kanal iz yazamaz (7.4/524). */
+export const IntegrationChannelSchema = z.enum(["render"]);
+export type IntegrationChannel = z.infer<typeof IntegrationChannelSchema>;
+
+/** Olay sonucu. "uretildi" = dosya üretildi (sha256 + filepath ZORUNLU);
+    "reddedildi" = üretim olmadı (error_code ZORUNLU). Tutarlılık DB CHECK'inde
+    de vardır — yarım kayıt iki katmanda birden imkânsız. */
+export const IntegrationOutcomeSchema = z.enum(["uretildi", "reddedildi"]);
+export type IntegrationOutcome = z.infer<typeof IntegrationOutcomeSchema>;
+
+/** Okuma ucunun döndürdüğü satır (GET /api/documents/:id/integration-events).
+
+    payload ALANI DTO'DADIR — ExportRecordDTO'nun `snapshot_json`ı DIŞARIDA
+    bırakma emsalinden BİLİNÇLİ ayrılma. Emsalin gerekçesi: snapshot_json bir
+    GERİ-YÜKLEME MEKANİZMASIDIR (tam belge durumu, ağır, kendi ucu var —
+    documents.ts:192); export listesinde işi yoktur. Burada payload TAM TERSİ,
+    kaydın VARLIK SEBEBİDİR: 5.6/410 "hangi verinin nereye gittiği izlenebilir
+    olmalıdır" der — payload'ı gizleyen bir iz, izin kendisini boşa çıkarır.
+    Ham `payload_json` string'i DEĞİL, ÇÖZÜLMÜŞ nesne taşınır (DocumentDTO'nun
+    params/selection deseni): DTO API yüzeyidir, DB satırı değil — okuyanın
+    ikinci kez JSON.parse etmesi gerekmez. */
+export interface IntegrationEventDTO {
+  id: string;
+  channel: IntegrationChannel;
+  contract_v: number;
+  outcome: IntegrationOutcome;
+  http_status: number;
+  /** reddedildi'de dolu, uretildi'de null */
+  error_code: string | null;
+  /** Belge/müşteri silinince NULL'a düşer (ON DELETE SET NULL — iz KALIR) */
+  document_id: string | null;
+  client_id: string | null;
+  /* Snapshot değerler: FK kopsa bile "ne istendi" cevaplanabilir kalır */
+  template_id: string | null;
+  variant: string | null;
+  target: string | null;
+  /** uretildi'de dolu */
+  sha256: string | null;
+  /** uretildi'de dolu — ROOT_DIR'e göreli yol */
+  filepath: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+/** DTO'nun runtime kapısı — okuma ucu satırı bununla doğrular (kapalı kümeler
+    ZOD'dan geçer; `as IntegrationEventDTO` cast'i tek başına yeterli değildir). */
+export const IntegrationEventDTOSchema = z.object({
+  id: z.string(),
+  channel: IntegrationChannelSchema,
+  contract_v: z.number().int(),
+  outcome: IntegrationOutcomeSchema,
+  http_status: z.number().int(),
+  error_code: z.string().nullable(),
+  document_id: z.string().nullable(),
+  client_id: z.string().nullable(),
+  template_id: z.string().nullable(),
+  variant: z.string().nullable(),
+  target: z.string().nullable(),
+  sha256: z.string().nullable(),
+  filepath: z.string().nullable(),
+  payload: z.record(z.unknown()),
+  created_at: z.string(),
+}) satisfies z.ZodType<IntegrationEventDTO, z.ZodTypeDef, unknown>;
+
+/* ------------------------------------------------------------------ */
 /* API veri sözleşmeleri                                               */
 /* ------------------------------------------------------------------ */
 

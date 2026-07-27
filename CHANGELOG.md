@@ -14,6 +14,53 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   — Dosya açılamadı / okunamadı"; "Geçiş engellendi — Tasarım eşiği kapalı…").
 
 ### Added
+- **Makine kanalı denetim izi — `integration_events` (migration v14, ADR-008):**
+  dışa açık tek makine ucu (`POST /render`, Render Contract v1) bugüne kadar
+  hiçbir kalıcı iz bırakmıyordu; altı kanonik madde karşılıksızdı — 7.4/524
+  ("her bağlayıcı **denetim kaydı** bildirir") · 9.2/673 ("entegrasyon
+  hataları") · 9.1/665 ("denetim izi değişmezdir") · 9.1/666 + 5.6/410 ("dış
+  servise gönderilen her veri kayıt altına alınır") · 9.5/699-701 (profil ve
+  bağlayıcı kullanımı kontrol noktası) · GT-7/758. Karşılık "yetersiz" değil
+  **sıfırdı**: ne istendiği, neyin hangi gerekçeyle reddedildiği ve neyin
+  üretildiği yalnız yanıt gövdesinde — yani denetlenenin elinde — yaşıyordu.
+  · **Ayrı tablo, `export_records`'a SIFIR dokunuş.** Mevcut tabloya yazma
+    seçeneği ölçümle reddedildi: red olayları üretilmemiş dosyalardır
+    (`filepath` NOT NULL → boş dize + uydurma `version`); `exports.ts`
+    `MAX(version)`'ı **kind filtresiz** okuduğu için makine satırları atölye
+    sürüm sayacını ileri iterdi; `SELECT *` yapan iki canlı rota (`exports.ts`,
+    `present.ts`) izi atölye UI'ına sızdırırdı; `ON DELETE CASCADE` belge
+    silinince izi yok ederdi; alanlar kolon olmadığı için sorgulanamazdı.
+  · **`/render`'ın STATELESS kararı KORUNDU** — daraltıldı, feshedilmedi:
+    `render.ts:8`'deki gerekçe (*"versiyon sayacı/geçmiş atölye UI
+    kanalınındır"*) **export_records'a yazmama** gerekçesidir, **iz tutmama**
+    gerekçesi değil; 9.2/675 denetim izini telemetriden ayırır (iz örneklenemez,
+    kalıcı olmak zorundadır). Sürüm sayacı ve `data/exports/_contract/` klasör
+    ayrımı aynen atölyenin. **ADR-005 tadil EDİLMEDİ** —
+    `export_records.kind` sözlüğüne (docs/export-kinds.md) dokunulmadı;
+    8.5/641 üretim taksonomisi ile 7.4/524 denetim kaydı ayrı kayıt sınıflarıdır.
+  · **Şema:** `channel` kapalı kümesi bir kapıdır (bugün yalnız `'render'`;
+    yeni bağlayıcı = migration + ürün kararı) · `document_id`/`client_id`
+    **`ON DELETE SET NULL`** (CASCADE değil — `briefs.customer_ref` v12 emsali;
+    silme yoluyla dolaylı imha da mutasyondur) · `template_id`/`variant`/`target`
+    FK değil **snapshot** (bağ koptuktan sonra da "ne istendi" cevaplanır) · iki
+    **CHECK invaryantı**: `üretildi` ⇒ `sha256`+`filepath` dolu & `error_code`
+    boş, `reddedildi` ⇒ `error_code` dolu — yarım kayıt DB düzeyinde imkânsız ·
+    iki indeks (belge bazlı liste, zaman bazlı tarama).
+  · **Kayıt imza kapısının ARKASINDA:** imzasız istemci DB'ye satır
+    yazdıramaz (gürültü/DoS yüzeyi açılmaz) — `503 contract_disabled` ve `401`
+    **yazmaz**; `404` (belge/müşteri), `400` (`profile_not_registered` /
+    `channel_not_declared`) ve `201` (üretildi) **yazar**. Mevcut kapı sırası ve
+    yanıt gövdeleri DEĞİŞMEDİ.
+  · **Append-only uygulama sözleşmesi:** yazma tek kapıdan
+    (`apps/server/src/integration-audit.ts`, `brief_audit` yazma kapısı
+    emsali); UPDATE/DELETE yolu yazılmaz ve bu **repo-taramalı testle**
+    korunur. Okuma ucu açıldı — `GET /api/documents/:id/integration-events`
+    (okunamayan iz denetlenemez; `intake_records`'un okunmayan iz olması bu
+    depoda kusur olarak ölçülmüştü).
+  · **ŞERH — kapsam dışı (ADR-008'de kayıtlı):** çağıran kimliği alanı YOK
+    (tek paylaşılan secret; journal'ın "aktör ASLA null" dersi gereği sahte
+    alan eklenmedi — per-client key-id gelince additive `ALTER`) · kriptografik
+    hash zinciri v2 · UI görünümü · telemetri/metrik ayrı sınıftır (9.2/675).
 - **Dynamic Composition Engine (Canonical B aşaması, Bölüm 4.1/4.3/7.2):**
   sütun seçimi, font ölçekleme, sayfa bölme, taşma stratejisi ve ızgara
   kapasitesi artık şablona özel koddan çıkıp paylaşılan, teknoloji-bağımsız
@@ -85,7 +132,9 @@ itibaren tutulur; öncesi için git log + TODO.md teslim kayıtları esastır.
   teknoloji serisidir. Numara kaydırmak çözmez (iki seri paralel yaşadıkça her
   numara iki anlama gelir); çözüm A-08'in icrasıdır. Adlandırmada iki aday var
   ve seçim de A-08'e dahil: DEVIR_RAPORU'nun `ADR-T-*` önerisi ile Canonical
-  0.3'ün `TDR-nnn` kararı.
+  0.3'ün `TDR-nnn` kararı. *(Ölçüm tazelemesi 2026-07-26: **slot artık boş
+  değil** — `docs/adr/` 001-008 içeriyor, ADR-008 makine kanalı denetim izi
+  kararıdır. A-08'in kendisi açık: iki seri hâlâ paralel yaşıyor.)*
 - **F1 pilot P0 — route-test harness:** `buildApp()` (apps/server/src/app.ts)
   kuruluşu dinlemeden döndürür → route testleri `app.inject()` ile gerçek uç
   üzerinden koşar; `db.ts` bağlantı katmanında enjekte edilebilir

@@ -703,6 +703,207 @@ describe("migration v13 (F1 pilot P4 — briefs.spec_values_json)", () => {
   });
 });
 
+describe("migration v14 (integration_events)", () => {
+  /* ADR-008 — DIŞ KANAL DENETİM İZİ. export_records'tan AYRI bir tablodur ve
+     ayrılık bilinçlidir: export_records ÜRETİM TAKSONOMİSİDİR (kind sözlüğü +
+     versiyon sayacı; yalnız başarılı çıktının atölye geçmişi), integration_events
+     ise sözleşmeli kanalın OLAY defteridir — reddedilen istek de kayda geçer,
+     oysa reddin üretilmiş bir çıktısı yoktur (9.2/675 kontrol noktası). */
+  let db: Database.Database;
+
+  /** Kabul edilebilir bir REDDEDİLDİ satırı; testler bunun üzerinden sapar */
+  const olay = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: "iev1",
+    channel: "render",
+    contract_v: 1,
+    outcome: "reddedildi",
+    http_status: 400,
+    error_code: "channel_not_declared",
+    document_id: null,
+    client_id: null,
+    template_id: null,
+    variant: null,
+    target: null,
+    sha256: null,
+    filepath: null,
+    created_at: "t",
+    ...over,
+  });
+
+  /** payload_json BİLEREK verilmez → DEFAULT '{}' sınanabilsin */
+  const ekle = (d: Database.Database, o: Record<string, unknown>) =>
+    d
+      .prepare(
+        `INSERT INTO integration_events
+           (id, channel, contract_v, outcome, http_status, error_code, document_id, client_id,
+            template_id, variant, target, sha256, filepath, created_at)
+         VALUES (@id, @channel, @contract_v, @outcome, @http_status, @error_code, @document_id,
+            @client_id, @template_id, @variant, @target, @sha256, @filepath, @created_at)`
+      )
+      .run(o);
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    seedV2(db);
+    for (let i = 2; i <= 12; i++) db.exec(MIGRATIONS[i]);
+    db.exec(MIGRATIONS[13]);
+  });
+
+  it("tablo + iki indeks açıldı; payload_json default '{}', dolmayan alanlar NULL", () => {
+    ekle(db, olay());
+    expect(db.prepare("SELECT * FROM integration_events WHERE id='iev1'").get()).toMatchObject({
+      channel: "render",
+      contract_v: 1,
+      outcome: "reddedildi",
+      http_status: 400,
+      error_code: "channel_not_declared",
+      payload_json: "{}",
+      document_id: null,
+      client_id: null,
+      sha256: null,
+      filepath: null,
+    });
+    /* Başarı satırı da KABUL EDİLİR — CHECK yalnız tutarsızı keser, üretimi
+       zorlaştırmaz (aşırı-sıkı kapı, kaydı kaçırmanın bahanesi olurdu) */
+    expect(() =>
+      ekle(
+        db,
+        olay({
+          id: "iev_ok",
+          outcome: "uretildi",
+          http_status: 201,
+          error_code: null,
+          sha256: "a".repeat(64),
+          filepath: "data/exports/_contract/test/render_v1_doc1_print_1.pdf",
+        })
+      )
+    ).not.toThrow();
+    const idx = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_integration_events%' ORDER BY name"
+      )
+      .all() as Array<{ name: string }>;
+    expect(idx.map((i) => i.name)).toEqual([
+      "idx_integration_events_created",
+      "idx_integration_events_doc",
+    ]);
+  });
+
+  it("v14 TEKRAR koşulabilir (idempotent — IF NOT EXISTS); veri kaybolmaz", () => {
+    ekle(db, olay());
+    expect(() => db.exec(MIGRATIONS[13])).not.toThrow();
+    expect(db.prepare("SELECT COUNT(*) AS c FROM integration_events").get()).toMatchObject({ c: 1 });
+  });
+
+  it("CHECK kapıları: bilinmeyen channel/outcome ve TUTARSIZ sonuç reddedilir", () => {
+    /* channel bugün tek değerlidir ('render'): tablo genel amaçlı bir olay çöp
+       kutusu DEĞİL, ilan edilmiş kanalların defteridir — yeni kanal migration
+       ile açılır, uygulama katmanından sessizce sızamaz. */
+    expect(() => ekle(db, olay({ id: "bad1", channel: "webhook" }))).toThrow(/CHECK/i);
+    expect(() => ekle(db, olay({ id: "bad2", outcome: "belki" }))).toThrow(/CHECK/i);
+    /* SONUÇ↔ALAN BAĞI. "uretildi" demek DOSYA VAR demektir: sha256/filepath'siz
+       bir başarı kaydı denetlenemez bir iddiadır — izin kendisi yalan olur. */
+    expect(() =>
+      ekle(
+        db,
+        olay({
+          id: "bad3",
+          outcome: "uretildi",
+          http_status: 201,
+          error_code: null,
+          sha256: null,
+          filepath: "data/exports/_contract/x.pdf",
+        })
+      )
+    ).toThrow(/CHECK/i);
+    /* Tersi de kapalı: sebebi yazılmayan bir red, izi sayaca indirger. */
+    expect(() => ekle(db, olay({ id: "bad4", outcome: "reddedildi", error_code: null }))).toThrow(
+      /CHECK/i
+    );
+    expect(db.prepare("SELECT COUNT(*) AS c FROM integration_events").get()).toMatchObject({ c: 0 });
+  });
+
+  it("ON DELETE SET NULL: belge silinince İZ KALIR (CASCADE DEĞİL), template_id snapshot DURUR", () => {
+    ekle(
+      db,
+      olay({
+        id: "iev_doc",
+        document_id: "doc1",
+        client_id: "cli1",
+        template_id: "menu-grid-cells",
+        variant: "print",
+        target: "pdf",
+      })
+    );
+    db.prepare("DELETE FROM documents WHERE id='doc1'").run();
+    /* KARŞITLIK — aynı silme, iki tabloya iki farklı şey yapar: export_records
+       CASCADE ile SİLİNİR (üretim taksonomisi belgenin ömrüne bağlıdır),
+       integration_events SİLİNMEZ. Denetim izi denetlenen nesneye asılamaz;
+       aksi hâlde "belge silindi" tam da izi yok eden hamle olurdu. */
+    expect(db.prepare("SELECT COUNT(*) AS c FROM export_records").get()).toMatchObject({ c: 0 });
+    expect(
+      db.prepare("SELECT * FROM integration_events WHERE id='iev_doc'").get()
+    ).toMatchObject({
+      document_id: null,
+      /* SNAPSHOT: template_id FK DEĞİLDİR — profil bilgisi, bağ koptuktan
+         sonra da okunur kalır ("hangi profile üretim istenmişti") */
+      template_id: "menu-grid-cells",
+      variant: "print",
+      client_id: "cli1",
+      error_code: "channel_not_declared",
+    });
+    /* Müşteri silinse de iz DURUR: client_id NULL'a düşer, satır yaşar */
+    db.prepare("DELETE FROM clients WHERE id='cli1'").run();
+    expect(
+      db
+        .prepare("SELECT id, document_id, client_id, template_id FROM integration_events WHERE id='iev_doc'")
+        .get()
+    ).toEqual({
+      id: "iev_doc",
+      document_id: null,
+      client_id: null,
+      template_id: "menu-grid-cells",
+    });
+  });
+
+  it("Faz 1-F1 akışları kırılmadı: önceki tablolar + v12/v13 kapıları yerinde", () => {
+    for (const q of [
+      "SELECT spec_values_json, status, idempotency_key FROM briefs LIMIT 1",
+      "SELECT warning_code FROM brief_audit LIMIT 1",
+      "SELECT version, status FROM brief_files LIMIT 1",
+      "SELECT canvas_json, params_json FROM documents LIMIT 1",
+      "SELECT document_id, project_id, client_id, kind, version FROM export_records LIMIT 1",
+      "SELECT client_id, answers_json FROM intake_records LIMIT 1",
+      "SELECT menu_language, currency FROM clients LIMIT 1",
+      "SELECT id, family FROM custom_fonts LIMIT 1",
+    ]) {
+      expect(() => db.prepare(q).all(), q).not.toThrow();
+    }
+    /* Yeni tablo eski kapıları gevşetmedi: UNIQUE + status CHECK hâlâ diri */
+    db.prepare(
+      `INSERT INTO briefs (id, source_system, request_type, idempotency_key, created_at, updated_at)
+       VALUES ('b1', 's', 'menu', 'k1', 't', 't')`
+    ).run();
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, idempotency_key, created_at, updated_at)
+           VALUES ('b2', 's', 'menu', 'k1', 't', 't')`
+        )
+        .run()
+    ).toThrow(/UNIQUE/i);
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO briefs (id, source_system, request_type, idempotency_key, status, created_at, updated_at)
+           VALUES ('b3', 's', 'menu', 'k3', 'ARCHIVED', 't', 't')`
+        )
+        .run()
+    ).toThrow(/CHECK/i);
+  });
+});
+
 describe("brief_audit APPEND-ONLY sözleşmesi (uygulama katmanı — repo taraması)", () => {
   /* Sözleşme: tarihçe yerinde DEĞİŞTİRİLMEZ. Kod tabanında brief_audit'e UPDATE
      ya da DELETE yazan bir yol BULUNMAMALI (üst kaydın CASCADE temizliği hariç —
@@ -728,5 +929,32 @@ describe("brief_audit APPEND-ONLY sözleşmesi (uygulama katmanı — repo taram
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  /* AYNI KORUMA, İKİNCİ TABLO (ADR-008, v14): integration_events de APPEND-ONLY'dir.
+     Denetim izi yerinde DÜZELTİLMEZ — yanlış yazılmış bir olay, ÜSTÜNE yazılarak
+     değil, yeni bir satırla düzeltilir; aksi hâlde iz, izlediği şeyi yazan tarafın
+     istediği gibi değiştirebileceği bir metne dönüşür ve denetim değeri sıfırlanır.
+     Bu blok brief_audit için yazılmıştı; tarama mekanizması aynen geçerli olduğu
+     için MEVCUT TEST'e dokunulmadan ikinci bir it() olarak kuruldu.
+     İSTİSNA (ikisinde de aynı): FK'nın kendi davranışı — brief_audit'te CASCADE,
+     integration_events'te ON DELETE SET NULL — uygulama katmanının mutasyonu
+     DEĞİLDİR; biri ebeveyn silmenin sonucu, diğeri kopan bağın dürüst bildirimidir
+     (satır YAŞAMAYA devam eder, alan NULL'a düşer). */
+  it("sunucu kaynağında integration_events'e UPDATE/DELETE yolu YOK", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(SRC)) {
+      const text = fs.readFileSync(file, "utf8");
+      if (
+        /\bUPDATE\s+integration_events\b/i.test(text) ||
+        /\bDELETE\s+FROM\s+integration_events\b/i.test(text)
+      ) {
+        offenders.push(path.relative(SRC, file));
+      }
+    }
+    expect(
+      offenders,
+      "denetim izine yazma-sonrası mutasyon yolu açılmış: iz APPEND-ONLY'dir (ADR-008)"
+    ).toEqual([]);
   });
 });
