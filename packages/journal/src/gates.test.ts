@@ -430,7 +430,14 @@ describe("summarizeVitestReports", () => {
     testResults: Array.from({ length: files }, () => ({ status: "passed" })),
   });
 
-  it("4 workspace'i tek toplamda birleştirir", () => {
+  /* Ad bilerek SAYISIZ: burada ölçülen şey N rapor → tek toplam katlamasıdır,
+     kapının o an kaç workspace koştuğu DEĞİL. Eski ad "4 workspace" diyordu ve
+     TEST_WORKSPACES'e apps/web eklenince (kapsam 5 oldu) ad bayatladı; oysa
+     aşağıdaki raporlar SENTETİKtir, gerçek kapsamı temsil etmez ve sayıları
+     kapının kapsamına bağlamak testi gereksiz yere kırılgan yapardı. Gerçek
+     kapsamı ölçen yer burası değil, kapi-kapsami.test.ts nöbetçisidir.
+     Aşağıdaki toEqual pini DOKUNULMADI. journal 2026-07-27-web-test-altyapisi */
+  it("birden çok raporu tek toplamda birleştirir", () => {
     const t = summarizeVitestReports([
       report(357, 0, 357, 25),
       report(120, 2, 122, 8),
