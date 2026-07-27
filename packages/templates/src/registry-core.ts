@@ -13,6 +13,7 @@ import {
   PRODUCTION_TECHNIQUES,
   SUBSTRAT_TEKNIKLERI,
   isMaterialType,
+  type ParamDef,
   type ProductionChannel,
   type ProductionTechnique,
   type SlotKosulu,
@@ -83,6 +84,116 @@ export const MOCKUP_SAHNE_TURLERI = ["vitrine", "facade", "garment", "generic"] 
    AssetKindSchema.options ile çapraz doğrulanır (dosya-rolleri.test.ts) —
    sürüklenme sessiz kalamaz, test yüksek sesle patlar. */
 export const VARLIK_TURLERI = ["logo", "photo", "other"] as const;
+
+/* Kanonik hex renk biçimi — shared'daki `HexColor` (packages/shared/src/
+   schemas.ts:10, `/^#[0-9a-fA-F]{6}$/`) ile EŞ KÜME.
+   Bilerek LİTERAL ve MOCKUP_SAHNE_TURLERI / VARLIK_TURLERI'nin BİREBİR emsali:
+   bu dosya @tezgah/shared'a runtime bağ TAŞIMAZ (identity alt-yolunun react'sız
+   bağımlılık grafiği büyümez). Eş-küme olduğu testte DAVRANIŞLA çapraz
+   doğrulanır (param-ilan-tutarliligi.test.ts: bir sonda kümesinde
+   `HexColor.safeParse(s).success === HEX_BICIMI.test(s)` ölçülür) — iki tanım
+   ayrışırsa test yüksek sesle patlar, sürüklenme sessiz kalamaz.
+   ŞERH: `qr.ts:48` üçüncü ve DAHA GEVŞEK bir hex kabulü taşır (# isteğe bağlı,
+   6 haneden fazlasını sessizce kırpar). Üç tanımı birleştirmek AYRI bir karardır
+   (journal 2026-07-27-param-gecerli-deger-ilani, scope_out); burada bilinçli
+   olarak KANONİK (en sıkı) biçim referans alınır — ilan, uygulamanın kabul
+   edeceğinden gevşek olamaz. */
+export const HEX_BICIMI = /^#[0-9a-fA-F]{6}$/;
+
+/* ── Param İLAN TUTARLILIĞI doğrulaması (journal
+   2026-07-27-param-gecerli-deger-ilani) ───────────────────────────────────────
+   Geçerliyse null, geçersizse Türkçe gerekçe döner.
+
+   NEDEN BU KAPI VAR: `ParamDef` üç ilan alanı taşır (`min`/`max`/`step`) ve
+   `default`. Bu ilanlar ÖLÜ DEĞİLDİR — EditorPage sayı denetimini HTML
+   `min`/`max`/`step` özniteliği olarak DOĞRUDAN bu alanlardan kurar ve
+   `paramValue()` varsayılana düşerken `default`u okur. Yani ilan, kullanıcıya
+   gösterilen sınırın ve deterministik geri-düşüşün TEK kaynağıdır. Kendi
+   içinde tutarsız bir ilan (min > max · aralık dışı default · step ≤ 0 ·
+   hex olmayan renk varsayılanı) bu iki tüketiciye de YALAN söyler: HTML
+   denetimi hiçbir değeri kabul etmeyen bir aralık gösterir, geri-düşüş ise
+   kendi ilan ettiği aralığın DIŞINA düşer. Depodaki diğer kapıların doktrini
+   ("türetilebilir/tüketicisiz/ölü ilan yazılmaz") burada bir adım öteye gider:
+   ilan TÜKETİLİYOR, o yüzden tutarsızlığı yük zamanında reddedilir.
+
+   NEDEN MESAJ DÖNDÜREN FONKSİYON (fırlatan blok değil): `kosulHatasi()`nin
+   BİREBİR emsali ve GEREKÇESİ AYNEN GEÇERLİDİR — hatta buradaki union daha
+   sıcaktır. `ParamDef.type` KAPALI bir birleşimdir ("choice"|"toggle"|
+   "number"|"color") ve dönüş tipi `string | null` olduğu için switch'in HER
+   dalı dönmek ZORUNDADIR. `default` dalı BİLEREK YAZILMADI: beşinci bir param
+   tipi eklendiği gün burası DERLEMEDE patlar ve o tipin geçerli-değer ilanının
+   ne olduğuna karar vermeye ZORLAR. Fırlatan bir if-bloğu olsaydı yeni tip
+   sessizce "denetimsiz geçerli" sayılırdı — tam da bu paketin kapatmaya
+   çalıştığı sessiz-kabul deliği.
+
+   choice/toggle dalları BİLEREK BOŞ (ölçüm dolu gerekçe):
+   - choice: "default seçenekler arasında olmalı" kapısı DOĞRU görünür ama
+     `options` TEK kaynak DEĞİLDİR — `optionsByFormat` (menu-grid-cells `cols`,
+     menu-liste-premium `columns`) format başına AYRI küme ilan eder ve o iki
+     paramda `options` HİÇ YOKTUR. Doğru kapı format-başına gezinmeli ve
+     `defaultByFormat` ile birlikte değerlendirilmelidir; bu AYRI bir karardır
+     (bu paketin ölçtüğü ayrışma sayısal aralık ↔ Zod şeması ayrışmasıdır).
+   - toggle: `default`un boolean olduğu bugün TİP SİSTEMİNDE zaten gevşektir
+     (`ParamValue = string | number | boolean`); runtime kapısı eklemek
+     ölçülmemiş bir genişlemedir ve bu paketin ölçtüğü borç değildir. */
+function paramIlanHatasi(p: ParamDef): string | null {
+  switch (p.type) {
+    case "number": {
+      const { min, max, step } = p;
+      /* (a) BOŞ ARALIK: min > max hiçbir değerin sağlayamadığı bir aralıktır —
+         EditorPage bunu HTML min/max olarak yazar ve tarayıcı denetimi her
+         girdiyi geçersiz sayar; ilan kullanıcıya kapalı bir kapı gösterir. */
+      if (min !== undefined && max !== undefined && !(min <= max)) {
+        return `param "${p.id}" (number) min=${String(min)} > max=${String(max)} — boş aralık ilan ediyor, hiçbir değer bu ilanı sağlayamaz`;
+      }
+      /* (b) SAYI OLMAYAN VARSAYILAN: `default` ParamValue'dur (string|number|
+         boolean) — tip sistemi number paramda sayı olmasını ZORLAMAZ. Sayı
+         olmayan varsayılan `paramValue()` geri-düşüşünü sayı-olmayan bir
+         değerle doldurur ve tüketici (w_cm/h_cm → mm hesabı, designSeed → PRNG)
+         NaN üretir. NaN/Infinity de reddedilir: ikisi de aralık ilanının
+         DIŞINDADIR ve sessizce yayılır. */
+      if (typeof p.default !== "number" || !Number.isFinite(p.default)) {
+        return `param "${p.id}" (number) varsayılanı sonlu bir sayı değil (bulunan: ${JSON.stringify(p.default)}) — sayı paramın geri-düşüş değeri sayı olmak ZORUNDADIR, aksi hâlde tüketici NaN üretir`;
+      }
+      /* (c) ARALIK DIŞI VARSAYILAN: en sinsi tutarsızlık. `paramValue()` geçersiz
+         değerde varsayılana düşer; varsayılan ilan edilen aralığın dışındaysa
+         "deterministik geri-düşüş" ilanın KENDİSİNİ ihlal eden bir değere
+         düşer — kullanıcıya gösterilen sınır ile sistemin ürettiği değer
+         ayrışır. Yalnız ilan edilen uçlar denetlenir (min/max opsiyoneldir). */
+      if (min !== undefined && p.default < min) {
+        return `param "${p.id}" (number) varsayılanı ${String(p.default)} ilan edilen min=${String(min)} altında — geri-düşüş değeri kendi ilanının dışına düşer`;
+      }
+      if (max !== undefined && p.default > max) {
+        return `param "${p.id}" (number) varsayılanı ${String(p.default)} ilan edilen max=${String(max)} üstünde — geri-düşüş değeri kendi ilanının dışına düşer`;
+      }
+      /* (d) POZİTİF OLMAYAN ADIM: HTML `step` özniteliği 0/negatif değerde
+         geçersizdir (tarayıcı denetimi bozulur) ve "izinli değer ızgarası"
+         tanımsızlaşır — ızgarasız ızgara ilanı ölü ilandır. */
+      if (step !== undefined && (!Number.isFinite(step) || step <= 0)) {
+        return `param "${p.id}" (number) step=${String(step)} pozitif sonlu sayı değil — adım ilanı izinli değer ızgarasını tanımlar, sıfır/negatif adım ızgarayı tanımsız bırakır`;
+      }
+      return null;
+    }
+    case "color": {
+      /* Renk varsayılanı KANONİK biçimde olmalı: `cut_color` doğrudan
+         `HexColor`a bağlı bir şema alanına (VitroParamsSchema) akar — biçimsiz
+         varsayılan Zod'dan geçemez, yani geri-düşüş değeri ŞEMANIN
+         REDDEDECEĞİ bir değer olurdu (ilan ⊆ şema invaryantının en dar hâli).
+         `fabric_color`da şema bugün gevşektir (`z.string()`), ama orada da
+         ölçülmüş bir çökme vardır: garment `fabricToHex()` düz nesne
+         literalinde arama yapar ve hex olmayan değerde varsayılana düşemeyip
+         TypeError fırlatabilir (journal ÖLÇÜM 4). İki ailede de biçimsiz
+         varsayılan sessiz değil, GÜRÜLTÜLÜ bir arızadır. */
+      if (typeof p.default !== "string" || !HEX_BICIMI.test(p.default)) {
+        return `param "${p.id}" (color) varsayılanı kanonik hex biçiminde değil (bulunan: ${JSON.stringify(p.default)}, beklenen: ${HEX_BICIMI.source}) — renk paramın geri-düşüş değeri şemanın (HexColor) kabul ettiği biçimde olmak ZORUNDADIR`;
+      }
+      return null;
+    }
+    case "choice":
+    case "toggle":
+      return null;
+  }
+}
 
 function dogrulaManifest(key: string, m: TemplateManifest): void {
   if (!isMaterialType(m.type)) {
@@ -181,6 +292,18 @@ function dogrulaManifest(key: string, m: TemplateManifest): void {
         }
       }
     }
+  }
+  /* Param İLAN TUTARLILIĞI (journal 2026-07-27-param-gecerli-deger-ilani):
+     ZORUNLU ve KOŞULSUZ — `kabul`/`mockup_tercihi` gibi "yokluk = kısıtsız"
+     DEĞİLDİR, çünkü denetlenen alanların kendisi (`default`) ZORUNLUDUR ve her
+     paramda vardır. Kendi içinde tutarsız bir ilan iki canlı tüketiciye birden
+     yalan söyler (EditorPage'in HTML min/max/step denetimi · paramValue()
+     geri-düşüşü), bu yüzden yük zamanında REDDEDİLİR.
+     ÖNCEDEN ÖLÇÜLDÜ: 11 manifestin 11'i de bu kapıdan GEÇER — kapı hiçbir
+     mevcut ilanı kırmaz, yalnız gelecekteki tutarsızlığı durdurur. */
+  for (const p of m.params) {
+    const hata = paramIlanHatasi(p);
+    if (hata) throw new Error(`Şablon "${key}": ${hata}`);
   }
   /* Mockup sahne tercihi İLANI (7.2 "Önizleme türleri"): OPSİYONEL — yokluk =
      çekirdek tercih (severity_overrides emsali); tanımlıysa bozuk ilan
