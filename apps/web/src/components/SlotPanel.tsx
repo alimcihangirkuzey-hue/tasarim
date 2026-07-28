@@ -194,6 +194,13 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
 
       <div className="field" style={{ marginTop: 6 }}>
         {t("catalog.price_value")}
+        {/* VARYANT EKLE/SİL (journal 2026-07-28-coklu-fiyat-girisi): aynı işlem
+            iki panelde FARKLI yetenekteydi — CatalogPanel Faz 1'den beri varyant
+            ekleyip silebiliyor, buradaki hızlı düzenleme yalnız mevcutları
+            değiştirebiliyordu; operatör editörden çıkıp katalog paneline gitmek
+            zorundaydı. Davranış CatalogPanel:239-284 ile BİREBİR tutarlı:
+            etiket önerisi ilk varyantta "seul" sonrakilerde "menu" (aynı
+            sezgisel), silme satır başına ✕, kayıt mevcut 700ms debounce'tan. */}
         <div className="price-rows">
           {prices.map((p, i) => (
             <div className="price-row" key={i}>
@@ -217,8 +224,27 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
                   debounced({ prices: next });
                 }}
               />
+              <button
+                className="icon"
+                title={t("catalog.remove_price")}
+                onClick={() => {
+                  const next = prices.filter((_, j) => j !== i);
+                  setPrices(next);
+                  debounced({ prices: next });
+                }}
+              >✕</button>
             </div>
           ))}
+          <button
+            className="icon"
+            onClick={() => {
+              const next = [...prices, { label: prices.length === 0 ? "seul" : "menu", value: 0 }];
+              setPrices(next);
+              debounced({ prices: next });
+            }}
+          >
+            {t("catalog.add_price")}
+          </button>
         </div>
       </div>
 

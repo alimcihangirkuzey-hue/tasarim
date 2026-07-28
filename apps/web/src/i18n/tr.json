@@ -170,6 +170,7 @@
     "price_label": "etiket",
     "price_value": "fiyat",
     "add_price": "+ varyant",
+    "remove_price": "Varyantı sil",
     "visible": "Görünür",
     "save": "Kataloğu kaydet",
     "saved": "Katalog kaydedildi",
