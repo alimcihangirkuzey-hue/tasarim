@@ -76,7 +76,7 @@ describe("analyzeList", () => {
 
   it("karışık varyantlı kategori columns düzeninde uyarı üretir", () => {
     const client = makeClient(3);
-    client.catalog.categories[0].items[1].prices = [{ label: "XL", value: 12 }];
+    client.catalog.categories[0].items[1].prices = [{ label: "XL", value: 12, birim: "" }];
     const a = analyzeList(client, doc({ priceLayout: "columns" }));
     expect(a.warnings.some((w) => w.type === "mixed-variants")).toBe(true);
   });
@@ -140,6 +140,35 @@ describe("analyzeList", () => {
   it("cols=2 normalde min-font uyarısı ÇIKMAZ (yalnız compact modda)", () => {
     const a = analyzeList(makeClient(200), doc({ columns: 2 }));
     expect(a.warnings.some((w) => w.type === "min-font")).toBe(false);
+  });
+
+  /* --- birim alanı (journal 2026-07-28-birim-alani) — yalnız EKLEME --- */
+  it('birimli varyant: inline join VE columns hücreleri birimi taşır ("/kg" bitişik)', () => {
+    const client = makeClient(2);
+    client.catalog = CatalogSchema.parse({
+      categories: [{
+        id: "cat_k", name_fr: "Boucherie", order: 1,
+        items: [{
+          id: "k0", name_fr: "Merguez", order: 0,
+          prices: [
+            { label: "seul", value: 24, birim: "/kg" },
+            { label: "menu", value: 10 }, // birim parse default "" → çıktı birebir eski biçim
+          ],
+        }],
+      }],
+    });
+    const inline = analyzeList(client, doc());
+    const item = inline.pages[0].columns[0].find((r) => r.row.kind === "item");
+    expect(item && item.row.kind === "item" ? item.row.priceTexts[0] : "").toBe(
+      "24,00 €/kg / 10,00 €"
+    );
+
+    const cols = analyzeList(client, doc({ priceLayout: "columns" }));
+    const citem = cols.pages[0].columns[0].find((r) => r.row.kind === "item");
+    expect(citem && citem.row.kind === "item" ? citem.row.priceTexts : []).toEqual([
+      "24,00 €/kg",
+      "10,00 €",
+    ]);
   });
 
   it("fiyatsız (fiyat-bekliyor) görünür ürün empty-price bilgi uyarısı üretir (K3)", () => {

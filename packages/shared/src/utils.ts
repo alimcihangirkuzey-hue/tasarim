@@ -14,6 +14,23 @@ export function formatPrice(value: number, currency: Currency = "EUR"): string {
   return fmt.format(value).replace(/\u00a0/g, " ");
 }
 
+/* BİRİM-FARKINDA FİYAT METNİ (journal 2026-07-28-birim-alani).
+
+   Tipografi kuralı TEK yerde yaşar — fiyat basan yollar buradan geçer,
+   böylece "24,00 €/kg" biçimi bir yolda böyle bir yolda şöyle olamaz:
+   · birim "/" ile başlıyorsa fiyata BİTİŞİK: "24,00 €/kg", "12,00 €/saat"
+     (bölü-birim geleneği; "24,00 € /kg" kırık görünür);
+   · değilse boşlukla: "3,50 € 330ml" (miktar sınıfı — şerh: miktarın daha
+     doğal evi ürün adı/açıklamasıdır, ama girilmişse sansürlenmez);
+   · boş birim = bugünkü davranış BİREBİR (yalnız formatPrice çıktısı) — alan
+     eklenmiş ama birim girilmemiş hiçbir belgede tek karakter değişmez
+     (sıfır-davranış kanıtı kapanış kapılarıdır). */
+export function fiyatMetni(p: { value: number; birim: string }, currency: Currency = "EUR"): string {
+  const fiyat = formatPrice(p.value, currency);
+  if (p.birim === "") return fiyat;
+  return p.birim.startsWith("/") ? `${fiyat}${p.birim}` : `${fiyat} ${p.birim}`;
+}
+
 /** Türkçe karakterleri de düzgün çeviren slug üretici */
 export function slugify(input: string): string {
   const map: Record<string, string> = {

@@ -33,7 +33,11 @@ describe("Item.ingredients + IngredientRef (F7-A / karar D1)", () => {
     /* mevcut alanlar hiç değişmez (arşiv sabitliği) */
     expect(it0.name_fr).toBe("Margherita");
     expect(it0.desc_fr).toBe("Tomate, mozza");
-    expect(it0.prices).toEqual([{ label: "seul", value: 9 }]);
+    expect(it0.prices).toEqual([
+      /* birim:"" parse'ta eklenir — additive alan emsalinin (ingredients) aynısı
+         (journal 2026-07-28-birim-alani): eski veri bozulmaz, şekil büyür */
+      { label: "seul", value: 9, birim: "" },
+    ]);
   });
 
   it("INLINE DENORMALIZE: chip_id + üç dil gömülü aynen parse olur (baskı kendine yeter)", () => {

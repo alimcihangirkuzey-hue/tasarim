@@ -9,7 +9,7 @@
    callback'iyle birebir taşındı; çıktı eşdeğerliği refactor-öncesi __baseline
    ile diferansiyel testte kanıtlıdır (composition-differential.test.ts). */
 
-import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
+import { fiyatMetni, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
   assetById,
   eksikZorunluVarliklar,
@@ -143,9 +143,12 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
     ...allItems.filter((i) => i.tags.includes("populaire")),
     ...allItems.filter((i) => !i.tags.includes("populaire")),
   ].slice(0, 4);
+  /* Flap fiyatı birim-farkında (journal 2026-07-28-birim-alani): tek-fiyat
+     SEÇİMİ (prices[0]) değişmiyor, yalnız metin fiyatMetni'nden geçiyor —
+     birim "" iken çıktı birebir (shared testiyle çivili). */
   const flapItems = flapPick.map((i) => ({
     name: i.name_fr,
-    price: i.prices[0] ? formatPrice(i.prices[0].value, client.currency) : "",
+    price: i.prices[0] ? fiyatMetni(i.prices[0], client.currency) : "",
   }));
 
   /* İç yüz satırları — en dar panel genişliğiyle sarılır (deterministik, temkinli) */
@@ -169,8 +172,10 @@ export function analyzeTrifold(client: ClientDTO, doc: DocumentState): TrifoldAn
         continue;
       }
       const item = e.item;
+      /* İç yüz fiyatları birim-farkında (journal 2026-07-28-birim-alani):
+         boş birimde fiyatMetni ≡ formatPrice — çıktı birebir. */
       const priceText = item.prices
-        .map((p) => formatPrice(p.value, client.currency))
+        .map((p) => fiyatMetni(p, client.currency))
         .join(" / ");
       const priceW = estimateWidth(priceText, nameFont * 0.9, theme.ratios.item) + 6;
       const nameText = theme.uppercaseHeading ? item.name_fr.toLocaleUpperCase("fr-FR") : item.name_fr;

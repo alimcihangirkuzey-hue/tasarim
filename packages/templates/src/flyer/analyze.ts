@@ -1,7 +1,7 @@
 /* flyer analiz — ön: kampanya + mini grid (format bazlı kapasite);
    arka: iletişim + QR + teslimat bloğu + çift saat (boş bloklar gizlenir). */
 
-import { formatPrice, type ClientDTO, type DocumentState } from "@tezgah/shared";
+import { fiyatMetni, type ClientDTO, type DocumentState } from "@tezgah/shared";
 import {
   assetById,
   eksikZorunluVarliklar,
@@ -167,7 +167,9 @@ export function analyzeFlyer(client: ClientDTO, doc: DocumentState): FlyerAnalys
     return {
       id: it.id,
       name: it.name_fr,
-      price: it.prices[0] ? formatPrice(it.prices[0].value, client.currency) : "",
+      /* Birim-farkında (journal 2026-07-28-birim-alani): tek-fiyat SEÇİMİ
+         (prices[0]) aynı, yalnız metin fiyatMetni'nden — boş birimde birebir. */
+      price: it.prices[0] ? fiyatMetni(it.prices[0], client.currency) : "",
       photoUrl: asset?.urls.master ?? null,
       x: cell.x_mm,
       y: cell.y_mm,

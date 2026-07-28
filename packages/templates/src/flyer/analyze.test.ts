@@ -81,4 +81,22 @@ describe("flyer (FAZ2-GOREV §6.2)", () => {
     const a = analyzeFlyer(makeClient(2), doc());
     expect(a.qr).not.toBeNull(); // tel fallback
   });
+
+  /* --- birim alanı (journal 2026-07-28-birim-alani) — yalnız EKLEME --- */
+  it("birimli varyant: mini grid fiyatı birimi taşır (tek-fiyat seçimi aynı)", () => {
+    const client = makeClient(2);
+    client.catalog = CatalogSchema.parse({
+      categories: [{
+        id: "c1", name_fr: "Boucherie", order: 1,
+        items: [
+          { id: "kg0", name_fr: "Sucuk", order: 0, prices: [{ label: "seul", value: 24, birim: "/kg" }] },
+          { id: "n0", name_fr: "Ekmek", order: 1, prices: [{ label: "seul", value: 2 }] }, // birim "" (parse default)
+        ],
+      }],
+    });
+    const a = analyzeFlyer(client, doc());
+    const byId = Object.fromEntries(a.mini.items.map((i) => [i.id, i.price]));
+    expect(byId["kg0"]).toBe("24,00 €/kg");
+    expect(byId["n0"]).toBe("2,00 €"); // boş birim → birebir eski biçim
+  });
 });

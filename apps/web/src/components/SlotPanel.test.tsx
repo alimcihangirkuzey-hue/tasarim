@@ -85,6 +85,12 @@ async function debounceGecsin() {
   });
 }
 
+/* PAKET ŞERHİ (journal 2026-07-28-birim-alani): aşağıdaki toEqual gövdeleri
+   `birim: ""` taşıyacak şekilde güncellendi — bu İLAN EDİLMİŞ additive alan
+   eklemesidir (PriceVariant.birim, default ""); makeClient fixture'ları
+   CatalogSchema.parse'tan geçtiği için giden gövde alanı otomatik taşır.
+   Davranış pinleri (tık → satır → debounce → gövde) DEĞİŞMEDİ. */
+
 /** api.updateClient'a giden son katalogtan it1'in prices dizisini çıkar. */
 function gidenPrices(): unknown {
   const calls = vi.mocked(api.updateClient).mock.calls;
@@ -109,8 +115,8 @@ describe("ItemQuickEdit — varyant ekle/sil", () => {
 
     await debounceGecsin();
     expect(gidenPrices()).toEqual([
-      { label: "seul", value: 7.5 },
-      { label: "menu", value: 0 },
+      { label: "seul", value: 7.5, birim: "" },
+      { label: "menu", value: 0, birim: "" },
     ]);
   });
 
@@ -118,7 +124,7 @@ describe("ItemQuickEdit — varyant ekle/sil", () => {
     renderPanel(makeClient([]));
     fireEvent.click(screen.getByText("+ varyant"));
     await debounceGecsin();
-    expect(gidenPrices()).toEqual([{ label: "seul", value: 0 }]);
+    expect(gidenPrices()).toEqual([{ label: "seul", value: 0, birim: "" }]);
   });
 
   it("✕ tıkı: varyant düşer, kalan gövdede doğru", async () => {
@@ -133,13 +139,23 @@ describe("ItemQuickEdit — varyant ekle/sil", () => {
     fireEvent.click(silButonlari[0]);
 
     await debounceGecsin();
-    expect(gidenPrices()).toEqual([{ label: "menu", value: 10 }]);
+    expect(gidenPrices()).toEqual([{ label: "menu", value: 10, birim: "" }]);
   });
 
   it("REGRESYON: mevcut etiket/değer düzenleme davranışı değişmedi", async () => {
     renderPanel(makeClient([{ label: "seul", value: 7.5 }]));
     fireEvent.change(screen.getByDisplayValue("7.5"), { target: { value: "9" } });
     await debounceGecsin();
-    expect(gidenPrices()).toEqual([{ label: "seul", value: 9 }]);
+    expect(gidenPrices()).toEqual([{ label: "seul", value: 9, birim: "" }]);
+  });
+
+  it("birim inputu: '/kg' yazılınca debounce sonrası gövdede birim '/kg' (journal 2026-07-28-birim-alani)", async () => {
+    /* NEDEN: yapısal birim alanı UI'dan girilebilmeli — etikete gömülen "Kg"
+       baskıda kayboluyordu. Input placeholder ile bulunur (tek fiyat satırı →
+       tek birim inputu); kayıt mevcut 700ms debounce hattından. */
+    renderPanel(makeClient([{ label: "seul", value: 7.5 }]));
+    fireEvent.change(screen.getByPlaceholderText("/kg"), { target: { value: "/kg" } });
+    await debounceGecsin();
+    expect(gidenPrices()).toEqual([{ label: "seul", value: 7.5, birim: "/kg" }]);
   });
 });

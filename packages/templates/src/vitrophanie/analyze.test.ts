@@ -70,6 +70,25 @@ describe("analyzeVitro (FAZ3-GOREV §4)", () => {
     expect(analyzeVitro(makeClient(), doc({ miroir: true })).params.miroir).toBe(true);
   });
 
+  /* --- birim alanı (journal 2026-07-28-birim-alani) — yalnız EKLEME.
+     ÖLÇÜM: index.tsx:109 sabit damga değil VARYANT fiyatı basar (colonne mini
+     repeater) — bu yüzden fiyatMetni'ne bağlandı; prices[0] seçimi aynı. --- */
+  it("colonne mini repeater fiyatı birim-farkında", () => {
+    const client = makeClient();
+    client.catalog = CatalogSchema.parse({
+      categories: [{
+        id: "c1", name_fr: "Menüler", order: 1,
+        items: [
+          { id: "v0", name_fr: "Sucuk", order: 0, prices: [{ label: "seul", value: 24, birim: "/kg" }] },
+          { id: "v1", name_fr: "Ayran", order: 1, prices: [{ label: "seul", value: 2 }] }, // birim "" (parse default)
+        ],
+      }],
+    });
+    const a = analyzeVitro(client, doc({}));
+    expect(a.items[0].price).toBe("24,00 €/kg");
+    expect(a.items[1].price).toBe("2,00 €"); // boş birim → birebir eski biçim
+  });
+
   it("pageSizeMM fiziksel sayfaya 1:10 kuralını uygular (PDF sayfa boyutu)", () => {
     const c = makeClient();
     /* 1:1 — 200×80 cm, bleed 3: sayfa 2000×800 mm */
