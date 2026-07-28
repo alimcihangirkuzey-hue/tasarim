@@ -18,7 +18,12 @@ export const manifest: TemplateManifest = {
     {
       id: "qrSource",
       type: "choice",
-      options: ["review", "tel", "delivery", "instagram"],
+      /* "web" — journal 2026-07-28-web-alani (F5-11 dersi: options açılmazsa
+         paramValue kaynağı default'a düşürür, seçilemez). "menu"nun YOKLUĞU
+         BİLİNÇLİ ve ÖLÇÜLDÜ: 45d546f mimar #16'yı "menü şablonları" olarak
+         okuyup flyer'ı açıkça kapsam dışı bıraktı ("pilotta gerekirse TODO");
+         web ise şablon-sınıfı bağımsız iletişim kaynağıdır — menu'ye DOKUNMA. */
+      options: ["review", "tel", "delivery", "instagram", "web"],
       default: "review",
       label_tr: "QR kaynağı",
     },

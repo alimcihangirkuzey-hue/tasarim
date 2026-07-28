@@ -40,7 +40,9 @@ export { analyzeVitro } from "./vitrophanie/index.js";
 export type { VitroAnalysis } from "./vitrophanie/index.js";
 export { analyzeEnseigne } from "./enseigne/index.js";
 export type { EnseigneAnalysis } from "./enseigne/index.js";
-export { analyzeGarment } from "./garment/index.js";
+/* LINE_SOURCES: satır kaynaklarının tek ilanı — SlotPanel'in sert-kodlu
+   kopya listesi buna bağlanır (journal 2026-07-28-web-alani) */
+export { analyzeGarment, LINE_SOURCES } from "./garment/index.js";
 export type { GarmentAnalysis, GarmentAreaLayout, LineSource } from "./garment/index.js";
 
 export * from "./factory/sanitize.js";

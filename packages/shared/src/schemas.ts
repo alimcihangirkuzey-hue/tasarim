@@ -98,6 +98,14 @@ export const ContactSchema = z.object({
   google_review_url: z.string().default(""),
   /** Dijital menü adresi (mimar #16); doluysa QR kaynak listesine "menu" gelir */
   menu_url: z.string().default(""),
+  /** Şirket web sitesi (journal 2026-07-28-web-alani; Faz 7 "yapısal web
+      alanı" — Arriva'da notlara yazılıyordu). Tüketiciler: BrandKitPanel
+      girişi · QR kaynağı "web" · garment satır kaynağı "web" · dijital menü
+      footer'ı (doluysa). Baskı şablonlarında basım hedefi BİLİNÇLİ tanımsız —
+      görsel/mimar kararı, ayrı paket; bind motoru (resolvePath) hazır, ilk
+      hedef kararlaştığında tek satır bind yeter. Biçim doğrulaması yok —
+      kit alanlarının mevcut sözleşmesi (phone/instagram da serbest metin). */
+  website: z.string().default(""),
   delivery: z
     .array(z.object({ platform: z.string(), url: z.string() }))
     .default([]),

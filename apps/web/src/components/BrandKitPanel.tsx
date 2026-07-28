@@ -142,6 +142,9 @@ export function BrandKitPanel({ client }: { client: ClientDTO }) {
               ["hours", "brandkit.hours"],
               ["instagram", "brandkit.instagram"],
               ["google_review_url", "brandkit.review_url"],
+              /* website: Faz 7 "yapısal web alanı" (journal 2026-07-28-web-alani) —
+                 QR kaynağı "web" ve garment satır kaynağı "web" buradan beslenir */
+              ["website", "brandkit.website"],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="field">

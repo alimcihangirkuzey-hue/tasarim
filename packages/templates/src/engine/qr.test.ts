@@ -26,6 +26,18 @@ describe("qrSourceUrl", () => {
     kit.contact.menu_url = "https://menu.aras.example/x";
     expect(qrSourceUrl("menu", kit)).toBe("https://menu.aras.example/x");
   });
+
+  it("web kaynağı: website doluysa AYNEN kodlar (önek yok), boşsa null (journal 2026-07-28-web-alani)", () => {
+    const kit = defaultBrandKit();
+    /* boş default → null = menu ile aynı boş-kaynak davranışı (empty-qr yolu) */
+    expect(qrSourceUrl("web", kit)).toBeNull();
+    kit.contact.website = "https://aras.example";
+    expect(qrSourceUrl("web", kit)).toBe("https://aras.example");
+    /* geçirme disiplini (menu_url emsali): şemasız girdiye https:// EKLENMEZ —
+       website URL alanıdır, türetme yalnız URL-olmayan kaynaklarda (tel/instagram) */
+    kit.contact.website = "araskebab.fr";
+    expect(qrSourceUrl("web", kit)).toBe("araskebab.fr");
+  });
 });
 
 /* Regresyon (F5-11 kabul bulgusu): QrSource tipi + qrSourceUrl "menu"'yü destekler
@@ -37,6 +49,20 @@ describe("menü şablonları qrSource options 'menu' içerir (mimar #16)", () =>
       const p = TEMPLATES[id].manifest.params.find((x) => x.id === "qrSource");
       expect(p, `${id} qrSource param`).toBeTruthy();
       expect(p!.options).toContain("menu");
+    });
+  }
+});
+
+/* Aynı F5-11 dersinin "web" genişletmesi (journal 2026-07-28-web-alani):
+   dört şablonun da options'ı "web"i taşımalı — flyer DAHİL, çünkü web
+   şablon-sınıfı bağımsızdır (flyer'ın "menu"suz kalışı ise 45d546f'te
+   ölçülmüş bilinçli kapsam kararıdır ve yukarıdaki testte flyer YOKTUR). */
+describe("qrSource options 'web' içerir — 4 şablon (journal 2026-07-28-web-alani)", () => {
+  for (const id of ["flyer", "menu-liste-premium", "menu-grid-cells", "menu-trifold"]) {
+    it(id, () => {
+      const p = TEMPLATES[id].manifest.params.find((x) => x.id === "qrSource");
+      expect(p, `${id} qrSource param`).toBeTruthy();
+      expect(p!.options).toContain("web");
     });
   }
 });
