@@ -16,6 +16,7 @@ import {
   type Catalog,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { paramlariDogrula } from "../param-kapisi.js";
 import { documentWithClient, ensureDefaultProject, rowToDocument } from "./documents.js";
 
 const ClientCloneSchema = z.object({
@@ -129,6 +130,17 @@ export function cloneRoutes(app: FastifyInstance): void {
           const found = documentWithClient(docId);
           if (!found || found.clientId !== src.id) continue;
           const d = found.row;
+          /* KLON KAPISI (journal 2026-07-27-klon-kapisi-yetim-telafi): klon YENİ
+             satır yazar, yani bir YAZIMDIR — yazma-sınırı REDDET kararı
+             (sunucu-params paketi) ona da uygulanır. Önceki "kaynak okunabilirse
+             klonu da okunabilir" gerekçesi okuma ölçüsünü yazıma taşıyordu;
+             kapısız klon, bozuk paramın kalan TEK çoğalma yoluydu.
+
+             Fırlatma TRANSACTION İÇİNDE → better-sqlite3 geri sarar → istek
+             ATOMİKTİR: bozuk belge içeren klon, yeni müşteri satırı dahil HİÇBİR
+             şey yazmaz. Bozuk belgeyi sessizce ATLAYIP kalanını kopyalamak
+             reddedildi: eksik kopyayı "başarılı" göstermek fail-silent'tır. */
+          paramlariDogrula(d.template_id, JSON.parse(d.params_json));
           const overrides = JSON.parse(d.overrides_json) as Record<string, { value: unknown }>;
           for (const [k, ov] of Object.entries(overrides)) {
             if (typeof ov?.value === "string" && ov.value.startsWith("ast_")) {
@@ -184,6 +196,12 @@ export function cloneRoutes(app: FastifyInstance): void {
     } else {
       projectId = ensureDefaultProject(targetClientId);
     }
+
+    /* KLON KAPISI (journal 2026-07-27-klon-kapisi-yetim-telafi) — müşteri-klonu
+       yolundaki şerhin aynısı: klon bir yazımdır, bozuk kaynak 400 + issues alır
+       (gövdeyi global setErrorHandler kurar), yeni satır yazılmaz. Kapı override
+       düşürme/INSERT'ten ÖNCE koşar ki ret hiçbir yan etki bırakmasın. */
+    paramlariDogrula(found.row.template_id, JSON.parse(found.row.params_json));
 
     /* Hedefte çözülemeyen görsel override'ları düşür (bound slotlar M1 ile zaten
        hedef veriye bakar); düşenler yanıtta listelenir */
