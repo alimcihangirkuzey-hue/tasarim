@@ -224,6 +224,21 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
                   debounced({ prices: next });
                 }}
               />
+              {/* BİRİM (journal 2026-07-28-birim-alani): CatalogPanel fiyat
+                  satırıyla BİREBİR aynı alan — yapısal birim ("/kg" →
+                  "24,00 €/kg"); kayıt mevcut 700ms debounce'tan. */}
+              <input
+                className="label"
+                type="text"
+                value={p.birim}
+                placeholder={t("catalog.birim_placeholder")}
+                style={{ width: 52 }}
+                onChange={(e) => {
+                  const next = prices.map((x, j) => (j === i ? { ...x, birim: e.target.value } : x));
+                  setPrices(next);
+                  debounced({ prices: next });
+                }}
+              />
               <button
                 className="icon"
                 title={t("catalog.remove_price")}
@@ -238,7 +253,8 @@ function ItemQuickEdit(props: Props & { item: Item; catId: string }) {
           <button
             className="icon"
             onClick={() => {
-              const next = [...prices, { label: prices.length === 0 ? "seul" : "menu", value: 0 }];
+              /* birim: "" — yeni varyant birimsiz doğar (şema varsayılanıyla aynı) */
+              const next = [...prices, { label: prices.length === 0 ? "seul" : "menu", value: 0, birim: "" }];
               setPrices(next);
               debounced({ prices: next });
             }}

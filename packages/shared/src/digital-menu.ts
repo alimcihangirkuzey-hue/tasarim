@@ -5,7 +5,7 @@
    saat/telefon, kit renkleri. Saf fonksiyon — Vitest'le doğrulanır. */
 
 import type { ClientDTO } from "./schemas.js";
-import { formatPrice } from "./utils.js";
+import { fiyatMetni } from "./utils.js";
 
 /** HTML metin kaçışı — ürün adı/açıklaması gibi kullanıcı içeriği güvenli gömülür */
 function esc(s: string): string {
@@ -21,7 +21,9 @@ function esc(s: string): string {
 function priceLine(prices: ClientDTO["catalog"]["categories"][number]["items"][number]["prices"], currency: ClientDTO["currency"]): string {
   return prices
     .map((p) => {
-      const v = formatPrice(p.value, currency);
+      /* birim-farkında (journal 2026-07-28-birim-alani): fiyatMetni tek
+         tipografi kaynağı; birim kullanıcı girdisidir, esc'ten geçer. */
+      const v = esc(fiyatMetni(p, currency));
       return p.label && p.label !== "seul" ? `${esc(p.label)} ${v}` : v;
     })
     .join(" · ");

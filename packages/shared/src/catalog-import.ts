@@ -107,7 +107,7 @@ function previewToCategories(preview: ImportPreview, idPrefix: string): Category
         desc_fr: it.desc_fr,
         photo: null,
         /* Fiyatsız (K3): prices boş kalır → analiz "empty-price" bilgi-uyarısı verir */
-        prices: it.value === null ? [] : [{ label: "seul", value: it.value }],
+        prices: it.value === null ? [] : [{ label: "seul", value: it.value, birim: "" }],
         ingredients: [], // içe aktarmada çip yok (Sipariş Modu projeksiyonu doldurur) — F7-A
         tags: [],
         visible: true,

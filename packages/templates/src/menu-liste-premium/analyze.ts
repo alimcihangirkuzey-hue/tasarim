@@ -2,7 +2,7 @@
    önce tek sayfaya sığdırmak için font izinli aralıkta küçülür;
    min fontta da sığmıyorsa devam sayfalarına akar. */
 
-import { formatPrice, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
+import { fiyatMetni, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
   assetById,
   eksikZorunluVarliklar,
@@ -232,12 +232,15 @@ export function analyzeList(client: ClientDTO, doc: DocumentState): ListAnalysis
       }
       const item = entry.item;
       const priceMode = priceLayout;
+      /* Birim-farkında metin (journal 2026-07-28-birim-alani): boş birimde
+         fiyatMetni ≡ formatPrice (shared testiyle çivili) — çıktı birebir;
+         dolu birimde birim hem inline join'de hem columns hücrelerinde basılır. */
       const priceTexts =
         priceMode === "columns"
-          ? item.prices.map((p) => formatPrice(p.value, client.currency))
+          ? item.prices.map((p) => fiyatMetni(p, client.currency))
           : [
               item.prices
-                .map((p) => formatPrice(p.value, client.currency))
+                .map((p) => fiyatMetni(p, client.currency))
                 .join(" / "),
             ];
       const priceZone =

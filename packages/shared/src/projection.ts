@@ -127,7 +127,12 @@ export function projectIntake(
     items: catItems.map((it, ii): Item => {
       const prices: PriceVariant[] = it.variants
         .filter((v): v is IntakeVariant & { value: number } => v.value !== null)
-        .map((v) => ({ label: v.label, value: v.value }));
+        .map((v) => ({ label: v.label, value: v.value, birim: "" }));
+      /* birim BİLEREK boş: intake q_birim cevabı bugün varyant ETİKETİ olarak
+         akar ("Kg"); etiketi birim alanına taşımak projeksiyon davranışını
+         değiştirir ve "Porsiyon/Adet" gibi cevapların fiyat soneki olması
+         tartışmalıdır — ürün kararı, ayrı paket (journal 2026-07-28-birim-alani
+         kapsam-dışı kaydı). */
       /* boş fiyat = fiyat-bekliyor: sessiz değil, pending'e işaretlenir (K3/M8) */
       if (prices.length === 0) pending.push({ name: it.name, category: catName });
 

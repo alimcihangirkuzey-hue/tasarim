@@ -23,6 +23,18 @@ export type MenuLanguage = z.infer<typeof MenuLanguageSchema>;
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
   value: z.number().nonnegative(),
+  /* YAPISAL BİRİM (journal 2026-07-28-birim-alani; Faz 7 "birim/süre alanı").
+     Etiketten AYRI bir alan olması ölçülmüş bir zorunluluk: intake tohumu
+     birimi bugüne dek varyant ETİKETİ olarak akıtıyordu ("Kg") ama baskı
+     yolları tek-varyant etiketini BİLEREK gizler ("seul 7,50 €" basılmasın
+     diye) — sonuç, kg'la satılan ürünün birimi baskıda kayboluyordu. Ayrım
+     yapısal işaret ister: etiket varyantları AYIRIR (seul/menu/Ø24), birim
+     fiyatın NASIL okunacağını söyler (/kg, /saat, 330ml) ve tek varyantta da
+     basılır. Boş dize = birimsiz (varsayılan; eski veri parse'da bozulmaz —
+     ingredients emsali, migration yok). Basım kuralı fiyatMetni'nde TEK yerde
+     yaşar. Süre-özel mekanizma ("/saat" sınıfına randevu/dk desteği) bilinçli
+     kapsam dışı — serbest metin olarak girilebilir ve basılır. */
+  birim: z.string().default(""),
 });
 export type PriceVariant = z.infer<typeof PriceVariantSchema>;
 

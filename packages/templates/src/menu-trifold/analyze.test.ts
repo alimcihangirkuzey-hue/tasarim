@@ -74,4 +74,30 @@ describe("menu-trifold (FAZ2-GOREV §6.1)", () => {
     const a = analyzeTrifold(makeClient(), doc());
     expect(a.warnings.some((w) => w.type === "empty-required" && w.slotId === "logo")).toBe(true);
   });
+
+  /* --- birim alanı (journal 2026-07-28-birim-alani) — yalnız EKLEME --- */
+  it("birimli varyant: iç yüz join VE flap fiyatı birimi taşır (tek-fiyat seçimi aynı)", () => {
+    const client = makeClient(2);
+    client.catalog = CatalogSchema.parse({
+      categories: [{
+        id: "c1", name_fr: "Boucherie", order: 1,
+        items: [
+          { id: "kg0", name_fr: "Köfte", order: 0, tags: ["populaire"],
+            prices: [{ label: "seul", value: 24, birim: "/kg" }] },
+          { id: "n0", name_fr: "Ayran", order: 1,
+            prices: [{ label: "seul", value: 2 }] }, // birim parse default "" → birebir
+        ],
+      }],
+    });
+    const a = analyzeTrifold(client, doc());
+    /* flap: prices[0] SEÇİMİ değişmedi, yalnız metin birim-farkında */
+    expect(a.flapItems[0].price).toBe("24,00 €/kg");
+    /* iç yüz: birimli ürün birimle, birimsiz komşu eski biçimle basılır */
+    const texts = a.innerColumns
+      .flatMap((c) => c.rows.map((r) => r.row))
+      .filter((r) => r.kind === "item")
+      .map((r) => r.priceText);
+    expect(texts).toContain("24,00 €/kg");
+    expect(texts).toContain("2,00 €");
+  });
 });

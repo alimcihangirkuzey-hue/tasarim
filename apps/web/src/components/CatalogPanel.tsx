@@ -263,6 +263,23 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
                         })
                       }
                     />
+                    {/* BİRİM (journal 2026-07-28-birim-alani): yapısal birim alanı —
+                        etiket varyantları AYIRIR (seul/menu), birim fiyatın nasıl
+                        okunacağını söyler ("/kg" → "24,00 €/kg"). Etikete gömülen
+                        "Kg" baskıda kayboluyordu; ayrı alan bunu düzeltir. Dar
+                        input: birim kısa sonektir, etiketten de az yer ister. */}
+                    <input
+                      className="label"
+                      type="text"
+                      value={p.birim}
+                      placeholder={t("catalog.birim_placeholder")}
+                      style={{ width: 52 }}
+                      onChange={(e) =>
+                        editItem(c.id, it.id, {
+                          prices: it.prices.map((x, i) => (i === pi ? { ...x, birim: e.target.value } : x)),
+                        })
+                      }
+                    />
                     <button
                       className="icon"
                       onClick={() =>
@@ -275,7 +292,8 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
                   className="icon"
                   onClick={() =>
                     editItem(c.id, it.id, {
-                      prices: [...it.prices, { label: it.prices.length === 0 ? "seul" : "menu", value: 0 }],
+                      /* birim: "" — yeni varyant birimsiz doğar (şema varsayılanıyla aynı) */
+                      prices: [...it.prices, { label: it.prices.length === 0 ? "seul" : "menu", value: 0, birim: "" }],
                     })
                   }
                 >
@@ -313,7 +331,7 @@ export function CatalogPanel({ client }: { client: ClientDTO }) {
                     name_fr: "Nouveau produit",
                     desc_fr: "",
                     photo: null,
-                    prices: [{ label: "seul", value: 0 }],
+                    prices: [{ label: "seul", value: 0, birim: "" }],
                     ingredients: [],
                     tags: [],
                     visible: true,

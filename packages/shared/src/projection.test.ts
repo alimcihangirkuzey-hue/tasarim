@@ -29,8 +29,11 @@ describe("projectIntake (F7-A / K1) — SAF deterministik projeksiyon", () => {
       "SEED"
     );
     expect(r.categories[0].items[0].prices).toEqual([
-      { label: "Ø24", value: 8 },
-      { label: "Ø32", value: 12 },
+      /* birim:"" projeksiyonda eklenir — additive alan (journal
+         2026-07-28-birim-alani); intake q_birim etiketi taşınMAZ (kapsam-dışı
+         kaydı: ürün kararı) */
+      { label: "Ø24", value: 8, birim: "" },
+      { label: "Ø32", value: 12, birim: "" },
     ]);
     expect(r.pending).toEqual([]);
   });
@@ -159,7 +162,7 @@ describe("projectIntake (F7-A / K1) — SAF deterministik projeksiyon", () => {
       ]),
       "SEED"
     );
-    expect(r.categories[0].items[0].prices).toEqual([{ label: "Ø24", value: 8 }]);
+    expect(r.categories[0].items[0].prices).toEqual([{ label: "Ø24", value: 8, birim: "" }]);
     expect(r.pending).toEqual([]); // en az bir fiyat var → bekleyen değil
   });
 

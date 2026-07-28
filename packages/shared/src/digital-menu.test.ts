@@ -29,7 +29,7 @@ function bigCategory(n: number): Category {
       name_fr: `Ürün ${i} ğşİöç`,
       desc_fr: "Crudités, sauce",
       photo: null,
-      prices: [{ label: "seul", value: 7.5 }],
+      prices: [{ label: "seul", value: 7.5, birim: "" }],
       ingredients: [],
       tags: [],
       visible: true,
@@ -67,7 +67,7 @@ describe("dijital menü üretici (FAZ5 §9)", () => {
     const labeled: Category = {
       id: "c2", name_fr: "Menus", order: 1,
       items: [{ id: "m1", name_fr: "Menu Midi", desc_fr: "", photo: null,
-        prices: [{ label: "seul", value: 8 }, { label: "menu", value: 10.5 }],
+        prices: [{ label: "seul", value: 8, birim: "" }, { label: "menu", value: 10.5, birim: "" }],
         ingredients: [], tags: [], visible: true, order: 1 }],
     };
     const eurLabeled = renderDigitalMenu(makeClient([labeled]));
@@ -95,7 +95,7 @@ describe("dijital menü üretici (FAZ5 §9)", () => {
     const evil: Category = {
       id: "c3", name_fr: 'Bur<ger> & "Co"', order: 1,
       items: [{ id: "x", name_fr: '<script>alert(1)</script>', desc_fr: "A & B", photo: null,
-        prices: [{ label: "seul", value: 5 }], ingredients: [], tags: [], visible: true, order: 1 }],
+        prices: [{ label: "seul", value: 5, birim: "" }], ingredients: [], tags: [], visible: true, order: 1 }],
     };
     const html = renderDigitalMenu(makeClient([evil]));
     expect(html).not.toContain("<script>alert(1)</script>");
@@ -107,8 +107,8 @@ describe("dijital menü üretici (FAZ5 §9)", () => {
     const cat: Category = {
       id: "c4", name_fr: "Karışık", order: 1,
       items: [
-        { id: "v", name_fr: "Görünür", desc_fr: "", photo: null, prices: [{ label: "seul", value: 3 }], ingredients: [], tags: [], visible: true, order: 2 },
-        { id: "h", name_fr: "Gizli", desc_fr: "", photo: null, prices: [{ label: "seul", value: 4 }], ingredients: [], tags: [], visible: false, order: 1 },
+        { id: "v", name_fr: "Görünür", desc_fr: "", photo: null, prices: [{ label: "seul", value: 3, birim: "" }], ingredients: [], tags: [], visible: true, order: 2 },
+        { id: "h", name_fr: "Gizli", desc_fr: "", photo: null, prices: [{ label: "seul", value: 4, birim: "" }], ingredients: [], tags: [], visible: false, order: 1 },
       ],
     };
     const emptyCat: Category = { id: "c5", name_fr: "Boş", order: 2, items: [] };

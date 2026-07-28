@@ -5,7 +5,7 @@
 import type { ReactNode } from "react";
 import {
   VitroParamsSchema,
-  formatPrice,
+  fiyatMetni,
   type ClientDTO,
   type DocumentState,
   type VitroParams,
@@ -106,7 +106,10 @@ export function analyzeVitro(client: ClientDTO, doc: DocumentState): VitroAnalys
     .slice(0, 6)
     .map((i) => ({
       name: i.name_fr,
-      price: i.prices[0] ? formatPrice(i.prices[0].value, client.currency) : "",
+      /* ÖLÇÜLDÜ: burası varyant fiyatı basar (colonne mini repeater) — sabit
+         damga değil. Birim-farkında (journal 2026-07-28-birim-alani): tek-fiyat
+         SEÇİMİ (prices[0]) aynı, boş birimde çıktı birebir. */
+      price: i.prices[0] ? fiyatMetni(i.prices[0], client.currency) : "",
     }));
 
   return {

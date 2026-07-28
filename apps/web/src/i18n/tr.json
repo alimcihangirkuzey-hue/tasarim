@@ -169,6 +169,7 @@
     "item_desc": "Açıklama (FR)",
     "price_label": "etiket",
     "price_value": "fiyat",
+    "birim_placeholder": "/kg",
     "add_price": "+ varyant",
     "remove_price": "Varyantı sil",
     "visible": "Görünür",
