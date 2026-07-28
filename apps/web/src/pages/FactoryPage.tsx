@@ -36,7 +36,7 @@ const KNOWN_BINDS = [
   "brand.logo_primary", "brand.logo_mono", "brand.slogan_fr",
   "brand.contact.phone", "brand.contact.address", "brand.contact.hours",
   "brand.contact.instagram", "brand.contact.google_review_url",
-  "brand.badges.halal", "catalog.footnote_fr",
+  "brand.contact.website", "brand.badges.halal", "catalog.footnote_fr",
 ];
 
 let TF_SEQ = 0;

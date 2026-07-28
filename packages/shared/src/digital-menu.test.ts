@@ -118,3 +118,26 @@ describe("dijital menü üretici (FAZ5 §9)", () => {
     expect(html).not.toContain("Boş"); // ürünsüz kategori bölümü/nav'a girmez
   });
 });
+
+describe("digital-menu footer — website (journal 2026-07-28-web-alani)", () => {
+  it("website doluysa footer'da basılır; boşsa çıktı birebir eski (sıfır-davranış)", () => {
+    const c = makeClient([bigCategory(2)]);
+    const olmadan = renderDigitalMenu(c);
+    expect(olmadan).not.toContain("www.arriva.fr");
+
+    c.brandkit.contact.website = "www.arriva.fr";
+    expect(renderDigitalMenu(c)).toContain("www.arriva.fr");
+
+    /* boş default → tek karakter değişmez (alan eklemenin sıfır-davranış kanıtı) */
+    c.brandkit.contact.website = "";
+    expect(renderDigitalMenu(c)).toBe(olmadan);
+  });
+
+  it("website kullanıcı girdisidir — HTML'e kaçışlanarak girer", () => {
+    const c = makeClient([bigCategory(1)]);
+    c.brandkit.contact.website = 'x<script>"y';
+    const html = renderDigitalMenu(c);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("x&lt;script&gt;&quot;y");
+  });
+});

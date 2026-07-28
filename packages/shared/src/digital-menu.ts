@@ -65,6 +65,10 @@ export function renderDigitalMenu(client: ClientDTO): string {
     contact.phone ? `☎ ${esc(contact.phone)}` : "",
     contact.hours ? esc(contact.hours) : "",
     contact.address ? esc(contact.address) : "",
+    /* website doluysa basılır (journal 2026-07-28-web-alani): dijital menü
+       zaten bir web sayfası — site linki doğal tüketici. Boş default → mevcut
+       çıktılarda sıfır değişim. Kullanıcı girdisi esc'ten geçer. */
+    contact.website ? esc(contact.website) : "",
   ].filter(Boolean);
   const foot = footBits.length ? `<p class="foot-contact">${footBits.join(" · ")}</p>` : "";
   const footnote = client.catalog.footnote_fr ? `<p class="footnote">${esc(client.catalog.footnote_fr)}</p>` : "";

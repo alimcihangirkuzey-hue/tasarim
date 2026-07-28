@@ -49,7 +49,7 @@ export const manifest = {
     {
       id: "qrSource",
       type: "choice",
-      options: ["review", "tel", "delivery", "instagram", "menu"], // mimar #16: dijital menü adresi
+      options: ["review", "tel", "delivery", "instagram", "menu", "web"], // mimar #16: dijital menü adresi; "web": journal 2026-07-28-web-alani (F5-11 dersi: options açılmazsa seçilemez)
       default: "review",
       label_tr: "QR kaynağı",
     },

@@ -7,7 +7,7 @@ import {
   defaultCatalog,
   type ClientDTO,
 } from "@tezgah/shared";
-import { analyzeGarment, garment } from "./index.js";
+import { LINE_SOURCES, analyzeGarment, garment } from "./index.js";
 
 function makeClient(withMono = true): ClientDTO {
   const kit = defaultBrandKit();
@@ -195,5 +195,40 @@ describe("fabricToHex — prototip zinciri çökmesi (journal 2026-07-27-param-g
     for (const [ad, beklenen] of Object.entries(KUMAS_RENKLERI)) {
       expect(hex(ad), `${ad}: çizici ilandan ayrıştı`).toBe(beklenen);
     }
+  });
+});
+
+describe("satır kaynağı 'web' (journal 2026-07-28-web-alani)", () => {
+  it("source 'web' → kit'teki website metni AYNEN; boş website → boş metin (satır gizlenir)", () => {
+    /* makeClient website'i DOLDURMAZ (defaultBrandKit → "") — önce boş dal:
+       diğer kit-bağlı kaynaklarla aynı disiplin, boş metin döner ve şablonun
+       linesShown filtresi satırı zaten çizmez. */
+    const bos = analyzeGarment(
+      makeClient(),
+      doc(
+        { garment_kind: "tshirt", areas: ["back_full"] },
+        { "area:back_full:line2": { value: { source: "web" }, detached: true } }
+      )
+    );
+    expect(bos.areas[0].lines[1]).toEqual({ source: "web", text: "" });
+
+    const cli = makeClient();
+    cli.brandkit.contact.website = "https://aras.example";
+    const dolu = analyzeGarment(
+      cli,
+      doc(
+        { garment_kind: "tshirt", areas: ["back_full"] },
+        { "area:back_full:line2": { value: { source: "web" }, detached: true } }
+      )
+    );
+    expect(dolu.areas[0].lines[1]).toEqual({ source: "web", text: "https://aras.example" });
+    /* line1 default'u değişmedi (phone) — additive kanıtı */
+    expect(dolu.areas[0].lines[0].text).toBe("04 78 12 34 56");
+  });
+
+  it("LINE_SOURCES ilanı: union'ın tam listesi ve 'web'i içerir (SlotPanel bu ilana bağlanır)", () => {
+    expect(LINE_SOURCES).toContain("web");
+    /* SlotPanel'in eski sert-kodlu sırası korunur, "web" custom'dan önce */
+    expect(LINE_SOURCES).toEqual(["none", "phone", "address", "instagram", "web", "custom"]);
   });
 });

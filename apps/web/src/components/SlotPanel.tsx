@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { swapSelectionItem, type ClientDTO, type DocumentState, type Item } from "@tezgah/shared";
 import {
   kabulEdilenTurler,
+  LINE_SOURCES,
   resolveSelection,
   resolveSlotValue,
   type TemplateEntry,
@@ -398,7 +399,12 @@ export function SlotPanel(props: Props & { selectedSlot: string | null }) {
             value={source}
             onChange={(e) => patch(setOverride(doc, key, { ...cur, source: e.target.value }))}
           >
-            {["none", "phone", "address", "instagram", "custom"].map((s) => (
+            {/* LINE_SOURCES (@tezgah/templates): buradaki sert-kodlu kopya küme
+                sessiz ayrışma riskiydi (F5-11 tuzağının UI ikizi) — union'a
+                eklenen kaynak artık seçicide otomatik belirir. Görünen fark:
+                "web" seçeneği gelir (journal 2026-07-28-web-alani, ilan edilmiş
+                yeni yetenek). */}
+            {LINE_SOURCES.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>

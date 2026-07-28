@@ -21,7 +21,15 @@ import type { TemplateEntry, TemplateProps } from "../types.js";
 import { Slot } from "../parts/svg.js";
 import { manifest } from "./manifest.js";
 
-export type LineSource = "none" | "phone" | "address" | "instagram" | "custom";
+export type LineSource = "none" | "phone" | "address" | "instagram" | "web" | "custom";
+
+/* Satır kaynaklarının TEK İLANI (journal 2026-07-28-web-alani): SlotPanel'in
+   seçici listesi bugüne dek buradaki union'ın SERT KODLU kopyasıydı (sessiz
+   ayrışma riski — F5-11'deki options tuzağının UI ikizi). apps/web bu diziyi
+   import eder; union'a eklenen her kaynak `satisfies` sayesinde burada da
+   derleme hatasıyla kendini hatırlatır. Sıra = seçicideki görünüm sırası
+   (SlotPanel'in mevcut sırası korunup "web" custom'dan önce eklendi). */
+export const LINE_SOURCES = ["none", "phone", "address", "instagram", "web", "custom"] as const satisfies readonly LineSource[];
 
 export interface GarmentLine {
   source: LineSource;
@@ -107,7 +115,12 @@ function lineFor(
           ? c.address
           : source === "instagram"
             ? c.instagram
-            : "";
+            /* web sitesi satırı (journal 2026-07-28-web-alani): kit'ten AYNEN,
+               diğer kit-bağlı kaynaklarla aynı disiplin — boşsa boş metin ve
+               şablon satırı zaten gizler (linesShown filtresi) */
+            : source === "web"
+              ? c.website
+              : "";
   return { source, text };
 }
 

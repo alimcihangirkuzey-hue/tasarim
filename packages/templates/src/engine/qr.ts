@@ -6,9 +6,9 @@
 import QRCode from "qrcode";
 import type { BrandKit } from "@tezgah/shared";
 
-export type QrSource = "review" | "tel" | "delivery" | "instagram" | "menu";
+export type QrSource = "review" | "tel" | "delivery" | "instagram" | "menu" | "web";
 
-export const QR_SOURCES: QrSource[] = ["review", "tel", "delivery", "instagram", "menu"];
+export const QR_SOURCES: QrSource[] = ["review", "tel", "delivery", "instagram", "menu", "web"];
 
 /** Kaynak → URL (yoksa null; şablon boş-slot uyarısı üretir) */
 export function qrSourceUrl(source: QrSource, brand: BrandKit): string | null {
@@ -29,6 +29,19 @@ export function qrSourceUrl(source: QrSource, brand: BrandKit): string | null {
     /* Mimar #16: dijital menü adresi; kit'te menu_url doluysa QR bunu kodlar */
     case "menu":
       return c.menu_url || null;
+    /* Şirket web sitesi (journal 2026-07-28-web-alani). URL TÜRETME KARARI —
+       menu_url disiplini, ÖLÇÜLDÜ: bu switch'te iki desen var. (a) TÜRETME:
+       tel/instagram — saklanan değer URL DEĞİLDİR (rakam dizisi / @handle),
+       URL burada kurulur. (b) GEÇİRME: review/delivery/menu — alan zaten web
+       adresi taşır, kullanıcı ne yazdıysa AYNEN kodlanır (`|| null`, önek yok).
+       website bir web adresi alanıdır → (b) uygulanır; `https://` öneki
+       EKLENMEZ. Şerh: şemasında biçim doğrulaması BİLİNÇLİ yok (ContactSchema
+       JSDoc'u — phone/instagram gibi serbest metin sözleşmesi); "araskebab.fr"
+       gibi şemasız girdiyi sessizce "düzeltmek" mevcut üç geçirme kaynağının
+       hiçbirinin yapmadığı bir davranış olurdu. Boş → null = mevcut boş-kaynak
+       davranışı (şablon empty-qr uyarısı üretir; menu ile birebir aynı). */
+    case "web":
+      return c.website || null;
   }
 }
 
