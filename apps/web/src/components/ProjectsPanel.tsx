@@ -95,7 +95,28 @@ function ItemRow({ item, client, showToast }: {
             : secenekler[1];
       const doc = await api.createDocument(client.id, templateId, item.project_id);
       const params = siparisParamlari(item);
-      if (params) await api.updateDocument(doc.id, { params });
+      if (params) {
+        try {
+          await api.updateDocument(doc.id, { params });
+        } catch (err) {
+          /* YETİM TELAFİSİ (journal 2026-07-27-klon-kapisi-yetim-telafi):
+             sunucu params'ı 400'lerse (ölçülen yol: sipariş width_cm=5000 —
+             OrderItemCreateSchema max taşımıyor, Zod max 2000 reddediyor)
+             create edilmiş belge sahipsiz kalıyordu. Geri sarıyoruz: belgeyi
+             parametresiz bırakıp kaleme BAĞLAMAK reddedildi — sipariş ölçüsü
+             sessizce düşer, belge varsayılan ölçülerle açılır ve operatör
+             yanlış ölçüyle tasarlar; silmek + görünür hata, sipariş verisini
+             düzeltmeye zorlar. Silme BEST-EFFORT: telafinin kendi hatası asıl
+             hatayı örtmemeli — her durumda orijinal hata yeniden fırlar ve
+             onError toast'ı gerekçeyi gösterir. */
+          try {
+            await api.deleteDocument(doc.id);
+          } catch {
+            /* yetim kaldı — asıl hata yine de görünür olacak */
+          }
+          throw err;
+        }
+      }
       await api.updateOrderItem(item.id, { document_id: doc.id, status: "tasarimda" });
       return doc.id;
     },
@@ -109,11 +130,12 @@ function ItemRow({ item, client, showToast }: {
        HİÇBİR ŞEY olmuyordu. Panelin mevcut hata deseni izlenir (present
        mutation'ı da showToast kullanıyor); mesaj api.ts'in apiErrorMessage ile
        ürettiği Türkçe-okunur gerekçedir.
-       ŞERH — yetim belge: mutationFn zinciri createDocument → updateDocument →
-       updateOrderItem sırayla koşar; updateDocument 400'lerse create edilmiş
-       belge KALIR ve kaleme bağlanmaz (yetim). Telafi (belgeyi silme ya da
-       parametresiz bağlama) bu paketin KAPSAM DIŞI — declare'da şerhli, ayrı
-       karar. Burada yalnız sessizlik gideriliyor. */
+       Yetim belge telafisi mutationFn içinde (journal
+       2026-07-27-klon-kapisi-yetim-telafi): updateDocument başarısızlığında
+       belge geri sarılır, hata buraya yeniden fırlar ve toast gerekçeyi
+       gösterir. Not: updateOrderItem başarısızlığı telafi EDİLMEZ — o noktada
+       belge geçerli params'la yazılmıştır, silmek kullanıcının işini yok
+       ederdi; kalem bağı bir sonraki denemede kurulabilir. */
     onError: (e) => showToast(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
 
