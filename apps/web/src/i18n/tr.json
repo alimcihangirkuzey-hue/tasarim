@@ -566,5 +566,11 @@
   },
   "reorder": {
     "drag": "Sürükleyerek sırala"
+  },
+  "iz": {
+    "title": "Makine kanalı izi",
+    "uretildi": "üretildi",
+    "pages": "{n} sayfa",
+    "tavan": "Son 100 kayıt gösteriliyor (uç tavanı) — öncesi veritabanında duruyor."
   }
 }
