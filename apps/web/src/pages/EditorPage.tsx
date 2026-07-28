@@ -34,6 +34,7 @@ import { analyzeDoc } from "../lib/analyzeDoc";
 import { SektorluSablonSecenekleri } from "../components/DocumentsPanel";
 import { SlotPanel } from "../components/SlotPanel";
 import { SelectionPanel } from "../components/SelectionPanel";
+import { DenetimIziPaneli } from "../components/DenetimIziPaneli";
 import { useEditor } from "../store/editorStore";
 
 function warnText(w: LayoutWarning): string {
@@ -311,6 +312,15 @@ export function EditorPage() {
   const exportsQ = useQuery({
     queryKey: ["exports", id],
     queryFn: () => api.documentExports(id),
+    enabled: !!id,
+  });
+
+  /* Makine kanalı denetim izi (journal 2026-07-28-denetim-izi-ekrani): sorgu
+     exports paneliyle aynı desende SAYFADA yaşar, sunum DenetimIziPaneli'nde —
+     panel props-güdümlü kaldıkça provider'sız test edilebilir. */
+  const izQ = useQuery({
+    queryKey: ["integration-events", id],
+    queryFn: () => api.documentIntegrationEvents(id),
     enabled: !!id,
   });
 
@@ -760,6 +770,10 @@ export function EditorPage() {
               ))}
             </div>
           )}
+
+          {/* Makine kanalı denetim izi — sunum ayrı bileşende, veri burada
+              (journal 2026-07-28-denetim-izi-ekrani; exports paneli deseni) */}
+          <DenetimIziPaneli rows={izQ.data ?? []} />
         </div>
       </div>
 

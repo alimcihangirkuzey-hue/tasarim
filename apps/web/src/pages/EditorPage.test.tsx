@@ -31,7 +31,7 @@
    - QueryClientProvider retry:false — reject'ler yeniden denenip testi
      yavaşlatmasın/zamanlamayı bozmasın.
    - vi.mock("../api"): render yolunda GERÇEKTEN erişilen altı üye mock'lanır
-     (document, client, clientScenes, documentExports, cmykStatus,
+     (document, client, clientScenes, documentExports, documentIntegrationEvents, cmykStatus,
      updateDocument). Ötesi (updateClient, mockupDocument, ...) yalnız
      mutationFn KAPANIŞLARINDA yaşar, testte çağrılmaz — mock'a eklemek ölü
      yüzey şişirmek olurdu.
@@ -93,6 +93,9 @@ vi.mock("../api", () => ({
     client: vi.fn(),
     clientScenes: vi.fn(),
     documentExports: vi.fn(),
+    /* denetim izi sorgusu (journal 2026-07-28-denetim-izi-ekrani) render
+       yolunda koşar — mock kümesine eklenmezse sessiz fetch'e düşerdi */
+    documentIntegrationEvents: vi.fn(),
     cmykStatus: vi.fn(),
     updateDocument: vi.fn(),
   },
@@ -188,6 +191,7 @@ beforeEach(() => {
   vi.mocked(api.client).mockResolvedValue(makeClient());
   vi.mocked(api.clientScenes).mockResolvedValue([]);
   vi.mocked(api.documentExports).mockResolvedValue([]);
+  vi.mocked(api.documentIntegrationEvents).mockResolvedValue([]);
   vi.mocked(api.cmykStatus).mockResolvedValue({ available: false, version: null });
   vi.mocked(api.updateDocument).mockImplementation((id) => Promise.resolve(makeDoc(id)));
   /* jsdom scrollIntoView taşımaz — eksik-foto tıklaması olursa patlamasın */

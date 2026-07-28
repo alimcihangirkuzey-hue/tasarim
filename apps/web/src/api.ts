@@ -7,6 +7,7 @@ import type {
   DocumentState,
   DocumentSummaryDTO,
   ExportRecordDTO,
+  IntegrationEventDTO,
   F1CompletenessResult,
   OrderItemDTO,
   PresentMockupMode,
@@ -153,6 +154,10 @@ export const api = {
     }),
   documentExports: (id: string) =>
     http<ExportRecordDTO[]>(`/api/documents/${id}/exports`),
+  /* Makine kanalı denetim izi — belge kapsamlı, uç LIMIT 100 (belgeli tavan;
+     journal 2026-07-28-denetim-izi-ekrani) */
+  documentIntegrationEvents: (id: string) =>
+    http<IntegrationEventDTO[]>(`/api/documents/${id}/integration-events`),
 
   /* Sipariş Defteri — Faz 2 */
   clientProjects: (clientId: string) => http<ProjectDTO[]>(`/api/clients/${clientId}/projects`),
