@@ -1,4 +1,5 @@
-/* Sipariş Modu Adım 5 (F7-C): doneler & şartlar çeklisti — ZORUNLU adım (görüşme
+/* Sipariş Modu Adım 4 (F7-C; CILA3 "Sorular" adımını kaldırınca 5→4 —
+   journal 2026-07-28-taslak-yarasi-f7-defter): doneler & şartlar çeklisti — ZORUNLU adım (görüşme
    bunsuz bitmez). logo · foto politikası (eksikse hatırlatma) · tel+adres teyidi ·
    ölçü/yüzey notu (serbest metin, KALIR) · YAPISAL yüzeyler (F8-A — commit'te
    müşteri profiline) · kapora · teslim tarihi. */

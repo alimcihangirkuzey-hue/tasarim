@@ -38,7 +38,15 @@ function ageLabel(ts: number | null): string {
 
 export function SiparisPage() {
   const s = useIntake();
-  const [draftAck, setDraftAck] = useState(false);
+  /* Taslak sorusu MOUNT ANI sorusudur: sayfa açılırken taslak yoksa soru bir
+     daha SORULMAZ (draftAck true başlar). Aksi hâlde (eski davranış: sabit
+     false) yeni görüşmede işletme adının İLK HARFİ hasDraft()'ı true yapar ve
+     form "Yarım bir görüşme var" ekranıyla değişirdi — operatör yazarken
+     kesilirdi (CILA1/3'ün hasDraft'a eklediği name koşulunun yan etkisi; izole
+     canlı turda iki kez deterministik üredi, journal
+     2026-07-28-taslak-yarasi-f7-defter). Mount'ta GERÇEK eski taslak varsa
+     soru aynen sorulur — ŞERH 2 korunur. */
+  const [draftAck, setDraftAck] = useState(() => !s.hasDraft());
   /* CILA2/B1: commit sonucu — adım/taslak durumundan BAĞIMSIZ (reset silmez) */
   const [result, setResult] = useState<IntakeResultData | null>(null);
   /* HF2-B taslak sürüm bekçisi: migrate() bu bayrağı SENKRON olarak (modül
