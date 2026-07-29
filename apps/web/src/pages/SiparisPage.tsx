@@ -129,8 +129,10 @@ export function SiparisPage() {
   );
 }
 
-/* ---- Commit sonucu (CILA2/B1) — başarı + pending/gaps + A4 önizleme + yeni görüşme ---- */
-function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => void }) {
+/* ---- Commit sonucu (CILA2/B1) — başarı + pending/gaps + A4 önizleme + yeni görüşme ----
+   M8 (journal 2026-07-28-m8-sessizlik-cip-ceviri): named export — doğrudan test
+   edilebilsin diye (additive; SiparisPage içindeki kullanım değişmedi). */
+export function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => void }) {
   const navigate = useNavigate();
 
   /* "MENÜYÜ ÖNİZLE": müşterinin menu-liste-premium belgesi VARSA yeniden kullanılır
@@ -156,6 +158,9 @@ function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => vo
           {data.mergedItems > 0 ? ` · ${tf("intake.result_merged", { m: data.mergedItems })}` : ""}
           {data.surfaces > 0 ? ` · ${data.surfaces} ${t("intake.surfaces_saved")}` : ""}
         </p>
+        {/* M8: ŞERH 1 ölçümü BİLGİ satırı (muted) — birleşme zaten result_merged'te
+            görünür, katalog-doluluğu abartılı uyarı DEĞİL kısa nottur. false → DOM yok. */}
+        {data.catalogHad && <p className="intake-hint">{t("intake.result_catalog_had")}</p>}
 
         {data.pending.length > 0 && (
           <div className="intake-warn pending" style={{ textAlign: "left" }}>
@@ -176,6 +181,32 @@ function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: () => vo
               {data.gaps.map((g, i) => (
                 <li key={i}>
                   {g.item}: {g.label} ({g.usedLang})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* M8 sessizlik-tüketimi (ŞERH 4): usage bump'ta atlanan bilinmeyen chip_id'ler.
+            Biçim pending bloğuyla AYNI (intake-warn + ul). Boşken DOM üretilmez. */}
+        {data.skippedBumps.length > 0 && (
+          <div className="intake-warn pending" style={{ textAlign: "left" }}>
+            {t("intake.result_skipped_bumps")}:
+            <ul>
+              {data.skippedBumps.map((id) => (
+                <li key={id}>{id}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* M8: birleşmede hedefe yazılmayan kategori notları — kategori adı + notun
+            kendisi (bilgi kaybetme). gaps sınıfı: özetteki merge bloğuyla aynı ton. */}
+        {data.noteDrops.length > 0 && (
+          <div className="intake-warn gaps" style={{ textAlign: "left" }}>
+            {t("intake.result_note_dropped")}:
+            <ul>
+              {data.noteDrops.map((d, i) => (
+                <li key={i}>
+                  {d.label} — {d.note}
                 </li>
               ))}
             </ul>
