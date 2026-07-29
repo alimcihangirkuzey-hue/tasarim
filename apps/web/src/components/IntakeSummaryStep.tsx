@@ -1,4 +1,5 @@
-/* Sipariş Modu Adım 6 (F7-C): özet — pending (fiyat-bekliyor) + translationGaps
+/* Sipariş Modu Adım 5 (F7-C; CILA3 "Sorular" adımını kaldırınca 6→5 —
+   journal 2026-07-28-taslak-yarasi-f7-defter): özet — pending (fiyat-bekliyor) + translationGaps
    GÖRÜNÜR (M8, sessiz hiçbir şey yok) + katalog-dolu uyarısı (ŞERH 1) → atomik
    commit (api.intakeCommit).
 
