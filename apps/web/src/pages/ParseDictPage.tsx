@@ -13,7 +13,7 @@ const TYPES: ProductType[] = [
   "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
 ];
 
-export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" | "fonts" }) {
+export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" | "fonts" | "ingredients" }) {
   return (
     <div className="tabs" style={{ marginBottom: 14 }}>
       <Link to="/settings/themes">
@@ -21,6 +21,10 @@ export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory
       </Link>
       <Link to="/settings/fonts">
         <button className={active === "fonts" ? "active" : ""}>{t("fonts.title")}</button>
+      </Link>
+      {/* Malzemeler: çip çeviri tamamlama (journal 2026-07-28-m8-sessizlik-cip-ceviri) */}
+      <Link to="/settings/ingredients">
+        <button className={active === "ingredients" ? "active" : ""}>{t("malzeme.title")}</button>
       </Link>
       <Link to="/settings/parse">
         <button className={active === "parse" ? "active" : ""}>{t("parsedict.title")}</button>

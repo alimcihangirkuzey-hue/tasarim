@@ -13,6 +13,7 @@ import { PrintPage } from "./pages/PrintPage";
 import { ThemesPage } from "./pages/ThemesPage";
 import { FontsPage } from "./pages/FontsPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
+import { IngredientsPage } from "./pages/IngredientsPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { FactoryGuidePage } from "./pages/FactoryGuidePage";
 import { SiparisPage } from "./pages/SiparisPage";
@@ -116,6 +117,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/settings/themes" element={<ThemesPage />} />
                     <Route path="/settings/fonts" element={<FontsPage />} />
                     <Route path="/settings/parse" element={<ParseDictPage />} />
+                    <Route path="/settings/ingredients" element={<IngredientsPage />} />
                     <Route path="/settings/factory" element={<FactoryPage />} />
                     <Route path="/settings/factory-guide" element={<FactoryGuidePage />} />
                   </Routes>

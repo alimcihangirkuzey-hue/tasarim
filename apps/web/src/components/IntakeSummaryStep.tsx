@@ -37,6 +37,16 @@ export interface IntakeResultData {
   /* T1b/FIX-3: mevcut kategorilere birleşen toplam ürün sayısı (sunucu
      merged_into_existing'ten; 0 = hepsi yeni kategori) */
   mergedItems: number;
+  /* M8 (journal 2026-07-28-m8-sessizlik-cip-ceviri): sunucunun üç "sessiz değil"
+     alanı İLK KEZ tüketiliyor — buraya kadar taşınmazsa operatör hiç görmüyordu. */
+  /** ŞERH 4: usage bump'ta atlanan bilinmeyen chip_id'ler (sunucu skipped_bumps) */
+  skippedBumps: string[];
+  /** Birleşmede hedefe YAZILMAYAN kategori notları — kategori adı (label) +
+      düşen not metni birlikte taşınır (merged_into_existing[].note_dropped;
+      yalnız sayı taşısak notun KENDİSİ kaybolurdu — bilgi kaybetme). */
+  noteDrops: Array<{ label: string; note: string }>;
+  /** ŞERH 1 ölçümü: commit ANINDA katalog zaten dolu muydu (sunucu catalog_had_categories) */
+  catalogHad: boolean;
 }
 
 /* F8-A: yüzey TASLAKLARI (w/h input string'i) → commit gövdesi için temiz
@@ -173,6 +183,14 @@ export function IntakeSummaryStep({ onCommitted }: { onCommitted: (r: IntakeResu
         gaps: res.translationGaps,
         surfaces: res.surfaces_saved,
         mergedItems: res.merged_into_existing.reduce((n, m) => n + m.items, 0),
+        /* M8: sunucunun "sessiz değil" alanları sonuç ekranına (SiparisPage/
+           IntakeResult) taşınır — ilk tüketici. note_dropped opsiyonel; yalnız
+           dolu olanlar, kategori adıyla birlikte (bilgi kaybetme). */
+        skippedBumps: res.skipped_bumps,
+        noteDrops: res.merged_into_existing.flatMap((m) =>
+          m.note_dropped ? [{ label: m.label, note: m.note_dropped }] : []
+        ),
+        catalogHad: res.catalog_had_categories,
       });
       void qc.invalidateQueries({ queryKey: ["clients"] });
       void qc.invalidateQueries({ queryKey: ["ingredients"] });

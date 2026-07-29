@@ -85,6 +85,9 @@
     "merge_title": "Mevcut kategorilere eklenecekler (mükerrer açılmaz)",
     "merge_into": "{n} ürün mevcut \"{x}\" kategorisine eklenecek",
     "result_merged": "{m} ürün mevcut kategorilere eklendi",
+    "result_skipped_bumps": "Sayacı atlanan malzemeler (kütüphanede bulunamadı)",
+    "result_note_dropped": "Birleşmede düşen kategori notları (mevcut satır değiştirilmedi)",
+    "result_catalog_had": "Katalog doluydu — yalnız yeni içerik eklendi (mevcutlar değişmedi).",
     "commit": "Görüşmeyi tamamla → kataloğa yaz",
     "committing": "Yazılıyor…",
     "committed": "Tamam — katalog güncellendi",
@@ -494,6 +497,19 @@
     "word_placeholder": "kelime (ör. cephe)",
     "add": "Ekle",
     "empty": "Henüz özel kayıt yok — çekirdek sözlük çalışmaya devam eder."
+  },
+  "malzeme": {
+    "title": "Malzemeler",
+    "hint": "Öğrenilen malzeme çipleri tek dilli doğar (yalnız TR) — burada Fransızca/Almanca karşılıkları tamamlanır; tamamlanana dek menülerde TR adı basılır ve özet 'çeviri boşluğu' uyarısı verir.",
+    "pending_count": "malzeme çeviri bekliyor",
+    "done_count": "tamam",
+    "all_done": "Çeviri bekleyen malzeme yok ✓",
+    "source_learned": "öğrenilen",
+    "source_seed": "tohum",
+    "source_hint": "Kaynak: tohum = kod kütüphanesi · öğrenilen = görüşmede yazıldı",
+    "fr_ph": "Français",
+    "de_ph": "Deutsch",
+    "save": "Kaydet"
   },
   "preset": {
     "opening": "Açılış Takımı oluştur",
