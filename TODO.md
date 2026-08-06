@@ -18,6 +18,13 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### K-3 sürükle-bırak — açılan borç (2026-08-06, canvas görsel aracı paketi)
+
+- [ ] **Canvas BASKIYA girmiyor (ölçüldü, açık — K-3'ün asıl talebi).** `canvas_json` DB'ye yazılıyor (bu turda gözle görüldü: `kind:"image", x:530, y:390, asset:ast_…`) ama render hattı onu **hiç okumuyor** — `templates/engine` ve `Template.tsx`'lerde `canvas` geçen sıfır satır. Operatör sürükleyip bırakıyor, kaydediyor, **PDF'e çıkmıyor**. Bu köprü **ADR-005'in "print/preview hattı dokunulmaz" hükmüne değer**; ayrı ve dikkatli bir paket olmalı.
+- [ ] **En-boy oranı kilidi yok.** Görsel doğal oranında doğuyor (640×360 → 180×101, canlıda doğrulandı) ama Transformer serbest esnetiyor; operatör fotoğrafı ezebilir ve bunu söyleyen bir şey yok. Fotoğraf için serbest esnetme neredeyse her zaman yanlıştır.
+- [ ] **Belgeden atölyeye giriş yok.** `/atolye?doc=` çalışıyor (bu turda kullanıldı) ama hiçbir ekranda bağlantı yok; operatör URL'i elle yazmadan ulaşamıyor.
+- [ ] **Görsel kırpma/maskeleme yok.** Gösterilen örneklerdeki hücre düzeni (kare fotoğraf ızgarası) kırpma ister; bugün görsel kutusuna sığdırılıyor.
+
 ### K-1/A tek tık akışı — açılan borç (2026-08-06, şablon seçim sorusu paketi)
 
 - [ ] **Şablon seçici hâlâ `window.confirm` (ölçüldü, açık).** `2026-08-06-sablon-secim-sorusu` paketi sorunun **metnini** ilandan türetti (ad manifest'ten, sıra ilandan, tür adı i18n'den) ve ikili diyalogun ön-koşulunu nöbetçiyle görünür kıldı — ama diyalogun **kendisi** hâlâ iki seçenekli bir işletim sistemi kutusu: önizleme yok ve **"İptal" turu iptal etmiyor, ikinci şablonu seçiyor**. Operatör bu noktada vazgeçemiyor. Gerçek bir seçici (küçük modal + önizleme + gerçek iptal) arayüz tasarımı işi; ayrı dilim. Üçüncü bir şablon eklendiği gün nöbetçi zaten durduracak.

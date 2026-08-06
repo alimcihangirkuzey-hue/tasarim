@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Ellipse, Group, Layer, Rect, Stage, Text, Transformer } from "react-konva";
+import { Ellipse, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from "react-konva";
 import type Konva from "konva";
 import {
   CANVAS_MIN_SIZE,
@@ -26,6 +26,7 @@ import {
   clampToBounds,
   newId,
   zoomAt,
+  type AssetDTO,
   type CanvasShape,
   type CanvasTool,
 } from "@tezgah/shared";
@@ -38,6 +39,7 @@ const TOOL_TR: Record<CanvasTool, string> = {
   rect: "Kare",
   ellipse: "Elips",
   text: "Metin",
+  image: "Görsel",
 };
 
 const btnStyle = (active: boolean, danger = false): React.CSSProperties => ({
@@ -48,6 +50,53 @@ const btnStyle = (active: boolean, danger = false): React.CSSProperties => ({
   borderRadius: 4,
   cursor: "pointer",
 });
+
+/* GÖRSEL ŞEKLİ — kaynak yüklenene dek YER TUTUCU çizer.
+   Yer tutucu SESSİZ DEĞİLDİR: operatör "yükleniyor" ile "bozuk"u ayırt
+   edebilmeli; yüklenemeyen kaynak KIRMIZI çerçeveyle durur, gri değil. */
+function GorselSekli({
+  s,
+  url,
+  props,
+}: {
+  s: CanvasShape;
+  url: string | null;
+  props: Record<string, unknown>;
+}) {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [hata, setHata] = useState(false);
+
+  useEffect(() => {
+    setImg(null);
+    setHata(false);
+    if (!url) return;
+    const el = new window.Image();
+    el.onload = () => setImg(el);
+    el.onerror = () => setHata(true);
+    el.src = url;
+    return () => {
+      el.onload = null;
+      el.onerror = null;
+    };
+  }, [url]);
+
+  if (!img) {
+    return (
+      <Rect
+        {...props}
+        x={s.x}
+        y={s.y}
+        width={s.w}
+        height={s.h}
+        fill={hata ? "#C8102E14" : "#1A1A1A0A"}
+        stroke={hata ? "#C8102E" : "#8a8378"}
+        strokeWidth={1.5}
+        dash={[6, 4]}
+      />
+    );
+  }
+  return <KonvaImage {...props} image={img} x={s.x} y={s.y} width={s.w} height={s.h} />;
+}
 
 export default function AtolyePage() {
   const [sp] = useSearchParams();
@@ -69,6 +118,10 @@ export default function AtolyePage() {
   const saveState = useCanvasStore((s) => s.saveState);
   const bindDocument = useCanvasStore((s) => s.bindDocument);
   const setSaveState = useCanvasStore((s) => s.setSaveState);
+
+  /* GÖRSEL ARACI (K-1/A, ürün sahibi yönlendirmesi 2026-08-06). */
+  const [varliklar, setVarliklar] = useState<AssetDTO[]>([]);
+  const [secilenVarlik, setSecilenVarlik] = useState<AssetDTO | null>(null);
 
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -100,6 +153,13 @@ export default function AtolyePage() {
         if (cancelled) return;
         boundFor.current = docParam;
         bindDocument(docParam, doc.canvas ?? null);
+        /* GÖRSEL ARACI'nın kaynağı: müşterinin varlıkları. Belge bağlı
+           değilken (oyun alanı) varlık listesi BOŞ kalır ve araç kaynak
+           sunamaz — uydurma bir havuz göstermeyiz. */
+        void api.client(doc.client_id).then(
+          (c) => { if (!cancelled) setVarliklar(c.assets.filter((a) => a.kind !== "other")); },
+          () => { /* varlık listesi alınamadı — araç kaynaksız kalır, sessiz değil: şerit "varlık yok" der */ },
+        );
       },
       () => {
         if (!cancelled) setSaveState("error");
@@ -188,7 +248,22 @@ export default function AtolyePage() {
       return;
     }
     const at = worldPos();
-    if (at) dispatch({ type: "add", id: newId("shp"), kind: tool, at });
+    if (!at) return;
+    if (tool === "image") {
+      /* Kaynak seçilmeden eklemeyiz — reducer da reddeder (çift kapı):
+         boş kutu çizmek operatöre "bozuk" dedirtirdi. */
+      if (!secilenVarlik) return;
+      dispatch({
+        type: "add",
+        id: newId("shp"),
+        kind: "image",
+        at,
+        asset: secilenVarlik.id,
+        dogalOlcu: { w: secilenVarlik.width_px, h: secilenVarlik.height_px },
+      });
+      return;
+    }
+    dispatch({ type: "add", id: newId("shp"), kind: tool, at });
   };
 
   const dragBound = (shape: CanvasShape) => (pos: Konva.Vector2d): Konva.Vector2d => {
@@ -221,8 +296,13 @@ export default function AtolyePage() {
     },
   });
 
+  const varlikUrl = (id: string | undefined): string | null =>
+    (id ? varliklar.find((a) => a.id === id)?.urls.master : null) ?? null;
+
   const renderShape = (s: CanvasShape, interactive: boolean) =>
-    s.kind === "rect" ? (
+    s.kind === "image" ? (
+      <GorselSekli key={s.id} s={s} url={varlikUrl(s.asset)} props={shapeProps(s, interactive)} />
+    ) : s.kind === "rect" ? (
       <Rect
         key={s.id}
         {...shapeProps(s, interactive)}
@@ -353,6 +433,68 @@ export default function AtolyePage() {
           }}
         >
           Aktif katman {layer?.locked ? "KİLİTLİ" : "GİZLİ"} — sahne düzenlemesi kapalı (panelden açın).
+        </div>
+      )}
+
+      {/* GÖRSEL ŞERİDİ — araç seçiliyken görünür. Kaynak seçmeden sahneye
+          tıklamak hiçbir şey yapmaz; şerit bunu SÖYLER (sessiz no-op,
+          operatöre "bozuk" dedirtir). Belge bağlı değilse havuz yoktur ve
+          bu da yazılı — uydurma bir liste gösterilmez. */}
+      {tool === "image" && (
+        <div
+          style={{
+            position: "absolute",
+            top: BAR_H,
+            left: 0,
+            right: 0,
+            zIndex: 41,
+            background: "#1F1F23",
+            color: "#EDEBE6",
+            padding: "8px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            overflowX: "auto",
+            fontFamily: "system-ui, sans-serif",
+            fontSize: 13,
+          }}
+        >
+          {!docId ? (
+            <span>Görsel havuzu belgeye bağlıdır — /atolye?doc=&lt;belge&gt; ile açın.</span>
+          ) : varliklar.length === 0 ? (
+            <span>Bu müşterinin yüklenmiş görseli yok (Müşteri → Görseller).</span>
+          ) : (
+            <>
+              <span style={{ flex: "none", opacity: 0.75 }}>
+                {secilenVarlik ? "Sahneye tıklayın" : "Önce bir görsel seçin:"}
+              </span>
+              {varliklar.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => setSecilenVarlik(a)}
+                  title={a.filename}
+                  style={{
+                    flex: "none",
+                    padding: 2,
+                    background: "transparent",
+                    border:
+                      secilenVarlik?.id === a.id ? "2px solid #F2B705" : "2px solid transparent",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    lineHeight: 0,
+                  }}
+                >
+                  <img
+                    src={a.urls.thumb}
+                    alt={a.filename}
+                    width={44}
+                    height={44}
+                    style={{ objectFit: "cover", borderRadius: 4, display: "block" }}
+                  />
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
 

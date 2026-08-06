@@ -252,3 +252,42 @@ Onarım izni verilirse tek paketlik iştir (varsayılanı boşaltmak mı, dile
 duyarlı hâle getirmek mi — o da içerik kararıdır).
 
 ---
+
+## K-3 — Flyer'lar sürükle-bırak ve tıklama ile yapılmalı (2026-08-06)
+
+**Karar sınıfı:** ürünün çalışma biçimi / tasarım yüzeyi kararı.
+
+**Kullanıcının ifadesi (birebir):**
+> "butarz flayerler sürükle bırak ve tıklama ile yapılmalı"
+
+**Bağlam (kullanıcının gösterdiği örnekler):** iki yüzlü, fotoğraf ağırlıklı
+takeaway menüleri — ürün fotoğrafı hücreleri ızgarası, fiyatlar, dikey kenar
+yazısı, QR, iletişim bloğu. Yani "flyer" burada **serbest yerleşimli, görsel
+ağırlıklı** bir iş anlamına geliyor.
+
+### Bu ne DEĞİŞTİRİR (uygulayıcı yorumu — karardan ayrı)
+
+Bugüne kadar iki ayrı yüzey vardı ve **birbirine bağlı değildi:**
+
+| Yüzey | Ne yapar | Eksiği |
+|---|---|---|
+| **Şablon motoru** (`/editor`) | Düzeni ŞABLON kararlaştırır; siz içeriği verirsiniz. Baskıya çıkar (PDF/SVG, kesim, CMYK) | Yerleşimi siz değiştiremezsiniz |
+| **Atölye** (`/atolye`) | Gerçek sürükle-bırak: taşı, boyutlandır, katman, geri al, ızgara | Baskı hattına **bağlı değil** |
+
+K-3, bu ikisinin birleşmesini istiyor. Ölçülen üç eksik:
+
+1. ~~**Görsel/fotoğraf aracı yok**~~ — **KAPANDI** (2026-08-06, journal
+   `2026-08-06-canvas-gorsel-araci`): araç kümesi `select · rect · ellipse ·
+   text` idi; örneklerin ana malzemesi olan fotoğraf koyulamıyordu.
+2. **Canvas baskıya girmiyor** — `canvas_json` kaydediliyor ama render hattı
+   onu hiç okumuyor; sürüklenen şey PDF'e çıkmıyor. **ADR-005 print/preview
+   hattına dokunur** — ayrı paket, dikkatli.
+3. **Belgeden atölyeye giriş yok** — `/atolye?doc=` çalışıyor ama hiçbir
+   ekranda bağlantı yok.
+
+### Bu kararın DOKUNMADIĞI şeyler
+
+K-1'in dört başlığı ve K-2'nin kapanış hükmü yürürlükte. K-3 yeni bir modül
+icat etmez: atölye zaten vardı, örneklerin gerektirdiği malzeme eksikti.
+
+---

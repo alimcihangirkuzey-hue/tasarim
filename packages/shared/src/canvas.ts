@@ -14,7 +14,13 @@
 
 import { z } from "zod";
 
-export const CANVAS_TOOLS = ["select", "rect", "ellipse", "text"] as const;
+/* GÖRSEL ARACI (2026-08-06, ürün sahibi yönlendirmesi: "bu tarz flyerler
+   sürükle bırak ve tıklama ile yapılmalı" + örnek olarak fotoğraf ağırlıklı
+   takeaway menüleri). Ölçülen boşluk: canvas'ın araç kümesi
+   `select · rect · ellipse · text` idi — yani sürüklenebilen bir yüzey vardı
+   ama FOTOĞRAF KOYULAMIYORDU; gösterilen örneklerin neredeyse tamamı
+   fotoğraf hücrelerinden oluşuyor. */
+export const CANVAS_TOOLS = ["select", "rect", "ellipse", "text", "image"] as const;
 export type CanvasTool = (typeof CANVAS_TOOLS)[number];
 export type CanvasShapeKind = Exclude<CanvasTool, "select">;
 
@@ -36,12 +42,17 @@ export interface CanvasBounds {
 
 export const CanvasShapeSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["rect", "ellipse", "text"]),
+  kind: z.enum(["rect", "ellipse", "text", "image"]),
   x: z.number(),
   y: z.number(),
   w: z.number().positive(),
   h: z.number().positive(),
   text: z.string().max(CANVAS_TEXT_MAX).optional(),
+  /* GÖRSELİN KAYNAĞI — varlık kimliği (assets tablosu). Kimliği saklarız,
+     URL'i DEĞİL: URL bir sunum ayrıntısıdır ve taşınan/yeniden adlandırılan
+     dosyada belge sessizce kırılırdı. Kimlik kalıcıdır ve `urls` ondan
+     türetilir. `image` dışındaki türlerde YOKTUR. */
+  asset: z.string().min(1).optional(),
 });
 export type CanvasShape = z.infer<typeof CanvasShapeSchema>;
 
@@ -154,12 +165,37 @@ const DEFAULT_SIZE: Record<CanvasShapeKind, { w: number; h: number }> = {
   rect: { w: 120, h: 80 },
   ellipse: { w: 120, h: 80 },
   text: { w: 160, h: 24 },
+  image: { w: 160, h: 120 },
 };
+
+/** Görselin doğal en-boy oranına göre başlangıç kutusu (uzun kenar sabit). */
+export const GORSEL_UZUN_KENAR = 180;
+
+export function gorselBaslangicKutusu(
+  dogal: { w: number; h: number } | undefined,
+  uzunKenar: number = GORSEL_UZUN_KENAR
+): { w: number; h: number } {
+  /* Ölçü bilinmiyorsa varsayılan kutu — uydurma oran üretmeyiz. */
+  if (!dogal || dogal.w <= 0 || dogal.h <= 0) return DEFAULT_SIZE.image;
+  const oran = dogal.w / dogal.h;
+  return oran >= 1
+    ? { w: uzunKenar, h: Math.max(CANVAS_MIN_SIZE, Math.round(uzunKenar / oran)) }
+    : { w: Math.max(CANVAS_MIN_SIZE, Math.round(uzunKenar * oran)), h: uzunKenar };
+}
 
 /* ---- Aksiyonlar (LY1: katman aksiyonları eklendi — TEK KAPI korunur) ---- */
 
 export type CanvasAction =
-  | { type: "add"; id: string; kind: CanvasTool; at: { x: number; y: number }; snap?: boolean }
+  | {
+      type: "add";
+      id: string;
+      kind: CanvasTool;
+      at: { x: number; y: number };
+      snap?: boolean;
+      /** `image` için ZORUNLU: kaynak varlık kimliği + (varsa) doğal ölçüsü. */
+      asset?: string;
+      dogalOlcu?: { w: number; h: number };
+    }
   | { type: "select"; id: string | null }
   | { type: "move"; id: string; x: number; y: number; snap?: boolean }
   | { type: "resize"; id: string; x: number; y: number; w: number; h: number; snap?: boolean }
@@ -209,7 +245,13 @@ export function canvasReduce(
       const hit = shapeAtPoint(layer.shapes, action.at);
       if (hit) return { ...state, selectedId: hit.id }; /* FIX-A: kaplı nokta = seçim */
       const kind = action.kind as CanvasShapeKind;
-      const size = DEFAULT_SIZE[kind];
+      /* KAYNAKSIZ GÖRSEL EKLENMEZ (no-op): kaynağı olmayan bir görsel şekli
+         sahnede BOŞ BİR KUTU olarak durur ve operatör onu "bozuk" sanır —
+         oysa hiçbir şey bozulmamıştır, yalnız hiç kaynak seçilmemiştir.
+         Sessizce boş kutu çizmektense hiç eklememek dürüsttür; araç çubuğu
+         zaten kaynak seçtirmeden bu aksiyonu göndermez. */
+      if (kind === "image" && !action.asset) return state;
+      const size = kind === "image" ? gorselBaslangicKutusu(action.dogalOlcu) : DEFAULT_SIZE[kind];
       const snap = action.snap !== false;
       const c = clampToBounds(
         {
@@ -220,7 +262,13 @@ export function canvasReduce(
         },
         bounds
       );
-      const shape: CanvasShape = { id: action.id, kind, ...c, ...(kind === "text" ? { text: "Metin" } : {}) };
+      const shape: CanvasShape = {
+        id: action.id,
+        kind,
+        ...c,
+        ...(kind === "text" ? { text: "Metin" } : {}),
+        ...(kind === "image" ? { asset: action.asset } : {}),
+      };
       return { ...withActiveShapes(state, (sh) => [...sh, shape]), selectedId: shape.id };
     }
     case "select": {

@@ -36,8 +36,15 @@ const add = (id: string, kind: string, at = { x: 100, y: 100 }) =>
 const sh = (s: CanvasState) => activeLayer(s)!.shapes;
 
 describe("izin-listeli araç seti (ADR-002 — serbest çizim yok)", () => {
-  it("araç kümesi sabit: select · rect · ellipse · text", () => {
-    expect([...CANVAS_TOOLS]).toEqual(["select", "rect", "ellipse", "text"]);
+  /* KÜME BİLİNÇLİ OLARAK BÜYÜDÜ (2026-08-06): `image` eklendi. Bu nöbetçinin
+     görevi kümeyi DONDURMAK değil, büyümesini KAZAYA bırakmamaktır — ADR-002'nin
+     hükmü "serbest kanvas YOK", "araç eklenemez" değil. Yeni araç aynı
+     korkuluklardan geçer (sahne kilidi · ızgara · asgari boyut · katman kilidi)
+     ve kaynağı olmayan görsel EKLENMEZ; yani izin-listesi hâlâ izin-listesidir.
+     Yetki: ürün sahibinin 2026-08-06 yönlendirmesi ("bu tarz flyerler sürükle
+     bırak ve tıklama ile yapılmalı" + fotoğraf ağırlıklı örnekler). */
+  it("araç kümesi sabit: select · rect · ellipse · text · image", () => {
+    expect([...CANVAS_TOOLS]).toEqual(["select", "rect", "ellipse", "text", "image"]);
   });
 
   it("add: 'select' ve bilinmeyen tür ŞEKİL EKLEYEMEZ (no-op)", () => {
