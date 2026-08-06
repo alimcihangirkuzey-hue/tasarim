@@ -18,6 +18,10 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### Açık risk R-FLAKY-TEST-01 (2026-08-06)
+
+- [ ] **Pano'nun test kapısı düşen testin ADINI yakalayamıyor.** `npm run pano` bir kez test kapısını kırmızı ölçtü (`journal 501/502`); aynı ağaçta 7 koşumda (journal ×4, tam takım ×3) **tekrarlanmadı** ve düşen testin adı çıkarılamadı. Sebep uydurulmadı. **Ön koşul işi:** `scripts/pano.mts:213 testKirilimi` bugün yalnız `Tests N passed (M)` sayısını topluyor; vitest'in json reporter çıktısını saklaması gerekiyor ki bir dahaki kırmızıda ad yakalansın. Küçük, ayrı iş — kararsızlığı kovalamanın ön koşulu.
+
 ### K-1/C güvenlik turu — açılan borç (2026-08-06, statik sunum güvenliği paketi)
 
 - [ ] **`sharp` 0.33.5 → 0.35.x (libvips CVE'leri, YÜKSEK).** Görüntü işleme yolunun tamamını taşıyor (varlık yükleme, türev üretimi, mockup); majör atlama kendi doğrulamasını ister. Ayrı paket.
