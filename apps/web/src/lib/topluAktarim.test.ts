@@ -13,7 +13,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OrderItemDTO } from "@tezgah/shared";
 import {
-  aktarimOzetMetni,
+  aktarimSonucVerisi,
   topluAktar,
   type AktarimAdimlari,
   type AktarimMetinleri,
@@ -155,27 +155,67 @@ describe("toplu aktarım turu", () => {
   });
 });
 
-describe("özet metni", () => {
+describe("sonuç verisi — DİZE DEĞİL, YAPI", () => {
+  /* ESKİ HÂLİ BİR DİZE ÜRETİYORDU (`aktarimOzetMetni`) ve satırları "\n" ile
+     birleştiriyordu. Sunum bir toast'tı ve `.toast` kuralında `white-space`
+     YOKTUR → tarayıcı o satır sonlarını BOŞLUĞA çevirir; yani gerekçeler alt
+     alta değil tek uzun satır hâlinde akıyordu. Artık yapı dönüyor ve
+     satırların ayrı görünmesi ayrı DOM elemanlarına bağlı. */
   const bas = (o: { aktarilan: number; bloklu: number; dusen: number }) =>
     `${o.aktarilan} üretildi · ${o.bloklu} engelli · ${o.dusen} düştü`;
   const ad = (it: OrderItemDTO) => `Kalem ${it.id}`;
 
-  it("HEPSİ BAŞARILIYSA yalnız sayı satırı — gürültü yok", async () => {
+  it("BAŞLIK sayıları taşır", async () => {
     const o = await topluAktar([kalem("a", "doc_a")], adimlar(), METIN);
-    expect(aktarimOzetMetni(o, bas, ad)).toBe("1 üretildi · 0 engelli · 0 düştü");
+    expect(aktarimSonucVerisi(o, bas, ad).baslik).toBe("1 üretildi · 0 engelli · 0 düştü");
   });
 
-  it("SORUNLU kalemler ADIYLA ve GEREKÇESİYLE listelenir", async () => {
-    /* "Oldu" bilgisi bir SAYIDIR; "olmadı" bilgisi bir ADRESTİR. */
+  it("HER KALEM kendi satırı — gerekçe DİZEYE GÖMÜLMEZ", async () => {
+    /* "Oldu" bilgisi bir SAYIDIR; "olmadı" bilgisi bir ADRESTİR. Adres artık
+       ayrıştırılabilir bir alanda durur, metin içinde aranmaz. */
     const a = adimlar({
       hazirla: vi.fn(async (id: string) =>
         id === "doc_b" ? { kayitli: true, blockerlar: ["Logo eksik"] } : { kayitli: true, blockerlar: [] },
       ),
     });
     const o = await topluAktar([kalem("a", "doc_a"), kalem("b", "doc_b")], a, METIN);
-    const metin = aktarimOzetMetni(o, bas, ad);
-    expect(metin).toContain("1 üretildi · 1 engelli · 0 düştü");
-    expect(metin).toContain("• Kalem b: Logo eksik");
-    expect(metin, "başarılı kalem gereksiz yere listelendi").not.toContain("Kalem a");
+    const veri = aktarimSonucVerisi(o, bas, ad);
+    expect(veri.satirlar).toEqual([
+      { ad: "Kalem a", durum: "tamam", gerekce: null },
+      { ad: "Kalem b", durum: "engelli", gerekce: "Logo eksik" },
+    ]);
+  });
+
+  it("DURUM ÇEVİRİSİ TAM — üç aktarım durumu üç panel durumuna düşer", async () => {
+    /* Tablo `Record<AktarimDurumu, ...>` olduğu için yeni bir durum doğduğunda
+       DERLENMEZ; bu test o eşlemenin bugünkü hâlini çivileyip yönünü de
+       ölçer (engelli ile düşen birbirine karışmasın — biri sistemin kapısı,
+       diğeri bir arıza). */
+    const a = adimlar({
+      hazirla: vi.fn(async (id: string) => {
+        if (id === "doc_b") return { kayitli: true, blockerlar: ["Logo eksik"] };
+        if (id === "doc_c") throw new Error("500");
+        return { kayitli: true, blockerlar: [] };
+      }),
+    });
+    const o = await topluAktar(
+      [kalem("a", "doc_a"), kalem("b", "doc_b"), kalem("c", "doc_c")],
+      a,
+      METIN,
+    );
+    expect(aktarimSonucVerisi(o, bas, ad).satirlar.map((s) => s.durum)).toEqual([
+      "tamam",
+      "engelli",
+      "dusen",
+    ]);
+  });
+
+  it("SIRA KORUNUR — panel turun gerçek sırasını gösterir", async () => {
+    const o = await topluAktar(
+      [kalem("z", "doc_z"), kalem("a", "doc_a")],
+      adimlar(),
+      METIN,
+    );
+    expect(aktarimSonucVerisi(o, bas, ad).satirlar.map((s) => s.ad)).toEqual(["Kalem z", "Kalem a"]);
   });
 });

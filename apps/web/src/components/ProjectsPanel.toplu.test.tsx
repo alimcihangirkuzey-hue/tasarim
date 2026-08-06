@@ -58,6 +58,9 @@ vi.mock("../api", () => ({
     addOrderItem: vi.fn(),
     deleteOrderItem: vi.fn(),
     presentProject: vi.fn(),
+    /* Toplu AKTARIM yolunun uçları (tur sonucu paneli testi) */
+    document: vi.fn(),
+    cmykStatus: vi.fn(),
   },
 }));
 
@@ -267,5 +270,54 @@ describe("toplu başlatma düğmesi", () => {
     expect(vi.mocked(api.updateOrderItem).mock.calls.map((c) => c[0])).toEqual(["iyi"]);
     /* Özet sessiz kalmaz: 1 açıldı · 1 düştü */
     await screen.findByText(/1 belge açıldı · 1 düştü/i);
+  });
+});
+
+/* ── TUR SONUCU PANELİ — sonuç TOAST'ta değil, KALICI panelde (K-1/B) ──── */
+
+describe("toplu aktarım sonucu", () => {
+  /* KAYITSIZ ŞABLON YOLU BİLEREK SEÇİLDİ: `topluAktar` o dalda hiç analiz
+     koşturmaz ve hiç dışa aktarmaz (kanal ilanı okunamayan belge üretime
+     verilemez) — yani bu test render'dan panele kadar GERÇEK zinciri koşar
+     ve yolda tek bir taklit daha gerektirmez. Ölçtüğü şey sunum katmanıdır:
+     gerekçe operatöre NEREDE ve NASIL görünüyor. */
+  it("SONUÇ KALICI PANELDE görünür — toast DEĞİL, ve gerekçe kendi satırında", async () => {
+    vi.mocked(api.document).mockResolvedValue({
+      id: "doc_a",
+      template_id: "kayitsiz-sablon-xyz",
+      params: {},
+    } as never);
+
+    kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
+    fireEvent.click(await screen.findByText(/1 belgeyi üret/i));
+
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
+    /* Gerekçe YUTULMUYOR ve KENDİ satırında: eski yolda bu metin "\n" ile
+       birleştirilmiş tek bir dizeye gömülüyor, toast'ta satır sonu boşluğa
+       dönüyordu. */
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(1);
+    expect(panel.textContent).toContain("Şablon kayıtlı değil");
+    expect(panel.textContent).not.toContain("\n");
+    /* Sonuç artık kaybolan bir kutuda DEĞİL. */
+    expect(document.querySelector(".toast")).toBeNull();
+  });
+
+  it("✕ ile KAPANIR — kapanış operatörün elinde", async () => {
+    vi.mocked(api.document).mockResolvedValue({
+      id: "doc_a",
+      template_id: "kayitsiz-sablon-xyz",
+      params: {},
+    } as never);
+
+    kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
+    fireEvent.click(await screen.findByText(/1 belgeyi üret/i));
+    await waitFor(() => expect(document.querySelector(".tur-sonucu")).toBeTruthy());
+
+    fireEvent.click(screen.getByTitle("Sonucu kapat"));
+    await waitFor(() => expect(document.querySelector(".tur-sonucu")).toBeNull());
   });
 });

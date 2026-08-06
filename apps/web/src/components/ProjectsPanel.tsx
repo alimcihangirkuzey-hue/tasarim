@@ -30,13 +30,14 @@ import {
 } from "@tezgah/templates/identity";
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
-import { aktarimOzetMetni, topluAktar } from "../lib/topluAktarim";
+import { aktarimSonucVerisi, topluAktar } from "../lib/topluAktarim";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { belgeAc, topluBaslat, topluOzetMetni, topluPlan } from "../lib/topluTasarim";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
 import { useSablonSecici } from "./SablonSecici";
+import { TurSonucu, type TurSonucuVerisi } from "./TurSonucu";
 import { t, tf } from "../i18n";
 
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
@@ -404,6 +405,9 @@ function ProjectBlock({ project, client, showToast }: {
   const qc = useQueryClient();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
   const secici = useSablonSecici();
+  /* TUR SONUCU — proje bloğunda KALICI durur; yeni bir tur öncekini değiştirir
+     (iki turun sonucu üst üste birikirse hangisinin güncel olduğu belirsizleşir). */
+  const [sonuc, setSonuc] = useState<TurSonucuVerisi | null>(null);
   const [newType, setNewType] = useState<ProductType>("menu");
   /* KURULUMUN İŞ KOLLARI (K-1/C): tür seçicisi de 7.1/481'in "kullanıcı yalnızca
      yaptığı işi görür" hükmüne bağlanır — bugüne dek yalnız ŞABLON seçicisi
@@ -548,11 +552,14 @@ function ProjectBlock({ project, client, showToast }: {
       /* Üretilen dosyalar listesi de tazelenmeli — yoksa operatör az önce
          ürettiği dosyaları göremez ve üretim olmamış gibi görünür. */
       void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
-      showToast(
-        aktarimOzetMetni(
+      /* SONUÇ TOAST'A DEĞİL PANELE (K-1/B, tur sonucu paketi): toast 4,5
+         saniyede siliniyordu, satır sonlarını göstermiyordu ve uzun listede
+         duvara dönüyordu. Panel operatör kapatana kadar durur. */
+      setSonuc(
+        aktarimSonucVerisi(
           r,
           (o) => tf("orders.bulk_export_done", o),
-          (it) => itemSummary(it),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
         ),
       );
     },
@@ -734,6 +741,8 @@ function ProjectBlock({ project, client, showToast }: {
       {/* Üretilmiş dosyalar — çıktı YOKSA bölüm hiç çizilmez (boş başlık,
           üretim olmuş da dosya kaybolmuş izlenimi verirdi). Sunum kayıtları
           da bu listede görünür: ikisi de "bu projeden çıkan dosya"dır. */}
+      {sonuc !== null && <TurSonucu veri={sonuc} onKapat={() => setSonuc(null)} />}
+
       {(ciktilar.data?.length ?? 0) > 0 && (
         <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 6 }}>
           <span className="muted" style={{ fontSize: 12 }}>

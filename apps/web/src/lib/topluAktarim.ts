@@ -28,6 +28,7 @@
    bekçinin ATLANDIĞI anlamına gelmez — testler tam da atlanmadığını ölçer. */
 
 import type { OrderItemDTO } from "@tezgah/shared";
+import type { TurSatirDurumu, TurSonucuVerisi } from "../components/TurSonucu";
 
 /** Bir kalemin toplu aktarım sonucu. */
 export type AktarimDurumu = "aktarildi" | "bloklu" | "dusen";
@@ -116,19 +117,38 @@ export async function topluAktar(
 }
 
 /**
- * Özetten operatöre gidecek metin.
+ * Özetten SONUÇ PANELİNİN verisine.
+ *
+ * BİR ZAMANLAR DİZE ÜRETİYORDU (`aktarimOzetMetni`) ve satırları `"\n"` ile
+ * birleştiriyordu; sunum tarafı bir toast'tı ve `.toast` kuralında
+ * `white-space` OLMADIĞI için o satır sonları tarayıcıda BOŞLUĞA çevriliyordu
+ * — yani gerekçeler alt alta değil, tek uzun satır hâlinde akıyordu. Artık
+ * YAPISAL veri döner; satırların ayrı görünmesi bir CSS kuralına değil,
+ * ayrı DOM elemanlarına bağlıdır.
  *
  * BAŞARILI KALEMLER SAYIYLA, BAŞARISIZLAR ADIYLA: "hepsi oldu" bilgisi bir
- * sayıdır; "olmadı" bilgisi bir ADRESTİR. Sorunlu kalemler tek tek sayılmazsa
- * operatör N belgeyi açıp aramak zorunda kalır.
+ * sayıdır; "olmadı" bilgisi bir ADRESTİR. Bu doktrin panelde de geçerli —
+ * başlık sayıları taşır, liste yalnız sorunluları gösterir.
  */
-export function aktarimOzetMetni(
+export function aktarimSonucVerisi(
   ozet: TopluAktarimOzeti,
   bas: (o: { aktarilan: number; bloklu: number; dusen: number }) => string,
   kalemAdi: (item: OrderItemDTO) => string,
-): string {
-  const satir = bas({ aktarilan: ozet.aktarilan, bloklu: ozet.bloklu, dusen: ozet.dusen });
-  const sorunlu = ozet.satirlar.filter((s) => s.durum !== "aktarildi");
-  if (sorunlu.length === 0) return satir;
-  return [satir, ...sorunlu.map((s) => `• ${kalemAdi(s.item)}: ${s.gerekce ?? ""}`)].join("\n");
+): TurSonucuVerisi {
+  return {
+    baslik: bas({ aktarilan: ozet.aktarilan, bloklu: ozet.bloklu, dusen: ozet.dusen }),
+    satirlar: ozet.satirlar.map((s) => ({
+      ad: kalemAdi(s.item),
+      durum: PANEL_DURUMU[s.durum],
+      gerekce: s.gerekce,
+    })),
+  };
 }
+
+/* Aktarım durumu → panel durumu. TAM tablo (Record): yeni bir aktarım durumu
+   doğduğu gün burası DERLENMEZ ve o durum sessizce "düşen" görünmez. */
+const PANEL_DURUMU: Record<AktarimDurumu, TurSatirDurumu> = {
+  aktarildi: "tamam",
+  bloklu: "engelli",
+  dusen: "dusen",
+};

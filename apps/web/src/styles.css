@@ -121,6 +121,12 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 
 /* ---------- Faz 1: katalog editörü ---------- */
 .cat-block { border: 1px solid var(--c-line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+/* Tur sonucu paneli (K-1/B): toast'ın YAPAMADIĞI üç şey burada kural olarak
+   yazılı — kaydırılır (uzun liste duvara dönmesin), her satır kendi elemanı
+   (satır sonu karakterine bağlı değil), ve kalıcıdır (zamanlayıcı yok). */
+.tur-sonucu { border: 1px solid var(--c-line); border-left: 4px solid var(--c-primary); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--c-panel, #F4F1EA); }
+.tur-sonucu-liste { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+.tur-sonucu-satir { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
 .cat-head { display: flex; gap: 8px; align-items: center; }
 .cat-head input { flex: 1; }
 .item-row { display: grid; grid-template-columns: 44px 1.2fr 1.6fr auto auto auto; gap: 8px; align-items: start; padding: 6px 0; border-top: 1px dashed var(--c-line); }
