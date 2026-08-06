@@ -5,6 +5,8 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { OPENING_KIT, newId, nowISO } from "@tezgah/shared";
+import { acilisTakimiKalemleri } from "../preset-kapsami.js";
+import { isKollariIlani } from "../is-kollari.js";
 import { db } from "../db.js";
 import { ASSETS_DIR } from "../paths.js";
 
@@ -110,6 +112,19 @@ export function presetRoutes2(app: FastifyInstance): void {
       .get(req.params.id) as { id: string } | undefined;
     if (!client) return reply.code(404).send({ error: "not_found" });
 
+    /* KURULUMUN İŞ KOLLARI (K-1/C): takım, kurulumun yapmadığı işi ÜRETMEZ.
+       Yapılandırma yoksa süzme yok — bugünkü dört kalem aynen (preset-kapsami). */
+    const kalemler = acilisTakimiKalemleri();
+    if (kalemler.length === 0) {
+      /* SESSİZ BOŞ PROJE YASAK: kalem üretilemiyorsa proje de AÇILMAZ. Boş bir
+         proje açmak, operatöre "oldu" der ve geriye elle silinecek bir kabuk
+         bırakırdı. Gerekçe gövdede döner ki arayüz nedenini SÖYLEYEBİLSİN. */
+      return reply.code(409).send({
+        error: "is_kolu_disi",
+        is_kollari: isKollariIlani().aktif,
+      });
+    }
+
     const now = nowISO();
     const projectId = newId("prj");
     const tx = db.transaction(() => {
@@ -117,7 +132,7 @@ export function presetRoutes2(app: FastifyInstance): void {
         `INSERT INTO projects (id, client_id, name, status, created_at)
          VALUES (?, ?, ?, 'open', ?)`
       ).run(projectId, client.id, OPENING_KIT.name_tr, now);
-      for (const it of OPENING_KIT.items) {
+      for (const it of kalemler) {
         db.prepare(
           `INSERT INTO order_items (id, project_id, product_type, qty, width_cm, height_cm,
             details_json, notes, status, document_id, created_at, updated_at)
@@ -128,6 +143,6 @@ export function presetRoutes2(app: FastifyInstance): void {
     tx();
 
     reply.code(201);
-    return { project_id: projectId, items: OPENING_KIT.items.length };
+    return { project_id: projectId, items: kalemler.length };
   });
 }

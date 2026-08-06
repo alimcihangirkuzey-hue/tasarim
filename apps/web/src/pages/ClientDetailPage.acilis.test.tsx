@@ -23,7 +23,11 @@ import {
 import { api } from "../api";
 import { ClientDetailPage } from "./ClientDetailPage";
 
-vi.mock("../api", () => ({
+/* KISMİ MOCK: yalnız `api` nesnesi sahtelenir. `kullanimlariOku` /
+   `isKollariGerekcesiOku` GERÇEK kalır — onlar ağ değil GÖVDE OKUYUCUSUDUR;
+   sahtelemek, testin tam da ölçmek istediği gerekçe çıkarımını sahte yapardı. */
+vi.mock("../api", async (asil) => ({
+  ...(await asil<typeof import("../api")>()),
   api: {
     client: vi.fn(),
     clients: vi.fn(),
@@ -172,5 +176,28 @@ describe("Açılış Takımı — preset + belgeler tek işlemde", () => {
 
     await screen.findByText(/500 sunucu/i);
     expect(api.createDocument).not.toHaveBeenCalled();
+  });
+
+  it("İŞ KOLU DIŞI 409'unda GEREKÇE söylenir — düz hata kodu DEĞİL", async () => {
+    /* Sunucu, kurulumun iş kollarına düşen kalem kalmadığında proje AÇMAZ
+       (preset-kapsami). Gerekçeyi okumazsak operatör "409" görür ve düğmenin
+       bozuk olduğunu sanar; oysa sistem doğru davranıyor, yalnız sebebi
+       söylenmemiş oluyordu. İş kolu adı da ÇEVRİLİR, ham anahtar basılmaz. */
+    vi.mocked(api.createOpeningKit).mockRejectedValue(
+      Object.assign(new Error("409"), {
+        durum: 409,
+        govde: { error: "is_kolu_disi", is_kollari: ["tabelaci"] },
+      }),
+    );
+
+    kur();
+    fireEvent.click(await screen.findByText(/Açılış Takımı/i));
+
+    const uyari = await screen.findByText(/açılış takımı kalemi yok/i);
+    expect(uyari.textContent).toContain("tabelacı"); // çevrilmiş ad
+    expect(uyari.textContent).not.toContain("tabelaci"); // ham anahtar sızmadı
+    expect(uyari.textContent).not.toMatch(/\b409\b/);
+    expect(api.createDocument).not.toHaveBeenCalled();
+    expect(api.clientProjects).not.toHaveBeenCalled(); // proje yok, okunmaya çalışılmaz
   });
 });

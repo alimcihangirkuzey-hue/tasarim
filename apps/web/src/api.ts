@@ -30,6 +30,15 @@ export function kullanimlariOku(e: unknown): Array<{ where: string; label: strin
   return g.usages as Array<{ where: string; label: string }>;
 }
 
+/** Hata gövdesinden "iş kolu dışı" gerekçesini okur — açılış takımı 409'unun
+    `is_kollari` alanı (kurulumda etkin iş kolları). Gövde beklenen şekilde
+    değilse null döner (fırlatmaz): çağıran o zaman düz mesajı gösterir. */
+export function isKollariGerekcesiOku(e: unknown): string[] | null {
+  const g = (e as ApiHata)?.govde as { error?: string; is_kollari?: unknown } | undefined;
+  if (!g || g.error !== "is_kolu_disi" || !Array.isArray(g.is_kollari)) return null;
+  return g.is_kollari as string[];
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   /* TUR-FIX-1: Content-Type YALNIZ gövde varsa (ve FormData değilse). Eski hali
      gövdesiz isteklere de (DELETE/GET) application/json koyuyordu → Fastify boş

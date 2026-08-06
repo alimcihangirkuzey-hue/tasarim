@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Currency } from "@tezgah/shared";
-import { api, kullanimlariOku } from "../api";
+import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
 import { topluBaslat } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
@@ -98,7 +98,20 @@ export function ClientDetailPage() {
           : tf("preset.opening_done", { acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan }),
       );
     },
-    onError: (e) => setKitSonuc(`${t("orders.start_design_error")}: ${(e as Error).message}`),
+    /* İŞ KOLU DIŞI 409'U GEREKÇESİYLE SÖYLENİR: sunucu, kurulumun iş kollarına
+       düşen kalem kalmadığında proje AÇMAZ (preset-kapsami). Düz mesaj
+       gösterseydik operatör "409" görür ve düğmenin bozuk olduğunu sanardı —
+       oysa sistem doğru davranıyor, yalnız sebebi söylenmemiş oluyordu. */
+    onError: (e) => {
+      const kollar = isKollariGerekcesiOku(e);
+      setKitSonuc(
+        kollar
+          ? tf("preset.opening_out_of_scope", {
+              kollar: kollar.map((k) => t(`sektor_${k}`)).join(", "),
+            })
+          : `${t("orders.start_design_error")}: ${(e as Error).message}`,
+      );
+    },
   });
 
   /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster.

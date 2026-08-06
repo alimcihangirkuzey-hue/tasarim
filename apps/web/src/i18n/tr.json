@@ -546,7 +546,8 @@
   "preset": {
     "opening": "Açılış Takımı oluştur",
     "opening_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
-    "opening_items_only": "Kalemler oluşturuldu — belgeler açılamadı, Projeler sekmesinden başlatın"
+    "opening_items_only": "Kalemler oluşturuldu — belgeler açılamadı, Projeler sekmesinden başlatın",
+    "opening_out_of_scope": "Bu kurulumun iş kollarında ({kollar}) açılış takımı kalemi yok — proje açılmadı"
   },
   "factory": {
     "title": "Şablon Fabrikası",
