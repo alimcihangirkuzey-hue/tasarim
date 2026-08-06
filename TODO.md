@@ -18,6 +18,11 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### K-1/B çoklu proje hızı — açılan borç (2026-08-06, toplu aktarım gerekçesi paketi)
+
+- [ ] **Toplu aktarım sonucu TOAST'ta gösteriliyor (ölçüldü, açık).** `2026-08-06-toplu-aktarim-gerekcesi` paketi düşen/engelli kalemin **gerekçesini üretiyor** (önceden yutuluyordu) ama sunum tek bir toast. 3 sorunlu kalemde okunur; 15'te metin duvarına döner ve muhtemelen kırpılır — `2026-08-06-hata-mesaji-siniri` paketinin ölçtüğü sınıfın aynısı. Kalıcı bir sonuç paneli (üretilen dosyalar listesinin yanında, satır satır durum) arayüz tasarımı işidir; ayrı dilim.
+- [ ] **Toplu BASKI kuyruğu — K-1/B'nin üçüncü üçte biri, hâlâ yok.** Toplu tasarıma başlatma ✓ · toplu dışa aktarım ✓ · toplu baskı ✗. Baskı kuyruğunun durum modeli (kim "basıldı" der, hangi geçişler geçerli) **ürün kararı** içerir; mekanizma yazılmadan önce o karar gerekir.
+
 ### K-1/D sektörsüz dil — açılan borç (2026-08-06, doğuş kataloğu paketi)
 
 - [ ] **ALAN ADLARI hâlâ restoran/Fransızca ilan ediyor (ölçüldü, açık).** `2026-08-06-dogus-katalogu` paketi dipnotun **değerini** kurulum ilanına bağladı; **adını** bağlamadı. Bugün bir tabelacı kurulumunda da şema `catalog.footnote_fr` ve `client.menu_language` diyor; ikincisi bir **müşteri** alanı olduğu hâlde arayüzde "Menü dili" diye etiketleniyor (`i18n/tr.json:35`) ve `PageChrome` dışında dijital menü ile intake'i de sürüyor. Ad değişikliği **migration ister (v13)** ve doğuş paketinin risk sınıfının dışındadır — ayrı paket, ayrı ürün-sahibi teyidi (geri döndürülemez veri emsali). Bu satır kapanana kadar D başlığının şema yarısı açıktır.

@@ -30,6 +30,8 @@ import {
 } from "@tezgah/templates/identity";
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
+import { aktarimOzetMetni, topluAktar } from "../lib/topluAktarim";
+import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
@@ -489,47 +491,59 @@ function ProjectBlock({ project, client, showToast }: {
 
      Sıra/hata semantiği toplu tasarıma başlatmayla aynı: sırayla koşar, düşen
      belge turu durdurmaz ama sayılır (sessiz kısmi başarı yok). */
-  const topluAktar = useMutation({
+  const topluAktarM = useMutation({
     mutationFn: async () => {
-      const belgeliler = project.items.filter((i) => i.document_id);
-      let aktarilan = 0;
-      let bloklu = 0;
-      let dusen = 0;
-      for (const it of belgeliler) {
-        try {
-          const doc = await api.document(it.document_id!);
-          const entry = TEMPLATES[doc.template_id];
-          /* Şablon kayıtlı değilse üretime verilmez: kanal ilanı okunamayan
-             belge için doğru uç bilinemez (kayıtsız profil sunucuda da
-             reddedilir — profile_not_registered). */
-          if (!entry) {
-            dusen += 1;
-            continue;
-          }
-          const analiz = analyzeDoc(client, doc);
-          if (blockersOf(analiz.warnings, entry.manifest.severity_overrides).length > 0) {
-            bloklu += 1;
-            continue;
-          }
-          await belgeDisaAktar(
-            doc.id,
-            entry.manifest.production_channels,
-            doc.params["mode"],
-            analiz.warnings,
-          );
-          aktarilan += 1;
-        } catch {
-          dusen += 1;
-        }
-      }
-      return { aktarilan, bloklu, dusen };
+      /* Gövde `lib/topluAktarim.ts`'e taşındı: kardeşi topluBaslat bir
+         kütüphaneyken bu ~40 satır bileşenin içindeydi ve TEK BİR TESTİ YOKTU.
+         Adımlar enjekte edilir; blocker kapısı burada, GERÇEK analizle koşar. */
+      /* `hazirla` bir sonraki `aktar` için gereken bağlamı bırakır: aynı
+         belgenin manifest'i ve ANALİZİ iki kez hesaplanmasın (ve ikinci
+         hesap birincisinden ayrışmasın). Tur SIRAYLA koştuğu için bu
+         devir güvenlidir — kütüphane paralel çalışmaz. */
+      let baglam: { entry: (typeof TEMPLATES)[string]; analiz: ReturnType<typeof analyzeDoc>; mode: unknown } | null =
+        null;
+      return topluAktar(
+        project.items,
+        {
+          hazirla: async (documentId) => {
+            const doc = await api.document(documentId);
+            const entry = TEMPLATES[doc.template_id];
+            /* Şablon kayıtlı değilse üretime verilmez: kanal ilanı okunamayan
+               belge için doğru uç bilinemez (kayıtsız profil sunucuda da
+               reddedilir — profile_not_registered). */
+            if (!entry) return { kayitli: false, blockerlar: [] };
+            const analiz = analyzeDoc(client, doc);
+            baglam = { entry, analiz, mode: doc.params["mode"] };
+            return {
+              kayitli: true,
+              /* Gerekçe EDİTÖRÜN metniyle aynı — ikinci bir etiketleme yok. */
+              blockerlar: blockersOf(analiz.warnings, entry.manifest.severity_overrides).map(uyariMetni),
+            };
+          },
+          aktar: (documentId) => {
+            const b = baglam!;
+            return belgeDisaAktar(documentId, b.entry.manifest.production_channels, b.mode, b.analiz.warnings);
+          },
+        },
+        {
+          kayitsizSablon: t("orders.bulk_export_unregistered"),
+          bloklu: (gerekceler) => gerekceler.join(" · "),
+          hata: (e) => (e as Error).message,
+        },
+      );
     },
     onSuccess: (r) => {
       invalidate();
       /* Üretilen dosyalar listesi de tazelenmeli — yoksa operatör az önce
          ürettiği dosyaları göremez ve üretim olmamış gibi görünür. */
       void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
-      showToast(tf("orders.bulk_export_done", { aktarilan: r.aktarilan, bloklu: r.bloklu, dusen: r.dusen }));
+      showToast(
+        aktarimOzetMetni(
+          r,
+          (o) => tf("orders.bulk_export_done", o),
+          (it) => itemSummary(it),
+        ),
+      );
     },
     onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
   });
@@ -662,10 +676,10 @@ function ProjectBlock({ project, client, showToast }: {
         {project.items.some((i) => i.document_id) && (
           <button
             className="ghost small"
-            onClick={() => topluAktar.mutate()}
-            disabled={topluAktar.isPending}
+            onClick={() => topluAktarM.mutate()}
+            disabled={topluAktarM.isPending}
           >
-            {topluAktar.isPending
+            {topluAktarM.isPending
               ? t("editor.exporting")
               : tf("orders.bulk_export_btn", { n: project.items.filter((i) => i.document_id).length })}
           </button>
