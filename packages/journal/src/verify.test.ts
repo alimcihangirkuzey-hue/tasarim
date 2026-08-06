@@ -501,6 +501,19 @@ describe("gerçek depo journal'ı", () => {
        paket eklendiğinde veya adı değiştiğinde testin bakım borcu doğmaz. */
     expect(ortam.listPackageIds().length).toBeGreaterThan(0);
 
-    expect(ortam.verifyAllJournals()).toEqual([]);
+    /* SINIF AYRIMI (R-FLAKY-TEST-01): iddia İKİ PARÇA ve ikisi de şart.
+       Ayrı ayrı yazılmalarının sebebi ölçülmüş bir olaydır — bu test iki kez
+       kırmızı düştü ve "geçici git hatası mı, gerçek append-only ihlali mi"
+       sorusu ÇIKTIDAN cevaplanamıyordu. Artık cevaplanır: aşağıdaki iki
+       beklentiden HANGİSİNİN kırıldığı doğrudan söyler. */
+    const bulgular = ortam.verifyAllJournals();
+    expect(
+      bulgular.filter((b) => b.sinif === "ihlal"),
+      "GERÇEK yönetişim ihlali",
+    ).toEqual([]);
+    expect(
+      bulgular.filter((b) => b.sinif === "olculemedi"),
+      "denetim koşturulamadı (ihlal kanıtı DEĞİL — ortam/araç sorunu)",
+    ).toEqual([]);
   });
 });

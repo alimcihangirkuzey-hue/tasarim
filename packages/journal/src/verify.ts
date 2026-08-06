@@ -33,10 +33,36 @@ import { sha256 } from "./hash.js";
 import { ROOT_DIR, journalDir, journalFile } from "./paths.js";
 import { listPackageIds, readJournal } from "./store.js";
 
+/* BULGUNUN SINIFI (R-FLAKY-TEST-01'in kök nedeni).
+
+   ÖLÇÜLEN YARA: bu katman iki BAMBAŞKA şeyi aynı kutuya koyuyordu —
+   "append-only ihlali: 3 satır SİLİNMİŞ" (gerçek bir yönetişim kırılması) ile
+   "git denetimi koşulamadı: …" (ölçümün kendisinin başarısız olması). İkisi de
+   `JournalViolation` olarak dönüyor, ikisi de kapıyı kırmızıya çeviriyordu ve
+   metinden AYIRT EDİLMESİ gerekiyordu.
+
+   İKİ AYRI ZARAR:
+   1. Kararsızlık teşhis edilemiyordu — bir kırmızı, "geçici git hatası mı,
+      gerçek ihlal mi" sorusunu cevaplamıyordu (R-FLAKY-TEST-01).
+   2. DAHA TEHLİKELİSİ: ikisi aynı göründüğü için GERÇEK bir append-only
+      ihlali "şu kararsız şey yine" diye harcanabilirdi.
+
+   "ÖLÇÜLEMEDİ" YEŞİL DEĞİLDİR: bilinmezlik bir yönetişim kapısında geçer not
+   olamaz; her ikisi de kapıyı kırmızı bırakır. Değişen tek şey, kırmızının
+   KENDİNİ AÇIKLAMASIDIR. */
+export type JournalViolationKind = "ihlal" | "olculemedi";
+
 export interface JournalViolation {
   package_id: string;
   layer: "kaynak" | "git" | "yapi" | "zincir";
   message: string;
+  /** "ihlal" = yönetişim kırıldı · "olculemedi" = denetim koşturulamadı */
+  sinif: JournalViolationKind;
+}
+
+/** Mesajdan sınıf türetir — TEK KURAL, iki yerde ayrı yazılmasın. */
+export function ihlalSinifi(message: string): JournalViolationKind {
+  return /koşulamadı|çözümlenemedi|okunamadı/.test(message) ? "olculemedi" : "ihlal";
 }
 
 /** Pakete değil DEPOYA ait ihlallerin sahibi (kaynak taraması, git yokluğu) */
@@ -119,7 +145,7 @@ export function kaynakIcerigiTara(dosyaAdi: string, icerik: string): string[] {
 
 function kaynakKatmani(ihlaller: JournalViolation[]): void {
   const ekle = (message: string): void => {
-    ihlaller.push({ package_id: JOURNAL_VIOLATION_REPO, layer: "kaynak", message });
+    ihlaller.push({ package_id: JOURNAL_VIOLATION_REPO, layer: "kaynak", message, sinif: ihlalSinifi(message) });
   };
 
   let dosyalar: string[];
@@ -254,7 +280,7 @@ function gitIzlenenIdler(): { ok: true; ids: string[] } | { ok: false; message: 
 
 function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void {
   const ekle = (pkg: string, message: string): void => {
-    ihlaller.push({ package_id: pkg, layer: "git", message });
+    ihlaller.push({ package_id: pkg, layer: "git", message, sinif: ihlalSinifi(message) });
   };
 
   /* Ön denetim: git hiç yoksa N paket için N aynı satır üretmek yerine TEK
@@ -376,26 +402,28 @@ function yapiVeZincirKatmani(ids: readonly string[], ihlaller: JournalViolation[
     } catch (e) {
       /* Okunamayan dosya bir YAPI sorunudur; aynı sebebi zincir katmanında
          tekrarlamak rapora bilgi eklemez. */
-      ihlaller.push({ package_id: id, layer: "yapi", message: `journal okunamadı: ${mesaj(e)}` });
+      ihlaller.push({ package_id: id, layer: "yapi", message: `journal okunamadı: ${mesaj(e)}`, sinif: "olculemedi" });
       continue;
     }
 
     try {
       const yapi = verifyJournalStructure(lines, id);
       if (!yapi.ok) {
-        for (const konu of yapi.issues) ihlaller.push({ package_id: id, layer: "yapi", message: konu });
+        for (const konu of yapi.issues)
+          ihlaller.push({ package_id: id, layer: "yapi", message: konu, sinif: ihlalSinifi(konu) });
       }
     } catch (e) {
-      ihlaller.push({ package_id: id, layer: "yapi", message: `yapı denetimi koşulamadı: ${mesaj(e)}` });
+      ihlaller.push({ package_id: id, layer: "yapi", message: `yapı denetimi koşulamadı: ${mesaj(e)}`, sinif: "olculemedi" });
     }
 
     try {
       const zincir = verifyJournalChain(lines, sha256);
       if (!zincir.ok) {
-        for (const konu of zincir.issues) ihlaller.push({ package_id: id, layer: "zincir", message: konu });
+        for (const konu of zincir.issues)
+          ihlaller.push({ package_id: id, layer: "zincir", message: konu, sinif: ihlalSinifi(konu) });
       }
     } catch (e) {
-      ihlaller.push({ package_id: id, layer: "zincir", message: `zincir denetimi koşulamadı: ${mesaj(e)}` });
+      ihlaller.push({ package_id: id, layer: "zincir", message: `zincir denetimi koşulamadı: ${mesaj(e)}`, sinif: "olculemedi" });
     }
   }
 }
@@ -413,6 +441,7 @@ export function verifyAllJournals(): JournalViolation[] {
       package_id: JOURNAL_VIOLATION_REPO,
       layer: "kaynak",
       message: `kaynak katmanı koşulamadı: ${mesaj(e)}`,
+      sinif: "olculemedi",
     });
   }
 
@@ -428,6 +457,7 @@ export function verifyAllJournals(): JournalViolation[] {
         package_id: JOURNAL_VIOLATION_REPO,
         layer: "yapi",
         message: `paket listesi okunamadı: ${mesaj(e)}`,
+        sinif: "olculemedi",
       });
       return ihlaller;
     }
@@ -440,6 +470,7 @@ export function verifyAllJournals(): JournalViolation[] {
       package_id: JOURNAL_VIOLATION_REPO,
       layer: "git",
       message: `git katmanı koşulamadı: ${mesaj(e)}`,
+      sinif: "olculemedi",
     });
   }
 
@@ -450,6 +481,7 @@ export function verifyAllJournals(): JournalViolation[] {
       package_id: JOURNAL_VIOLATION_REPO,
       layer: "yapi",
       message: `yapı/zincir katmanı koşulamadı: ${mesaj(e)}`,
+      sinif: "olculemedi",
     });
   }
 

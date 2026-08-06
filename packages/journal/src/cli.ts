@@ -42,8 +42,17 @@ function main(): void {
         yaz("journal: dört katman temiz (kaynak · git · yapi · zincir).");
         return;
       }
-      for (const i of ihlaller) yaz(`${i.layer}\t${i.package_id}\t${i.message}`);
-      yaz(`journal: ${ihlaller.length} ihlal.`);
+      /* SINIF GÖRÜNÜR: "ölçülemedi" bir yönetişim kırılması DEĞİLDİR ama
+         YEŞİL de değildir — bilinmezlik bir kapıda geçer not olamaz. Değişen
+         tek şey, kırmızının kendini açıklaması (R-FLAKY-TEST-01). */
+      for (const i of ihlaller) yaz(`${i.sinif}\t${i.layer}\t${i.package_id}\t${i.message}`);
+      const kirilan = ihlaller.filter((i) => i.sinif === "ihlal").length;
+      const olculemeyen = ihlaller.length - kirilan;
+      yaz(
+        olculemeyen === 0
+          ? `journal: ${kirilan} ihlal.`
+          : `journal: ${kirilan} ihlal · ${olculemeyen} ölçülemedi (denetim koşturulamadı — ihlal kanıtı DEĞİL).`,
+      );
       process.exitCode = 1;
       return;
     }
