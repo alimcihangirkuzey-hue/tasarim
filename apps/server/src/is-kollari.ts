@@ -22,7 +22,15 @@
    kalkmaz. Bu reponun kendi deseni (registry-core yük-zamanı doğrulaması:
    "yanlış aile gösteren köprü uygulamayı ayağa kaldırmaz"). Sessiz atlama,
    yanlış yazılmış tek bir harf yüzünden kiracıya YANLIŞ ŞABLON KÜMESİ
-   göstermek demek olurdu ve bunu kimse fark etmezdi. */
+   göstermek demek olurdu ve bunu kimse fark etmezdi.
+
+   NEREDE GERÇEKLEŞİR (2026-08-06 düzeltmesi): yukarıdaki "ayağa kalkmaz"
+   cümlesi bir süre YALNIZ BURADA yazılıydı — doğrulama bu fonksiyonun
+   içindeydi ve fonksiyon YALNIZ istek anında çağrılıyordu. Ölçüldü: bozuk
+   değerle boot BAŞARILI, uç 500, /api/health 200 ve arayüz sorgusu düştüğü
+   için daraltma HİÇ uygulanmıyordu (sessiz atlama değil, sessiz GENİŞLEME).
+   Güvence artık `kurulum-dogrulama.ts` ile buildApp'in ilk işidir; oradaki
+   nöbetçi, ortamla yapılandırılan her ilanın denetime yazılı olmasını arar. */
 
 import { SEKTORLER, type Sektor } from "@tezgah/templates/identity";
 
