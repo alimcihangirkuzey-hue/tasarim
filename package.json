@@ -14,7 +14,8 @@
     "lint": "npm run lint -ws --if-present",
     "journal": "tsx packages/journal/src/cli.ts",
     "journal:verify": "tsx packages/journal/src/cli.ts verify",
-    "cockpit": "tsx packages/journal/src/serve.ts"
+    "cockpit": "tsx packages/journal/src/serve.ts",
+    "pano": "tsx scripts/pano.mts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
