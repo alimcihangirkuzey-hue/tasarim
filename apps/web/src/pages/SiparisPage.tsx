@@ -11,8 +11,9 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { ciktiDiliEtiketi } from "../lib/alanEtiketi";
 import { t, tf } from "../i18n";
-import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
+import { CIKTI_DILI_SECENEKLERI, PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { consumeDraftDiscardedNotice, useIntake, type MenuLang } from "../store/intakeStore";
 
 /* HF3: menü dili etiketi (bant + operatör görünürlüğü) */
@@ -238,6 +239,12 @@ export function IntakeResult({ data, onNew }: { data: IntakeResultData; onNew: (
 function ClientStep() {
   const s = useIntake();
   const clientsQ = useQuery({ queryKey: ["clients"], queryFn: api.clients });
+  /* KURULUMUN İŞ KOLLARI — aynı anahtar ProjectsPanel/DocumentsPanel ile
+     PAYLAŞILIR (tek istek, tek önbellek). Yanıt gelmeden `undefined` kalır ve
+     etiket bugünkü metinde durur (bkz. `menuUretiyorMu` yorumu). */
+  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
+  const aktifSektorler =
+    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
 
   /* HF3: seçilen mevcut müşterinin TAM DTO'su (menu_language listede yok, yalnız
      ClientDTO'da). Aynı ["client", id] anahtarı IntakeSummaryStep'in existingQ'suyla
@@ -307,14 +314,22 @@ function ClientStep() {
             </select>
           </label>
           <label>
-            {t("intake.menu_lang")}
+            {/* ETİKET KURULUMUN İŞ KOLUNDAN (K-1/D): alan menüye değil,
+                kurulumun ÇIKTI diline aittir — tabelacının başlık chrome'unu
+                da o belirler. Menü üreten kurulumda metin bugünküyle birebir. */}
+            {ciktiDiliEtiketi(aktifSektorler)}
             <select
               value={s.newClient.menu_language}
               onChange={(e) => s.setNewClient({ menu_language: e.target.value as MenuLang })}
             >
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
-              <option value="tr">Türkçe</option>
+              {/* SEÇENEKLER İLANDAN — para birimi seçicisiyle (hemen yukarıda)
+                  aynı desen. Elle yazılı liste şemanın ikinci kopyasıydı ve
+                  dördüncü bir dil eklendiği gün sessizce eksik kalırdı. */}
+              {CIKTI_DILI_SECENEKLERI.map((d) => (
+                <option key={d.kod} value={d.kod}>
+                  {d.etiket}
+                </option>
+              ))}
             </select>
           </label>
           <p className="intake-hint">{t("intake.client_deferred")}</p>

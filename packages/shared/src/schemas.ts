@@ -52,6 +52,31 @@ export const PARA_BIRIMI_SECENEKLERI: readonly ParaBirimiIlani[] =
 export const MenuLanguageSchema = z.enum(["fr", "de", "tr"]).default("fr");
 export type MenuLanguage = z.infer<typeof MenuLanguageSchema>;
 
+export interface CiktiDiliIlani {
+  kod: MenuLanguage;
+  /** Seçicide görünen ad — dilin KENDİ adıyla (endonym). */
+  etiket: string;
+}
+
+/* ÇIKTI DİLİ İLANI — para birimi emsalinin AYNISI (PARA_BIRIMLERI).
+   ÖLÇÜLEN YARA: dil seçeneği listesi arayüzde ELLE yazılıydı ve şemanın
+   ikinci kopyasıydı — üstelik aynı JSX bloğunda para birimi İLANDAN
+   türetiliyordu (`PARA_BIRIMI_SECENEKLERI`). Yani doğru desen bir satır
+   yukarıda duruyordu. Şemaya dördüncü bir dil eklendiği gün seçicide
+   SESSİZCE eksik kalırdı: kullanıcı o dili seçemez, kimse de bir şeyin
+   kırıldığını fark etmezdi.
+   Record TAM: yeni bir dil eklendiği gün DERLENMEZ — etiketi yazılmadan
+   listeye giremez. */
+export const CIKTI_DILLERI: Record<MenuLanguage, CiktiDiliIlani> = {
+  fr: { kod: "fr", etiket: "Français" },
+  de: { kod: "de", etiket: "Deutsch" },
+  tr: { kod: "tr", etiket: "Türkçe" },
+};
+
+/** Seçicilerin okuduğu sıra — İLAN sırasıdır, yazım sırası değil. */
+export const CIKTI_DILI_SECENEKLERI: readonly CiktiDiliIlani[] =
+  MenuLanguageSchema.removeDefault().options.map((k) => CIKTI_DILLERI[k]);
+
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
   value: z.number().nonnegative(),

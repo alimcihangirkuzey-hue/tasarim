@@ -33,6 +33,7 @@
     "fetch_error": "Sunucuya ulaşılamıyor — TEZGÂH sunucusu çalışıyor mu?",
     "retry": "Tekrar dene",
     "menu_lang": "Menü dili",
+    "output_lang": "Çıktı dili",
     "packs_multi": "Karma işletme için birden çok paket seçebilirsin (ör. kebap + pizza).",
     "cat": "kategori",
     "item": "ürün",
