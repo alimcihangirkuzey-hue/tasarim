@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { registerCustomThemes } from "@tezgah/templates";
+import { istemciKur } from "./lib/sorguIstemcisi";
+import { HataBandi } from "./components/HataBandi";
 import { ClientListPage } from "./pages/ClientListPage";
 import { ClientDetailPage } from "./pages/ClientDetailPage";
 import { EditorPage } from "./pages/EditorPage";
@@ -54,13 +56,16 @@ function ThemesGate({ children }: { children: React.ReactNode }) {
         <style dangerouslySetInnerHTML={{ __html: customFontFaceCss(fontsQ.data) }} />
       )}
       {children}
+      {/* Sessiz düşen yazma işlemlerinin görünen yüzü — uygulamada BİR KEZ */}
+      <HataBandi />
     </>
   );
 }
 
-const qc = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
-});
+/* KURULUM lib/sorguIstemcisi.ts'te — TEK KAYNAK: kurulum artık davranış
+   taşıyor (kendi onError'ı olmayan mutation düştüğünde gerekçeyi yayınlar) ve
+   testin uygulamanın KOPYASINI değil KENDİSİNİ ölçmesi gerekiyor. */
+const qc = istemciKur();
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (

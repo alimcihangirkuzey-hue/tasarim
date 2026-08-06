@@ -434,7 +434,9 @@
     "delete": "Sil",
     "up": "↑",
     "down": "↓",
-    "close": "Kapat"
+    "close": "Kapat",
+    "write_failed": "İşlem kaydedilemedi",
+    "dismiss": "Kapat"
   },
   "bulk": {
     "open": "Toplu güncelle",
