@@ -1,27 +1,11 @@
 import React, { useMemo } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link } from "react-router-dom";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { registerCustomThemes } from "@tezgah/templates";
 import { istemciKur } from "./lib/sorguIstemcisi";
 import { HataBandi } from "./components/HataBandi";
-import { ClientListPage } from "./pages/ClientListPage";
-import { ClientDetailPage } from "./pages/ClientDetailPage";
-import { EditorPage } from "./pages/EditorPage";
-import { FichePage } from "./pages/FichePage";
-import { MockupPage } from "./pages/MockupPage";
-import { PresentPage } from "./pages/PresentPage";
-import { PrintPage } from "./pages/PrintPage";
-import { ThemesPage } from "./pages/ThemesPage";
-import { FontsPage } from "./pages/FontsPage";
-import { ParseDictPage } from "./pages/ParseDictPage";
-import { IngredientsPage } from "./pages/IngredientsPage";
-import { FactoryPage } from "./pages/FactoryPage";
-import { FactoryGuidePage } from "./pages/FactoryGuidePage";
-import { SiparisPage } from "./pages/SiparisPage";
-import { BriefPage } from "./pages/BriefPage";
-/* P2 CAP-CANVAS-01: /atolye LAZY — konva chunk'ı YALNIZ bu rotada iner (ana bundle Δ=0) */
-const AtolyePage = React.lazy(() => import("./pages/AtolyePage"));
+import { RotaAgaci } from "./rotalar";
 import { api } from "./api";
 import { t } from "./i18n";
 import "./styles.css";
@@ -93,43 +77,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <ThemesGate>
-          <Routes>
-            {/* Print/present rotaları Layout DIŞINDA: üst bar PDF'e basılmaz (M3/§9.1) */}
-            <Route path="/print/:id" element={<PrintPage />} />
-            <Route path="/present/:id" element={<PresentPage />} />
-            <Route path="/mockup/:id" element={<MockupPage />} />
-            <Route path="/fiche/:id" element={<FichePage />} />
-            {/* P2: /atolye chrome'suz + lazy (izole canvas iskeleti) */}
-            <Route
-              path="/atolye"
-              element={
-                <React.Suspense fallback={null}>
-                  <AtolyePage />
-                </React.Suspense>
-              }
-            />
-            <Route
-              path="*"
-              element={
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<ClientListPage />} />
-                    <Route path="/siparis" element={<SiparisPage />} />
-                    {/* F1 P4: menü brief akışı (ayrı yaşam döngüsü — /siparis'e dokunulmadı) */}
-                    <Route path="/brief" element={<BriefPage />} />
-                    <Route path="/clients/:id" element={<ClientDetailPage />} />
-                    <Route path="/editor/:id" element={<EditorPage />} />
-                    <Route path="/settings/themes" element={<ThemesPage />} />
-                    <Route path="/settings/fonts" element={<FontsPage />} />
-                    <Route path="/settings/parse" element={<ParseDictPage />} />
-                    <Route path="/settings/ingredients" element={<IngredientsPage />} />
-                    <Route path="/settings/factory" element={<FactoryPage />} />
-                    <Route path="/settings/factory-guide" element={<FactoryGuidePage />} />
-                  </Routes>
-                </Layout>
-              }
-            />
-          </Routes>
+          <RotaAgaci layout={(c) => <Layout>{c}</Layout>} />
         </ThemesGate>
       </BrowserRouter>
     </QueryClientProvider>
