@@ -17,6 +17,8 @@ import {
   type OrderStatus,
   type ParsedOrder,
   type PricingInputField,
+  PROJE_ACIK,
+  PROJE_KAPALI,
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
@@ -399,9 +401,25 @@ function ProjectBlock({ project, client, showToast }: {
   const level = dueLevel(project.due_date, today);
 
   const updProject = useMutation({
-    mutationFn: (patch: { due_date?: string | null; name?: string }) => api.updateProject(project.id, patch),
-    onSuccess: invalidate,
+    mutationFn: (patch: { due_date?: string | null; name?: string; status?: string }) =>
+      api.updateProject(project.id, patch),
+    onSuccess: () => {
+      invalidate();
+      /* YAKLAŞAN İŞLER ŞERİDİ de tazelenmeli: sunucu sorgusu projenin
+         durumuna bakar (status != PROJE_KAPALI). Tazelenmezse operatör
+         projeyi kapatır ama şeritte durmaya devam eder — kapatma OLMAMIŞ
+         gibi görünür. */
+      void qc.invalidateQueries({ queryKey: ["upcoming"] });
+    },
   });
+
+  /* PROJE KAPATMA (K-1/B). ÖLÇÜLEN YARA: sunucu `status`'ü KABUL ediyordu
+     (ProjectUpdateSchema) ve yaklaşan-işler sorgusu ona BAĞLIYDI
+     (`status != 'done'`), ama 'done' hiçbir yerde YAZILMIYORDU — yetenek
+     arayüzden ERİŞİLEMEZDİ. Sonuç: vadeli her proje, işi bitmiş olsa bile
+     operatörün yaklaşan işler şeridinde SONSUZA DEK kalıyordu. Çoklu proje
+     yürüten bir atölyede o şerit tam da işe yaramaz hâle gelen yerdi. */
+  const kapali = project.status === PROJE_KAPALI;
   const delProject = useMutation({
     mutationFn: () => api.deleteProject(project.id),
     onSuccess: invalidate,
@@ -576,6 +594,14 @@ function ProjectBlock({ project, client, showToast }: {
     <div className="cat-block" style={{ borderLeft: level === "red" ? "4px solid #DC2626" : level === "yellow" ? "4px solid #F59E0B" : undefined }}>
       <div className="row">
         <strong style={{ fontSize: 15 }}>{project.name}</strong>
+        {kapali && <span className="pill p-ok">{t("orders.project_closed")}</span>}
+        <button
+          className="ghost small"
+          onClick={() => updProject.mutate({ status: kapali ? PROJE_ACIK : PROJE_KAPALI })}
+          disabled={updProject.isPending}
+        >
+          {kapali ? t("orders.project_reopen") : t("orders.project_close")}
+        </button>
         <label className="kbd-hint">{t("orders.due")}</label>
         <input
           type="date"

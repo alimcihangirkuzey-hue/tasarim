@@ -531,6 +531,23 @@ export const ProjectCreateSchema = z.object({
   items: z.array(OrderItemCreateSchema).default([]),
 });
 
+/* PROJE DURUMU — ilan (7.2 kapalı sözlük deseni, OrderStatusSchema emsali).
+
+   NEDEN İLAN: "done" bugüne dek İKİ yerde ayrı ayrı sabit yazılıydı — sunucunun
+   yaklaşan-işler sorgusu (`status != 'done'`) ve yeni açılan kapatma denetimi.
+   İki kopya, biri değişince ötekinin sessizce eskimesi demekti; bu repo aynı
+   sınıfı defalarca ödedi.
+
+   ŞEMA BİLEREK `z.string()` KALIYOR (aşağıda): enum'a çevirmek, sözlüğün
+   dışında bir değer taşıyan ESKİ satırları okuma anında reddederdi ve elimizde
+   üretim verisi sayımı YOK. Daraltma, o sayım yapıldığı gün ayrı bir karardır.
+   Bugünkü güvence: tek ilan + iki tarafın da onu okuması. */
+export const PROJE_DURUMLARI = ["open", "done"] as const;
+export type ProjeDurumu = (typeof PROJE_DURUMLARI)[number];
+/** Yaklaşan işler listesinden DÜŞÜREN durum — sunucu sorgusu ve UI aynı sabiti okur */
+export const PROJE_KAPALI: ProjeDurumu = "done";
+export const PROJE_ACIK: ProjeDurumu = "open";
+
 export const ProjectUpdateSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   status: z.string().optional(),

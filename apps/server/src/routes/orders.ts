@@ -6,6 +6,7 @@ import {
   OrderDetailsSchema,
   OrderItemCreateSchema,
   OrderItemUpdateSchema,
+  PROJE_KAPALI,
   ProjectCreateSchema,
   ProjectUpdateSchema,
   canTransition,
@@ -239,10 +240,10 @@ export function orderRoutes(app: FastifyInstance): void {
            (SELECT COUNT(*) FROM order_items oi
              WHERE oi.project_id = p.id AND oi.status NOT IN ('teslim','iptal')) AS open_items
          FROM projects p JOIN clients c ON c.id = p.client_id
-         WHERE p.due_date IS NOT NULL AND p.status != 'done'
+         WHERE p.due_date IS NOT NULL AND p.status != @kapali
          ORDER BY p.due_date ASC LIMIT 12`
       )
-      .all() as Array<ProjectRow & { client_name: string; open_items: number }>;
+      .all({ kapali: PROJE_KAPALI }) as Array<ProjectRow & { client_name: string; open_items: number }>;
     return rows
       .filter((r) => r.open_items > 0)
       .map((r) => ({
