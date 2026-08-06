@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Currency } from "@tezgah/shared";
+import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
 import { topluBaslat } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
@@ -223,8 +223,11 @@ export function ClientDetailPage() {
           <h2>{t("client.currency")}</h2>
           <div className="row">
             <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} style={{ width: 120 }}>
-              <option value="EUR">EUR (€)</option>
-              <option value="CHF">CHF</option>
+              {PARA_BIRIMI_SECENEKLERI.map((p) => (
+                <option key={p.kod} value={p.kod}>
+                  {p.etiket}
+                </option>
+              ))}
             </select>
             <span className="muted">{t("client.currency_hint")}</span>
           </div>

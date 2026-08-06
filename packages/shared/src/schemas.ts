@@ -9,9 +9,41 @@ export const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir hex renk olmalı (#RRGGBB)");
 
-/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri) */
-export const CurrencySchema = z.enum(["EUR", "CHF"]);
+/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri).
+
+   K-1/D (2026-08-06): kümede TÜRK LİRASI YOKTU. K-1'in hedef kesimi ürün
+   sahibi tarafından adıyla sayılmıştır — "ozalit baskıcı matbaa tabelacı
+   menücüler" — ve bu kesim fiyatını TL yazar. Ölçüldü: K-2 kanıt turunda
+   tohumlanan Türk tabelacı müşterinin TL büyüklüğündeki fiyatları (2400,
+   850, 1250) baskı yüzeyine "2 400,00 €" olarak düştü; para birimi alanı
+   TL'yi İFADE EDEMEDİĞİ için sessizce EUR kaldı. Yani sistem, hedef
+   kesiminin fiyatını YANLIŞ para biriminde basıyordu.
+
+   İLAN TABLOSU (7.2 kapalı sözlük deseni): her para biriminin yerel biçimi
+   ve arayüz etiketi BURADA yaşar; seçiciler bunu okur, elle listelemez —
+   eskiden iki ekran ve web'in kendi `Currency` tipi kümeyi ÜÇ KEZ tekrar
+   ediyordu ve enum'a bir üye eklemek onları sessizce eskitirdi. */
+export const CurrencySchema = z.enum(["EUR", "CHF", "TRY"]);
 export type Currency = z.infer<typeof CurrencySchema>;
+
+export interface ParaBirimiIlani {
+  kod: Currency;
+  /** Arayüz seçicisinde görünen etiket */
+  etiket: string;
+  /** Baskıda kullanılan sembol; CHF sembolsüz basar (FAZ1-GOREV §2.2) */
+  sembol: string | null;
+}
+
+/* EXHAUSTIVE Record: yeni para birimi buraya ilan yazmadan DERLENEMEZ. */
+export const PARA_BIRIMLERI: Record<Currency, ParaBirimiIlani> = {
+  EUR: { kod: "EUR", etiket: "EUR (€)", sembol: "€" },
+  CHF: { kod: "CHF", etiket: "CHF", sembol: null },
+  TRY: { kod: "TRY", etiket: "TRY (₺)", sembol: "₺" },
+};
+
+/** Seçicilerin okuduğu sıra — ilan sırasıdır, yazım sırası değil. */
+export const PARA_BIRIMI_SECENEKLERI: readonly ParaBirimiIlani[] =
+  CurrencySchema.options.map((k) => PARA_BIRIMLERI[k]);
 
 /* Menü çıktı dili — Sipariş Modu (F7-A/K2). Client bazında "fr" | "de" | "tr".
    CILA4/EK-1: "tr" eklendi (Türkçe menü) — fallback zinciri tr→fr→de (resolveChip

@@ -12,6 +12,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t, tf } from "../i18n";
+import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { consumeDraftDiscardedNotice, useIntake, type MenuLang } from "../store/intakeStore";
 
 /* HF3: menü dili etiketi (bant + operatör görünürlüğü) */
@@ -296,10 +297,13 @@ function ClientStep() {
             {t("client.currency")}
             <select
               value={s.newClient.currency}
-              onChange={(e) => s.setNewClient({ currency: e.target.value as "EUR" | "CHF" })}
+              onChange={(e) => s.setNewClient({ currency: e.target.value as Currency })}
             >
-              <option value="EUR">EUR (€)</option>
-              <option value="CHF">CHF</option>
+              {PARA_BIRIMI_SECENEKLERI.map((p) => (
+                <option key={p.kod} value={p.kod}>
+                  {p.etiket}
+                </option>
+              ))}
             </select>
           </label>
           <label>

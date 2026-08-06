@@ -16,11 +16,16 @@ import {
   captureRemoval,
   migrateIntakeDraftV2toV3,
   restoreRemoval,
+  type Currency,
   type LocalizedName,
   type SurfaceKind,
 } from "@tezgah/shared";
 
-export type Currency = "EUR" | "CHF";
+/* K-1/D: web'in KENDİ `Currency` tipi vardı ve shared enum'una TRY eklendiğinde
+   sessizce eski kümede kalırdı (ölçüldü: aynı küme üç yerde tekrarlıydı).
+   Artık ilan tek kaynaktan gelir; re-export yalnız mevcut tüketicilerin
+   import yolu değişmesin diye durur. */
+export type { Currency };
 export type MenuLang = "fr" | "de" | "tr"; // CILA4/EK-1: tr eklendi
 
 /* F8-A: intake çeklistinde toplanan yapısal yüzey TASLAĞI (web-yerel — w/h input

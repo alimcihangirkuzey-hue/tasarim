@@ -2,16 +2,35 @@
 
 import type { Currency } from "./schemas.js";
 
-const fmt = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-});
+/* HER PARA BİRİMİ KENDİ YERELİNİN STANDART BİÇİMİNDE BASAR — kural budur ve
+   uydurulmuş bir tipografi tercihi değildir: EUR zaten fr-FR'nin Intl
+   çıktısını olduğu gibi kullanıyordu; TRY de tr-TR'ninkini kullanır
+   (CLDR/ICU: sembol ÖNDE, "₺1.250,50"). CHF, FAZ1-GOREV §2.2'nin AÇIK
+   şerhiyle elle biçimlenen istisnadır (nokta ondalık, sembolsüz) ve o şerh
+   korunur. */
+const BICIMLEYICILER: Record<"EUR" | "TRY", Intl.NumberFormat> = {
+  EUR: new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }),
+  TRY: new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2 }),
+};
 
-/** EUR: 7.5 -> "7,50 €" (fr-FR, M9) · CHF: 22 -> "22.00" (nokta ondalık, sembolsüz — FAZ1-GOREV §2.2) */
+/**
+ * EUR: 7.5 -> "7,50 €" (fr-FR, M9) · CHF: 22 -> "22.00" (nokta ondalık,
+ * sembolsüz — FAZ1-GOREV §2.2) · TRY: 1250.5 -> "₺1.250,50" (tr-TR).
+ *
+ * TÜKETİCİ switch (sessiz EUR'ya düşme YOK): eskiden gövde
+ * `if (currency === "CHF") ... ; return EUR` idi — o biçimde enum'a eklenen
+ * her yeni para birimi SESSİZCE euro gibi basardı. TL'nin baskıya "€" ile
+ * düşmesi bu paketin ölçtüğü yaranın ta kendisiydi; aynı deliği açık
+ * bırakmıyoruz.
+ */
 export function formatPrice(value: number, currency: Currency = "EUR"): string {
-  if (currency === "CHF") return value.toFixed(2);
-  return fmt.format(value).replace(/\u00a0/g, " ");
+  switch (currency) {
+    case "CHF":
+      return value.toFixed(2);
+    case "EUR":
+    case "TRY":
+      return BICIMLEYICILER[currency].format(value).replace(/\u00a0/g, " ");
+  }
 }
 
 /* BİRİM-FARKINDA FİYAT METNİ (journal 2026-07-28-birim-alani).

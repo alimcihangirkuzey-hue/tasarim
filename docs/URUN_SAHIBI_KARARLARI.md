@@ -140,7 +140,15 @@ sıralama yetkisi (`00_READ_FIRST.md` §KİMLİK).
 ### Kapanış defteri (2026-08-06 · gerçek sistem, gerçek müşteri kaydıyla)
 
 Kanıt ortamı: sunucu `:3001` + arayüz `:5173`, tohumlanmış müşteri
-**"Kuzey Ozalit & Reklam"** (tabela/baskı katalogu, TL fiyatlar, `menu_language=tr`).
+**"Kuzey Ozalit & Reklam"** (tabela/baskı katalogu, TL **büyüklüğünde** fiyatlar,
+`menu_language=tr`).
+
+> **DÜZELTME (2026-08-06, para birimi paketi):** yukarıdaki satır ilk yazıldığında
+> "TL fiyatlar" diyordu ve bu YANLIŞTI. Ölçüldü: `CurrencySchema` o gün yalnız
+> `EUR` ve `CHF` taşıyordu — yani müşteri kaydı TL'yi **ifade edemiyordu**.
+> Tohumlanan fiyatlar (2400 · 850 · 1250) TL büyüklüğündeydi ama baskı yüzeyine
+> **"2 400,00 €"** olarak düştü. Kanıt görüntüleri o hâliyle geçerlidir; yanlış
+> olan benim etiketimdi. Eksik `2026-08-06-para-birimi` paketinde kapatıldı.
 12 ekran görüntüsü Playwright ile alındı.
 
 | # | Ana modül | Kanıt (ölçülen) | Durum |
@@ -197,6 +205,30 @@ bir yol, "ilk açılış"tan yalnız bir ürün kararıyla ayrılabilir:
 Karar gelene kadar otomasyon bu alana dokunmaz; sınır hem `veri-dizini.ts`
 başlığında hem "KAPATILAMAYAN YARI" adlı ayrı bir testte yazılıdır, yani kod
 değişirse sessizce kaybolamaz.
+
+### K-1/D'den doğan AÇIK KARAR: `archivo-black-400` fontu ₺ basmıyor (2026-08-06)
+
+**Bulgu (fontkit ile tek tek ölçüldü):** para birimi kümesine `TRY` eklendi;
+artık TL fiyat basan bir kurulumda sayfaya **₺ (U+20BA)** düşüyor. Yerleşik
+sekiz fonttan **yedisinde ₺ var, `archivo-black-400`'de yok** (€ hepsinde var).
+Yani bir Türk kurulumunda fiyat/başlık yüzü Archivo Black'e bağlanırsa **₺ tofu
+basar** — sessizce, hiçbir kapı kırmızıya dönmeden.
+
+**Uygulayıcının yapmadığı ve neden:** ₺ glif bekçi kümesine (`GLYPH_COVERAGE`)
+**eklenmedi**. Eklemek `archivo-black-400`'ü kapsam dışına atardı ve o bir
+**marka kiti display yüzüdür** — hangi fontun repoda kalacağı, değişeceği ya da
+yerine ne geleceği içerik/marka kararıdır. Bekçiye eklemek, o kararı bir test
+dosyasında sessizce vermek olurdu.
+
+**Ürün sahibine kalan seçim:**
+1. **Fontu değiştir** — ₺ taşıyan bir display yüzüyle (marka kararı).
+2. **Fontu bırak, kısıtı ilan et** — Archivo Black TL kurulumlarında fiyat
+   slotuna atanamaz (yeni bir manifest kuralı; mekanizma işi).
+3. **Bugünkü hâli koru** — sınır kayıtlı, risk kabul edilmiş.
+
+Sınır `packages/templates/src/fonts.test.ts`'te dört testle çivili: gerçek bir
+gün değişirse (font güncellenir/yenisi gelir) orası kırmızıya döner ve karar
+yeniden önümüze gelir.
 
 ### Kapalı modülde ÖLÇÜLEN ama ONARILMAYAN yara (izin bekliyor)
 
