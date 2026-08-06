@@ -203,6 +203,70 @@ function gitHatasi(e: unknown): string {
   return mesaj(e);
 }
 
+/* ── HEAD içerikleri TEK alt süreçte (B2'nin girdisi) ────────────────── */
+
+/* ÖLÇÜLEN YARA: B2 denetimi paket başına bir `git show HEAD:<yol>` koşuyordu.
+   Gerçek depoda sayıldı (PATH'e sayaç `git` konarak, tahmin değil):
+     308 git alt süreci — 115 diff · 96 log · 95 SHOW · 2 ön denetim, ~3,9 s.
+   Yani alt süreçlerin yaklaşık üçte biri, tek bir `cat-file --batch` ile
+   alınabilecek blob içerikleriydi. Maliyet paket sayısıyla DOĞRUSAL büyüyor
+   ve denetim `npm test`in her koşumunda çalışıyor (R-FLAKY-TEST-01'in kök
+   nedeni de bu sürenin zaman aşımına dayanmasıydı).
+
+   NEDEN YALNIZ `show` TOPLANDI — `log` ve `diff` DEĞİL: ikisi de git'in
+   geçmiş sadeleştirmesine ve birleştirme (merge) commit'lerinin nasıl
+   raporlandığına bağlıdır. Tek taramaya çevirmek, HANGİ commit çiftlerinin
+   karşılaştırıldığını değiştirebilir ve bu bir YÖNETİŞİM güvencesidir.
+   `show` ise saf bir içerik okumasıdır: `HEAD:<yol>` ne döndürüyorsa aynısı
+   döner, sıraya ve tarihçeye bağlı değildir. Ölçülmemiş bir eşdeğerlik
+   iddiasıyla append-only kapısını gevşetmektense, kazancın küçüğü alınır.
+
+   EKSİK NESNE SESSİZ GEÇMEZ: `cat-file --batch` bulunamayan girdi için
+   "<girdi> missing" yazar; o durum bugünkü `git show` başarısızlığıyla AYNI
+   sınıfa (`koşulamadı` → olculemedi) düşer. */
+export type HeadIcerik = { ok: true; icerik: Map<string, Buffer> } | { ok: false; message: string };
+
+export function headIcerikleriCoz(cikti: Buffer, yollar: readonly string[]): HeadIcerik {
+  const icerik = new Map<string, Buffer>();
+  let p = 0;
+  for (const yol of yollar) {
+    const nl = cikti.indexOf(0x0a, p);
+    if (nl < 0) return { ok: false, message: `cat-file çıktısı beklenenden kısa (${yol})` };
+    const baslik = cikti.subarray(p, nl).toString("utf8").trim();
+    p = nl + 1;
+    /* "<girdi> missing" — dosya HEAD'de yok. Bu, bugünkü `git show`
+       başarısızlığının karşılığıdır ve ATLANMAZ: haritaya girmez, çağıran
+       "koşulamadı" yazar. */
+    if (baslik.endsWith(" missing")) continue;
+    const parcalar = baslik.split(" ");
+    const boyut = Number(parcalar[parcalar.length - 1]);
+    if (!Number.isInteger(boyut) || boyut < 0) {
+      return { ok: false, message: `cat-file başlığı çözümlenemedi: ${JSON.stringify(baslik)}` };
+    }
+    if (p + boyut > cikti.length) {
+      return { ok: false, message: `cat-file gövdesi eksik (${yol}: ${boyut} bayt beklendi)` };
+    }
+    icerik.set(yol, cikti.subarray(p, p + boyut));
+    p += boyut + 1; // gövdeden sonra tek satır sonu
+  }
+  return { ok: true, icerik };
+}
+
+function headIcerikleri(yollar: readonly string[]): HeadIcerik {
+  if (yollar.length === 0) return { ok: true, icerik: new Map() };
+  try {
+    const raw = execFileSync("git", ["cat-file", "--batch"], {
+      cwd: ROOT_DIR,
+      input: yollar.map((y) => `HEAD:${y}`).join("\n") + "\n",
+      maxBuffer: 256 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return headIcerikleriCoz(Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), "utf8"), yollar);
+  } catch (e) {
+    return { ok: false, message: gitHatasi(e) };
+  }
+}
+
 /** HEAD sürümü çalışma ağacının bayt öneki mi? (append-only'nin B2 yargısı) */
 export function baytOneki(onek: Buffer, tam: Buffer): boolean {
   if (onek.length > tam.length) return false;
@@ -307,6 +371,24 @@ function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void 
     }
   }
 
+  /* HEAD içerikleri TEK alt süreçte önden alınır (B2'nin girdisi). Yol
+     çözümlemesi aşağıdaki döngüyle AYNI kuralları kullanır — ikinci bir
+     yol mantığı doğmasın diye burada yalnız BAŞARILI çözümlenenler
+     toplanır; hatalı olanlar döngüde kendi gerekçesiyle raporlanır. */
+  const bYollar: string[] = [];
+  for (const id of ids) {
+    let d: string;
+    try {
+      d = journalFile(id);
+    } catch {
+      continue;
+    }
+    const r = path.relative(ROOT_DIR, d);
+    if (r.startsWith("..") || path.isAbsolute(r)) continue;
+    bYollar.push(r.split(path.sep).join("/"));
+  }
+  const headler = headIcerikleri(bYollar);
+
   for (const id of ids) {
     let dosya: string;
     try {
@@ -371,9 +453,15 @@ function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void 
        yazılmış veya satır başı düzenlenmişse önek tutmaz.
        (.gitattributes'taki `-text` bu karşılaştırmayı Windows'ta da geçerli
        kılar: checkout CRLF'e çevirseydi önek sahte biçimde kırılırdı.) */
-    const show = git(["show", `HEAD:${gitYol}`]);
-    if (!show.ok) {
-      ekle(id, `git denetimi koşulamadı: git show HEAD:${gitYol}: ${show.message}`);
+    /* B2'nin HEAD sürümü toplu okumadan gelir; mesaj biçimi DEĞİŞMEDİ —
+       "koşulamadı" kelimesi sınıflandırmayı (olculemedi) belirler. */
+    if (!headler.ok) {
+      ekle(id, `git denetimi koşulamadı: git cat-file HEAD:${gitYol}: ${headler.message}`);
+      continue;
+    }
+    const headIcerik = headler.icerik.get(gitYol);
+    if (headIcerik === undefined) {
+      ekle(id, `git denetimi koşulamadı: git show HEAD:${gitYol}: HEAD'de bulunamadı`);
       continue;
     }
     let calisma: Buffer;
@@ -383,7 +471,7 @@ function gitKatmani(ids: readonly string[], ihlaller: JournalViolation[]): void 
       ekle(id, `git denetimi koşulamadı: çalışma ağacındaki dosya okunamadı: ${mesaj(e)}`);
       continue;
     }
-    if (!baytOneki(show.out, calisma)) {
+    if (!baytOneki(headIcerik, calisma)) {
       ekle(
         id,
         `append-only ihlali: HEAD sürümü çalışma ağacının bayt öneki DEĞİL — geçmiş yeniden yazılmış veya satır düzenlenmiş (${gitYol})`

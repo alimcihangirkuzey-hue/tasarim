@@ -463,6 +463,41 @@ describe("git-izlenen journal çalışma ağacında YOKSA", () => {
     expect(gitIhlalleri[0].message).toMatch(/append-only ihlali: journal dosyası SİLİNMİŞ/);
   });
 
+  it("HEAD sürümü çalışma ağacının ÖNEKİ DEĞİLSE → B2 git ihlali (KABLOLAMA)", async () => {
+    /* BU TESTİN NEDEN VAR OLDUĞU ÖLÇÜLDÜ: `baytOneki` saf işlevi bu dosyada
+       zaten çivilenmişti, AMA onun `gitKatmani`ye BAĞLANMASI ölçülmüyordu.
+       Bir negatif kontrol (B2 karşılaştırmasını tamamen devre dışı bırakmak)
+       41/41 YEŞİL bıraktı — yani append-only'nin en sert güvencelerinden
+       biri, kablosu kesilse kimseye bir şey söylemeyecekti.
+
+       KURULUM: sahte depoya GERÇEK bir journal yolu, GERÇEK içerikten
+       FARKLI baytlarla commit'lenir. Diğer gerçek paketler o depoda hiç
+       commit edilmediği için atlanır (yeni paket kuralı) — böylece tam
+       küme iddiası tek bir ihlale indirgenir. */
+    const ortam = await ortamKur(null);
+    const id = ortam.listPackageIds()[0];
+    expect(id, "gerçek depoda journal yok — iddia ölçülemezdi").toBeTruthy();
+
+    const kok = geciciDizin();
+    gitKomut(kok, ["init", "-q", "."]);
+    gitKomut(kok, ["config", "user.email", "dogrulayici@test.local"]);
+    gitKomut(kok, ["config", "user.name", "dogrulayici"]);
+    const yol = path.join(kok, OLAY_YOLU, `${id}.jsonl`);
+    fs.mkdirSync(path.dirname(yol), { recursive: true });
+    /* Gerçek dosya bu baytlarla BAŞLAMAZ → önek tutmaz. */
+    fs.writeFileSync(yol, "BOZUK-HEAD-SURUMU\n", "utf8");
+    gitKomut(kok, ["add", "-A"]);
+    gitKomut(kok, ["commit", "-qm", "bozuk HEAD"]);
+
+    const ihlaller = gitDirIle(path.join(kok, ".git"), ortam.verifyAllJournals);
+    const gitIhlalleri = ihlaller.filter((x) => x.layer === "git");
+
+    expect(gitIhlalleri.map((x) => x.package_id)).toEqual([id]);
+    expect(gitIhlalleri[0].message).toMatch(/bayt öneki DEĞİL/);
+    /* Sınıf da ölçülür: bu bir GERÇEK ihlaldir, "ölçülemedi" değil. */
+    expect(gitIhlalleri[0].sinif).toBe("ihlal");
+  });
+
   it("çalışma ağacında olup git'te olmayan dosya İHLAL DEĞİLDİR (yeni paket)", async () => {
     /* Kural TEK YÖNLÜ: git-izlenen ⊆ çalışma-ağacı. Tersi de ihlal sayılsaydı
        henüz commit edilmemiş her yeni paket doğrulayıcıyı kırmızıya çevirir,
