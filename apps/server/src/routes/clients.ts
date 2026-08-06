@@ -9,7 +9,6 @@ import {
   CurrencySchema,
   MenuLanguageSchema,
   defaultBrandKit,
-  defaultCatalog,
   newId,
   nowISO,
   slugify,
@@ -17,6 +16,8 @@ import {
   type ClientDTO,
   type ClientSummaryDTO,
 } from "@tezgah/shared";
+import { dogusKatalogu } from "../dogus-katalogu.js";
+import { isKollariIlani } from "../is-kollari.js";
 import { db } from "../db.js";
 import { ASSETS_DIR } from "../paths.js";
 
@@ -139,7 +140,9 @@ export function clientRoutes(app: FastifyInstance): void {
       currency: body.currency ?? "EUR",
       menu_language: body.menu_language ?? "fr", // opsiyonel; verilmezse fr (F7-A/Adım 6)
       brandkit_json: JSON.stringify(defaultBrandKit()),
-      catalog_json: JSON.stringify(defaultCatalog()),
+      /* K-1/D: dipnot varsayılanı kurulumun iş koluna bağlı (dogus-katalogu.ts).
+         Yapılandırma yoksa bugünkü metin birebir. */
+      catalog_json: JSON.stringify(dogusKatalogu(isKollariIlani())),
       created_at: now,
       updated_at: now,
     };

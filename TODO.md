@@ -18,6 +18,11 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### K-1/D sektörsüz dil — açılan borç (2026-08-06, doğuş kataloğu paketi)
+
+- [ ] **ALAN ADLARI hâlâ restoran/Fransızca ilan ediyor (ölçüldü, açık).** `2026-08-06-dogus-katalogu` paketi dipnotun **değerini** kurulum ilanına bağladı; **adını** bağlamadı. Bugün bir tabelacı kurulumunda da şema `catalog.footnote_fr` ve `client.menu_language` diyor; ikincisi bir **müşteri** alanı olduğu hâlde arayüzde "Menü dili" diye etiketleniyor (`i18n/tr.json:35`) ve `PageChrome` dışında dijital menü ile intake'i de sürüyor. Ad değişikliği **migration ister (v13)** ve doğuş paketinin risk sınıfının dışındadır — ayrı paket, ayrı ürün-sahibi teyidi (geri döndürülemez veri emsali). Bu satır kapanana kadar D başlığının şema yarısı açıktır.
+- [ ] **Dipnotun İÇERİĞİ ürün sahibinde.** Menü üretmeyen kurulumda dipnot artık **boş** doğuyor — bilerek: bir tabelacının/matbaacının dipnotunda ne yazacağı içerik kararıdır ve K-1'de açıkça açık bırakıldı. Karar geldiği gün tek satır veri.
+
 ### C-P1 sonrası açılan borç (2026-07-23, kimlik bağlama paketi)
 - [x] **`@tezgah/templates` manifest-only subpath çıkarımı — KAPANDI (C-P2, 2026-07-23, journal `2026-07-23-c-p2-identity-subpath`).** `./identity` subpath'i kuruldu; `apps/server` artık `@tezgah/templates/identity` import eder, react/jsx-runtime **tamamen** server modül grafiğinin dışında (statik kanıt: esbuild metafile analizi — identity graf'i 12 dosya/0 react/0 .tsx; tam registry kontrastı 152/6/11). `registry-core.ts` invaryantın PAYLAŞILAN çekirdeği (index.ts + identity/index.ts aynı kaynağı kullanır). **Kalan bilinçli sınır (backlog DEĞİL, kayıtlı karar):** fabrika/generated manifest'leri identity kaydına GİRMEDİ — fabrika HEP `type:"menu"` beyan ettiği için (C-P0 C-B-1) iki yönlendirme yardımcısı zaten "menu"yu null'a çözüyor; kayıtlı/kayıtsız fark etmiyor. Bu varsayım `identity/index.test.ts`'teki yüksek sesli nöbetçiyle kilitli — fabrika emit'i bir gün değişirse (ürün sahibi yetkisi ister) o test PATLAR.
 
