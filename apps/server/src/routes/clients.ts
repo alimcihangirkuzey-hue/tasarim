@@ -18,6 +18,7 @@ import {
 } from "@tezgah/shared";
 import { dogusKatalogu } from "../dogus-katalogu.js";
 import { isKollariIlani } from "../is-kollari.js";
+import { dogusVarsayilanlari } from "../dogus-varsayilanlari.js";
 import { db } from "../db.js";
 import { ASSETS_DIR } from "../paths.js";
 
@@ -131,14 +132,18 @@ export function clientRoutes(app: FastifyInstance): void {
   /* Oluştur */
   app.post("/api/clients", async (req, reply) => {
     const body = ClientCreateSchema.parse(req.body ?? {});
+    const dogus = dogusVarsayilanlari();
     const now = nowISO();
     const client: ClientRow = {
       id: newId("cli"),
       name: body.name.trim(),
       slug: uniqueSlug(body.name),
       notes: body.notes ?? "",
-      currency: body.currency ?? "EUR",
-      menu_language: body.menu_language ?? "fr", // opsiyonel; verilmezse fr (F7-A/Adım 6)
+      /* K-1/D: doğuş varsayılanları kurulum ilanından (dogus-varsayilanlari.ts).
+         İstek gövdesi HER ZAMAN kazanır — ilan yalnız BOŞLUĞU doldurur.
+         İlan yoksa değerler bugünküyle birebir (EUR/fr). */
+      currency: body.currency ?? dogus.currency,
+      menu_language: body.menu_language ?? dogus.menu_language,
       brandkit_json: JSON.stringify(defaultBrandKit()),
       /* K-1/D: dipnot varsayılanı kurulumun iş koluna bağlı (dogus-katalogu.ts).
          Yapılandırma yoksa bugünkü metin birebir. */

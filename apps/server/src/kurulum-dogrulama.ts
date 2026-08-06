@@ -33,21 +33,40 @@
    başlatmaya zorlardı ve iki uç testi bunun tersini çiviliyor. */
 
 import path from "node:path";
-import { isKollariIlani } from "./is-kollari.js";
-import { kurulumKunyesi } from "./kurulum-kunyesi.js";
+import { IS_KOLLARI_ENV, isKollariIlani } from "./is-kollari.js";
+import { KUNYE_ENV, kurulumKunyesi } from "./kurulum-kunyesi.js";
 import { ROOT_DIR } from "./paths.js";
-import { veriDiziniIlani } from "./veri-dizini.js";
+import { VERI_DIZINI_ENV, veriDiziniIlani } from "./veri-dizini.js";
+import { CIKTI_DILI_ENV, PARA_BIRIMI_ENV, dogusVarsayilanlari } from "./dogus-varsayilanlari.js";
 
-/** Açılışta doğrulanan kurulum ilanları — ortam değişkeniyle yapılandırılan
-    her ilan buraya girer. Adlar test tarafından da okunur (nöbetçi). */
-export const KURULUM_ILANLARI: ReadonlyArray<{ ad: string; oku: () => unknown }> = [
-  { ad: "is-kollari", oku: isKollariIlani },
-  { ad: "kurulum-kunyesi", oku: kurulumKunyesi },
+export interface KurulumIlani {
+  ad: string;
+  /** Bu ilanın okuduğu ortam değişkenleri — nöbetçi kapsamı BURADAN türer. */
+  env: readonly string[];
+  oku: () => unknown;
+}
+
+/* Açılışta doğrulanan kurulum ilanları — ortam değişkeniyle yapılandırılan
+   her ilan buraya girer.
+
+   `env` ALANI NİYE VAR (2026-08-06, doğuş varsayılanları paketi): nöbetçi
+   önce ilan ADINDAN env adına ELLE yazılmış bir switch'le geçiyordu; yani
+   kapsamın kendisi testin içinde ikinci kez beyan ediliyordu ve dördüncü ilan
+   eklendiğinde o switch'i güncellemeyi unutmak, ilanı sessizce kapsam dışında
+   bırakırdı — nöbetçinin önlemek için var olduğu şeyin ta kendisi. Kapsam
+   artık İLANIN KENDİ BEYANIDIR. */
+export const KURULUM_ILANLARI: ReadonlyArray<KurulumIlani> = [
+  { ad: "is-kollari", env: [IS_KOLLARI_ENV], oku: isKollariIlani },
+  { ad: "kurulum-kunyesi", env: [KUNYE_ENV], oku: kurulumKunyesi },
   /* Veri dizini ilanı ASIL olarak paths.ts'te, yol türetilirken denetlenir
      (bozuk yol `ensureDirs()`'e ulaşmadan). Burada İKİNCİ KEZ okunur çünkü
      açılış denetiminin sözleşmesi "ortamla yapılandırılan HER ilan buradadır"
      — listede olmayan ilan, nöbetçinin göremediği ilandır. */
-  { ad: "veri-dizini", oku: () => veriDiziniIlani(path.join(ROOT_DIR, "data")) },
+  { ad: "veri-dizini", env: [VERI_DIZINI_ENV], oku: () => veriDiziniIlani(path.join(ROOT_DIR, "data")) },
+  /* Tek ilan, İKİ değişken: para birimi ve çıktı dili aynı doğuş anını
+     yapılandırır ve birlikte okunur (biri bozuksa diğerinin geçerli olması
+     kurulumu "yarı doğru" yapardı). */
+  { ad: "dogus-varsayilanlari", env: [PARA_BIRIMI_ENV, CIKTI_DILI_ENV], oku: dogusVarsayilanlari },
 ];
 
 /**

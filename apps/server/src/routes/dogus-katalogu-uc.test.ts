@@ -22,6 +22,7 @@ const { buildApp } = await import("../app.js");
 const { IS_KOLLARI_ENV } = await import("../is-kollari.js");
 const { DIPNOT_IS_KOLU } = await import("../dogus-katalogu.js");
 const { defaultCatalog } = await import("@tezgah/shared");
+const { PARA_BIRIMI_ENV, CIKTI_DILI_ENV } = await import("../dogus-varsayilanlari.js");
 
 const ROUTES_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,8 @@ beforeAll(async () => {
 
 afterEach(() => {
   delete process.env[IS_KOLLARI_ENV];
+  delete process.env[PARA_BIRIMI_ENV];
+  delete process.env[CIKTI_DILI_ENV];
 });
 
 /** Yanıta DEĞİL, yazılan satıra bakar. */
@@ -181,5 +184,77 @@ describe("klon çıktı dilini KORUR (K-1/D — aynı turda ölçülen ikinci ya
       menu_language: string;
     };
     expect(row.menu_language, "klon dili kaynaktan kopyalanmadı").toBe("tr");
+  });
+});
+
+/* DOĞUŞ VARSAYILANLARI — UÇ TARAFI (K-1/D, 2026-08-06).
+
+   Kural `../dogus-varsayilanlari.test.ts`'te ölçülür. Burada ölçülen şey,
+   uçların gerçekten o ilandan geçtiği — ve yine YANITA değil, DB'ye YAZILAN
+   satıra bakılarak. */
+describe("POST /api/clients — doğuş para birimi ve çıktı dili", () => {
+  function yazilan(id: string): { currency: string; menu_language: string } {
+    return db
+      .prepare("SELECT currency, menu_language FROM clients WHERE id = ?")
+      .get(id) as { currency: string; menu_language: string };
+  }
+
+  it("İLAN YOKKEN bugünkü değerler YAZILIR (EUR/fr)", async () => {
+    const id = await musteriYarat("Varsayilan Dogus");
+    expect(yazilan(id)).toEqual({ currency: "EUR", menu_language: "fr" });
+  });
+
+  it("TÜRK KURULUMUNDA müşteri TRY/tr DOĞAR", async () => {
+    /* Yaranın kendisi: operatör her müşteride iki alanı elle çeviriyordu. */
+    process.env[PARA_BIRIMI_ENV] = "TRY";
+    process.env[CIKTI_DILI_ENV] = "tr";
+    const id = await musteriYarat("Kuzey Ozalit Dogus");
+    expect(yazilan(id)).toEqual({ currency: "TRY", menu_language: "tr" });
+  });
+
+  it("İSTEK GÖVDESİ İLANI EZER — ilan yalnız BOŞLUĞU doldurur", async () => {
+    /* Kurulum TL ilan etse de, o müşteri gerçekten euro çalışıyorsa operatör
+       yazabilmelidir. İlan bir varsayılandır, bir kilit değil. */
+    process.env[PARA_BIRIMI_ENV] = "TRY";
+    process.env[CIKTI_DILI_ENV] = "tr";
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/clients",
+      payload: { name: "Ihracat Musterisi", currency: "EUR", menu_language: "fr" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(yazilan((res.json() as { id: string }).id)).toEqual({
+      currency: "EUR",
+      menu_language: "fr",
+    });
+  });
+
+  it("MEVCUT MÜŞTERİ ETKİLENMEZ — ilan geriye dönük ÇALIŞMAZ", async () => {
+    const id = await musteriYarat("Ilan Oncesi Dogan");
+    process.env[PARA_BIRIMI_ENV] = "TRY";
+    process.env[CIKTI_DILI_ENV] = "tr";
+    expect(yazilan(id)).toEqual({ currency: "EUR", menu_language: "fr" });
+  });
+});
+
+describe("nöbetçi — doğuş varsayılanı elle yazılmaz", () => {
+  it("HİÇBİR müşteri yaratan rota EUR/fr'yi SERT KODLAMAZ", () => {
+    /* Ölçülen yara iki rotada AYRI AYRI yazılıydı; biri güncellenip diğeri
+       unutulsaydı aynı kurulumda iki farklı doğuş davranışı olurdu. */
+    const bagisik = new Set(["clone.ts"]); // klon kopyadır, kaynağından alır
+    const kacan: string[] = [];
+    for (const f of readdirSync(ROUTES_DIR).filter(
+      (f) => /\.ts$/.test(f) && !f.includes(".test."),
+    )) {
+      if (bagisik.has(f)) continue;
+      const s = readFileSync(path.join(ROUTES_DIR, f), "utf8");
+      if (!/INSERT INTO clients\b/.test(s)) continue;
+      if (/\?\?\s*"EUR"/.test(s) || /\?\?\s*"fr"/.test(s)) kacan.push(f);
+    }
+    expect(
+      kacan,
+      "Bu rota(lar) doğuş varsayılanını sert kodluyor: kurulum ilanı " +
+        "(TEZGAH_PARA_BIRIMI / TEZGAH_CIKTI_DILI) bu yolda etkisiz kalır.",
+    ).toEqual([]);
   });
 });

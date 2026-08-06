@@ -208,17 +208,13 @@ describe("nöbetçi — ortamla yapılandırılan her ilan denetime dahil", () =
   });
 
   it("HER ortam ilanı ya DENETİMDE ya da GEREKÇELİ İSTİSNADA", () => {
-    const denetlenen = new Set(
-      KURULUM_ILANLARI.map((i) => i.ad).flatMap((ad) =>
-        ad === "is-kollari"
-          ? [IS_KOLLARI_ENV]
-          : ad === "kurulum-kunyesi"
-            ? [KUNYE_ENV]
-            : ad === "veri-dizini"
-              ? [VERI_DIZINI_ENV]
-              : [],
-      ),
-    );
+    /* KAPSAM ARTIK İLANIN KENDİ BEYANI (2026-08-06 düzeltmesi). Burada eskiden
+       ad → env eşlemesi ELLE yazılıydı; yani nöbetçinin kapsamı testin içinde
+       İKİNCİ KEZ beyan ediliyordu. Dördüncü ilan (dogus-varsayilanlari)
+       eklendiğinde bu satır tam da öngörüldüğü gibi kırmızıya döndü — ama
+       doğru düzeltme switch'e bir dal eklemek DEĞİL, ikinci beyanı kaldırmaktı:
+       eşleme unutulabilir, `env` alanı unutulamaz (tip zorunlu kılar). */
+    const denetlenen = new Set(KURULUM_ILANLARI.flatMap((i) => i.env));
     const bagisik = new Set(ISTISNALAR.map((i) => i.env));
     const kacan = [...ortamOkumalari().entries()].flatMap(([dosya, adlar]) =>
       adlar.filter((a) => !denetlenen.has(a) && !bagisik.has(a)).map((a) => `${a} (${dosya})`),

@@ -23,6 +23,7 @@ import {
 } from "@tezgah/shared";
 import { dogusKatalogu } from "../dogus-katalogu.js";
 import { isKollariIlani } from "../is-kollari.js";
+import { dogusVarsayilanlari } from "../dogus-varsayilanlari.js";
 import { db } from "../db.js";
 import { uniqueSlug } from "./clients.js";
 import { extractSurfaces, upsertClientSurfaces } from "../surfaces.js";
@@ -78,8 +79,9 @@ export function intakeRoutes(app: FastifyInstance): void {
           name: nc.name.trim(),
           slug: uniqueSlug(nc.name),
           notes: "",
-          currency: nc.currency ?? "EUR",
-          menu_language: nc.menu_language ?? "fr",
+          /* K-1/D: doğuş varsayılanları AYNI ilandan — istek gövdesi kazanır. */
+          currency: nc.currency ?? dogusVarsayilanlari().currency,
+          menu_language: nc.menu_language ?? dogusVarsayilanlari().menu_language,
           brandkit_json: JSON.stringify(defaultBrandKit()),
           /* K-1/D: ikinci müşteri doğuş yolu — AYNI gövdeden geçer
              (iki yazıcı, tek kural; bu reponun tekrar tekrar ödediği bedel). */
