@@ -30,6 +30,7 @@ const { SEKTORLER } = await import("@tezgah/templates/identity");
 /** Gerçek bir iş kolu adı — ilandan okunur, elle yazılmaz. */
 const GECERLI_KOL = SEKTORLER[0]!;
 const { KUNYE_ENV, KUNYE_AZAMI } = await import("./kurulum-kunyesi.js");
+const { VERI_DIZINI_ENV } = await import("./veri-dizini.js");
 
 const SERVER_SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -38,6 +39,7 @@ migrate();
 afterEach(() => {
   delete process.env[IS_KOLLARI_ENV];
   delete process.env[KUNYE_ENV];
+  delete process.env[VERI_DIZINI_ENV];
 });
 
 describe("açılışta kurulum doğrulaması", () => {
@@ -68,6 +70,31 @@ describe("açılışta kurulum doğrulaması", () => {
     );
   });
 
+  it("GÖRELİ veri dizini: sunucu AYAĞA KALKMAZ", async () => {
+    /* Ölçülen yaranın kapatılabilen yarısı: göreli yol, aynı kurulumun
+       başlatıldığı dizine göre FARKLI veriyi açmasına yol açar. */
+    process.env[VERI_DIZINI_ENV] = "veri";
+    await expect(buildApp({ logger: false })).rejects.toThrow(
+      /kurulum ilanı geçersiz \(veri-dizini\)/,
+    );
+  });
+
+  it("İLAN EDİLMİŞ AMA BOŞ veri dizini: sunucu AYAĞA KALKMAZ", async () => {
+    /* `?? varsayilan` boş dizeyi nullish saymaz: bugünkü yolda DATA_DIR=""
+       olur ve veritabanı sürecin çalışma dizinine düşerdi. */
+    process.env[VERI_DIZINI_ENV] = "";
+    await expect(buildApp({ logger: false })).rejects.toThrow(
+      /kurulum ilanı geçersiz \(veri-dizini\)/,
+    );
+  });
+
+  it("GEÇERLİ MUTLAK veri diziniyle ayağa kalkar", async () => {
+    process.env[VERI_DIZINI_ENV] = path.join(SERVER_SRC, "..", "..", "..", "data");
+    const app = await buildApp({ logger: false });
+    await app.ready();
+    await app.close();
+  });
+
   it("HATA MESAJI hangi ilanın bozuk olduğunu SÖYLER", () => {
     /* Yığın izine bakmak zorunda kalan kurulumcu, mesajı okuyamayan kurulumcudur. */
     expect(() =>
@@ -96,28 +123,123 @@ describe("açılışta kurulum doğrulaması", () => {
 });
 
 describe("nöbetçi — ortamla yapılandırılan her ilan denetime dahil", () => {
-  /** `*_ENV` sabiti dışa veren modüller = ortamla yapılandırılan ilanlar. */
-  function ilanModulleri(): string[] {
-    return readdirSync(SERVER_SRC)
-      .filter((f) => /\.ts$/.test(f) && !f.includes(".test."))
-      .filter((f) => /^export const [A-Z_]*_ENV\b/m.test(readFileSync(path.join(SERVER_SRC, f), "utf8")))
-      .map((f) => f.replace(/\.ts$/, ""));
+  /* NÖBETÇİNİN KENDİ KÖR NOKTASI (bu turda ÖLÇÜLDÜ ve kapatıldı).
+
+     Eski tarama iki varsayım taşıyordu ve ikisi de sessizce yanlıştı:
+       (1) yalnız `apps/server/src` KÖKÜ okunuyordu (readdirSync, özyinelemesiz)
+           → `routes/` altına konan bir ilan görünmezdi;
+       (2) ilan olmanın işareti `export const *_ENV` YAZIM ÂDETİ sayılıyordu
+           → âdete uymayan okuma görünmezdi.
+     Ölçüm (komutla): eski tarama {is-kollari, kurulum-kunyesi} buluyordu;
+     gerçekte ortam okuyan dosyalar {is-kollari, kurulum-kunyesi, db, paths}.
+     Yani `TEZGAH_DATA_DIR` — kiracının BÜTÜN verisinin yerini belirleyen ilan —
+     nöbetçinin hiç bakmadığı yerdeydi.
+
+     Yeni tarama İŞARETİ değil OLAYI arar: `process.env.TEZGAH_*` okuyan her
+     dosya, her derinlikte. Âdete uymayan bir ilan artık saklanamaz. */
+
+  /** Denetime GİRMEYEN ilanlar — her biri gerekçesiyle, tek tek. */
+  const ISTISNALAR: ReadonlyArray<{ env: string; neden: string }> = [
+    {
+      env: "TEZGAH_DB_PATH",
+      neden:
+        "kurulum ilanı DEĞİL, test koşum-takımının bağlantı enjeksiyon seam'i " +
+        "(db.ts: ':memory:' / geçici dosya). Üretim kurulumu bunu ilan etmez; " +
+        "veri KONUMU kararı TEZGAH_DATA_DIR'dedir ve o denetlenir.",
+    },
+  ];
+
+  /* TARAYICININ KENDİ KÖR NOKTASI — ilk yazımda ölçüldü ve düzeltildi:
+     yalnız `process.env.TEZGAH_X` (noktalı) aranıyordu; oysa bu repodaki
+     İLANLARIN TAMAMI sabit üzerinden okur (`process.env[IS_KOLLARI_ENV]`).
+     Sonuç: tarayıcı, denetlenen üç ilanın HİÇBİRİNİ görmüyordu ve yalnız
+     db.ts'i buluyordu. Ölçüm aracının körlüğü, ölçtüğü kusurdan tehlikelidir:
+     "kaçan yok" diyerek yeşil kalırdı. Artık İKİ biçim de aranır. */
+
+  /** `process.env` okuyan her kaynak dosya → dosyada geçen TEZGAH_* adları. */
+  function ortamOkumalari(): Map<string, string[]> {
+    const bulunan = new Map<string, string[]>();
+    const gez = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) gez(p);
+        else if (/\.ts$/.test(e.name) && !e.name.includes(".test.")) {
+          const kaynak = readFileSync(p, "utf8");
+          if (!kaynak.includes("process.env")) continue;
+          const adlar = [
+            /* noktalı okuma: process.env.TEZGAH_X */
+            ...[...kaynak.matchAll(/process\.env\.(TEZGAH_[A-Z_]+)/g)].map((m) => m[1]!),
+            /* sabit üzerinden okuma: export const X_ENV = "TEZGAH_X" */
+            ...[...kaynak.matchAll(/["'](TEZGAH_[A-Z_]+)["']/g)].map((m) => m[1]!),
+          ];
+          if (adlar.length) bulunan.set(path.relative(SERVER_SRC, p), [...new Set(adlar)]);
+        }
+      }
+    };
+    gez(SERVER_SRC);
+    return bulunan;
   }
 
   it("NÖBETÇİNİN KENDİSİ çalışıyor (ön-koşul: bilinen ilanlar bulundu)", () => {
-    const moduller = ilanModulleri();
-    expect(moduller).toContain("is-kollari");
-    expect(moduller).toContain("kurulum-kunyesi");
+    /* Ön-koşul olmadan aşağıdaki "eksik yok" iddiası, hiçbir şey bulamayan
+       bozuk bir tarayıcıyla da yeşil kalırdı. */
+    const okunan = new Set([...ortamOkumalari().values()].flat());
+    expect(okunan).toContain(IS_KOLLARI_ENV);
+    expect(okunan).toContain(KUNYE_ENV);
+    expect(okunan, "veri dizini ilanı taramada görünmüyor").toContain(VERI_DIZINI_ENV);
   });
 
-  it("HER ilan modülü açılış denetiminde YAZILI", () => {
-    const kapsanan = new Set(KURULUM_ILANLARI.map((i) => i.ad));
-    const eksik = ilanModulleri().filter((m) => !kapsanan.has(m));
+  it("ÖZYİNELEMELİ tarıyor — alt dizindeki ilan da görünür", () => {
+    /* Eski taramanın birinci kör noktası. `routes/` altında ortam okuyan bir
+       dosya bugün yok; tarayıcının oraya BAKTIĞINI dosya sayısıyla çiviliyoruz
+       (kök dosya sayısı, ağacın tamamından küçüktür). */
+    const koktekiTs = readdirSync(SERVER_SRC, { withFileTypes: true }).filter(
+      (e) => e.isFile() && /\.ts$/.test(e.name),
+    ).length;
+    let taranan = 0;
+    const say = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) say(path.join(dir, e.name));
+        else if (/\.ts$/.test(e.name)) taranan += 1;
+      }
+    };
+    say(SERVER_SRC);
+    expect(taranan).toBeGreaterThan(koktekiTs);
+  });
+
+  it("HER ortam ilanı ya DENETİMDE ya da GEREKÇELİ İSTİSNADA", () => {
+    const denetlenen = new Set(
+      KURULUM_ILANLARI.map((i) => i.ad).flatMap((ad) =>
+        ad === "is-kollari"
+          ? [IS_KOLLARI_ENV]
+          : ad === "kurulum-kunyesi"
+            ? [KUNYE_ENV]
+            : ad === "veri-dizini"
+              ? [VERI_DIZINI_ENV]
+              : [],
+      ),
+    );
+    const bagisik = new Set(ISTISNALAR.map((i) => i.env));
+    const kacan = [...ortamOkumalari().entries()].flatMap(([dosya, adlar]) =>
+      adlar.filter((a) => !denetlenen.has(a) && !bagisik.has(a)).map((a) => `${a} (${dosya})`),
+    );
     expect(
-      eksik,
+      kacan,
       "Ortamla yapılandırılan bu ilan(lar) açılışta doğrulanmıyor: yanlış " +
-        "yapılandırma boot'u geçer, uç 500 döner ve arayüz sessizce " +
-        "DARALTMASIZ çalışır (sessiz genişleme). KURULUM_ILANLARI'na ekleyin.",
+        "yapılandırma boot'u geçer ve kurulum SAĞLIKLI görünürken yanlış " +
+        "davranır (ölçülmüş iki biçimi: uç 500 + daraltmasız arayüz; ya da " +
+        "sessizce boş veri dizini). KURULUM_ILANLARI'na ekleyin ya da " +
+        "ISTISNALAR'a GEREKÇESİYLE yazın.",
     ).toEqual([]);
+  });
+
+  it("İSTİSNA TABLOSU ölü değil — yazılı her istisna gerçekten okunuyor", () => {
+    /* Gerekçesi kalmamış bir istisna, gelecekteki gerçek bir ilanı sessizce
+       bağışlar. Tablo, koda karşı canlı tutulur. */
+    const okunan = new Set([...ortamOkumalari().values()].flat());
+    for (const i of ISTISNALAR) {
+      expect(okunan, `${i.env}: istisna yazılı ama kodda okunmuyor`).toContain(i.env);
+      expect(i.neden.length, `${i.env}: gerekçe yazılmamış`).toBeGreaterThan(40);
+    }
   });
 });

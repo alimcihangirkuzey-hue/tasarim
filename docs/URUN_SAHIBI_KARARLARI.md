@@ -163,6 +163,41 @@ açılmaz" hükmünün delili ekran görüntüsü değil, `kurulum-dogrulama` te
 ve önceki turda ölçülmüş fail-loud davranışıdır. Diğer on satırın deliline
 gözle bakılabilir; bunun bir yarısına bakılamaz.
 
+### K-1/C'den doğan AÇIK KARAR: boş veri dizininde kurulum ne yapmalı? (2026-08-06)
+
+**Bulgu (komutla ölçüldü, `index.ts`'in gerçek sırasıyla — `migrate()` → `buildApp`):**
+kiralanan modülde kiracının bütün verisinin yerini `TEZGAH_DATA_DIR` belirler.
+Değer **bir harf yanlış** yazıldığında:
+
+| ölçüm | sonuç |
+|---|---|
+| boot | **başarılı** |
+| `/api/health` | **200** |
+| `/api/clients` | **200 `[]`** |
+
+`ensureDirs()` yanlış yazılmış yolu sessizce oluşturur, `migrate()` oraya boş
+bir şema kurar, kurulum kusursuz sağlıklı görünür — ve operatörün gördüğü tek
+şey **bütün müşterilerinin yok olmuş olması**. Veri, doğru yazılmış dizinde
+sapasağlamdır; bunu söyleyen hiçbir şey yoktur.
+
+**Uygulayıcının kapattığı yarı (karar gerektirmedi):** biçim kuralları —
+ilan edilmiş ama boş · göreli yol · satır sonu → sunucu **ayağa kalkmaz**
+(`veri-dizini.ts`, journal `2026-08-06-veri-dizini-ilani`).
+
+**Ürün sahibine kalan yarı (uydurulmadı):** biçimi kusursuz ama yanlış yazılmış
+bir yol, "ilk açılış"tan yalnız bir ürün kararıyla ayrılabilir:
+
+1. **Boş veri dizininde kurulum DURUR;** açılış, kurulumcunun açık onayını
+   ister (ör. `TEZGAH_ILK_KURULUM=1`). Yanlış yazımı yakalar, ilk kuruluma bir
+   adım ekler.
+2. **Kurulum açılır ama UYARIR** — arayüz "bu kurulum boş bir veri dizini
+   kullanıyor: `<yol>`" der. Adım eklemez, yanlış yazımı garanti yakalamaz.
+3. **Bugünkü davranış korunur** — sessiz kalır.
+
+Karar gelene kadar otomasyon bu alana dokunmaz; sınır hem `veri-dizini.ts`
+başlığında hem "KAPATILAMAYAN YARI" adlı ayrı bir testte yazılıdır, yani kod
+değişirse sessizce kaybolamaz.
+
 ### Kapalı modülde ÖLÇÜLEN ama ONARILMAYAN yara (izin bekliyor)
 
 **`catalog.footnote_fr` — Türkçe tabelacı müşterisinde Fransızca dipnot.**

@@ -32,14 +32,22 @@
    doğrular. Dondurmak, ortam değişkenini değiştiren kurulumu yeniden
    başlatmaya zorlardı ve iki uç testi bunun tersini çiviliyor. */
 
+import path from "node:path";
 import { isKollariIlani } from "./is-kollari.js";
 import { kurulumKunyesi } from "./kurulum-kunyesi.js";
+import { ROOT_DIR } from "./paths.js";
+import { veriDiziniIlani } from "./veri-dizini.js";
 
 /** Açılışta doğrulanan kurulum ilanları — ortam değişkeniyle yapılandırılan
     her ilan buraya girer. Adlar test tarafından da okunur (nöbetçi). */
 export const KURULUM_ILANLARI: ReadonlyArray<{ ad: string; oku: () => unknown }> = [
   { ad: "is-kollari", oku: isKollariIlani },
   { ad: "kurulum-kunyesi", oku: kurulumKunyesi },
+  /* Veri dizini ilanı ASIL olarak paths.ts'te, yol türetilirken denetlenir
+     (bozuk yol `ensureDirs()`'e ulaşmadan). Burada İKİNCİ KEZ okunur çünkü
+     açılış denetiminin sözleşmesi "ortamla yapılandırılan HER ilan buradadır"
+     — listede olmayan ilan, nöbetçinin göremediği ilandır. */
+  { ad: "veri-dizini", oku: () => veriDiziniIlani(path.join(ROOT_DIR, "data")) },
 ];
 
 /**
