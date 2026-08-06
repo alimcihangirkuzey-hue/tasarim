@@ -22,7 +22,6 @@ import {
 } from "@tezgah/shared";
 import { TEMPLATES, blockersOf } from "@tezgah/templates";
 import {
-  siparisParamlari,
   siparisSablonlari,
   siparisSubstratlari,
   siparisTeknikleri,
@@ -30,6 +29,7 @@ import {
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { belgeDisaAktar } from "../lib/disaAktar";
+import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
 
 const TYPES: ProductType[] = [
@@ -70,75 +70,6 @@ function itemSummary(it: KalemOzetiGirdisi): string {
   const substratlar = siparisSubstratlari(it.product_type);
   if (substratlar.length === 1) parts.push(t(`orders.substrat_${substratlar[0]}`));
   return parts.join(" · ");
-}
-
-/* ── Tasarıma başlatma: TEK GÖVDE ───────────────────────────────────────
-   Bir kalemi belgeye çeviren zincir burada TEK KOPYA yaşar; ItemRow'un tekil
-   düğmesi ve ProjectBlock'un toplu düğmesi aynı gövdeyi çağırır. Ayrı ayrı
-   yazılsaydı aşağıdaki yetim telafisi iki yerde dururdu ve biri düzeltilip
-   diğeri unutulurdu — bu reponun kendi dersi (yapıştır önizlemesi, 2026-08-06:
-   ikinci kez elle yazılan özet technique'i düşürüyordu).
-
-   Toplu yolun ne YAPMADIĞI da burada sabitlenir: yönlendirme (navigate) bu
-   fonksiyonun İŞİ DEĞİLDİR. Tekil düğme başarıda editöre gider, toplu düğme
-   gitmez (N belgeden birine atlamak keyfî olurdu) — karar çağırana bırakılır. */
-async function belgeAc(clientId: string, item: OrderItemDTO, templateId: string): Promise<string> {
-  const doc = await api.createDocument(clientId, templateId, item.project_id);
-  const params = siparisParamlari(item);
-  if (params) {
-    try {
-      await api.updateDocument(doc.id, { params });
-    } catch (err) {
-      /* YETİM TELAFİSİ (journal 2026-07-27-klon-kapisi-yetim-telafi):
-         sunucu params'ı 400'lerse (ölçülen yol: sipariş width_cm=5000 —
-         OrderItemCreateSchema max taşımıyor, Zod max 2000 reddediyor)
-         create edilmiş belge sahipsiz kalıyordu. Geri sarıyoruz: belgeyi
-         parametresiz bırakıp kaleme BAĞLAMAK reddedildi — sipariş ölçüsü
-         sessizce düşer, belge varsayılan ölçülerle açılır ve operatör yanlış
-         ölçüyle tasarlar; silmek + görünür hata, sipariş verisini düzeltmeye
-         zorlar. Silme BEST-EFFORT: telafinin kendi hatası asıl hatayı
-         örtmemeli — her durumda orijinal hata yeniden fırlar. */
-      try {
-        await api.deleteDocument(doc.id);
-      } catch {
-        /* yetim kaldı — asıl hata yine de görünür olacak */
-      }
-      throw err;
-    }
-  }
-  /* Not: updateOrderItem başarısızlığı telafi EDİLMEZ — o noktada belge
-     geçerli params'la yazılmıştır, silmek kullanıcının işini yok ederdi;
-     kalem bağı bir sonraki denemede kurulabilir. */
-  await api.updateOrderItem(item.id, { document_id: doc.id, status: "tasarimda" });
-  return doc.id;
-}
-
-/* Toplu başlatma PLANI — saf sınıflandırma, yan etkisiz (bu yüzden ayrı
-   test edilebilir ve düğmenin DOM'undan bağımsız ölçülür).
-   Dört kova AYRIK ve TÜKETİCİ: her kalem tam bir kovaya düşer. */
-export interface TopluPlan {
-  /** belgesi yok + tam 1 şablon seçeneği → sorusuz koşar */
-  hazir: OrderItemDTO[];
-  /** belgesi yok + ≥2 şablon → tür başına BİR KEZ sorulur (kalem başına değil) */
-  secimli: OrderItemDTO[];
-  /** 0 şablon seçeneği → bu tür tasarlanamaz (ör. "diger") */
-  tasarlanamaz: OrderItemDTO[];
-  /** document_id dolu → zaten tasarımda, tekrar açmak mükerrer belge üretirdi */
-  zaten: OrderItemDTO[];
-}
-
-export function topluPlan(items: readonly OrderItemDTO[]): TopluPlan {
-  const plan: TopluPlan = { hazir: [], secimli: [], tasarlanamaz: [], zaten: [] };
-  for (const it of items) {
-    if (it.document_id) plan.zaten.push(it);
-    else {
-      const n = siparisSablonlari(it.product_type).length;
-      if (n === 0) plan.tasarlanamaz.push(it);
-      else if (n === 1) plan.hazir.push(it);
-      else plan.secimli.push(it);
-    }
-  }
-  return plan;
 }
 
 function ItemRow({ item, client, showToast }: {
@@ -495,41 +426,14 @@ function ProjectBlock({ project, client, showToast }: {
      özet toast'ta hem başarı hem düşen sayısı görünür (sessiz kısmi başarı yok).
 
      YÖNLENDİRME YOK: N belgeden birine atlamak keyfî olurdu (belgeAc yorumu). */
-  const topluBaslat = useMutation({
-    mutationFn: async () => {
-      const plan = topluPlan(project.items);
-      const kosacak: Array<{ item: OrderItemDTO; templateId: string }> = plan.hazir.map((item) => ({
-        item,
-        templateId: siparisSablonlari(item.product_type)[0]!,
-      }));
-
-      /* Tür başına tek soru — aynı türden N kalem tek cevabı paylaşır */
-      const secim = new Map<ProductType, string>();
-      for (const item of plan.secimli) {
-        if (!secim.has(item.product_type)) {
-          const secenekler = siparisSablonlari(item.product_type);
-          secim.set(
-            item.product_type,
-            window.confirm(t("orders.menu_template_q")) ? secenekler[0]! : secenekler[1]!
-          );
-        }
-        kosacak.push({ item, templateId: secim.get(item.product_type)! });
-      }
-
-      let acilan = 0;
-      let dusen = 0;
-      for (const { item, templateId } of kosacak) {
-        try {
-          await belgeAc(client.id, item, templateId);
-          acilan += 1;
-        } catch {
-          /* Gerekçe kalem düzeyinde yutulur ama SAYILIR: turu durdurmak
-             kalan kalemleri de cezalandırırdı; özet aşağıda görünür kılar. */
-          dusen += 1;
-        }
-      }
-      return { acilan, dusen, atlanan: plan.tasarlanamaz.length, zaten: plan.zaten.length };
-    },
+  const topluBaslatM = useMutation({
+    mutationFn: () =>
+      /* Gövde lib/topluTasarim.ts'te TEK KOPYA — Açılış Takımı da onu çağırır.
+         Soru buradan enjekte edilir: metin ve OK/İptal anlamı tekil düğmeyle
+         BİREBİR aynı (davranış çatallanmasın). */
+      topluBaslat(client.id, project.items, (_tur, secenekler) =>
+        window.confirm(t("orders.menu_template_q")) ? secenekler[0]! : secenekler[1]!,
+      ),
     onSuccess: (r) => {
       invalidate();
       showToast(tf("orders.bulk_done", { acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan }));
@@ -660,10 +564,10 @@ function ProjectBlock({ project, client, showToast }: {
           return (
             <button
               className="ghost small"
-              onClick={() => topluBaslat.mutate()}
-              disabled={topluBaslat.isPending}
+              onClick={() => topluBaslatM.mutate()}
+              disabled={topluBaslatM.isPending}
             >
-              {topluBaslat.isPending ? t("orders.bulk_running") : tf("orders.bulk_btn", { n })}
+              {topluBaslatM.isPending ? t("orders.bulk_running") : tf("orders.bulk_btn", { n })}
             </button>
           );
         })()}

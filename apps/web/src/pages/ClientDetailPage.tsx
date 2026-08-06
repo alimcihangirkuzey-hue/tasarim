@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Currency } from "@tezgah/shared";
 import { api } from "../api";
-import { t } from "../i18n";
+import { topluBaslat } from "../lib/topluTasarim";
+import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
@@ -59,14 +60,45 @@ export function ClientDetailPage() {
     onSuccess: () => navigate("/"),
   });
 
-  /* FAZ4 §11: Açılış Takımı preseti → Projeler sekmesine geç */
+  /* AÇILIŞ TAKIMI — preset + BELGELER, TEK İŞLEMDE (K-1/A: "bir müşteri +
+     preset → N belge tek işlemde, aynı marka kitinden").
+
+     ÖLÇÜLEN BOŞLUK: preset ucu yalnız proje + KALEM üretir ({project_id,
+     items:sayı}); belgeler için operatör Projeler sekmesine geçip toplu düğmeye
+     ayrıca basıyordu. Başlığın sözü "tek işlem"di.
+
+     KALEMLER NEDEN YENİDEN ÇEKİLİYOR: uç kalem SAYISINI döndürür, kalemlerin
+     KENDİLERİNİ değil — belge açmak için id/tür/ölçü gerekir. Sunucu yanıtını
+     genişletmek yerine mevcut okuma yolu kullanıldı (uç sözleşmesi değişmedi;
+     liste zaten tazelenecekti).
+
+     BELGE AÇMA BAŞARISIZSA PRESET GERİ ALINMAZ: proje ve kalemler operatörün
+     gerçek işidir — silmek onları yok ederdi. Kalemler durur, sayılar raporda
+     görünür, operatör Projeler sekmesinden tekrar deneyebilir. */
+  const [kitSonuc, setKitSonuc] = useState<string | null>(null);
   const openingKit = useMutation({
-    mutationFn: () => api.createOpeningKit(id),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const kit = await api.createOpeningKit(id);
+      const projeler = await api.clientProjects(id);
+      const proje = projeler.find((p) => p.id === kit.project_id);
+      if (!proje) return null; // proje okunamadı: kalemler durur, aşağıda raporlanır
+      /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); metin ve OK/İptal anlamı
+         Sipariş Defteri'ndeki düğmeyle birebir aynı. */
+      return topluBaslat(id, proje.items, (_tur, secenekler) =>
+        window.confirm(t("orders.menu_template_q")) ? secenekler[0]! : secenekler[1]!,
+      );
+    },
+    onSuccess: (r) => {
       invalidate();
       void qc.invalidateQueries({ queryKey: ["projects", id] });
       setTab("projects");
+      setKitSonuc(
+        r === null
+          ? t("preset.opening_items_only")
+          : tf("preset.opening_done", { acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan }),
+      );
     },
+    onError: (e) => setKitSonuc(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
 
   /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster */
@@ -146,6 +178,16 @@ export function ClientDetailPage() {
         ))}
       </div>
 
+      {/* Açılış Takımı sonucu SAYFA DÜZEYİNDE durur, "genel" sekmesinde DEĞİL:
+          akış başarıda "projeler" sekmesine geçer ve mesaj genel sekmede
+          kalsaydı operatör onu HİÇ GÖRMEZDİ (bu kusuru testin kendisi
+          yakaladı — sonuç metni aranınca bulunamadı). */}
+      {kitSonuc && (
+        <p className="muted" style={{ margin: "8px 0" }}>
+          📦 {kitSonuc}
+        </p>
+      )}
+
       {tab === "general" && (
         <>
         <div className="panel">
@@ -178,7 +220,7 @@ export function ClientDetailPage() {
               disabled={openingKit.isPending}
               onClick={() => openingKit.mutate()}
             >
-              📦 {t("preset.opening")}
+              📦 {openingKit.isPending ? t("orders.bulk_running") : t("preset.opening")}
             </button>
           </div>
         </div>

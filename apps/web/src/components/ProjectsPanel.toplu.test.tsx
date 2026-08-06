@@ -35,7 +35,11 @@ import {
 } from "@tezgah/shared";
 import { siparisSablonlari } from "@tezgah/templates/identity";
 import { api } from "../api";
-import { ProjectsPanel, topluPlan } from "./ProjectsPanel";
+import { ProjectsPanel } from "./ProjectsPanel";
+/* topluPlan artık lib/topluTasarim.ts'te (ikinci tüketici doğdu: Açılış
+   Takımı). Test kaynağı izler — bileşen üzerinden re-export edilmedi ki
+   "nerede yaşıyor" sorusu tek cevaplı kalsın. */
+import { topluPlan } from "../lib/topluTasarim";
 
 vi.mock("../api", () => ({
   api: {

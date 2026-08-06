@@ -539,7 +539,8 @@
   },
   "preset": {
     "opening": "Açılış Takımı oluştur",
-    "opening_done": "Açılış Takımı açıldı: 4 kalem (vitrophanie ölçü bekliyor)"
+    "opening_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
+    "opening_items_only": "Kalemler oluşturuldu — belgeler açılamadı, Projeler sekmesinden başlatın"
   },
   "factory": {
     "title": "Şablon Fabrikası",
