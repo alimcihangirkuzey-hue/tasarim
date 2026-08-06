@@ -747,8 +747,14 @@ export function EditorPage() {
                     <span className="muted">{t("history.snapshot_label")}</span>
                   ) : (
                     <>
+                      {/* ETİKET TÜR SÖZLÜĞÜNDEN (orders.out_*): eski hâl print
+                          DIŞINDAKİ HER TÜRÜ "preview" diye etiketliyordu —
+                          nakış, kesim, PNG, CMYK ve fiş hepsi "preview"
+                          görünüyordu. Sözlük ZATEN on iki türün tamamını
+                          taşıyor ve Projeler sekmesi onu okuyor; iki liste
+                          aynı çıktıya iki farklı ad veriyordu. */}
                       <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-                        {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
+                        {t(`orders.out_${r.kind}`)}
                       </a>
                       <button
                         className="icon"

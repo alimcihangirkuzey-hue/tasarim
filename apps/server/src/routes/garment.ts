@@ -6,10 +6,11 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GarmentParamsSchema, cmToPx300, newId, nowISO } from "@tezgah/shared";
-import { kanalNitelikleriOf, productionChannelsOf } from "@tezgah/templates/identity";
+import { productionChannelsOf } from "@tezgah/templates/identity";
 import { garmentDosyaTabani } from "../dosya-adi.js";
 import { db } from "../db.js";
 import { baskiyaHazirBekle } from "../baski-bekle.js";
+import { garmentKayitlari } from "../garment-kayitlari.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -62,6 +63,7 @@ export function garmentRoutes(app: FastifyInstance): void {
 
     const browser = await getBrowser();
     const files: string[] = [];
+    let fisDosyasi: string | null = null;
 
     for (let i = 0; i < areaIds.length; i++) {
       const areaId = areaIds[i];
@@ -132,31 +134,63 @@ export function garmentRoutes(app: FastifyInstance): void {
         const pdf = await page.pdf({ width: "210mm", height: "297mm", printBackground: true });
         const ficheAbs = path.join(dir, `${base}_broderie-fiche.pdf`);
         await fs.writeFile(ficheAbs, pdf);
+        /* FİŞ `files`E DE GİRER (denetim izi tam kalsın) ama KENDİ değişkeninde
+           de tutulur: kayıt şekli artık onu tasarımdan AYIRIYOR — eskiden
+           `files[files.length-1]` olduğu için tasarımın filepath'ini gasp
+           ediyordu (garment-kayitlari.ts başlığı). */
+        fisDosyasi = ficheAbs;
         files.push(ficheAbs);
       } finally {
         await page.close();
       }
     }
 
-    const row: ExportRow = {
-      id: newId("exp"),
-      document_id: req.params.id,
-      project_id: null,
-      kind,
-      filepath: path.relative(ROOT_DIR, files[files.length - 1]).split(path.sep).join("/"),
-      /* 8.5 dürüstlük: png=RGB / broderie=vektör, ICC-PDF/X yok (denetim izi) */
-      snapshot_json: JSON.stringify({
-        state: docDTO,
-        files: files.map((f) => path.relative(ROOT_DIR, f).split(path.sep).join("/")),
-        nitelikler: kanalNitelikleriOf(kind),
-      }),
-      version,
-      created_at: nowISO(),
-    };
-    db.prepare(
+    /* KAYIT ŞEKLİ SAF KATMANDA (garment-kayitlari.ts): nakışta tasarım ve fiş
+       AYRI kayıtlara düşer. Eskiden tek satır vardı ve `files[files.length-1]`
+       yüzünden onun filepath'i FİŞE gidiyordu. */
+    const rel = (f: string): string => path.relative(ROOT_DIR, f).split(path.sep).join("/");
+    const taslaklar = garmentKayitlari(params.technique, {
+      tasarim: files.filter((f) => f !== fisDosyasi),
+      fis: fisDosyasi,
+    });
+    const ekle = db.prepare(
       `INSERT INTO export_records (id, document_id, project_id, kind, filepath, snapshot_json, version, created_at)
        VALUES (@id, @document_id, @project_id, @kind, @filepath, @snapshot_json, @version, @created_at)`
-    ).run(row);
+    );
+    let row: ExportRow | null = null;
+    for (const t of taslaklar) {
+      /* Versiyon sayacı TÜR BAZINDA ilerler; fişin kendi sayacı vardır. */
+      const v =
+        t.kind === kind
+          ? version
+          : ((db
+              .prepare(
+                "SELECT MAX(version) AS v FROM export_records WHERE document_id = ? AND kind = ?"
+              )
+              .get(req.params.id, t.kind) as { v: number | null }).v ?? 0) + 1;
+      const satir: ExportRow = {
+        id: newId("exp"),
+        document_id: req.params.id,
+        project_id: null,
+        kind: t.kind,
+        filepath: rel(t.dosya),
+        /* 8.5 dürüstlük: png=RGB / broderie=vektör, ICC-PDF/X yok (denetim izi) */
+        snapshot_json: JSON.stringify({
+          state: docDTO,
+          files: files.map(rel),
+          nitelikler: t.nitelikler,
+        }),
+        version: v,
+        created_at: nowISO(),
+      };
+      ekle.run(satir);
+      /* Yanıt TASARIM kaydıdır (fiş eki): çağıranın sözleşmesi değişmez. */
+      if (t.kind === kind) row = satir;
+    }
+
+    /* row her zaman dolar (taslaklar en az bir tasarım kaydı içerir; saf katman
+       tasarımsız turda FIRLATIR) — yine de sessiz `null` yanıtı üretmeyelim. */
+    if (row === null) throw new Error("tekstil export: tasarım kaydı yazılamadı");
 
     reply.code(201);
     return {

@@ -223,8 +223,6 @@
     "cmyk_done_honest": "CMYK hazır: v{v} (DeviceCMYK dönüşümü — ICC profili ve PDF/X garanti edilmez)",
     "export_anyway": "Yine de export et",
     "cancel": "Vazgeç",
-    "open_print": "print",
-    "open_preview": "preview",
     "selection": "İçerik seçimi",
     "pages": "Sayfalar",
     "page_n": "Sayfa {n}",
