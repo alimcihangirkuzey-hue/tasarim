@@ -308,6 +308,8 @@
     "bulk_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
     "bulk_export_btn": "⬇ {n} belgeyi üret",
     "bulk_export_done": "{aktarilan} üretildi · {bloklu} engelli (atlandı) · {dusen} düştü",
+    "bulk_cmyk_btn": "🎨 CMYK üret",
+    "bulk_cmyk_done": "{uretilen} CMYK üretildi · {atlanan} atlandı (baskı yolu değil) · {dusen} düştü",
     "outputs": "📁 Üretilen dosyalar ({n}):",
     "side_q": "yön?",
     "side_exterieur": "dıştan",

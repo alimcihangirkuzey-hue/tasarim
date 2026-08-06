@@ -20,7 +20,7 @@ import {
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
-import { TEMPLATES, blockersOf } from "@tezgah/templates";
+import { TEMPLATES, blockersOf, exportRouteOf } from "@tezgah/templates";
 import {
   siparisSablonlari,
   siparisSubstratlari,
@@ -509,6 +509,50 @@ function ProjectBlock({ project, client, showToast }: {
     queryFn: () => api.projectExports(project.id),
   });
 
+  /* TOPLU CMYK (K-1/B — çoklu proje hızı). Matbaanın ASIL üretim formatı
+     CMYK'dir; bugüne dek yalnız EDİTÖRDE, BELGE BAŞINA alınabiliyordu.
+     Ölçülen akış: 4 kalemlik bir işte operatör toplu üretimden sonra dört
+     belgeyi tek tek açıp CMYK düğmesine basmak zorundaydı.
+
+     İKİ ÖLÇÜLMÜŞ KISIT — ikisi de sunucudan okundu, varsayılmadı:
+     (1) Ghostscript şart (cmyk.ts:44 → yoksa 503). Bu yüzden düğme YALNIZ
+         cmykStatus.available iken çizilir; yoksa her tık kesin hataya giderdi.
+     (2) Kaynak, belgenin SON `print` çıktısıdır (cmyk.ts:53-59 → yoksa 400
+         no_print_export). Tekstil/kesim yoluna giden belgelerin print çıktısı
+         HİÇ olmaz; onlar HATA değil ATLANAN sayılır — kanal ilanı zaten
+         print taşımıyor (exportRouteOf). Hata saymak operatöre olmayan bir
+         sorun bildirirdi. */
+  const cmykQ = useQuery({ queryKey: ["cmyk-status"], queryFn: api.cmykStatus, staleTime: Infinity });
+  const topluCmyk = useMutation({
+    mutationFn: async () => {
+      const belgeliler = project.items.filter((i) => i.document_id);
+      let uretilen = 0;
+      let atlanan = 0;
+      let dusen = 0;
+      for (const it of belgeliler) {
+        try {
+          const doc = await api.document(it.document_id!);
+          const entry = TEMPLATES[doc.template_id];
+          /* Kanal ilanı print taşımıyorsa CMYK'nin kaynağı doğmaz. */
+          if (!entry || exportRouteOf(entry.manifest.production_channels, doc.params["mode"]) !== "pdf") {
+            atlanan += 1;
+            continue;
+          }
+          await api.exportCmyk(doc.id);
+          uretilen += 1;
+        } catch {
+          dusen += 1;
+        }
+      }
+      return { uretilen, atlanan, dusen };
+    },
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
+      showToast(tf("orders.bulk_cmyk_done", { uretilen: r.uretilen, atlanan: r.atlanan, dusen: r.dusen }));
+    },
+    onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
+  });
+
   const present = useMutation({
     mutationFn: () => {
       const note = window.prompt(
@@ -581,6 +625,17 @@ function ProjectBlock({ project, client, showToast }: {
             {topluAktar.isPending
               ? t("editor.exporting")
               : tf("orders.bulk_export_btn", { n: project.items.filter((i) => i.document_id).length })}
+          </button>
+        )}
+        {/* Ghostscript YOKSA düğme hiç çizilmez — her tık 503'e giderdi.
+            Belgesiz projede de çizilmez (toplu aktarım düğmesiyle aynı kural). */}
+        {cmykQ.data?.available && project.items.some((i) => i.document_id) && (
+          <button
+            className="ghost small"
+            onClick={() => topluCmyk.mutate()}
+            disabled={topluCmyk.isPending}
+          >
+            {topluCmyk.isPending ? t("editor.exporting") : t("orders.bulk_cmyk_btn")}
           </button>
         )}
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>
