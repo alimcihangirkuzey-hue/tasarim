@@ -7,6 +7,7 @@ import { TEMPLATES, listTemplates, type TemplateEntry } from "@tezgah/templates"
 import { SEKTORLER, hedefSektorOf, type Sektor } from "@tezgah/templates/identity";
 import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
+import { gorunurRehberSecenekleri } from "../lib/gorunurRehber";
 import { t, tf } from "../i18n";
 
 function fmtDate(iso: string): string {
@@ -113,6 +114,17 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   const aktifSektorler =
     isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
 
+  /* REHBER DE DARALTILIR (K-1/C): bu bileşen `aktifSektorler`i zaten hesaplıyor
+     ve "doğrudan seç" listesine veriyordu; rehber ona BAKMIYORDU — oysa rehber
+     AÇILIŞ ekranıdır. Ölçüldü: beş seçeneğin hedefi menu-uretici×3 + matbaa×2;
+     tabelacıya daraltılmış kurulumda operatörün gördüğü ilk ekran, kurulumun
+     hiç yapmadığı beş işi öneriyordu. */
+  const gorunurRehber = gorunurRehberSecenekleri(GUIDE_OPTIONS, aktifSektorler);
+  /* BOŞ IZGARA YERİNE DOĞRUDAN SEÇ: etkin mod TÜRETİLİR (effect değil) —
+     effect yarışı, uç yanıtı gelene dek boş rehber çizerdi. Doğrudan listesi
+     daraltılmıştır ve boşalmaz, o yüzden güvenli düşüş noktasıdır. */
+  const etkinMod = gorunurRehber.length === 0 ? "direct" : mode;
+
   const create = useMutation({
     mutationFn: (tid: string) => api.createDocument(client.id, tid),
     onSuccess: (doc) => {
@@ -164,14 +176,14 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   return (
     <div className="panel">
       <h2>{t("client.tab_documents")}</h2>
-      {mode === "guide" ? (
+      {etkinMod === "guide" ? (
         <div>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
             <strong>{t("guide.q")}</strong>
             <button className="ghost-link" onClick={() => setMode("direct")}>{t("guide.direct")}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 8, marginTop: 8 }}>
-            {GUIDE_OPTIONS.filter((o) => TEMPLATES[o.tid]).map((o) => (
+            {gorunurRehber.filter((o) => TEMPLATES[o.tid]).map((o) => (
               <button
                 key={o.tid}
                 onClick={() => create.mutate(o.tid)}
@@ -197,7 +209,9 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
           <button onClick={() => create.mutate(templateId)} disabled={create.isPending || !templateId}>
             + {t("documents.new")}
           </button>
-          <button className="ghost-link" onClick={() => setMode("guide")}>{t("guide.back")}</button>
+          {gorunurRehber.length > 0 && (
+            <button className="ghost-link" onClick={() => setMode("guide")}>{t("guide.back")}</button>
+          )}
           {create.isError && <span className="error">{(create.error as Error).message}</span>}
         </div>
       )}
