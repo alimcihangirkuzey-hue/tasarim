@@ -75,4 +75,29 @@ sadakat kartı · vitrin · tabela · tekstil **bugün baskıya hazır çıktı 
 - **D. Sektörsüz dil:** ozalitçi/tabelacı terminolojisi; restoran varsayımının
   şablon ve şemadan sökülmesi.
 
+### K-1'in AÇTIĞI KARAR: "ozalitçi" iş kolu ilanda YOK (2026-08-06, ölçüldü)
+
+**Bulgu (komutla ölçüldü, `packages/templates/src/types.ts:399`):** sistemin iş
+kolu ilanı bugün beş elemanlı —
+`menu-uretici · matbaa · tabelaci · tekstil-baski · cam-giydirme`.
+K-1'in hedef kesim listesiyle karşılaştırıldığında dördü karşılanıyor
+(menücü→`menu-uretici`, matbaa→`matbaa`, tabelacı→`tabelaci`, baskıcı→`matbaa`
+veya `tekstil-baski`), **ozalitçi karşılıksız.**
+
+**Neden uygulayıcı bunu kendi ekleyemedi:** `HEDEF_SEKTOR` bir
+`Record<MaterialType, Sektor>`'dür — her materyal türü tam bir iş koluna
+atanır. Hiçbir materyalin işaret etmediği bir sektör eklemek **ölü ilan**
+üretir ve bu repoda yasaktır. İlanın kendi yorumu da kararı adıyla sahibine
+bırakıyor: *"iş kolu ataması ÜRÜN KARARIDIR"* (`types.ts:408-409`).
+
+**Ürün sahibine sorulan (uydurulmadı, bekliyor):** ozalit işi hangi materyal
+türüne karşılık gelir? Bugünkü `MaterialType` kümesi
+`menu · flyer · kart · tabela · tekstil · cam`. İki yol var ve ikisi de sahibin:
+1. Ozalit mevcut bir türe (büyük olasılıkla `tabela`) **bağlanır** → o türün
+   hedef sektörü değişir, `tabelaci` ile çakışma çözülmelidir.
+2. Ozalit **yeni bir materyal türü** olarak açılır (geniş format / plotter) →
+   yeni tür yeni şablon ailesi ve substrat ilanı ister; bu bir faz işidir.
+
+Karar gelene kadar otomasyon bu alana dokunmaz.
+
 ---

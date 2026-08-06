@@ -20,13 +20,17 @@ import {
   SIPARIS_MATERYALI,
   SIPARIS_SABLONLARI,
   SIPARIS_SUBSTRATLARI,
+  SIPARIS_TEKNIKLERI,
   dogrulaSiparisKoprusu,
   materialTypeOfOrNull,
+  productionChannelsOf,
   productionSubstrateOf,
   siparisParamlari,
   siparisSablonlari,
   siparisSubstratlari,
+  siparisTeknikleri,
 } from "./identity/index.js";
+import { KANAL_GEREKTIRIR, PRODUCTION_TECHNIQUES } from "./types.js";
 
 describe("NÖBETÇİ: köprü tabloları TAM olarak bunlar", () => {
   it("şablon seçenekleri tür tür birebir (temsilci değişikliği ürün kararıdır)", () => {
@@ -102,6 +106,55 @@ describe("NÖBETÇİ: sipariş substrat kümesi TAM olarak bu (türetilmiş, ell
           "print_qty emsaliyle PRICING_INPUTS paketi açılmalı (TODO 'Malzeme cinsi sonrası şerhler' (1) " +
           "ve journal 2026-07-26-siparis-substrat-bagi keşif düzeltmesi)"
       ).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe("NÖBETÇİ: sipariş TEKNİK kümesi TAM olarak bu (türetilmiş, elle çivili)", () => {
+  it("tür tür birebir — türetim kaynağı (şablon seçeneği / kanal ilanı) değişirse burası kırılır", () => {
+    /* Tablo ELLE yazılır, türetimden okunmaz: türetseydik test uygulamanın
+       her dediğine "evet" derdi (substrat nöbetçisinin aynı gerekçesi). */
+    expect(SIPARIS_TEKNIKLERI).toEqual({
+      menu: ["impression"],
+      trifold: ["impression"],
+      flyer: ["impression"],
+      fidelite: ["impression"],
+      vitrophanie: ["impression", "decoupe"],
+      tabela: ["impression"],
+      tisort: ["impression", "broderie"],
+      onluk: ["impression", "broderie"],
+      diger: [],
+    });
+  });
+
+  it("türetim doğrulaması: küme = seçenek şablonlarının kanallarının teknikleri", () => {
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      const kume = new Set<string>();
+      for (const id of siparisSablonlari(t)) {
+        for (const k of productionChannelsOf(id) ?? []) kume.add(KANAL_GEREKTIRIR[k]);
+      }
+      expect(siparisTeknikleri(t), t).toEqual(PRODUCTION_TECHNIQUES.filter((tk) => kume.has(tk)));
+    }
+  });
+
+  it("SIRA İLAN SIRASIDIR (şablon/kanal beyan sırası DEĞİL)", () => {
+    /* Sıra kanal beyan sırasına bırakılsaydı aynı ekran iki kurulumda farklı
+       sıralanırdı; select seçeneklerinin sırası ilana çivilenir. */
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      const kume = siparisTeknikleri(t);
+      const indeksler = kume.map((tk) => PRODUCTION_TECHNIQUES.indexOf(tk));
+      expect([...indeksler].sort((a, b) => a - b), t).toEqual(indeksler);
+      expect(new Set(kume).size, `${t}: teknik tekrar etti`).toBe(kume.length);
+    }
+  });
+
+  it("TASARLANABİLİR her tür EN AZ bir teknik ilan eder (sessiz boş select yok)", () => {
+    for (const t of ProductTypeSchema.options as readonly ProductType[]) {
+      if (siparisSablonlari(t).length === 0) continue; // diger: tasarlanamaz
+      expect(
+        siparisTeknikleri(t).length,
+        `${t}: şablonu var ama tekniği yok — kalem kartındaki mod/teknik select'i BOŞ açılırdı`
+      ).toBeGreaterThan(0);
     }
   });
 });

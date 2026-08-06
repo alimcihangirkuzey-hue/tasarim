@@ -59,8 +59,14 @@ export { SEKTORLER, HEDEF_SEKTOR } from "../types.js";
 export type { Sektor } from "../types.js";
 
 import type { SeverityOverrides } from "../engine/severity.js";
-import { DIS_KANALLAR, HEDEF_SEKTOR } from "../types.js";
-import type { DisKanal, ProductionChannel, ProductionSubstrate, Sektor } from "../types.js";
+import { DIS_KANALLAR, HEDEF_SEKTOR, KANAL_GEREKTIRIR, PRODUCTION_TECHNIQUES } from "../types.js";
+import type {
+  DisKanal,
+  ProductionChannel,
+  ProductionSubstrate,
+  ProductionTechnique,
+  Sektor,
+} from "../types.js";
 
 import { manifest as menuGridCellsManifest } from "../menu-grid-cells/manifest.js";
 import { manifest as menuListePremiumManifest } from "../menu-liste-premium/manifest.js";
@@ -290,6 +296,53 @@ export const SIPARIS_SUBSTRATLARI: Record<ProductType, readonly ProductionSubstr
     tekrarsız; diger boş) — kalem kartı ticari bilgisi bunun okuyucusudur */
 export function siparisSubstratlari(t: ProductType): readonly ProductionSubstrate[] {
   return SIPARIS_SUBSTRATLARI[t];
+}
+
+/* ── Sipariş katmanı TEKNİK bağı (7.2; 4.5 "hangi teknik hangi malzemede") ──
+   TÜRETİLMİŞ sabit, substrat bağının birebir emsali. Zincir tamamen ilandır:
+   ürün türü → SIPARIS_SABLONLARI → manifest.production_channels →
+   KANAL_GEREKTIRIR → teknik. El yazımı ikinci kaynak YOK.
+
+   NEDEN AÇILDI (borç: önizleme paketi şerh listesi 2026-07-26 — "ProjectsPanel
+   select seçenekleri (side/mode/technique) JSX'te sert kodlu; ilan yalnız
+   görünürlüğü kapsıyor, seçenekler manifest/param ilanından okunmuyor"):
+   Sipariş Defteri kalem kartı bu kümeleri JSX'te elle sayıyordu.
+
+   ÖLÇÜM (2026-08-06, komutla): türetilen küme bugünkü sert listeyle BİREBİR
+   aynıdır — tişört/önlük → [broderie, impression] (sert liste: baskı, nakış);
+   vitrophanie → [decoupe, impression] (sert liste: baskı, kesim). Yani bu
+   geçiş DAVRANIŞ DEĞİŞTİRMEZ; kazanç, ilan değiştiği gün UI'nın kendiliğinden
+   uyması ve nöbetçinin sürüklenmeyi yüksek sesle patlatmasıdır. Sert liste
+   bırakılsaydı yeni bir kanal ilan edildiği gün UI sessizce eksik kalırdı —
+   PRODUCTION_TECHNIQUES bugün ÜÇ teknik ilan ederken UI'nın yalnız ikisini
+   sunması tam olarak bu sınıfın canlı örneğiydi.
+
+   SIRA: ProductionTechnique ilan sırası (PRODUCTION_TECHNIQUES) korunur —
+   şablon sırası değil; select seçeneklerinin sırası kanal beyan sırasına göre
+   oynasaydı aynı ekran iki kurulumda farklı sıralanırdı. */
+export const SIPARIS_TEKNIKLERI: Record<ProductType, readonly ProductionTechnique[]> = (() => {
+  const sonuc = {} as Record<ProductType, readonly ProductionTechnique[]>;
+  for (const [tur, secenekler] of Object.entries(SIPARIS_SABLONLARI) as Array<
+    [ProductType, readonly string[]]
+  >) {
+    const kume = new Set<ProductionTechnique>();
+    for (const id of secenekler) {
+      const kanallar = productionChannelsOf(id);
+      if (kanallar === null) {
+        throw new Error(`Sipariş teknik bağı "${tur}": şablon "${id}" kayıt defterinde yok`);
+      }
+      for (const k of kanallar) kume.add(KANAL_GEREKTIRIR[k]);
+    }
+    sonuc[tur] = PRODUCTION_TECHNIQUES.filter((tk) => kume.has(tk));
+  }
+  return sonuc;
+})();
+
+/** Ürün türünün ilan edilmiş üretim teknikleri (PRODUCTION_TECHNIQUES
+    sırasında, tekrarsız; diger boş) — kalem kartındaki mod/teknik
+    seçeneklerinin TEK kaynağıdır. */
+export function siparisTeknikleri(t: ProductType): readonly ProductionTechnique[] {
+  return SIPARIS_TEKNIKLERI[t];
 }
 
 /* Kalem→belge param AKIŞI: dispatch İLANDIR (exhaustive Record — yeni ürün

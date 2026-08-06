@@ -21,7 +21,12 @@ import {
   type ProjectDTO,
 } from "@tezgah/shared";
 import { TEMPLATES, blockersOf } from "@tezgah/templates";
-import { siparisParamlari, siparisSablonlari, siparisSubstratlari } from "@tezgah/templates/identity";
+import {
+  siparisParamlari,
+  siparisSablonlari,
+  siparisSubstratlari,
+  siparisTeknikleri,
+} from "@tezgah/templates/identity";
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { belgeDisaAktar } from "../lib/disaAktar";
@@ -256,15 +261,25 @@ function ItemRow({ item, client, showToast }: {
           <>
             <select value={item.details.side ?? ""} className={missing.includes("side") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, side: e.target.value || undefined } })}>
-              <option value="">yön?</option>
-              <option value="exterieur">dıştan</option>
-              <option value="interieur">içten</option>
+              {/* YÖN sert kodlu KALIR ve bu ölçülmüş bir sınırdır: uygulama
+                  yönü (dıştan/içten) bir ÜRETİM KANALI değildir, bu yüzden
+                  KANAL_GEREKTIRIR zincirinde karşılığı yoktur — türetecek ilan
+                  yok. İlan doğduğu gün buraya da bağlanır. Etiketler yine de
+                  i18n'e alındı (JSX'te ham Türkçe dize kalmasın). */}
+              <option value="">{t("orders.side_q")}</option>
+              <option value="exterieur">{t("orders.side_exterieur")}</option>
+              <option value="interieur">{t("orders.side_interieur")}</option>
             </select>
+            {/* Seçenekler İLANDAN (siparisTeknikleri): ürün türü → şablon →
+                production_channels → KANAL_GEREKTIRIR. Ölçüldü: vitrophanie
+                için türetilen küme [decoupe, impression] — eski sert listeyle
+                BİREBİR aynı, davranış değişmedi. */}
             <select value={item.details.mode ?? ""} className={missing.includes("mode") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, mode: e.target.value || undefined } })}>
-              <option value="">mod?</option>
-              <option value="impression">baskı</option>
-              <option value="decoupe">kesim</option>
+              <option value="">{t("orders.mode_q")}</option>
+              {siparisTeknikleri(item.product_type).map((tk) => (
+                <option key={tk} value={tk}>{t(`orders.teknik_${tk}`)}</option>
+              ))}
             </select>
           </>
         )}
@@ -273,11 +288,14 @@ function ItemRow({ item, client, showToast }: {
             <input type="number" min={1} defaultValue={item.qty}
               className={missing.includes("qty") ? "field-missing" : ""}
               onBlur={(e) => upd.mutate({ qty: Number(e.target.value) || 1 })} style={{ width: 70 }} />
+            {/* Aynı ilan kaynağı: tişört/önlük için türetilen küme
+                [broderie, impression] — eski sert listeyle birebir aynı. */}
             <select value={item.details.technique ?? ""} className={missing.includes("technique") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, technique: e.target.value || undefined } })}>
-              <option value="">teknik?</option>
-              <option value="impression">baskı</option>
-              <option value="broderie">nakış</option>
+              <option value="">{t("orders.teknik_q")}</option>
+              {siparisTeknikleri(item.product_type).map((tk) => (
+                <option key={tk} value={tk}>{t(`orders.teknik_${tk}`)}</option>
+              ))}
             </select>
             <input type="text" placeholder="bedenler (M:2, L:3)" defaultValue={item.details.sizes ?? ""}
               onBlur={(e) => upd.mutate({ details: { ...item.details, sizes: e.target.value || undefined } })}
