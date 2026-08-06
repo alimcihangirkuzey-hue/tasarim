@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Currency } from "@tezgah/shared";
-import { api } from "../api";
+import { api, kullanimlariOku } from "../api";
 import { topluBaslat } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
@@ -101,17 +101,31 @@ export function ClientDetailPage() {
     onError: (e) => setKitSonuc(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
 
-  /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster */
+  /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster.
+
+     ÖLÇÜLEN YARA (bu turda): burası ham `fetch` kullanıyordu ve `res.ok` DE
+     409 DA olmayan her durum SESSİZCE YUTULUYORDU — 500'de operatör silme
+     düğmesine basıyor, ekranda HİÇBİR ŞEY olmuyordu. Reponun başka yerde
+     kapattığı sınıfın aynısı (journal 2026-07-27-sunucu-params-dogrulamasi:
+     "onError yokken bu 400 sessizce yutuluyordu").
+
+     Ham fetch'in GEREKÇESİ 409'un yapısal `usages` gövdesiydi; http() artık
+     gövdeyi hataya iliştirdiği için atlamaya gerek kalmadı. */
   const deleteAsset = async (assetId: string) => {
     if (!window.confirm(t("assets.delete_confirm"))) return;
-    const res = await fetch(`/api/assets/${assetId}`, { method: "DELETE" });
-    if (res.status === 409) {
-      const j = (await res.json()) as { usages: Array<{ where: string; label: string }> };
-      window.alert(
-        t("assets.in_use") + "\n" + j.usages.map((u) => `• ${u.where}: ${u.label}`).join("\n")
-      );
-    } else if (res.ok) {
+    try {
+      await api.deleteAsset(assetId);
       invalidate();
+    } catch (e) {
+      const kullanimlar = kullanimlariOku(e);
+      if (kullanimlar) {
+        window.alert(
+          t("assets.in_use") + "\n" + kullanimlar.map((u) => `• ${u.where}: ${u.label}`).join("\n")
+        );
+      } else {
+        /* Artık sessiz değil: gerekçe apiErrorMessage'ın ürettiği okunur metin. */
+        window.alert((e as Error).message);
+      }
     }
   };
 

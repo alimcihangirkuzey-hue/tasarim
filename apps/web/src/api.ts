@@ -15,6 +15,21 @@ import type {
 } from "@tezgah/shared";
 import { apiErrorMessage } from "@tezgah/shared";
 
+/** http()'nin fırlattığı hatanın taşıdığı yapısal gövde (varsa). */
+export interface ApiHata extends Error {
+  durum?: number;
+  govde?: unknown;
+}
+
+/** Hata gövdesinden "kullanımda" bilgisini okur — 409 in_use yanıtının
+    `usages` alanı. Gövde beklenen şekilde değilse null döner (fırlatmaz):
+    çağıran o zaman düz mesajı gösterir. */
+export function kullanimlariOku(e: unknown): Array<{ where: string; label: string }> | null {
+  const g = (e as ApiHata)?.govde as { error?: string; usages?: unknown } | undefined;
+  if (!g || g.error !== "in_use" || !Array.isArray(g.usages)) return null;
+  return g.usages as Array<{ where: string; label: string }>;
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   /* TUR-FIX-1: Content-Type YALNIZ gövde varsa (ve FormData değilse). Eski hali
      gövdesiz isteklere de (DELETE/GET) application/json koyuyordu → Fastify boş
@@ -30,12 +45,26 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
        göremiyordu. Artık gerekçe (rejects[].detail_tr · detail · Zod mesajı)
        öne çıkar; biçimlendirme saf+testli (shared/api-error.ts). */
     let msg = `Sunucu hatası (${res.status})`;
+    let govde: unknown = null;
     try {
-      msg = apiErrorMessage(await res.json(), res.status);
+      govde = await res.json();
+      msg = apiErrorMessage(govde, res.status);
     } catch {
       /* gövde json değilse durum kodu yeter */
     }
-    throw new Error(msg);
+    /* YAPISAL GÖVDE HATAYA İLİŞTİRİLİR (durum kodu da).
+
+       NEDEN: bazı uçlar hatayla birlikte KARAR VERDİRİCİ veri döndürür —
+       409 in_use yanıtı `usages` (varlığın nerede kullanıldığı), font yükleme
+       `missing` (eksik glifler). Yalnız düz bir mesaj fırlatmak bu veriyi
+       düşürüyordu; ekranlar da bu yüzden api istemcisini ATLAYIP ham fetch
+       yazmıştı (ölçüldü: ClientDetailPage asset silme, FontsPage üç çağrı).
+       Atlamanın bedeli ağırdı: ham fetch'te `res.ok` de 409 da olmayan her
+       durum SESSİZCE yutuluyordu.
+
+       Ekleme additive: mesaj davranışı aynı kalır, yalnız hata nesnesi
+       taşımaya başlar (mevcut çağıranlar etkilenmez). */
+    throw Object.assign(new Error(msg), { durum: res.status, govde });
   }
   return (await res.json()) as T;
 }
@@ -294,6 +323,15 @@ export const api = {
     });
   },
   deleteFont: (id: string) => http<{ ok: true }>(`/api/fonts/${id}`, { method: "DELETE" }),
+
+  /* Şablon fabrikası — üretim isteği (FactoryPage). Ham fetch'ten buraya
+     taşındı: eski hâli hatayı `detail ?? error ?? durum kodu` diye elle
+     biçimliyordu; http() aynı işi apiErrorMessage ile daha eksiksiz yapar. */
+  factoryGenerate: (govde: Record<string, unknown>) =>
+    http<{ files: string[] }>(`/api/factory/generate`, {
+      method: "POST",
+      body: JSON.stringify(govde),
+    }),
 
   /* Dijital menü (statik HTML) — Faz 5 §9 */
   digitalMenu: (clientId: string) =>

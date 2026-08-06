@@ -7,28 +7,37 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GLYPH_COVERAGE } from "@tezgah/shared";
+import { api, kullanimlariOku, type ApiHata } from "../api";
 import { t } from "../i18n";
 import { SettingsTabs } from "./ParseDictPage";
 
 type FontRow = { id: string; family: string; filename: string; created_at: string };
 
-/** Yapılandırılmış server hatası: eksik glif / kullanımda listesi http yardımcısıyla
-    kaybolduğu için ham fetch ile okunur. */
+/** Yapılandırılmış server hatası: eksik glif listesi.
+
+    ŞERH GÜNCELLENDİ (2026-08-06): eski not "http yardımcısıyla kaybolduğu için
+    ham fetch ile okunur" diyordu — o gerekçe ARTIK YOK. http() hata gövdesini
+    (ve durum kodunu) fırlattığı hataya iliştiriyor, bu yüzden yapısal alanlar
+    api istemcisinden de okunabiliyor. Ham fetch'in bedeli ölçülmüştü: istemciyi
+    atlayan kod apiErrorMessage'ın ürettiği okunur gerekçeyi de kaybediyordu. */
 type UploadError =
   | { code: "missing_glyphs"; missing: string[] }
   | { code: "other"; message: string };
 
 async function uploadFontRaw(file: File, family: string): Promise<FontRow> {
-  const fd = new FormData();
-  fd.append("family", family);
-  fd.append("file", file);
-  const res = await fetch("/api/fonts", { method: "POST", body: fd });
-  if (res.ok) return (await res.json()) as FontRow;
-  const body = (await res.json().catch(() => ({}))) as {
+  try {
+    return await api.uploadFont(file, family);
+  } catch (e) {
+    return yuklemeHatasi(e);
+  }
+}
+
+function yuklemeHatasi(e: unknown): never {
+  const body = (((e as ApiHata).govde ?? {}) as {
     error?: string;
     missing?: string[];
     detail?: string;
-  };
+  });
   if (body.error === "missing_glyphs") {
     throw Object.assign(new Error("missing_glyphs"), {
       info: { code: "missing_glyphs", missing: body.missing ?? [] } as UploadError,
@@ -43,28 +52,36 @@ async function uploadFontRaw(file: File, family: string): Promise<FontRow> {
       ? t("fonts.err_type")
       : body.error === "parse_failed"
       ? t("fonts.err_parse")
-      : body.detail ?? body.error ?? String(res.status);
+      /* Tanınmayan kod: http()'nin apiErrorMessage ile ürettiği okunur
+         gerekçe kullanılır (eski hâlde çıplak durum koduydu). */
+      : (e as Error).message;
   throw Object.assign(new Error(message), { info: { code: "other", message } as UploadError });
 }
 
+/* Font silme api istemcisinden geçer (ham fetch DEĞİL): http() 409'un
+   yapısal gövdesini hataya iliştirdiği için atlamaya gerek kalmadı ve
+   beklenmedik durum kodları artık okunur gerekçeyle yükselir — eski ham
+   sürümde `in_use` dışındaki her gövde yalnız `error` ya da durum koduydu.
+   Kullanımda mesajı FONT'a özgü kaldığı için burada biçimlenir. */
 async function deleteFontRaw(id: string): Promise<void> {
-  const res = await fetch(`/api/fonts/${id}`, { method: "DELETE" });
-  if (res.ok) return;
-  const body = (await res.json().catch(() => ({}))) as {
-    error?: string;
-    usages?: Array<{ where: string; label: string }>;
-  };
-  if (body.error === "in_use") {
-    const list = (body.usages ?? []).map((u) => `${u.where}: ${u.label}`).join(", ");
-    throw new Error(t("fonts.err_in_use").replace("{list}", list));
+  try {
+    await api.deleteFont(id);
+  } catch (e) {
+    const kullanimlar = kullanimlariOku(e);
+    if (kullanimlar) {
+      const list = kullanimlar.map((u) => `${u.where}: ${u.label}`).join(", ");
+      throw new Error(t("fonts.err_in_use").replace("{list}", list));
+    }
+    throw e;
   }
-  throw new Error(body.error ?? String(res.status));
 }
 
 export function FontsPage() {
   const qc = useQueryClient();
-  const listQ = useQuery({ queryKey: ["fonts"], queryFn: () =>
-    fetch("/api/fonts").then((r) => r.json() as Promise<FontRow[]>) });
+  /* Liste api istemcisinden — aynı sorgu dört ekranda zaten api.fonts ile
+     kuruluyordu (BrandKitPanel · main · ThemesPage · FactoryPage); burası
+     tek istisnaydı ve hata yolunu kaybediyordu. */
+  const listQ = useQuery({ queryKey: ["fonts"], queryFn: api.fonts });
   const [family, setFamily] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
