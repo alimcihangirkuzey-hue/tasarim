@@ -21,6 +21,7 @@ import {
   type SceneKind,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { sunumDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -118,7 +119,7 @@ export function presentRoutes(app: FastifyInstance): void {
     const page = await browser.newPage();
     try {
       await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-      await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+      await baskiyaHazirBekle(page, 45_000);
       const size = (await page.evaluate("window.__PAGE_SIZE__")) as {
         w: number;
         h: number;

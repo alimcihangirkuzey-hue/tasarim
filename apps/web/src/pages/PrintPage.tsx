@@ -8,13 +8,8 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TEMPLATES, customSizeMm, supportsCustomSize } from "@tezgah/templates";
 import { api } from "../api";
+import { baskiHatasiBildir, baskiHatasiMetni } from "../lib/baskiSinyali";
 
-declare global {
-  interface Window {
-    __PRINT_READY__?: boolean;
-    __PAGE_SIZE__?: { w: number; h: number; pages: number };
-  }
-}
 
 export function PrintPage() {
   const { id = "" } = useParams();
@@ -66,6 +61,9 @@ export function PrintPage() {
   }, [doc, client, entry, variant, onlyPage]);
 
   if (docQ.isError || clientQ.isError) {
+    /* Ekrandaki metin insanadır; YAKALAYAN başsız tarayıcıdır ve o bugüne dek
+       hiçbir şey duymuyordu — 30-45 sn bekleyip zaman aşımına düşüyordu. */
+    baskiHatasiBildir(baskiHatasiMetni([docQ.error, clientQ.error]));
     return <p style={{ fontFamily: "sans-serif" }}>Belge yüklenemedi.</p>;
   }
   if (!doc || !client || !entry) return null;

@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { newId, nowISO } from "@tezgah/shared";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -52,7 +53,7 @@ export function vectorRoutes(app: FastifyInstance): void {
           waitUntil: "networkidle0",
           timeout: 60_000,
         });
-        await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+        await baskiyaHazirBekle(page, 45_000);
 
         /* Découpe kuralı: raster görsel (png/jpg) kesilemez — SVG logo şart */
         if (isVitro) {

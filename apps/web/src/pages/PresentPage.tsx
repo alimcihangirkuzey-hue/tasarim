@@ -14,6 +14,7 @@ import { TEMPLATES, currentFormat } from "@tezgah/templates";
 import { surfaceToSceneKind } from "@tezgah/shared";
 import type { ClientDTO, DocumentDTO, SceneKind } from "@tezgah/shared";
 import { api } from "../api";
+import { baskiHatasiBildir, baskiHatasiMetni } from "../lib/baskiSinyali";
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -152,6 +153,16 @@ export function PresentPage() {
     docs.length === docIds.length &&
     docIds.length > 0 &&
     exportsReady;
+
+  /* SORGU DÜŞERSE YAKALAYANA SÖYLE (K-1/B): bayrak hiç atanmayınca yakalama
+     45 sn bekleyip zaman aşımına düşüyor ve gerekçe kayboluyordu. */
+  const ilkHata = [projectQ.error, clientQ.error, kunyeQ.error, ...docQs.map((q) => q.error)].find(
+    Boolean,
+  );
+  useEffect(() => {
+    if (!ilkHata) return;
+    baskiHatasiBildir(baskiHatasiMetni([ilkHata]));
+  }, [ilkHata]);
 
   useEffect(() => {
     if (!ready) return;

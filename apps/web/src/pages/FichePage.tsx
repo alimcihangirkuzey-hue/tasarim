@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TEMPLATES, analyzeGarment } from "@tezgah/templates";
 import { api } from "../api";
+import { baskiHatasiBildir, baskiHatasiMetni } from "../lib/baskiSinyali";
 
 const COLOR_NAMES: Array<[string, string]> = [
   ["#ffffff", "blanc"], ["#1a1a1a", "noir"], ["#c8102e", "rouge"],
@@ -41,6 +42,14 @@ export function FichePage() {
   const client = clientQ.data;
   const entry = doc ? TEMPLATES[doc.template_id] : undefined;
   const ready = !!doc && !!client && !!kunyeQ.data && doc.template_id === "garment";
+
+  /* SORGU DÜŞERSE YAKALAYANA SÖYLE (K-1/B): bayrak hiç atanmayınca yakalama
+     45 sn bekleyip zaman aşımına düşüyor ve gerekçe kayboluyordu. */
+  const hataVar = docQ.isError || clientQ.isError || kunyeQ.isError;
+  useEffect(() => {
+    if (!hataVar) return;
+    baskiHatasiBildir(baskiHatasiMetni([docQ.error, clientQ.error, kunyeQ.error]));
+  }, [hataVar, docQ.error, clientQ.error, kunyeQ.error]);
 
   useEffect(() => {
     if (!ready) return;

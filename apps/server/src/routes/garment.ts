@@ -9,6 +9,7 @@ import { GarmentParamsSchema, cmToPx300, newId, nowISO } from "@tezgah/shared";
 import { kanalNitelikleriOf, productionChannelsOf } from "@tezgah/templates/identity";
 import { garmentDosyaTabani } from "../dosya-adi.js";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -75,7 +76,7 @@ export function garmentRoutes(app: FastifyInstance): void {
           /* 300 dpi alfa PNG: css px × dpr(300/96) = cm×300/2.54 */
           await page.setViewport({ width: cssW, height: cssH, deviceScaleFactor: 300 / 96 });
           await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-          await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+          await baskiyaHazirBekle(page, 45_000);
           const png = await page.screenshot({ type: "png", omitBackground: true });
           const pngAbs = path.join(dir, `${base}_${areaId}.png`);
           await fs.writeFile(pngAbs, png);
@@ -100,7 +101,7 @@ export function garmentRoutes(app: FastifyInstance): void {
           /* broderie: text→path SVG */
           await page.setViewport({ width: cssW, height: cssH });
           await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-          await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+          await baskiyaHazirBekle(page, 45_000);
           const extracted = (await page.evaluate(EXTRACT_TEXT_RUNS)) as {
             runs: TextRun[];
             outer?: string;
@@ -127,7 +128,7 @@ export function garmentRoutes(app: FastifyInstance): void {
           waitUntil: "networkidle0",
           timeout: 60_000,
         });
-        await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+        await baskiyaHazirBekle(page, 45_000);
         const pdf = await page.pdf({ width: "210mm", height: "297mm", printBackground: true });
         const ficheAbs = path.join(dir, `${base}_broderie-fiche.pdf`);
         await fs.writeFile(ficheAbs, pdf);
