@@ -183,15 +183,25 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
             <button className="ghost-link" onClick={() => setMode("direct")}>{t("guide.direct")}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 8, marginTop: 8 }}>
+            {/* ÖLÇÜLEN YARA (2026-08-06, canlı tarayıcı turu): kartlar
+                `background: transparent` ilan ediyor ama RENK ilan etmiyordu;
+                global kural `button { color: #fff }` olduğu için BAŞLIK BEYAZ
+                ZEMİNDE BEYAZ kalıyordu (ölçüm: başlık span'i getComputedStyle
+                → rgb(255,255,255)). Açıklama satırı kendi `.muted` rengiyle
+                göründüğü için ekran YARI görünürdü ve kimse fark etmemişti;
+                operatör "hangisi flyer?" sorusunu ekrandan cevaplayamıyordu.
+                Reponun kendi `.ghost` sınıfı tam bunu yapar — satır içinde
+                yeniden yazılırken rengi düşmüştü. Sınıfa dönüldü. */}
             {gorunurRehber.filter((o) => TEMPLATES[o.tid]).map((o) => (
               <button
                 key={o.tid}
+                className="ghost"
                 onClick={() => create.mutate(o.tid)}
                 disabled={create.isPending}
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                  textAlign: "left", padding: "10px 12px", border: "1px solid var(--c-line, #e5e0d6)",
-                  borderRadius: 10, background: "transparent", cursor: "pointer", height: "100%",
+                  textAlign: "left", padding: "10px 12px", borderRadius: 10,
+                  cursor: "pointer", height: "100%",
                 }}
               >
                 <span style={{ fontWeight: 700 }}>{t(o.titleKey)}</span>
