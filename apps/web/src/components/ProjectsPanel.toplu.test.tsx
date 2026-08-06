@@ -240,8 +240,17 @@ describe("toplu başlatma düğmesi", () => {
 
     fireEvent.click(await screen.findByText("Vazgeç"));
 
-    await waitFor(() => expect(screen.getByText(/vazgeçildi/i)).toBeTruthy());
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
     expect(api.createDocument).not.toHaveBeenCalled();
+    /* Başlık SAYIYI, satırlar HANGİ KALEMİ söyler: iki menü kalemi de
+       vazgeçilen türe ait olduğu için ikisi de listelenir — operatör hangi
+       işlerin açılmadan kaldığını görür (eskiden yalnız bir sayı vardı). */
+    expect(panel.textContent).toContain("vazgeçildi");
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(2);
   });
 
   it("DÜŞEN KALEM TURU DURDURMAZ — kalanlar denenir, özet düşeni SAYAR", async () => {
@@ -319,5 +328,67 @@ describe("toplu aktarım sonucu", () => {
 
     fireEvent.click(screen.getByTitle("Sonucu kapat"));
     await waitFor(() => expect(document.querySelector(".tur-sonucu")).toBeNull());
+  });
+});
+
+/* ── TOPLU BAŞLATMA SONUCU DA PANELDE — gerekçe artık yutulmuyor ──────── */
+
+describe("toplu başlatma sonucu", () => {
+  it("DÜŞEN KALEMİN GEREKÇESİ panelde ADIYLA görünür", async () => {
+    /* ÖLÇÜLEN YARA: bu hatta `catch { dusen += 1 }` vardı — operatör
+       "1 düştü" görüyor, hangisinin niye düştüğünü hiçbir yerde
+       bulamıyordu. Toast'ta zaten yalnız sayı vardı. */
+    vi.mocked(api.createDocument).mockRejectedValue(new Error("500 sunucu hatası"));
+
+    kur([kalem({ id: "a", product_type: "vitrophanie" })]);
+    fireEvent.click(await screen.findByText(/1 kalemi tasarıma başlat/i));
+
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
+    expect(panel.textContent).toContain("500 sunucu hatası");
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(1);
+    /* Sonuç artık 4,5 saniyede silinen kutuda DEĞİL. */
+    expect(document.querySelector(".toast")).toBeNull();
+  });
+
+  it("ZATEN TASARIMDAKİ kalem panelde LİSTELENMEZ — gerçek sorunları gömerdi", async () => {
+    /* Bir projeyi ikinci kez başlattığında kalemlerin çoğu "zaten"dir; her
+       turda hepsini listelemek 1 gerçek sorunu 9 gürültü satırının altına
+       gömerdi. O kalem kendi satırında zaten görünür ("Aç" düğmesi). */
+    vi.mocked(api.createDocument).mockRejectedValue(new Error("500 sunucu hatası"));
+
+    kur([
+      kalem({ id: "a", product_type: "vitrophanie" }),
+      kalem({ id: "z", product_type: "vitrophanie", document_id: "doc_var" }),
+    ]);
+    fireEvent.click(await screen.findByText(/1 kalemi tasarıma başlat/i));
+
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(1);
+    expect(panel.textContent).toContain("500 sunucu hatası");
+  });
+
+  it("HEPSİ AÇILIRSA panel LİSTE ÇİZMEZ — başarılılar sayıyla", async () => {
+    vi.mocked(api.createDocument).mockResolvedValue(belge("doc_x"));
+    vi.mocked(api.updateDocument).mockResolvedValue(belge("x"));
+    vi.mocked(api.updateOrderItem).mockResolvedValue({} as never);
+
+    kur([kalem({ id: "a", product_type: "vitrophanie" })]);
+    fireEvent.click(await screen.findByText(/1 kalemi tasarıma başlat/i));
+
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(0);
+    expect(panel.textContent).toContain("sorunsuz");
   });
 });

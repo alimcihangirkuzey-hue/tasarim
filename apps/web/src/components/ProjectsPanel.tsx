@@ -33,12 +33,21 @@ import { analyzeDoc } from "../lib/analyzeDoc";
 import { aktarimSonucVerisi, topluAktar } from "../lib/topluAktarim";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
-import { belgeAc, topluBaslat, topluOzetMetni, topluPlan } from "../lib/topluTasarim";
+import { baslatmaSonucVerisi, belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
 import { useSablonSecici } from "./SablonSecici";
 import { TurSonucu, type TurSonucuVerisi } from "./TurSonucu";
 import { t, tf } from "../i18n";
+
+/* TOPLU BAŞLATMA GEREKÇELERİ — TEK KOPYA, iki tüketici (Sipariş Defteri
+   düğmesi ve Açılış Takımı) aynı metinleri kullanır. Kütüphane i18n bilmez;
+   metin buradan enjekte edilir. */
+export const BASLATMA_METINLERI = {
+  tasarlanamaz: t("orders.no_template_warn"),
+  vazgecildi: t("orders.result_cancelled_reason"),
+  hata: (e: unknown) => (e as Error).message,
+};
 
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
 const TYPE_ICON: Record<ProductType, string> = {
@@ -477,16 +486,23 @@ function ProjectBlock({ project, client, showToast }: {
     mutationFn: () =>
       /* Gövde lib/topluTasarim.ts'te TEK KOPYA — Açılış Takımı da onu çağırır.
          Seçici buradan enjekte edilir: tekil düğmeyle AYNI bileşen. */
-      topluBaslat(client.id, project.items, (tur, secenekler) =>
-        secici.sor(t(`orders.type_${tur}`), secenekler),
+      topluBaslat(
+        client.id,
+        project.items,
+        (tur, secenekler) => secici.sor(t(`orders.type_${tur}`), secenekler),
+        BASLATMA_METINLERI,
       ),
     onSuccess: (r) => {
       invalidate();
-      showToast(
-        topluOzetMetni(
+      /* SONUÇ TOAST'A DEĞİL PANELE — toplu aktarımla AYNI yer ve AYNI
+         gerekçe (tur-sonucu-paneli paketi): 4,5 saniyede silinen ve satır
+         sonlarını göstermeyen bir kutu, kalem başına gerekçeyi taşıyamaz. */
+      setSonuc(
+        baslatmaSonucVerisi(
           r,
           (o) => tf("orders.bulk_done", o),
           (o) => tf("orders.bulk_cancelled", o),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
         ),
       );
     },

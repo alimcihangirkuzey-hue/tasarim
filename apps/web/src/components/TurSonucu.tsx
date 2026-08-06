@@ -30,7 +30,7 @@
 
 import { t } from "../i18n";
 
-export type TurSatirDurumu = "tamam" | "engelli" | "dusen";
+export type TurSatirDurumu = "tamam" | "engelli" | "dusen" | "atlandi";
 
 export interface TurSatiri {
   /** Operatörün tanıyacağı ad (çağıran üretir — bu katman kalem bilmez). */
@@ -50,11 +50,26 @@ const ROZET: Record<TurSatirDurumu, string> = {
   tamam: "ok",
   engelli: "warn",
   dusen: "red",
+  atlandi: "",
 };
 
-/** Sorunlu satırlar — panelin listelediği küme. */
+/* HANGİ DURUM LİSTELENİR — İLAN, ÇIKARIM DEĞİL.
+   Eski hâli `durum !== "tamam"` idi ve dördüncü bir durum (`atlandi`)
+   doğduğunda onu SESSİZCE listeleyecekti. Doktrin "başarılılar sayıyla,
+   sorunlular adıyla"dır; "atlandı" bir sorun DEĞİLDİR (zaten tasarımdaki
+   kalem her turda yeniden listelenirse gerçek sorunları gömer — ve o kalem
+   kendi satırında zaten görünür). Tablo `Record` olduğu için yeni bir durum
+   eklendiği gün DERLENMEZ: karar verilmeden listeye giremez. */
+export const LISTELENEN: Record<TurSatirDurumu, boolean> = {
+  tamam: false,
+  atlandi: false,
+  engelli: true,
+  dusen: true,
+};
+
+/** Panelin listelediği satırlar. */
 export function sorunluSatirlar(satirlar: readonly TurSatiri[]): TurSatiri[] {
-  return satirlar.filter((s) => s.durum !== "tamam");
+  return satirlar.filter((s) => LISTELENEN[s.durum]);
 }
 
 export function TurSonucu({ veri, onKapat }: { veri: TurSonucuVerisi; onKapat: () => void }) {

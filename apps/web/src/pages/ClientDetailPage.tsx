@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
-import { topluBaslat, topluOzetMetni } from "../lib/topluTasarim";
+import { baslatmaSonucVerisi, topluBaslat } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
@@ -12,6 +12,8 @@ import { ProjectsPanel } from "../components/ProjectsPanel";
 import { ScenesPanel } from "../components/ScenesPanel";
 import { ClientSurfacesPanel } from "../components/ClientSurfacesPanel";
 import { useSablonSecici } from "../components/SablonSecici";
+import { TurSonucu, type TurSonucuVerisi } from "../components/TurSonucu";
+import { BASLATMA_METINLERI } from "../components/ProjectsPanel";
 
 type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "scenes" | "assets";
 
@@ -77,7 +79,7 @@ export function ClientDetailPage() {
      BELGE AÇMA BAŞARISIZSA PRESET GERİ ALINMAZ: proje ve kalemler operatörün
      gerçek işidir — silmek onları yok ederdi. Kalemler durur, sayılar raporda
      görünür, operatör Projeler sekmesinden tekrar deneyebilir. */
-  const [kitSonuc, setKitSonuc] = useState<string | null>(null);
+  const [kitSonuc, setKitSonuc] = useState<TurSonucuVerisi | null>(null);
   const openingKit = useMutation({
     mutationFn: async () => {
       const kit = await api.createOpeningKit(id);
@@ -87,21 +89,27 @@ export function ClientDetailPage() {
       /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); seçici Sipariş Defteri'ndeki
          düğmeyle AYNI bileşendir. Vazgeçme turu durdurmaz: o tür atlanır,
          kalan kalemler açılır ve vazgeçilen sayısı raporda AYRI görünür. */
-      return topluBaslat(id, proje.items, (tur, secenekler) =>
-        secici.sor(t(`orders.type_${tur}`), secenekler),
+      return topluBaslat(
+        id,
+        proje.items,
+        (tur, secenekler) => secici.sor(t(`orders.type_${tur}`), secenekler),
+        BASLATMA_METINLERI,
       );
     },
     onSuccess: (r) => {
       invalidate();
       void qc.invalidateQueries({ queryKey: ["projects", id] });
       setTab("projects");
+      /* SONUÇ ARTIK SATIR SATIR: düz metin yalnız "kalemler oluştu ama belge
+         açılamadı" dalında kalır (o dalda tur hiç koşmadı, satır da yok). */
       setKitSonuc(
         r === null
-          ? t("preset.opening_items_only")
-          : topluOzetMetni(
+          ? { baslik: t("preset.opening_items_only"), satirlar: [] }
+          : baslatmaSonucVerisi(
               r,
               (o) => tf("preset.opening_done", o),
               (o) => tf("preset.opening_cancelled", o),
+              (it) => `${t(`orders.type_${it.product_type}`)}`,
             ),
       );
     },
@@ -113,10 +121,8 @@ export function ClientDetailPage() {
       const kollar = isKollariGerekcesiOku(e);
       setKitSonuc(
         kollar
-          ? tf("preset.opening_out_of_scope", {
-              kollar: kollar.map((k) => t(`sektor_${k}`)).join(", "),
-            })
-          : `${t("orders.start_design_error")}: ${(e as Error).message}`,
+          ? { baslik: tf("preset.opening_out_of_scope", { kollar: kollar.map((k) => t(`sektor_${k}`)).join(", ") }), satirlar: [] }
+          : { baslik: `${t("orders.start_design_error")}: ${(e as Error).message}`, satirlar: [] },
       );
     },
   });
@@ -218,9 +224,9 @@ export function ClientDetailPage() {
           kalsaydı operatör onu HİÇ GÖRMEZDİ (bu kusuru testin kendisi
           yakaladı — sonuç metni aranınca bulunamadı). */}
       {kitSonuc && (
-        <p className="muted" style={{ margin: "8px 0" }}>
-          📦 {kitSonuc}
-        </p>
+        <div style={{ margin: "8px 0" }}>
+          <TurSonucu veri={kitSonuc} onKapat={() => setKitSonuc(null)} />
+        </div>
       )}
 
       {tab === "general" && (

@@ -22,7 +22,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { TurSonucu, sorunluSatirlar, type TurSatiri } from "./TurSonucu";
+import { LISTELENEN, TurSonucu, sorunluSatirlar, type TurSatiri } from "./TurSonucu";
 
 afterEach(cleanup);
 
@@ -72,8 +72,35 @@ describe("doktrin — başarılılar SAYIYLA, sorunlular ADIYLA", () => {
     expect(screen.getByText("1 üretildi · 1 engelli · 1 düştü")).toBeTruthy();
   });
 
-  it("saf ayıklayıcı: sorunlu = tamam OLMAYAN", () => {
+  it("saf ayıklayıcı İLANDAN türer — 'tamam OLMAYAN' çıkarımı DEĞİL", () => {
     expect(sorunluSatirlar(SATIRLAR).map((s) => s.durum)).toEqual(["engelli", "dusen"]);
+  });
+
+  it("ATLANDI listelenmez — 'tamam' değil ama sorun da DEĞİL", () => {
+    /* BU TESTİN NEDEN VAR OLDUĞU ÖLÇÜLDÜ: eklenmeden önce bir negatif
+       kontrol koşuldu (`LISTELENEN.atlandi` true yapıldı) ve HİÇBİR test
+       kırmızıya dönmedi — güvence yazılıydı ama ÖLÇÜLMÜYORDU. Eski
+       ayıklayıcı `durum !== "tamam"` idi ve dördüncü durum eklendiğinde onu
+       sessizce listeleyecekti. */
+    const atlanan: TurSatiri = { ad: "Zaten tasarımda · A4", durum: "atlandi", gerekce: null };
+    expect(sorunluSatirlar([...SATIRLAR, atlanan]).map((s) => s.ad)).not.toContain(atlanan.ad);
+    expect(LISTELENEN.atlandi).toBe(false);
+  });
+
+  it("ATLANDI satırı PANELDE de çizilmez", () => {
+    const { container } = ciz([
+      { ad: "Zaten tasarımda", durum: "atlandi", gerekce: null },
+      { ad: "Bozuk", durum: "dusen", gerekce: "500" },
+    ]);
+    const cizilen = [...container.querySelectorAll(".tur-sonucu-satir")].map((e) => e.textContent);
+    expect(cizilen).toHaveLength(1);
+    expect(cizilen[0]).toContain("Bozuk");
+  });
+
+  it("İLAN TABLOSU TAM — her durum bir karar taşır", () => {
+    /* Tablo `Record<TurSatirDurumu, boolean>`; yeni bir durum eklendiği gün
+       DERLENMEZ. Bu satır o sözü çalışma zamanında da görünür kılar. */
+    expect(Object.keys(LISTELENEN).sort()).toEqual(["atlandi", "dusen", "engelli", "tamam"]);
   });
 });
 

@@ -26,6 +26,7 @@
 import type { OrderItemDTO, ProductType } from "@tezgah/shared";
 import { siparisParamlari, siparisSablonlari } from "@tezgah/templates/identity";
 import { api } from "../api";
+import type { TurSatirDurumu, TurSonucuVerisi } from "../components/TurSonucu";
 
 /**
  * Tek kalemi belgeye çevirir.
@@ -95,6 +96,16 @@ export function topluPlan(items: readonly OrderItemDTO[]): TopluPlan {
   return plan;
 }
 
+/** Bir kalemin toplu başlatma sonucu. */
+export type BaslatmaDurumu = "acildi" | "tasarlanamaz" | "vazgecildi" | "zaten" | "dusen";
+
+export interface BaslatmaSonucu {
+  item: OrderItemDTO;
+  durum: BaslatmaDurumu;
+  /** Operatöre gösterilecek gerekçe; "acildi"de null. */
+  gerekce: string | null;
+}
+
 export interface TopluSonuc {
   acilan: number;
   dusen: number;
@@ -103,18 +114,45 @@ export interface TopluSonuc {
   /** operatör şablon sorusunda VAZGEÇTİ (operatörün kararı — hata değil) */
   vazgecilen: number;
   zaten: number;
+  /** Her kalemin sonucu — GEREKÇELER BURADA YAŞAR (ÖZGÜN kalem sırasında). */
+  satirlar: BaslatmaSonucu[];
+}
+
+/* SAYILAR SATIRLARDAN TÜRER — iki kaynak tutulmaz.
+   Eskiden sayılar plan uzunluklarından ve döngü sayaçlarından geliyordu;
+   satırlar eklenince ikisi AYRI kaynaklar olur ve sessizce ayrışabilirdi
+   (bu deponun tekrar tekrar ödediği sınıf: elle tutulan ikinci kopya). */
+function sayilar(satirlar: readonly BaslatmaSonucu[]): Omit<TopluSonuc, "satirlar"> {
+  const n = (d: BaslatmaDurumu) => satirlar.filter((s) => s.durum === d).length;
+  return {
+    acilan: n("acildi"),
+    dusen: n("dusen"),
+    atlanan: n("tasarlanamaz"),
+    vazgecilen: n("vazgecildi"),
+    zaten: n("zaten"),
+  };
+}
+
+/** Gerekçe metinlerini çağıran verir (i18n bu katmana girmez). */
+export interface BaslatmaMetinleri {
+  /** 0 şablon seçeneği olan tür. */
+  tasarlanamaz: string;
+  /** Operatör şablon sorusunda vazgeçti. */
+  vazgecildi: string;
+  /** Yakalanan hatadan okunabilir gerekçe üretir. */
+  hata: (e: unknown) => string;
 }
 
 /**
- * Tur özetinin metni — VAZGEÇME YALNIZ OLDUĞUNDA yazılır.
+ * Tur özetinin BAŞLIK metni — VAZGEÇME YALNIZ OLDUĞUNDA yazılır.
  *
- * `aktarimOzetMetni` deseniyle aynı: metin üreticileri ENJEKTE edilir (bu
- * katman i18n bilmez) ve "olmadı" bilgisi ancak varsa satıra girer. Her
- * koşumda "0 vazgeçildi" yazmak, hiç olmayan bir şeyi her seferinde
- * raporlamak olurdu — gürültü, bilgiyi bastırır.
+ * Metin üreticileri ENJEKTE edilir (bu katman i18n bilmez) ve "olmadı"
+ * bilgisi ancak varsa satıra girer. Her koşumda "0 vazgeçildi" yazmak, hiç
+ * olmayan bir şeyi her seferinde raporlamak olurdu — gürültü, bilgiyi
+ * bastırır.
  *
- * İKİ TÜKETİCİ, TEK METİN KURALI: Sipariş Defteri toplu düğmesi ve Açılış
- * Takımı ayrı i18n anahtarları kullanır ama vazgeçmeyi AYNI kuralla ekler.
+ * İKİ TÜKETİCİ, TEK KURAL: Sipariş Defteri toplu düğmesi ve Açılış Takımı
+ * ayrı i18n anahtarları kullanır ama vazgeçmeyi AYNI kuralla ekler.
  */
 export function topluOzetMetni(
   r: TopluSonuc,
@@ -124,6 +162,42 @@ export function topluOzetMetni(
   const satir = bas({ acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan });
   if (r.vazgecilen === 0) return satir;
   return `${satir} · ${vazgecildi({ vazgecilen: r.vazgecilen })}`;
+}
+
+/* Başlatma durumu → panel durumu. TAM tablo: yeni bir başlatma durumu
+   doğduğu gün burası DERLENMEZ ve o durum sessizce yanlış rozete düşmez.
+   `zaten` "atlandi"dır ve panelde LİSTELENMEZ (LISTELENEN ilanı): zaten
+   tasarımdaki kalem her turda yeniden listelenirse gerçek sorunları gömer
+   ve o kalem kendi satırında zaten görünür ("Aç" düğmesi). */
+const PANEL_DURUMU: Record<BaslatmaDurumu, TurSatirDurumu> = {
+  acildi: "tamam",
+  zaten: "atlandi",
+  tasarlanamaz: "engelli",
+  vazgecildi: "engelli",
+  dusen: "dusen",
+};
+
+/**
+ * Tur sonucundan SONUÇ PANELİNİN verisi.
+ *
+ * `aktarimSonucVerisi` ile aynı desen ve aynı gerekçe: sonuç dize olarak
+ * birleştirilmez — satırların ayrı görünmesi bir CSS kuralına değil, ayrı
+ * DOM elemanlarına bağlıdır (tur-sonucu-paneli paketinin ölçtüğü yara).
+ */
+export function baslatmaSonucVerisi(
+  r: TopluSonuc,
+  bas: (o: { acilan: number; dusen: number; atlanan: number }) => string,
+  vazgecildi: (o: { vazgecilen: number }) => string,
+  kalemAdi: (item: OrderItemDTO) => string,
+): TurSonucuVerisi {
+  return {
+    baslik: topluOzetMetni(r, bas, vazgecildi),
+    satirlar: r.satirlar.map((s) => ({
+      ad: kalemAdi(s.item),
+      durum: PANEL_DURUMU[s.durum],
+      gerekce: s.gerekce,
+    })),
+  };
 }
 
 /**
@@ -144,6 +218,7 @@ export async function topluBaslat(
   clientId: string,
   items: readonly OrderItemDTO[],
   sor: (tur: ProductType, secenekler: readonly string[]) => Promise<string | null>,
+  metin: BaslatmaMetinleri,
 ): Promise<TopluSonuc> {
   const plan = topluPlan(items);
   const kosacak: Array<{ item: OrderItemDTO; templateId: string }> = plan.hazir.map((item) => ({
@@ -151,36 +226,52 @@ export async function topluBaslat(
     templateId: siparisSablonlari(item.product_type)[0]!,
   }));
 
+  /* SONUÇ KALEM KİMLİĞİNE GÖRE TOPLANIR, sonra ÖZGÜN SIRAYA dizilir.
+     Turun kendi sırası (önce `hazir`, sonra `secimli`) bir UYGULAMA
+     detayıdır; operatör kalemleri ekranda proje sırasında görür ve sonucu
+     o sırada okumak zorundadır — başka bir sıra onu yeniden eşleştirmeye
+     zorlardı. */
+  const sonuc = new Map<string, BaslatmaSonucu>();
+  for (const item of plan.tasarlanamaz) {
+    sonuc.set(item.id, { item, durum: "tasarlanamaz", gerekce: metin.tasarlanamaz });
+  }
+  for (const item of plan.zaten) {
+    sonuc.set(item.id, { item, durum: "zaten", gerekce: null });
+  }
+
   /* VAZGEÇME DE ÖNBELLEĞE GİRER (`has` ile bakılır, değere değil): aksi hâlde
      aynı türün ikinci kalemi soruyu YENİDEN sordururdu — operatör vazgeçtiğini
      N kez tekrar söylemek zorunda kalırdı. */
   const secim = new Map<ProductType, string | null>();
-  let vazgecilen = 0;
   for (const item of plan.secimli) {
     if (!secim.has(item.product_type)) {
       secim.set(item.product_type, await sor(item.product_type, siparisSablonlari(item.product_type)));
     }
     const templateId = secim.get(item.product_type)!;
-    if (templateId === null) vazgecilen += 1;
+    if (templateId === null) sonuc.set(item.id, { item, durum: "vazgecildi", gerekce: metin.vazgecildi });
     else kosacak.push({ item, templateId });
   }
 
-  let acilan = 0;
-  let dusen = 0;
   for (const { item, templateId } of kosacak) {
     try {
       await belgeAc(clientId, item, templateId);
-      acilan += 1;
-    } catch {
-      /* Gerekçe kalem düzeyinde yutulur ama SAYILIR. */
-      dusen += 1;
+      sonuc.set(item.id, { item, durum: "acildi", gerekce: null });
+    } catch (e) {
+      /* GEREKÇE ARTIK YUTULMUYOR. Eskiden burada `catch { dusen += 1 }`
+         vardı: operatör "2 düştü" görüyor, HANGİSİ ve NİYE sorusunun
+         cevabını hiçbir yerde bulamıyordu — kardeşi `topluAktar`da kapatılan
+         yaranın aynısı, bu hatta CANLI kalmıştı. */
+      sonuc.set(item.id, { item, durum: "dusen", gerekce: metin.hata(e) });
     }
   }
-  return {
-    acilan,
-    dusen,
-    atlanan: plan.tasarlanamaz.length,
-    vazgecilen,
-    zaten: plan.zaten.length,
-  };
+
+  /* Özgün sıra: her kalem tam bir kovaya düştüğü için (topluPlan sözleşmesi)
+     bu eşleme her kalemi bulur; bulamazsa PATLAR — sessiz bir boşluk,
+     "sonuç gelmedi" ile "kalem yoktu"yu aynı gösterirdi. */
+  const satirlar = items.map((it) => {
+    const s = sonuc.get(it.id);
+    if (!s) throw new Error(`toplu başlatma: ${it.id} hiçbir kovaya düşmedi`);
+    return s;
+  });
+  return { ...sayilar(satirlar), satirlar };
 }
