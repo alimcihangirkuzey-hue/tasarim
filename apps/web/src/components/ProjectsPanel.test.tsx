@@ -72,6 +72,7 @@ vi.mock("../api", () => ({
     /* render'da koşan query'ler */
     clients: vi.fn(),
     clientProjects: vi.fn(),
+    projectExports: vi.fn(),
     /* startDesign zincirinin ölçülen uçları */
     createDocument: vi.fn(),
     updateDocument: vi.fn(),

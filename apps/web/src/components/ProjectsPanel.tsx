@@ -569,9 +569,22 @@ function ProjectBlock({ project, client, showToast }: {
     },
     onSuccess: (r) => {
       invalidate();
+      /* Üretilen dosyalar listesi de tazelenmeli — yoksa operatör az önce
+         ürettiği dosyaları göremez ve üretim olmamış gibi görünür. */
+      void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
       showToast(tf("orders.bulk_export_done", { aktarilan: r.aktarilan, bloklu: r.bloklu, dusen: r.dusen }));
     },
     onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
+  });
+
+  /* ÜRETİLMİŞ DOSYALAR — `api.projectExports` bu pakete kadar TÜKETİCİSİZDİ
+     (uç sunucuda vardı, istemci fonksiyonu vardı, hiçbir ekran çağırmıyordu).
+     Toplu üretim eklendikten sonra boşluk somutlaştı: operatör tek tıkla N
+     dosya üretiyor ama onları görecek proje düzeyinde bir yer yoktu.
+     Liste toplu aktarımdan sonra tazelenir (aşağıda invalidate). */
+  const ciktilar = useQuery({
+    queryKey: ["projectExports", project.id],
+    queryFn: () => api.projectExports(project.id),
   });
 
   const present = useMutation({
@@ -671,6 +684,29 @@ function ProjectBlock({ project, client, showToast }: {
         </select>
         <button className="ghost small" onClick={() => addItem.mutate()}>{t("orders.add_item")}</button>
       </div>
+
+      {/* Üretilmiş dosyalar — çıktı YOKSA bölüm hiç çizilmez (boş başlık,
+          üretim olmuş da dosya kaybolmuş izlenimi verirdi). Sunum kayıtları
+          da bu listede görünür: ikisi de "bu projeden çıkan dosya"dır. */}
+      {(ciktilar.data?.length ?? 0) > 0 && (
+        <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {tf("orders.outputs", { n: ciktilar.data!.length })}
+          </span>
+          {ciktilar.data!.map((r) => (
+            <a
+              key={r.id}
+              className="pill"
+              href={`/${r.filepath.replace(/^data\//, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              title={r.filepath}
+            >
+              {t(`orders.out_${r.kind}`)} v{r.version}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -39,6 +39,7 @@ vi.mock("../api", () => ({
   api: {
     clients: vi.fn(),
     clientProjects: vi.fn(),
+    projectExports: vi.fn(),
     document: vi.fn(),
     exportDocument: vi.fn(),
     exportSvg: vi.fn(),

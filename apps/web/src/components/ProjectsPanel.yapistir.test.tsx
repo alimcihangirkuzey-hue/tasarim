@@ -44,6 +44,7 @@ vi.mock("../api", () => ({
   api: {
     clients: vi.fn(),
     clientProjects: vi.fn(),
+    projectExports: vi.fn(),
     parseSynonyms: vi.fn(),
     createDocument: vi.fn(),
     updateDocument: vi.fn(),
