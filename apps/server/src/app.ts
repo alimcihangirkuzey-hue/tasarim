@@ -35,6 +35,7 @@ import { fontRoutes } from "./routes/fonts.js";
 import { digitalMenuRoutes } from "./routes/digital-menu.js";
 import { sectorRoutes } from "./routes/sectors.js";
 import { isKollariRoutes } from "./routes/is-kollari.js";
+import { kurulumKunyesiRoutes } from "./routes/kurulum-kunyesi.js";
 import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
 import { surfaceRoutes } from "./routes/surfaces.js";
@@ -93,6 +94,7 @@ export async function buildApp(
   digitalMenuRoutes(app);
   sectorRoutes(app);
   isKollariRoutes(app);
+  kurulumKunyesiRoutes(app);
   ingredientRoutes(app);
   intakeRoutes(app);
   surfaceRoutes(app);

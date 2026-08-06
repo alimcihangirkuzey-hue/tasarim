@@ -396,6 +396,12 @@ export const api = {
       tumu: readonly import("@tezgah/templates/identity").Sektor[];
       kaynak: "varsayilan" | "yapilandirma";
     }>("/api/is-kollari"),
+  /* Kurulum künyesi (K-1/C modül sınırı) — MÜŞTERİYE GİDEN basılı altbilgi.
+     Basılı yüzeyler bu ucu BEKLER (yerel yedek dize YOK): yedek olsaydı kiracı
+     kurulumunda ağ gecikmesi anında SATICININ adı basılabilirdi ve bunu ancak
+     kâğıtta görürdünüz. Künyesiz basmak yanlış künyeyle basmaktan iyidir. */
+  kurulumKunyesi: () =>
+    http<{ kunye: string; kaynak: "varsayilan" | "yapilandirma" }>("/api/kurulum-kunyesi"),
   ingredients: () => http<import("@tezgah/shared").ResolvedChip[]>("/api/ingredients"),
   createIngredient: (body: { tr: string; fr?: string; de?: string }) =>
     http<{ created: boolean; chip: import("@tezgah/shared").ResolvedChip }>("/api/ingredients", {
