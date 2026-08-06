@@ -496,7 +496,8 @@
     "hint": "Katalog + marka kitinden tek dosyalık mobil menü — çevrimdışı açılır, QR ile paylaşılır.",
     "btn": "Dijital menü üret",
     "generating": "Üretiliyor…",
-    "open": "Menüyü aç ↗"
+    "open": "Menüyü aç ↗",
+    "history": "📁 Üretilmiş menüler ({n}):"
   },
   "guide": {
     "q": "Bu iş ne?",

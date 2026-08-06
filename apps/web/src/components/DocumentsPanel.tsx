@@ -7,7 +7,7 @@ import { TEMPLATES, listTemplates, type TemplateEntry } from "@tezgah/templates"
 import { SEKTORLER, hedefSektorOf, type Sektor } from "@tezgah/templates/identity";
 import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
-import { t } from "../i18n";
+import { t, tf } from "../i18n";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -126,11 +126,25 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
   });
 
-  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü */
-  const [digitalUrl, setDigitalUrl] = useState<string | null>(null);
+  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü.
+
+     ÖLÇÜLEN YARA (borç: "api.digitalMenuHistory ölü istemci fonksiyonu",
+     önizleme paketi şerh listesi 2026-07-26): uç `/menu-digital/history`
+     sunucuda VARDI, istemci fonksiyonu VARDI, TÜKETİCİ SIFIRDI. Ekran yalnız
+     O OTURUMDA üretilen menünün linkini React state'inde tutuyordu — operatör
+     sayfayı yenilediğinde ya da başka sekmeye geçip döndüğünde ürettiği dosyaya
+     ULAŞAMIYORDU. Dosya diskte duruyordu, yolu bilinmiyordu.
+
+     TEK KAYNAK: geçici `digitalUrl` state'i KALDIRILDI. Üretilen menü de dahil
+     her sürüm aynı listeden okunur; üretim sonrası liste tazelenir. İki kaynak
+     bırakmak (state + geçmiş) aynı dosyayı iki yerde göstermek olurdu. */
+  const digitalHistory = useQuery({
+    queryKey: ["digitalMenuHistory", client.id],
+    queryFn: () => api.digitalMenuHistory(client.id),
+  });
   const digital = useMutation({
     mutationFn: () => api.digitalMenu(client.id),
-    onSuccess: (rec) => setDigitalUrl(rec.filepath.replace(/^data\//, "/")),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["digitalMenuHistory", client.id] }),
   });
 
   const allClients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
@@ -226,12 +240,28 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
         <button onClick={() => digital.mutate()} disabled={digital.isPending}>
           {digital.isPending ? t("digital.generating") : t("digital.btn")}
         </button>
-        {digitalUrl && (
-          <a href={digitalUrl} target="_blank" rel="noreferrer" className="ghost-link">
-            {t("digital.open")}
-          </a>
-        )}
         {digital.isError && <span className="error">{(digital.error as Error).message}</span>}
+        {/* Sürüm YOKSA bölüm hiç çizilmez — boş bir "geçmiş" başlığı, üretim
+            olmuş da dosya kaybolmuş izlenimi verirdi (proje çıktıları emsali). */}
+        {(digitalHistory.data?.length ?? 0) > 0 && (
+          <div className="row" style={{ flexWrap: "wrap", gap: 6, width: "100%" }}>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {tf("digital.history", { n: digitalHistory.data!.length })}
+            </span>
+            {digitalHistory.data!.map((r) => (
+              <a
+                key={r.id}
+                className="pill"
+                href={`/${r.filepath.replace(/^data\//, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                title={r.filepath}
+              >
+                {t("digital.open")} v{r.version}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
