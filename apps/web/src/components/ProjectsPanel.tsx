@@ -38,7 +38,16 @@ const TYPE_ICON: Record<ProductType, string> = {
    ilanıyla YÜK-ZAMANI tutarlılık denetiminden geçer (yanlış aile gösteren
    köprü uygulamayı ayağa kaldırmaz). */
 
-function itemSummary(it: OrderItemDTO): string {
+/* İmza DTO'ya DEĞİL, özetin fiilen okuduğu yapısal alt kümeye bağlıdır:
+   yapıştır önizlemesindeki `ParsedOrderItem` (henüz DTO değil — id/status/
+   document_id taşımaz) da aynı tek kaynaktan geçsin diye. Daraltma, özetin
+   okumadığı bir alana ileride sessizce uzanmasını da engeller. */
+type KalemOzetiGirdisi = Pick<
+  OrderItemDTO,
+  "product_type" | "qty" | "width_cm" | "height_cm" | "details"
+>;
+
+function itemSummary(it: KalemOzetiGirdisi): string {
   const parts: string[] = [];
   if (it.width_cm && it.height_cm) parts.push(`${it.width_cm}×${it.height_cm} cm`);
   if (it.details.format) parts.push(String(it.details.format).toUpperCase());
@@ -345,18 +354,29 @@ function PasteBox({ client, showToast }: { client: ClientDTO; showToast: (m: str
             {parsed.due_date && <span className="pill">{t("orders.due")}: {parsed.due_date}</span>}
             <span className="pill">{tf("orders.items_found", { n: parsed.items.length })}</span>
           </div>
-          {parsed.items.map((it, i) => (
-            <div key={i} className="row" style={{ fontSize: 13, gap: 6 }}>
-              <span>{TYPE_ICON[it.product_type]}</span>
-              <strong>{t(`orders.type_${it.product_type}`)}</strong>
-              {it.width_cm && it.height_cm && <span>{it.width_cm}×{it.height_cm} cm</span>}
-              {it.details.format && <span>{String(it.details.format).toUpperCase()}</span>}
-              {it.qty > 1 && <span>{it.qty} {t("orders.qty")}</span>}
-              {it.details.side && <span className="pill">{it.details.side}</span>}
-              {it.details.mode && <span className="pill">{it.details.mode}</span>}
-              {it.notes && <span className="muted" style={{ fontStyle: "italic" }}>📝 {it.notes.split("\n")[0]}</span>}
-            </div>
-          ))}
+          {parsed.items.map((it, i) => {
+            /* Özet TEK KAYNAKTAN. Önizleme eskiden aynı özeti elle İKİNCİ KEZ
+               yazıyordu ve iki alanı düşürüyordu:
+               · technique — CANLI yara: "Detay: nakis" ayrıştırıcıda
+                 details.technique="broderie" üretir (parse.ts:104) ama
+                 önizlemede görünmezdi; operatör onayladığı siparişin işleme
+                 tekniğini göremiyor, işlenmiş kalem satırında ilk kez
+                 karşılaşıyordu (onay yüzeyi ≠ yaratılan kayıt).
+               · substrat — ilandan türetilen ticari bilgi (3.1/202), yalnız
+                 işlenmiş satırdaydı.
+               print_qty bu yoldan BUGÜN ERİŞİLEMEZ (ayrıştırıcı üretmiyor);
+               tek kaynağa bağlanmakla ürettiği gün kendiliğinden görünür —
+               latent, canlı yara olarak sayılmaz (analyzeDoc dersi). */
+            const ozet = itemSummary(it);
+            return (
+              <div key={i} className="row" style={{ fontSize: 13, gap: 6 }}>
+                <span>{TYPE_ICON[it.product_type]}</span>
+                <strong>{t(`orders.type_${it.product_type}`)}</strong>
+                {ozet && <span className="muted">{ozet}</span>}
+                {it.notes && <span className="muted" style={{ fontStyle: "italic" }}>📝 {it.notes.split("\n")[0]}</span>}
+              </div>
+            );
+          })}
           <button onClick={() => create.mutate()} disabled={create.isPending || parsed.items.length === 0}>
             {t("orders.create_project")}
           </button>
