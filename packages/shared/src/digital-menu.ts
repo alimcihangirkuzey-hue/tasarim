@@ -4,7 +4,7 @@
    açılır), kategori çapa navigasyonu, fiyatlar formatPrice ile, halal rozeti,
    saat/telefon, kit renkleri. Saf fonksiyon — Vitest'le doğrulanır. */
 
-import type { ClientDTO } from "./schemas.js";
+import type { ClientDTO, MenuLanguage } from "./schemas.js";
 import { fiyatMetni } from "./utils.js";
 
 /** HTML metin kaçışı — ürün adı/açıklaması gibi kullanıcı içeriği güvenli gömülür */
@@ -29,7 +29,40 @@ function priceLine(prices: ClientDTO["catalog"]["categories"][number]["items"][n
     .join(" · ");
 }
 
+/* DİJİTAL MENÜNÜN KENDİ DİLİ — çıktı ARTIK müşterinin ilan ettiği dile uyar.
+
+   ÖLÇÜLEN YARA: bu dosya `<html lang="fr">`, sekme başlığında "Menu" ve boş
+   katalog metninde "Menu bientôt disponible." yazıyordu — ÜÇÜ DE sabit
+   Fransızca. Oysa `client.menu_language` DTO'da hazırdır (rotanın kendi şerhi
+   bunu yazıyor: "dijital menü render'ı tüketmez; DTO tipi için taşınır") ve
+   baskı yolu onu ZATEN okuyor (chrome-title). Yani veri vardı, çıktı görmezden
+   geliyordu.
+
+   NİYE `lang` ÖNEMLİ (kozmetik değil): ekran okuyucu Türkçe menüyü Fransızca
+   fonetikle seslendirir, tarayıcı "bu sayfayı çevir?" teklifini yanlış dilden
+   yapar, tireleme ve `:lang()` kuralları yanlış çalışır. Katalog TEK DİLLİ
+   saklanır (`name_fr` alan ADI tarihseldir, içeriği müşterinin dilidir) —
+   dolayısıyla doğru `lang`, ilan edilen menü dilidir.
+
+   İÇERİK ÇEVRİLMEZ: kategori/ürün/dipnot metinleri AYNEN basılır. Bu paket
+   yalnız ÇIKTININ KENDİ dilini düzeltir; katalog içeriğinin çok-dilliliği
+   ayrı ve çok daha büyük bir iştir (TODO'da kayıtlı).
+
+   NİYE TEMPLATES'TEKİ TITLE_BY_LANG DEĞİL: paket yönü tek yönlüdür — `shared`,
+   `templates`i import ETMEZ. Ayrıca ikisi aynı şeyi söylemiyor: oradaki
+   "NOTRE CARTE" basılı sayfanın BAŞLIĞIDIR, buradaki sekme adıdır. Zorla tek
+   kaynağa bağlamak, farklı iki kararı birbirine kilitlerdi.
+
+   Record<MenuLanguage, …> BİLEREK: şemaya yeni bir dil eklendiği gün burası
+   DERLEMEDE kırılır — sessizce Fransızcaya düşmez. */
+const DIL_METINLERI: Record<MenuLanguage, { menu: string; bos: string }> = {
+  fr: { menu: "Menu", bos: "Menu bientôt disponible." },
+  de: { menu: "Speisekarte", bos: "Speisekarte in Kürze verfügbar." },
+  tr: { menu: "Menü", bos: "Menü yakında yayında." },
+};
+
 export function renderDigitalMenu(client: ClientDTO): string {
+  const metin = DIL_METINLERI[client.menu_language] ?? DIL_METINLERI.fr;
   const kit = client.brandkit;
   const c = kit.colors;
   const contact = kit.contact;
@@ -74,11 +107,11 @@ export function renderDigitalMenu(client: ClientDTO): string {
   const footnote = client.catalog.footnote_fr ? `<p class="footnote">${esc(client.catalog.footnote_fr)}</p>` : "";
 
   return `<!doctype html>
-<html lang="fr">
+<html lang="${client.menu_language}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(client.name)} — Menu</title>
+<title>${esc(client.name)} — ${metin.menu}</title>
 <style>
 :root{--bg:${c.background};--panel:${c.secondary};--head:${c.primary};--text:${c.text};--accent:${c.accent}}
 *{box-sizing:border-box}
@@ -106,7 +139,7 @@ footer{max-width:680px;margin:0 auto;padding:0 14px 40px;text-align:center}
 <body>
 <header><h1>${esc(client.name)}</h1>${slogan}${badge}</header>
 ${nav ? `<nav>${nav}</nav>` : ""}
-<main>${sections || `<p style="text-align:center;opacity:.6">Menu bientôt disponible.</p>`}</main>
+<main>${sections || `<p style="text-align:center;opacity:.6">${metin.bos}</p>`}</main>
 <footer>${foot}${footnote}</footer>
 </body>
 </html>`;
