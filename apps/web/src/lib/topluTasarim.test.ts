@@ -4,15 +4,21 @@
    Takımı). Bileşen testleri (ProjectsPanel.toplu.test.tsx) DÜĞMEYİ ölçer;
    bu dosya GÖVDEYİ ölçer — DOM'suz, enjekte edilen soruyla.
 
-   `sor` ENJEKTE EDİLDİĞİ İÇİN window.confirm'e gerek yok: turun kaç kez
+   `sor` ENJEKTE EDİLDİĞİ İÇİN tarayıcı diyaloğuna gerek yok: turun kaç kez
    sorduğu doğrudan sayılabiliyor, "tür başına bir kez" sözleşmesi bir
-   tarayıcı API'sine bağlı kalmıyor. */
+   tarayıcı API'sine bağlı kalmıyor.
+
+   VAZGEÇME (2026-08-06, N-seçenekli seçici): `sor` artık `null` döndürebilir.
+   O türün kalemleri AÇILMAZ, tur DURMAZ ve sayı `vazgecilen`de AYRI durur —
+   `atlanan`la birleştirilseydi "sistem yapamaz" ile "operatör istemedi" tek
+   sayıya düşerdi. Eski `window.confirm` yolunda vazgeçmek MÜMKÜN DEĞİLDİ:
+   "İptal" ikinci şablonu seçiyordu. */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OrderItemDTO, ProductType } from "@tezgah/shared";
 import { siparisSablonlari } from "@tezgah/templates/identity";
 import { api } from "../api";
-import { belgeAc, topluBaslat, topluPlan } from "./topluTasarim";
+import { belgeAc, topluBaslat, topluOzetMetni, topluPlan } from "./topluTasarim";
 
 vi.mock("../api", () => ({
   api: {
@@ -41,8 +47,11 @@ function kalem(p: Partial<OrderItemDTO> & { id: string }): OrderItemDTO {
 }
 
 const belge = (id: string) => ({ id }) as never;
-/** Varsayılan soru: ilk seçeneği alır (window.confirm OK dalının karşılığı) */
-const ilkiniSec = (_t: ProductType, secenekler: readonly string[]): string => secenekler[0]!;
+/** Varsayılan soru: ilk seçeneği alır */
+const ilkiniSec = async (_t: ProductType, secenekler: readonly string[]): Promise<string | null> =>
+  secenekler[0]!;
+/** Vazgeçen soru: operatör "Vazgeç"e bastı */
+const vazgec = async (): Promise<string | null> => null;
 
 afterEach(() => vi.clearAllMocks());
 
@@ -136,7 +145,7 @@ describe("topluBaslat — tur sözleşmeleri", () => {
     vi.mocked(api.updateOrderItem).mockResolvedValue({} as never);
 
     const r = await topluBaslat("cli_1", [kalem({ id: "kotu" }), kalem({ id: "iyi" })], ilkiniSec);
-    expect(r).toEqual({ acilan: 1, dusen: 1, atlanan: 0, zaten: 0 });
+    expect(r).toEqual({ acilan: 1, dusen: 1, atlanan: 0, vazgecilen: 0, zaten: 0 });
     expect(vi.mocked(api.updateOrderItem).mock.calls.map((c) => c[0])).toEqual(["iyi"]);
   });
 
@@ -147,7 +156,41 @@ describe("topluBaslat — tur sözleşmeleri", () => {
       ilkiniSec,
     );
     expect(api.createDocument).not.toHaveBeenCalled();
-    expect(r).toEqual({ acilan: 0, dusen: 0, atlanan: 1, zaten: 1 });
+    expect(r).toEqual({ acilan: 0, dusen: 0, atlanan: 1, vazgecilen: 0, zaten: 1 });
+  });
+
+  it("VAZGEÇME o türü ATLAR — belge AÇILMAZ, tur DURMAZ, sayı AYRI durur", async () => {
+    vi.mocked(api.createDocument).mockResolvedValue(belge("doc_x"));
+    vi.mocked(api.updateDocument).mockResolvedValue(belge("x"));
+    vi.mocked(api.updateOrderItem).mockResolvedValue({} as never);
+
+    /* İki menü (vazgeçilir) + bir flyer (sorusuz koşar): vazgeçmenin turu
+       DURDURMADIĞI ancak yanında koşan bir kalem varken ölçülebilir. */
+    const r = await topluBaslat(
+      "cli_1",
+      [
+        kalem({ id: "m1", product_type: "menu" }),
+        kalem({ id: "m2", product_type: "menu" }),
+        kalem({ id: "f", product_type: "flyer" }),
+      ],
+      vazgec,
+    );
+
+    expect(r).toEqual({ acilan: 1, dusen: 0, atlanan: 0, vazgecilen: 2, zaten: 0 });
+    /* Yalnız flyer açıldı — vazgeçilen tür hiç createDocument görmedi. */
+    expect(vi.mocked(api.updateOrderItem).mock.calls.map((c) => c[0])).toEqual(["f"]);
+  });
+
+  it("VAZGEÇME DE TÜR BAŞINA BİR KEZ sorulur — N kez tekrar sordurmaz", async () => {
+    const sor = vi.fn(vazgec);
+    await topluBaslat(
+      "cli_1",
+      [kalem({ id: "m1", product_type: "menu" }), kalem({ id: "m2", product_type: "menu" })],
+      sor,
+    );
+    /* Önbellek DEĞERE değil VARLIĞA bakmasaydı (null "yok" gibi görünür),
+       operatör vazgeçtiğini her kalem için tekrar söylemek zorunda kalırdı. */
+    expect(sor).toHaveBeenCalledTimes(1);
   });
 
   it("SORULACAK TÜR YOKSA soru HİÇ sorulmaz", async () => {
@@ -159,5 +202,34 @@ describe("topluBaslat — tur sözleşmeleri", () => {
     await topluBaslat("cli_1", [kalem({ id: "a", product_type: "flyer" })], sor);
     /* Tek seçenekli tür için kullanıcıyı rahatsız etmek gereksiz gürültüdür. */
     expect(sor).not.toHaveBeenCalled();
+  });
+});
+
+describe("topluOzetMetni — vazgeçme YALNIZ olduğunda yazılır", () => {
+  const bas = (o: { acilan: number; dusen: number; atlanan: number }) =>
+    `${o.acilan} açıldı · ${o.dusen} düştü · ${o.atlanan} tasarlanamaz`;
+  const vaz = (o: { vazgecilen: number }) => `${o.vazgecilen} vazgeçildi`;
+
+  it("VAZGEÇME YOKSA satır BİREBİR eski hâlidir — '0 vazgeçildi' yazılmaz", () => {
+    /* Her koşumda olmayan bir şeyi raporlamak gürültüdür ve gürültü bilgiyi
+       bastırır (hata mesajı sınırı paketinin dersi). */
+    const s = topluOzetMetni(
+      { acilan: 3, dusen: 0, atlanan: 0, vazgecilen: 0, zaten: 0 },
+      bas,
+      vaz,
+    );
+    expect(s).toBe("3 açıldı · 0 düştü · 0 tasarlanamaz");
+    expect(s).not.toContain("vazgeç");
+  });
+
+  it("VAZGEÇME VARSA satıra EKLENİR — sessizce yutulmaz", () => {
+    const s = topluOzetMetni(
+      { acilan: 1, dusen: 0, atlanan: 0, vazgecilen: 2, zaten: 0 },
+      bas,
+      vaz,
+    );
+    expect(s).toContain("2 vazgeçildi");
+    /* Taban satır kaybolmaz: iki bilgi de aynı anda görünür. */
+    expect(s).toContain("1 açıldı");
   });
 });

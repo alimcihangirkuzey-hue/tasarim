@@ -3,8 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
-import { topluBaslat } from "../lib/topluTasarim";
-import { sablonSec, sablonSecimSorusu } from "../lib/sablonSorusu";
+import { topluBaslat, topluOzetMetni } from "../lib/topluTasarim";
 import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
@@ -12,6 +11,7 @@ import { DocumentsPanel } from "../components/DocumentsPanel";
 import { ProjectsPanel } from "../components/ProjectsPanel";
 import { ScenesPanel } from "../components/ScenesPanel";
 import { ClientSurfacesPanel } from "../components/ClientSurfacesPanel";
+import { useSablonSecici } from "../components/SablonSecici";
 
 type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "scenes" | "assets";
 
@@ -20,6 +20,7 @@ export function ClientDetailPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [sp] = useSearchParams();
+  const secici = useSablonSecici();
   const initialTab = (sp.get("tab") as Tab) || "general";
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -83,10 +84,11 @@ export function ClientDetailPage() {
       const projeler = await api.clientProjects(id);
       const proje = projeler.find((p) => p.id === kit.project_id);
       if (!proje) return null; // proje okunamadı: kalemler durur, aşağıda raporlanır
-      /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); metin ve OK/İptal anlamı
-         Sipariş Defteri'ndeki düğmeyle birebir aynı. */
+      /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); seçici Sipariş Defteri'ndeki
+         düğmeyle AYNI bileşendir. Vazgeçme turu durdurmaz: o tür atlanır,
+         kalan kalemler açılır ve vazgeçilen sayısı raporda AYRI görünür. */
       return topluBaslat(id, proje.items, (tur, secenekler) =>
-        sablonSec(secenekler, window.confirm(sablonSecimSorusu(t(`orders.type_${tur}`), secenekler))),
+        secici.sor(t(`orders.type_${tur}`), secenekler),
       );
     },
     onSuccess: (r) => {
@@ -96,7 +98,11 @@ export function ClientDetailPage() {
       setKitSonuc(
         r === null
           ? t("preset.opening_items_only")
-          : tf("preset.opening_done", { acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan }),
+          : topluOzetMetni(
+              r,
+              (o) => tf("preset.opening_done", o),
+              (o) => tf("preset.opening_cancelled", o),
+            ),
       );
     },
     /* İŞ KOLU DIŞI 409'U GEREKÇESİYLE SÖYLENİR: sunucu, kurulumun iş kollarına
@@ -176,6 +182,7 @@ export function ClientDetailPage() {
 
   return (
     <>
+      {secici.eleman}
       <div className="pagehead">
         <Link to="/" className="muted">
           {t("client.back")}

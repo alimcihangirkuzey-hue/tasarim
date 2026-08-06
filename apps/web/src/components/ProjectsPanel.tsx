@@ -33,10 +33,10 @@ import { analyzeDoc } from "../lib/analyzeDoc";
 import { aktarimOzetMetni, topluAktar } from "../lib/topluAktarim";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
-import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
-import { sablonSec, sablonSecimSorusu } from "../lib/sablonSorusu";
+import { belgeAc, topluBaslat, topluOzetMetni, topluPlan } from "../lib/topluTasarim";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
+import { useSablonSecici } from "./SablonSecici";
 import { t, tf } from "../i18n";
 
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
@@ -83,6 +83,7 @@ function ItemRow({ item, client, showToast }: {
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const secici = useSablonSecici();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
 
   const upd = useMutation({
@@ -101,8 +102,10 @@ function ItemRow({ item, client, showToast }: {
 
   const startDesign = useMutation({
     mutationFn: async () => {
-      /* 0 seçenek → tasarlanamaz; 1 → doğrudan; ≥2 → kullanıcı seçer
-         (bugün yalnız menu: OK=grid, İptal=liste — eski davranış birebir) */
+      /* 0 seçenek → tasarlanamaz; 1 → doğrudan; ≥2 → operatör seçer.
+         VAZGEÇME SESSİZDİR ve hata DEĞİLDİR: modal kapanır, hiçbir belge
+         açılmaz, editöre gidilmez. Eski `window.confirm` yolunda "İptal"
+         ikinci şablonu seçiyordu — operatörün çıkışı yoktu. */
       const secenekler = siparisSablonlari(item.product_type);
       if (secenekler.length === 0) {
         showToast(t("orders.no_template_warn"));
@@ -110,14 +113,12 @@ function ItemRow({ item, client, showToast }: {
       }
       const templateId =
         secenekler.length === 1
-          ? secenekler[0]
-          : sablonSec(
-              secenekler,
-              window.confirm(sablonSecimSorusu(t(`orders.type_${item.product_type}`), secenekler)),
-            );
+          ? secenekler[0]!
+          : await secici.sor(t(`orders.type_${item.product_type}`), secenekler);
+      if (templateId === null) return null;
       /* Zincirin gövdesi belgeAc'ta (TEK KOPYA — toplu düğme de onu çağırır);
          yetim telafisi ve updateOrderItem telafisizliği oradaki yorumlarda. */
-      return belgeAc(client.id, item, templateId!);
+      return belgeAc(client.id, item, templateId);
     },
     onSuccess: (docId) => {
       invalidate();
@@ -143,6 +144,7 @@ function ItemRow({ item, client, showToast }: {
 
   return (
     <div className="item-card">
+      {secici.eleman}
       <div className="row" style={{ gap: 6 }}>
         <span title={item.product_type}>{TYPE_ICON[item.product_type]}</span>
         <strong>{t(`orders.type_${item.product_type}`)}</strong>
@@ -401,6 +403,7 @@ function ProjectBlock({ project, client, showToast }: {
 }) {
   const qc = useQueryClient();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
+  const secici = useSablonSecici();
   const [newType, setNewType] = useState<ProductType>("menu");
   /* KURULUMUN İŞ KOLLARI (K-1/C): tür seçicisi de 7.1/481'in "kullanıcı yalnızca
      yaptığı işi görür" hükmüne bağlanır — bugüne dek yalnız ŞABLON seçicisi
@@ -455,8 +458,9 @@ function ProjectBlock({ project, client, showToast }: {
 
      ŞABLON SEÇİMİ TÜR BAŞINA BİR KEZ sorulur, kalem başına değil: bugün yalnız
      menu ≥2 seçeneklidir (grid/liste) ve Açılış Takımı'nda bir menü vardır —
-     kalem başına sormak aynı soruyu N kez tekrarlardı. Soru metni ve OK/İptal
-     anlamı tekil düğmeyle BİREBİR aynı (davranış çatallanmasın).
+     kalem başına sormak aynı soruyu N kez tekrarlardı. Seçici tekil düğmeyle
+     AYNIDIR (davranış çatallanmasın) ve VAZGEÇME turu durdurmaz: o tür atlanır,
+     kalanlar açılır, vazgeçilen sayısı özette AYRI görünür.
 
      SIRAYLA koşar, paralel değil: her kalem createDocument + updateDocument +
      updateOrderItem üçlüsüdür; paralel gönderim sunucuda aynı projeye eşzamanlı
@@ -468,14 +472,19 @@ function ProjectBlock({ project, client, showToast }: {
   const topluBaslatM = useMutation({
     mutationFn: () =>
       /* Gövde lib/topluTasarim.ts'te TEK KOPYA — Açılış Takımı da onu çağırır.
-         Soru buradan enjekte edilir: metin ve OK/İptal anlamı tekil düğmeyle
-         BİREBİR aynı (davranış çatallanmasın). */
+         Seçici buradan enjekte edilir: tekil düğmeyle AYNI bileşen. */
       topluBaslat(client.id, project.items, (tur, secenekler) =>
-        sablonSec(secenekler, window.confirm(sablonSecimSorusu(t(`orders.type_${tur}`), secenekler))),
+        secici.sor(t(`orders.type_${tur}`), secenekler),
       ),
     onSuccess: (r) => {
       invalidate();
-      showToast(tf("orders.bulk_done", { acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan }));
+      showToast(
+        topluOzetMetni(
+          r,
+          (o) => tf("orders.bulk_done", o),
+          (o) => tf("orders.bulk_cancelled", o),
+        ),
+      );
     },
     onError: (e) => showToast(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
@@ -625,6 +634,7 @@ function ProjectBlock({ project, client, showToast }: {
 
   return (
     <div className="cat-block" style={{ borderLeft: level === "red" ? "4px solid #DC2626" : level === "yellow" ? "4px solid #F59E0B" : undefined }}>
+      {secici.eleman}
       <div className="row">
         <strong style={{ fontSize: 15 }}>{project.name}</strong>
         {kapali && <span className="pill p-ok">{t("orders.project_closed")}</span>}

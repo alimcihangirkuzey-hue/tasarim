@@ -31,20 +31,23 @@
    iddia "navigate çağrıldı" değil "router GERÇEKTEN /editor/<id>'ye gitti"
    olur (davranış ölçümü, uygulama detayı değil).
 
-   window.confirm KARARI: confirm YALNIZ ≥2 şablon seçeneğinde devreye girer
-   (ProjectsPanel.tsx:90-95); ölçüm — SIPARIS_SABLONLARI (identity/index.ts):
-   yalnız menu 2 seçenekli, vitrophanie=["vitro-centre"] ve flyer=["flyer"]
-   TEK seçenekli. Fikstürler vitrophanie/flyer olduğundan confirm hiç
-   koşmamalı; yine de jsdom'un "not implemented" gürültüsüne karşı spy takılır
-   ve HİÇ çağrılmadığı AYRICA iddia edilir — tek-seçenek yolunun confirm'süz
-   olduğu sözleşmesi böylece testle çivilenir (sessiz güvence değil, ölçüm).
+   ŞABLON SORUSU KARARI (2026-08-06'da GÜNCELLENDİ — N-seçenekli seçici):
+   seçim artık `window.confirm` değil, bir MODAL'dır (components/SablonSecici).
+   Ölçüm — SIPARIS_SABLONLARI (identity/index.ts): yalnız menu 2 seçenekli,
+   vitrophanie=["vitro-centre"] ve flyer=["flyer"] TEK seçenekli. Fikstürler
+   vitrophanie/flyer olduğundan seçici HİÇ AÇILMAMALI ve bu, modal'ın DOM'da
+   olmadığı ölçülerek iddia edilir.
+   ESKİ HÂLİ ARTIK HİÇBİR ŞEY ÖLÇMEZDİ: burada bir confirm spy'ı vardı ve
+   "hiç çağrılmadı" deniyordu — seçim confirm'den çıktığı an o iddia
+   KIRILAMAZ hâle geldi (boş güvence sınıfı; bu depo onu daha önce statik
+   önek testinde de ölçtü). Spy kaldırıldı, ölçü modal'ın yokluğuna bağlandı.
 
    KAPSAM DIŞI ŞERHİ: toast'ın 4500ms'de kendini silmesi (ProjectsPanel.tsx:472)
    test EDİLMEZ — fake-timer kurulumu react-query'nin kendi zamanlayıcılarıyla
    çakışır (retry/gc zamanlayıcıları), kazanılan güvence tek satırlık bir
    setTimeout'a değmez. Testler toast'ı belirme anında okur. */
 
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -217,17 +220,14 @@ async function tasarimaBasla(container: HTMLElement) {
 }
 
 describe("ProjectsPanel · startDesign geri sarma zinciri", () => {
-  let confirmSpy: MockInstance<(message?: string) => boolean>;
+  /* Şablon seçici modal'ı açık mı — "sorusuz koştu" iddiasının ölçüsü. */
+  const sablonSeciciAcikMi = (): boolean => document.querySelector(".modal") !== null;
 
   beforeEach(() => {
     vi.clearAllMocks();
     /* render'da koşan iki query'nin varsayılanları — her test üstüne yazar */
     vi.mocked(api.clients).mockResolvedValue([]);
     vi.mocked(api.clientProjects).mockResolvedValue([proje([vitroKalem()])]);
-    /* confirm nöbetçisi (dosya başındaki karar): tek-seçenek fikstürlerinde
-       HİÇ çağrılmamalı; çağrılırsa jsdom "not implemented" gürültüsü yerine
-       kontrollü true döner ve iddia kırmızıya düşer. */
-    confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -287,7 +287,7 @@ describe("ProjectsPanel · startDesign geri sarma zinciri", () => {
 
     /* Navigasyon OLMAMALI: onSuccess koşmadı, sonda başlangıç yolunda kalır */
     expect(getByTestId("konum").textContent).toBe(BASLANGIC_YOLU);
-    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(sablonSeciciAcikMi()).toBe(false);
   });
 
   it("best-effort: deleteDocument DA reddederse toast yine ASIL hatayı gösterir (telafi hatası örtmez)", async () => {
@@ -332,7 +332,7 @@ describe("ProjectsPanel · startDesign geri sarma zinciri", () => {
       expect(getByTestId("konum").textContent).toBe("/editor/doc_ok");
     });
     expect(api.deleteDocument).not.toHaveBeenCalled();
-    expect(confirmSpy).not.toHaveBeenCalled(); // tek seçenek → sorusuz
+    expect(sablonSeciciAcikMi()).toBe(false); // tek seçenek → sorusuz
   });
 
   it("params'sız tür (flyer): updateDocument HİÇ koşmadan kalem bağlanır", async () => {
@@ -358,6 +358,6 @@ describe("ProjectsPanel · startDesign geri sarma zinciri", () => {
        makinesi) HİÇ devreye girmedi */
     expect(api.updateDocument).not.toHaveBeenCalled();
     expect(api.deleteDocument).not.toHaveBeenCalled();
-    expect(confirmSpy).not.toHaveBeenCalled(); // flyer tek seçenek → sorusuz
+    expect(sablonSeciciAcikMi()).toBe(false); // flyer tek seçenek → sorusuz
   });
 });

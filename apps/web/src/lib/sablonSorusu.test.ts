@@ -1,52 +1,52 @@
-/* ŞABLON SEÇİM SORUSU (K-1/A — tek tık akışı).
+/* ŞABLON ADI — KAYIT DEFTERİNDEN (K-1/A, tek tık akışı).
 
-   ÖLÇÜLEN YARA (üç parça, hepsi bu turda komutla ölçüldü):
+   ÖLÇÜLEN YARA (`2026-08-06-sablon-secim-sorusu`): seçim sorusunun metni
+   i18n'de ELLE yazılıydı — "Tamam = Resimli Izgara, İptal = Premium Liste" —
+   ve "Premium Liste" sistemde YOKTU (gerçek ad "Premium Yazılı Menü"). Elle
+   tutulan kopya ilandan ayrışmıştı.
 
-   1. METİN ZATEN KAYMIŞTI. i18n'deki soru "Tamam = Resimli Izgara, İptal =
-      Premium Liste" diyordu; manifestlerin gerçek adları "Resimli Izgara Menü"
-      ve "Premium Yazılı Menü". "Premium Liste" sistemde YOK.
-   2. SIRA SÖZLEŞMESİ ("Tamam = ilk seçenek") yalnız çağrı yerindeki
-      `secenekler[0]`'da yaşıyordu — ilan ters sıralanırsa diyalog yanlış adı
-      söylerdi, sessizce.
-   3. SORU MENÜYE ÖZGÜYDÜ ama koşul `secenekler.length >= 2` — türden bağımsız.
-      Bugün yalnız `menu` iki seçenekli olduğu için latent; `tabela` ikinci bir
-      şablon aldığı gün tabelacıya "Menü şablonu seç" sorulacaktı. */
+   BU DOSYA NEDEN KÜÇÜLDÜ (2026-08-06, N-seçenekli seçici): eski hâli ikili
+   `window.confirm` metnini ve onay→kimlik çevirisini ölçüyordu; ikisi de
+   kaldırıldı, çünkü tüketicisi kalmadı. En sesli kaybı bilinçli:
+
+     "HİÇBİR TÜR ikiden fazla şablon İLAN ETMİYOR — ikili diyalog yeterli"
+
+   Bu nöbetçi ÇÖZÜLDÜĞÜ İÇİN kaldırıldı, gevşetildiği için değil: ikili
+   diyalog artık yok, `SablonSecici` ilan kaç seçenek verirse o kadarını çizer
+   ve N-seçenek kapasitesi `SablonSecici.test.tsx`te ÜÇ seçenekle ölçülür.
+   Sınırın ortadan kalktığını iddia etmek yetmez — ölçülmesi gerekir, ve o
+   ölçüm oraya taşındı.
+
+   BURADA KALAN GÜVENCE: ilan edilen her seçenek KAYITLI olmalı. Kayıtsız bir
+   kimlikte `sablonAdi` uydurma ad üretmez, kimliğin kendisini döndürür —
+   operatör "menu-xyz" görür ve sorar; sahte bir ad görüp güvenmez. */
 
 import { describe, expect, it } from "vitest";
 import { SIPARIS_SABLONLARI, siparisSablonlari } from "@tezgah/templates/identity";
 import { TEMPLATES } from "@tezgah/templates";
 import { ProductTypeSchema } from "@tezgah/shared";
-import { IKILI_SECENEK, sablonAdi, sablonSec, sablonSecimSorusu } from "./sablonSorusu";
+import { sablonAdi } from "./sablonSorusu";
 
 const MENU_SECENEKLERI = siparisSablonlari("menu");
 
-describe("ön-koşul — ikili seçicinin dayandığı ilan", () => {
-  it("MENÜ gerçekten İKİ seçenekli (soru sorulan tek tür)", () => {
-    /* Bu satır olmadan aşağıdaki metin iddiaları, tek seçenekli bir ilanda
-       hiç çağrılmadan yeşil kalırdı. */
-    expect(MENU_SECENEKLERI).toHaveLength(IKILI_SECENEK);
+describe("ön-koşul — seçici sorusunun dayandığı ilan", () => {
+  it("EN AZ BİR TÜR çok seçenekli — yoksa seçici hiç koşmaz", () => {
+    /* Bu satır olmadan aşağıdaki iddialar, hiçbir türün çok seçenekli olmadığı
+       bir ilanda da (seçici ölü kodken) yeşil kalırdı. */
+    const cok = ProductTypeSchema.options.filter((t) => SIPARIS_SABLONLARI[t].length >= 2);
+    expect(cok.length).toBeGreaterThan(0);
+    expect(MENU_SECENEKLERI.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("HİÇBİR TÜR ikiden fazla şablon İLAN ETMİYOR — ikili diyalog yeterli", () => {
-    /* NÖBETÇİ: üçüncü bir şablon eklendiği gün burası KIRMIZI olur. Bu istenen
-       davranıştır — ikili `window.confirm` fazlasını SESSİZCE gizlerdi ve
-       operatör o şablona toplu akıştan hiç ulaşamazdı. Kırmızı test, gerçek
-       bir N-seçenekli seçici yazılana kadar sürümü durdurur. */
-    const fazla = ProductTypeSchema.options
-      .map((t) => [t, SIPARIS_SABLONLARI[t]] as const)
-      .filter(([, s]) => s.length > IKILI_SECENEK)
-      .map(([t, s]) => `${t}: ${s.length}`);
-    expect(
-      fazla,
-      "Bu tür(ler) ikiden fazla şablon ilan ediyor: ikili diyalog fazlasını " +
-        "sessizce gizler. N-seçenekli bir seçici gerekiyor (K-1/A).",
-    ).toEqual([]);
-  });
-
-  it("SORULAN her seçenek KAYITLI — ad uydurulmuyor", () => {
-    for (const tid of MENU_SECENEKLERI) {
-      expect(TEMPLATES[tid], `${tid}: kayıtlı değil`).toBeTruthy();
-    }
+  it("İLAN EDİLEN HER ŞABLON KAYITLI — hiçbir türde ad uydurulmuyor", () => {
+    /* Tür başına DEĞİL, ilanın TAMAMI taranır: yeni bir tür ikinci şablonunu
+       aldığı gün bu satır onu da ölçer (menüye özgü bir güvence, o gün
+       sessizce yetersiz kalırdı). */
+    const kayitsiz = ProductTypeSchema.options
+      .flatMap((t) => SIPARIS_SABLONLARI[t].map((tid) => [t, tid] as const))
+      .filter(([, tid]) => !TEMPLATES[tid])
+      .map(([t, tid]) => `${t}: ${tid}`);
+    expect(kayitsiz, "İlan edilen bu şablon(lar) kayıt defterinde YOK").toEqual([]);
   });
 });
 
@@ -57,55 +57,14 @@ describe("şablon adı", () => {
     }
   });
 
+  it("İKİ ŞABLONUN ADI BİRBİRİNDEN FARKLI — seçici ayırt edilebilir olmalı", () => {
+    /* Seçicinin işe yaraması adların ayırt edilebilmesine bağlıdır; aynı adı
+       taşıyan iki düğme operatöre hiçbir şey söylemezdi. */
+    const adlar = MENU_SECENEKLERI.map(sablonAdi);
+    expect(new Set(adlar).size).toBe(adlar.length);
+  });
+
   it("KAYITSIZ kimlikte kimliğin KENDİSİ döner — sahte ad üretilmez", () => {
     expect(sablonAdi("kayitsiz-sablon-xyz")).toBe("kayitsiz-sablon-xyz");
-  });
-});
-
-describe("soru metni", () => {
-  it("HER İKİ ŞABLONUN GERÇEK ADINI taşır", () => {
-    /* Yaranın kendisi: eski metin "Premium Liste" diyordu, gerçek ad
-       "Premium Yazılı Menü". */
-    const soru = sablonSecimSorusu("Menü", MENU_SECENEKLERI);
-    for (const tid of MENU_SECENEKLERI) {
-      expect(soru, `${tid} adı soruda yok`).toContain(TEMPLATES[tid]!.manifest.name_tr);
-    }
-  });
-
-  it("TÜR ADI ÇAĞIRANDAN gelir — soru menüye özgü DEĞİL", () => {
-    /* `tabela` ikinci bir şablon aldığı gün tabelacıya "Menü şablonu seç"
-       sorulmayacak. */
-    expect(sablonSecimSorusu("Tabela", MENU_SECENEKLERI)).toMatch(/^Tabela şablonu seç/);
-  });
-
-  it("SIRA SÖZLEŞMESİ metinde YAZILI — Tamam ilk seçenek", () => {
-    const soru = sablonSecimSorusu("Menü", MENU_SECENEKLERI);
-    const ilk = soru.indexOf(TEMPLATES[MENU_SECENEKLERI[0]!]!.manifest.name_tr);
-    const ikinci = soru.indexOf(TEMPLATES[MENU_SECENEKLERI[1]!]!.manifest.name_tr);
-    expect(soru).toContain("Tamam");
-    expect(ilk, "ilk seçenek metinde önce geçmeli (Tamam tarafı)").toBeLessThan(ikinci);
-  });
-
-  it("İKİDEN FARKLI seçenek sayısında FIRLATIR — sessizce gizlemez", () => {
-    expect(() => sablonSecimSorusu("Menü", ["a", "b", "c"])).toThrow(/2 seçenek bekler, 3/);
-    expect(() => sablonSecimSorusu("Menü", ["a"])).toThrow(/2 seçenek bekler, 1/);
-  });
-});
-
-describe("seçim", () => {
-  it("ONAY ilk seçeneği, RET ikincisini verir", () => {
-    expect(sablonSec(MENU_SECENEKLERI, true)).toBe(MENU_SECENEKLERI[0]);
-    expect(sablonSec(MENU_SECENEKLERI, false)).toBe(MENU_SECENEKLERI[1]);
-  });
-
-  it("SEÇİM ile SORU aynı sırayı kullanır — metin/davranış ayrışamaz", () => {
-    /* Asıl güvence: diyalogda "Tamam = X" yazıyorsa Tamam gerçekten X'i açar. */
-    const soru = sablonSecimSorusu("Menü", MENU_SECENEKLERI);
-    const secilen = sablonSec(MENU_SECENEKLERI, true);
-    expect(soru).toContain(`Tamam = ${sablonAdi(secilen)}`);
-  });
-
-  it("İKİDEN FARKLI seçenek sayısında FIRLATIR", () => {
-    expect(() => sablonSec(["a", "b", "c"], true)).toThrow(/2 seçenek bekler/);
   });
 });

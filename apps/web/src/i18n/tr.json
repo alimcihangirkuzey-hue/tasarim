@@ -303,6 +303,10 @@
     "bulk_btn": "⚡ {n} kalemi tasarıma başlat",
     "bulk_running": "Başlatılıyor…",
     "bulk_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
+    "bulk_cancelled": "{vazgecilen} tür için vazgeçildi",
+    "template_pick_title": "şablon seç",
+    "template_pick_hint": "Bu türden birden fazla şablon var. Seçtiğin şablon bu türün tüm kalemlerinde kullanılır.",
+    "template_pick_cancel": "Vazgeç",
     "bulk_export_btn": "⬇ {n} belgeyi üret",
     "bulk_export_done": "{aktarilan} üretildi · {bloklu} engelli (atlandı) · {dusen} düştü",
     "bulk_export_unregistered": "Şablon kayıtlı değil — bu belge üretime verilemez",
@@ -546,6 +550,7 @@
   "preset": {
     "opening": "Açılış Takımı oluştur",
     "opening_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
+    "opening_cancelled": "{vazgecilen} tür için vazgeçildi",
     "opening_items_only": "Kalemler oluşturuldu — belgeler açılamadı, Projeler sekmesinden başlatın",
     "opening_out_of_scope": "Bu kurulumun iş kollarında ({kollar}) açılış takımı kalemi yok — proje açılmadı"
   },

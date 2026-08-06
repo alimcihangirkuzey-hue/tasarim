@@ -14,7 +14,14 @@
    SORU DIŞARIDAN GELİR (`sor`): ≥2 şablon seçeneği olan türde hangisinin
    seçileceğini bu katman BİLMEZ. window.confirm'i içeri gömmek kütüphaneyi
    tarayıcıya ve tek bir soru metnine bağlardı; enjekte edilince tur, soru
-   sorulmadan da (testte, ileride sunucuda) koşturulabilir. */
+   sorulmadan da (testte, ileride sunucuda) koşturulabilir.
+
+   VAZGEÇME BİR CEVAPTIR (2026-08-06, N-seçenekli seçici): `sor` artık
+   `null` döndürebilir ve bu "hata" değildir — operatör o türü açmak
+   istemiyordur. O tür ATLANIR, tur devam eder, sayı raporda AYRI görünür
+   (`vazgecilen`). `atlanan`la birleştirmek iki farklı şeyi tek kutuya
+   koymak olurdu: "bu tür tasarlanamaz" sistemin sınırıdır, "vazgeçildi"
+   operatörün kararıdır. */
 
 import type { OrderItemDTO, ProductType } from "@tezgah/shared";
 import { siparisParamlari, siparisSablonlari } from "@tezgah/templates/identity";
@@ -91,8 +98,32 @@ export function topluPlan(items: readonly OrderItemDTO[]): TopluPlan {
 export interface TopluSonuc {
   acilan: number;
   dusen: number;
+  /** 0 şablon seçeneği — bu tür TASARLANAMAZ (sistemin sınırı) */
   atlanan: number;
+  /** operatör şablon sorusunda VAZGEÇTİ (operatörün kararı — hata değil) */
+  vazgecilen: number;
   zaten: number;
+}
+
+/**
+ * Tur özetinin metni — VAZGEÇME YALNIZ OLDUĞUNDA yazılır.
+ *
+ * `aktarimOzetMetni` deseniyle aynı: metin üreticileri ENJEKTE edilir (bu
+ * katman i18n bilmez) ve "olmadı" bilgisi ancak varsa satıra girer. Her
+ * koşumda "0 vazgeçildi" yazmak, hiç olmayan bir şeyi her seferinde
+ * raporlamak olurdu — gürültü, bilgiyi bastırır.
+ *
+ * İKİ TÜKETİCİ, TEK METİN KURALI: Sipariş Defteri toplu düğmesi ve Açılış
+ * Takımı ayrı i18n anahtarları kullanır ama vazgeçmeyi AYNI kuralla ekler.
+ */
+export function topluOzetMetni(
+  r: TopluSonuc,
+  bas: (o: { acilan: number; dusen: number; atlanan: number }) => string,
+  vazgecildi: (o: { vazgecilen: number }) => string,
+): string {
+  const satir = bas({ acilan: r.acilan, dusen: r.dusen, atlanan: r.atlanan });
+  if (r.vazgecilen === 0) return satir;
+  return `${satir} · ${vazgecildi({ vazgecilen: r.vazgecilen })}`;
 }
 
 /**
@@ -107,11 +138,12 @@ export interface TopluSonuc {
  *
  * @param sor ≥2 seçenekli tür için şablon seçer. TÜR BAŞINA BİR KEZ çağrılır
  *   (kalem başına değil) — aynı türden N kalem tek cevabı paylaşır.
+ *   `null` döndürmek VAZGEÇMEKTİR: o türün kalemleri açılmaz, sayılır.
  */
 export async function topluBaslat(
   clientId: string,
   items: readonly OrderItemDTO[],
-  sor: (tur: ProductType, secenekler: readonly string[]) => string,
+  sor: (tur: ProductType, secenekler: readonly string[]) => Promise<string | null>,
 ): Promise<TopluSonuc> {
   const plan = topluPlan(items);
   const kosacak: Array<{ item: OrderItemDTO; templateId: string }> = plan.hazir.map((item) => ({
@@ -119,12 +151,18 @@ export async function topluBaslat(
     templateId: siparisSablonlari(item.product_type)[0]!,
   }));
 
-  const secim = new Map<ProductType, string>();
+  /* VAZGEÇME DE ÖNBELLEĞE GİRER (`has` ile bakılır, değere değil): aksi hâlde
+     aynı türün ikinci kalemi soruyu YENİDEN sordururdu — operatör vazgeçtiğini
+     N kez tekrar söylemek zorunda kalırdı. */
+  const secim = new Map<ProductType, string | null>();
+  let vazgecilen = 0;
   for (const item of plan.secimli) {
     if (!secim.has(item.product_type)) {
-      secim.set(item.product_type, sor(item.product_type, siparisSablonlari(item.product_type)));
+      secim.set(item.product_type, await sor(item.product_type, siparisSablonlari(item.product_type)));
     }
-    kosacak.push({ item, templateId: secim.get(item.product_type)! });
+    const templateId = secim.get(item.product_type)!;
+    if (templateId === null) vazgecilen += 1;
+    else kosacak.push({ item, templateId });
   }
 
   let acilan = 0;
@@ -138,5 +176,11 @@ export async function topluBaslat(
       dusen += 1;
     }
   }
-  return { acilan, dusen, atlanan: plan.tasarlanamaz.length, zaten: plan.zaten.length };
+  return {
+    acilan,
+    dusen,
+    atlanan: plan.tasarlanamaz.length,
+    vazgecilen,
+    zaten: plan.zaten.length,
+  };
 }

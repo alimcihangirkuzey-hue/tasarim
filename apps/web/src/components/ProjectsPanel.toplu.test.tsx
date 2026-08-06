@@ -198,7 +198,11 @@ describe("toplu başlatma düğmesi", () => {
   });
 
   it("ŞABLON SORUSU TÜR BAŞINA BİR KEZ — iki menü tek cevabı paylaşır", async () => {
-    const onay = vi.spyOn(window, "confirm").mockReturnValue(true);
+    /* SEÇİCİ ARTIK GERÇEK BİR MODAL (2026-08-06, N-seçenekli seçici paketi):
+       eski hâlde burada `window.confirm` spy'ı sayılıyordu. Sayım artık DOM'dan
+       gelir — kutu KAÇ KEZ açıldığını görmenin tek dürüst yolu odur: iki kalem
+       için tek kutu açılır, cevaplanır ve kapanır. `confirm` spy'ı bugün hiçbir
+       şey ölçmezdi (çağrılmıyor) ve sessizce yeşil kalırdı. */
     vi.mocked(api.createDocument).mockResolvedValue(belge("doc_x"));
     vi.mocked(api.updateDocument).mockResolvedValue(belge("x"));
     vi.mocked(api.updateOrderItem).mockResolvedValue({} as never);
@@ -206,13 +210,35 @@ describe("toplu başlatma düğmesi", () => {
     kur([kalem({ id: "m1", product_type: "menu" }), kalem({ id: "m2", product_type: "menu" })]);
     fireEvent.click(await screen.findByText(/2 kalemi tasarıma başlat/i));
 
+    /* Kutu açıldı: seçenekler İLANDAN gelir, ilkine basılır. */
+    const secilen = siparisSablonlari("menu")[0]!;
+    const dugme = await waitFor(() => {
+      const d = [...document.querySelectorAll<HTMLButtonElement>(".modal button")].find((b) =>
+        b.textContent?.includes(secilen),
+      );
+      if (!d) throw new Error("şablon seçici açılmadı");
+      return d;
+    });
+    fireEvent.click(dugme);
+
     await waitFor(() => expect(api.createDocument).toHaveBeenCalledTimes(2));
-    /* Kalem başına sorsaydı 2 olurdu; asıl kazanç budur. */
-    expect(onay).toHaveBeenCalledTimes(1);
+    /* Kalem başına sorsaydı kutu İKİNCİ kez açılırdı; asıl kazanç budur. */
+    expect(document.querySelectorAll(".modal")).toHaveLength(0);
 
     /* Tek cevap iki kaleme de uygulanır: aynı şablon id'si iki kez. */
-    const secilen = siparisSablonlari("menu")[0];
     expect(vi.mocked(api.createDocument).mock.calls.map((c) => c[1])).toEqual([secilen, secilen]);
+  });
+
+  it("SEÇİCİDE VAZGEÇME hiçbir belge AÇMAZ — özet vazgeçildiğini SÖYLER", async () => {
+    /* Eski `window.confirm` yolunda bu mümkün DEĞİLDİ: "İptal" ikinci şablonu
+       seçiyor, iki belge yine açılıyordu. Operatörün çıkışı yoktu. */
+    kur([kalem({ id: "m1", product_type: "menu" }), kalem({ id: "m2", product_type: "menu" })]);
+    fireEvent.click(await screen.findByText(/2 kalemi tasarıma başlat/i));
+
+    fireEvent.click(await screen.findByText("Vazgeç"));
+
+    await waitFor(() => expect(screen.getByText(/vazgeçildi/i)).toBeTruthy());
+    expect(api.createDocument).not.toHaveBeenCalled();
   });
 
   it("DÜŞEN KALEM TURU DURDURMAZ — kalanlar denenir, özet düşeni SAYAR", async () => {
