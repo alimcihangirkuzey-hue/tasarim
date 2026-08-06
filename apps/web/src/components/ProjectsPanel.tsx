@@ -33,6 +33,7 @@ import { analyzeDoc } from "../lib/analyzeDoc";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
+import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
 import { t, tf } from "../i18n";
 
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
@@ -196,10 +197,14 @@ function ItemRow({ item, client, showToast }: {
                   yönü (dıştan/içten) bir ÜRETİM KANALI değildir, bu yüzden
                   KANAL_GEREKTIRIR zincirinde karşılığı yoktur — türetecek ilan
                   yok. İlan doğduğu gün buraya da bağlanır. Etiketler yine de
-                  i18n'e alındı (JSX'te ham Türkçe dize kalmasın). */}
+                  i18n'e alındı (JSX'te ham Türkçe dize kalmasın).
+                  KÜME ARTIK ADLI (lib/siparisSecenekleri): elle yazılı olması
+                  denetimsiz olmasını gerektirmiyor — nöbetçi, kümeyi şemanın
+                  KABUL ETTİĞİYLE her koşuda eşliyor. */}
               <option value="">{t("orders.side_q")}</option>
-              <option value="exterieur">{t("orders.side_exterieur")}</option>
-              <option value="interieur">{t("orders.side_interieur")}</option>
+              {SIPARIS_YONLERI.map((y) => (
+                <option key={y} value={y}>{t(`orders.side_${y}`)}</option>
+              ))}
             </select>
             {/* Seçenekler İLANDAN (siparisTeknikleri): ürün türü → şablon →
                 production_channels → KANAL_GEREKTIRIR. Ölçüldü: vitrophanie
