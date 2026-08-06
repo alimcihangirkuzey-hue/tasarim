@@ -32,11 +32,9 @@ import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
+import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { t, tf } from "../i18n";
 
-const TYPES: ProductType[] = [
-  "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
-];
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
 const TYPE_ICON: Record<ProductType, string> = {
   menu: "📋", flyer: "📄", trifold: "🗞", fidelite: "💳",
@@ -395,6 +393,20 @@ function ProjectBlock({ project, client, showToast }: {
   const qc = useQueryClient();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
   const [newType, setNewType] = useState<ProductType>("menu");
+  /* KURULUMUN İŞ KOLLARI (K-1/C): tür seçicisi de 7.1/481'in "kullanıcı yalnızca
+     yaptığı işi görür" hükmüne bağlanır — bugüne dek yalnız ŞABLON seçicisi
+     bağlıydı, tabelacıya daraltılmış kurulumda operatör hâlâ tişört/menü
+     ekleyebiliyordu. Aynı anahtar (["isKollari"]) DocumentsPanel/EditorPage ile
+     paylaşılır: tek istek, tek önbellek. */
+  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
+  const aktifSektorler =
+    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
+  const gorunurTurler = gorunurSiparisTurleri(aktifSektorler);
+  /* SEÇİLİ TÜR GÖRÜNMEZ OLABİLİR: varsayılan "menu"dür ve uç yanıt verdiğinde
+     liste daralır. Durumu effect ile düzeltmek yerine ETKİN değeri türetiyoruz —
+     effect yarışı, seçici boş görünürken "Kalem ekle"nin menü kalemi eklemesine
+     yol açardı: sessiz ve yanlış. Liste asla boşalmaz (kaçış kapısı `diger`). */
+  const etkinTur = gorunurTurler.includes(newType) ? newType : gorunurTurler[0]!;
   /* F8-E: sunum mockup modu — "last" = eski davranış (varsayılan) */
   const [presentMode, setPresentMode] = useState<"last" | "per_scene_kind">("last");
   const today = new Date().toISOString().slice(0, 10);
@@ -425,7 +437,7 @@ function ProjectBlock({ project, client, showToast }: {
     onSuccess: invalidate,
   });
   const addItem = useMutation({
-    mutationFn: () => api.addOrderItem(project.id, { product_type: newType }),
+    mutationFn: () => api.addOrderItem(project.id, { product_type: etkinTur }),
     onSuccess: invalidate,
   });
   /* TOPLU TASARIMA BAŞLATMA (K-1/A — ürün sahibi kararı 2026-08-06: "tıklayarak
@@ -680,8 +692,8 @@ function ProjectBlock({ project, client, showToast }: {
       ))}
 
       <div className="row">
-        <select value={newType} onChange={(e) => setNewType(e.target.value as ProductType)}>
-          {TYPES.map((tp) => (
+        <select value={etkinTur} onChange={(e) => setNewType(e.target.value as ProductType)}>
+          {gorunurTurler.map((tp) => (
             <option key={tp} value={tp}>{t(`orders.type_${tp}`)}</option>
           ))}
         </select>

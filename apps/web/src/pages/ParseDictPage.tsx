@@ -7,11 +7,9 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProductType } from "@tezgah/shared";
 import { api } from "../api";
+import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { t } from "../i18n";
 
-const TYPES: ProductType[] = [
-  "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
-];
 
 export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" | "fonts" | "ingredients" }) {
   return (
@@ -41,10 +39,19 @@ export function ParseDictPage() {
   const listQ = useQuery({ queryKey: ["parse-synonyms"], queryFn: api.parseSynonyms });
   const [word, setWord] = useState("");
   const [type, setType] = useState<ProductType>("tabela");
+  /* KURULUMUN İŞ KOLLARI (K-1/C): bu da bir SEÇENEK SUNAN yüzeydir, ProjectsPanel
+     tür seçicisiyle aynı hükme (7.1/481) bağlanır — iki chooser'ın farklı
+     davranması operatöre tutarsız bir sistem gösterirdi. Sözlüğün ÜRETTİĞİ
+     eşleşmeler süzülmez (yapıştır-parse kapsam dışı, gerekçe defterde). */
+  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
+  const gorunurTurler = gorunurSiparisTurleri(
+    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined,
+  );
+  const etkinTur = gorunurTurler.includes(type) ? type : gorunurTurler[0]!;
 
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["parse-synonyms"] });
   const add = useMutation({
-    mutationFn: () => api.addParseSynonym(word.trim(), type),
+    mutationFn: () => api.addParseSynonym(word.trim(), etkinTur),
     onSuccess: () => {
       setWord("");
       invalidate();
@@ -70,8 +77,8 @@ export function ParseDictPage() {
           style={{ width: 200 }}
         />
         <span className="muted">→</span>
-        <select value={type} onChange={(e) => setType(e.target.value as ProductType)}>
-          {TYPES.map((tp) => (
+        <select value={etkinTur} onChange={(e) => setType(e.target.value as ProductType)}>
+          {gorunurTurler.map((tp) => (
             <option key={tp} value={tp}>{t(`orders.type_${tp}`)}</option>
           ))}
         </select>

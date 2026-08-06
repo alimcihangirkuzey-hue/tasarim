@@ -298,6 +298,36 @@ export function siparisSubstratlari(t: ProductType): readonly ProductionSubstrat
   return SIPARIS_SUBSTRATLARI[t];
 }
 
+/* ── Sipariş katmanı İŞ KOLU bağı (7.1/481 "kullanıcı yalnızca yaptığı işi
+   görür"; K-1/C modül sınırı) — TÜRETİLMİŞ sabit, el yazımı ikinci kaynak
+   DEĞİL: SIPARIS_MATERYALI × HEDEF_SEKTOR zaten iki ayrı ilandır, burada
+   yalnız bileşimleri yük zamanında dondurulur.
+
+   NİYE hedefSektorOf(şablon) DEĞİL: sektör ilanı MaterialType düzeyindedir
+   (types.ts şerhi) ve ürün türünün materyali ZATEN ilan edilmiştir. Şablon
+   üzerinden dolaşmak aynı cevabı bir sıçrama fazlasıyla verir ve seçeneksiz
+   türde (diger) hiç cevap veremezdi.
+
+   null = İŞ KOLUNDAN BAĞIMSIZ (bugün yalnız `diger`, materyali null olan
+   tür). Bu bir boşluk değil KAÇIŞ KAPISIDIR: iş kolu daraltılmış bir
+   kurulumda bile operatörün "diğer" işi girebilmesi gerekir, yoksa daraltma
+   sipariş almayı engellerdi — görünürlük kısıtı, yetki kısıtına dönüşürdü. */
+export const SIPARIS_SEKTORU: Record<ProductType, Sektor | null> = (() => {
+  const sonuc = {} as Record<ProductType, Sektor | null>;
+  for (const [tur, materyal] of Object.entries(SIPARIS_MATERYALI) as Array<
+    [ProductType, MaterialType | null]
+  >) {
+    sonuc[tur] = materyal === null ? null : HEDEF_SEKTOR[materyal];
+  }
+  return sonuc;
+})();
+
+/** Ürün türünün hitap ettiği iş kolu; null = iş kolundan bağımsız (kaçış
+    kapısı). Sipariş kalemi tür seçicisi bunun okuyucusudur. */
+export function siparisSektoru(t: ProductType): Sektor | null {
+  return SIPARIS_SEKTORU[t];
+}
+
 /* ── Sipariş katmanı TEKNİK bağı (7.2; 4.5 "hangi teknik hangi malzemede") ──
    TÜRETİLMİŞ sabit, substrat bağının birebir emsali. Zincir tamamen ilandır:
    ürün türü → SIPARIS_SABLONLARI → manifest.production_channels →
