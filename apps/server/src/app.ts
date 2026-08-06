@@ -34,6 +34,7 @@ import { cmykRoutes } from "./routes/cmyk.js";
 import { fontRoutes } from "./routes/fonts.js";
 import { digitalMenuRoutes } from "./routes/digital-menu.js";
 import { sectorRoutes } from "./routes/sectors.js";
+import { isKollariRoutes } from "./routes/is-kollari.js";
 import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
 import { surfaceRoutes } from "./routes/surfaces.js";
@@ -91,6 +92,7 @@ export async function buildApp(
   fontRoutes(app);
   digitalMenuRoutes(app);
   sectorRoutes(app);
+  isKollariRoutes(app);
   ingredientRoutes(app);
   intakeRoutes(app);
   surfaceRoutes(app);

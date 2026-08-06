@@ -349,6 +349,15 @@ export const api = {
 
   /* Sipariş Modu — Faz 7 (F7-B servis + F7-C intake) */
   sectors: () => http<import("@tezgah/shared").SectorPack[]>("/api/sectors"),
+  /* Kurulumun iş kolu ilanı (K-1/C modül sınırı). SECTOR_PACKS ile KARIŞTIRMA:
+     o müşterinin gastronomi dikeyidir, bu TEZGÂH'ın iş kolu ilanıdır — TODO
+     2026-07-26 (3) bu iki ekseni ayrı tutmayı açıkça şart koşar. */
+  isKollari: () =>
+    http<{
+      aktif: readonly import("@tezgah/templates/identity").Sektor[];
+      tumu: readonly import("@tezgah/templates/identity").Sektor[];
+      kaynak: "varsayilan" | "yapilandirma";
+    }>("/api/is-kollari"),
   ingredients: () => http<import("@tezgah/shared").ResolvedChip[]>("/api/ingredients"),
   createIngredient: (body: { tr: string; fr?: string; de?: string }) =>
     http<{ created: boolean; chip: import("@tezgah/shared").ResolvedChip }>("/api/ingredients", {

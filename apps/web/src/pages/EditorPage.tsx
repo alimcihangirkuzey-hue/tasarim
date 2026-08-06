@@ -78,6 +78,10 @@ export function EditorPage() {
     useEditor();
 
   const docQ = useQuery({ queryKey: ["document", id], queryFn: () => api.document(id), enabled: !!id });
+  /* Kurulum iş kolu ilanı (K-1/C) — yapılandırma yoksa süzgeç geçilmez */
+  const isKollariQ = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
+  const aktifSektorler =
+    isKollariQ.data?.kaynak === "yapilandirma" ? isKollariQ.data.aktif : undefined;
   const clientId = docQ.data?.client_id;
   const clientQ = useQuery({
     queryKey: ["client", clientId],
@@ -423,7 +427,13 @@ export function EditorPage() {
             okunur — desen DocumentsPanel'deki tek kaynaktan gelir; seçili
             değer ve onChange birebir korunur. */}
         <select value={doc.template_id} onChange={(e) => switchTemplate(e.target.value)}>
-          <SektorluSablonSecenekleri entries={Object.values(TEMPLATES)} />
+          <SektorluSablonSecenekleri
+              entries={Object.values(TEMPLATES)}
+              aktifSektorler={aktifSektorler}
+              /* Seçili şablon iş kolu kapalı olsa bile listede kalır —
+                 yoksa select yanlış şablon gösterirdi (gorunurSablonlar). */
+              korunanId={doc?.template_id}
+            />
         </select>
 
         <label className="kbd-hint">{t("editor.theme")}</label>

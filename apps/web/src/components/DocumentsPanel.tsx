@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TEMPLATES, listTemplates, type TemplateEntry } from "@tezgah/templates";
-import { SEKTORLER, hedefSektorOf } from "@tezgah/templates/identity";
+import { SEKTORLER, hedefSektorOf, type Sektor } from "@tezgah/templates/identity";
 import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
 import { t } from "../i18n";
@@ -31,11 +31,49 @@ const GUIDE_OPTIONS: Array<{ tid: string; titleKey: string; descKey: string }> =
    düşer ve grupsuz listelenir: hiçbir şablon seçilemez hâle gelmez, seçim
    davranışı değişmez. EditorPage'in üst-bar değiştiricisi de BUNU kullanır —
    desen iki yerde ayrı yazılıp sürüklenmez. */
-export function SektorluSablonSecenekleri({ entries }: { entries: TemplateEntry[] }) {
+/* KURULUM İŞ KOLU SÜZGECİ (K-1/C modül sınırı) — saf, ayrı test edilir.
+
+   `aktif` VERİLMEZSE hiçbir şey süzülmez: bugünkü davranış birebir korunur
+   (yapılandırma yoksa sunucu da "varsayilan" der ve tüm kolları döndürür).
+
+   KORUNAN ŞABLON: editörün üst-bar değiştiricisinde SEÇİLİ olan şablon, iş
+   kolu kapalı olsa bile listede KALIR. Kalmasaydı select'in value'su listede
+   olmayan bir id'ye işaret eder, tarayıcı ilk seçeneği gösterir ve operatör
+   belgesinin şablonunu YANLIŞ görürdü — görünürlük daraltması bir veri yanlış
+   göstermesine dönüşemez.
+
+   Sektörsüz şablonlar (fabrika/generated — identity kapsam sınırı) HER ZAMAN
+   kalır: iş kolu bilgileri yoktur, süzgecin onlar hakkında söyleyeceği bir şey
+   de yoktur (sessizce kaybolmaları yanlış olurdu). */
+export function gorunurSablonlar(
+  entries: readonly TemplateEntry[],
+  aktif: readonly Sektor[] | undefined,
+  korunanId?: string,
+): TemplateEntry[] {
+  if (!aktif) return [...entries];
+  return entries.filter((e) => {
+    if (e.manifest.id === korunanId) return true;
+    const s = hedefSektorOf(e.manifest.id);
+    return s === null || aktif.includes(s);
+  });
+}
+
+export function SektorluSablonSecenekleri({
+  entries,
+  aktifSektorler,
+  korunanId,
+}: {
+  entries: TemplateEntry[];
+  /** undefined → süzme yok (bugünkü davranış); dizi → yalnız bu iş kolları */
+  aktifSektorler?: readonly Sektor[];
+  /** iş kolu kapalı olsa bile görünür kalması gereken şablon (seçili olan) */
+  korunanId?: string;
+}) {
+  const gorunur = gorunurSablonlar(entries, aktifSektorler, korunanId);
   return (
     <>
       {SEKTORLER.map((s) => {
-        const uyeler = entries.filter((e) => hedefSektorOf(e.manifest.id) === s);
+        const uyeler = gorunur.filter((e) => hedefSektorOf(e.manifest.id) === s);
         if (uyeler.length === 0) return null;
         return (
           <optgroup key={s} label={t(`sektor_${s}`)}>
@@ -47,7 +85,7 @@ export function SektorluSablonSecenekleri({ entries }: { entries: TemplateEntry[
           </optgroup>
         );
       })}
-      {entries
+      {gorunur
         .filter((e) => hedefSektorOf(e.manifest.id) === null)
         .map((e) => (
           <option key={e.manifest.id} value={e.manifest.id}>
@@ -68,6 +106,12 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     queryKey: ["documents", client.id],
     queryFn: () => api.documents(client.id),
   });
+
+  /* Kurulumun iş kolu ilanı — yapılandırma yoksa sunucu "varsayilan" der ve
+     tüm kolları döndürür; o hâlde süzgeç geçilmez (davranış değişmez). */
+  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
+  const aktifSektorler =
+    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
 
   const create = useMutation({
     mutationFn: (tid: string) => api.createDocument(client.id, tid),
@@ -134,7 +178,7 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
       ) : (
         <div className="row">
           <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-            <SektorluSablonSecenekleri entries={listTemplates()} />
+            <SektorluSablonSecenekleri entries={listTemplates()} aktifSektorler={aktifSektorler} />
           </select>
           <button onClick={() => create.mutate(templateId)} disabled={create.isPending || !templateId}>
             + {t("documents.new")}
