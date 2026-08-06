@@ -34,6 +34,7 @@ import { aktarimOzetMetni, topluAktar } from "../lib/topluAktarim";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
+import { sablonSec, sablonSecimSorusu } from "../lib/sablonSorusu";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
 import { t, tf } from "../i18n";
@@ -110,9 +111,10 @@ function ItemRow({ item, client, showToast }: {
       const templateId =
         secenekler.length === 1
           ? secenekler[0]
-          : window.confirm(t("orders.menu_template_q"))
-            ? secenekler[0]
-            : secenekler[1];
+          : sablonSec(
+              secenekler,
+              window.confirm(sablonSecimSorusu(t(`orders.type_${item.product_type}`), secenekler)),
+            );
       /* Zincirin gövdesi belgeAc'ta (TEK KOPYA — toplu düğme de onu çağırır);
          yetim telafisi ve updateOrderItem telafisizliği oradaki yorumlarda. */
       return belgeAc(client.id, item, templateId!);
@@ -468,8 +470,8 @@ function ProjectBlock({ project, client, showToast }: {
       /* Gövde lib/topluTasarim.ts'te TEK KOPYA — Açılış Takımı da onu çağırır.
          Soru buradan enjekte edilir: metin ve OK/İptal anlamı tekil düğmeyle
          BİREBİR aynı (davranış çatallanmasın). */
-      topluBaslat(client.id, project.items, (_tur, secenekler) =>
-        window.confirm(t("orders.menu_template_q")) ? secenekler[0]! : secenekler[1]!,
+      topluBaslat(client.id, project.items, (tur, secenekler) =>
+        sablonSec(secenekler, window.confirm(sablonSecimSorusu(t(`orders.type_${tur}`), secenekler))),
       ),
     onSuccess: (r) => {
       invalidate();

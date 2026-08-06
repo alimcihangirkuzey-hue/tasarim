@@ -297,7 +297,6 @@
     "start_design": "Tasarıma başla",
     "start_design_error": "Tasarıma başlanamadı",
     "no_template_warn": "Bu tip için hazır şablon yok (diğer) — kalem takibi çalışıyor",
-    "menu_template_q": "Menü şablonu seç: Tamam = Resimli Izgara, İptal = Premium Liste",
     "missing_prefix": "eksik",
     "miroir": "⚠ içten uygulama → miroir",
     "present_btn": "Sunum PDF'i oluştur",

@@ -18,6 +18,10 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### K-1/A tek tık akışı — açılan borç (2026-08-06, şablon seçim sorusu paketi)
+
+- [ ] **Şablon seçici hâlâ `window.confirm` (ölçüldü, açık).** `2026-08-06-sablon-secim-sorusu` paketi sorunun **metnini** ilandan türetti (ad manifest'ten, sıra ilandan, tür adı i18n'den) ve ikili diyalogun ön-koşulunu nöbetçiyle görünür kıldı — ama diyalogun **kendisi** hâlâ iki seçenekli bir işletim sistemi kutusu: önizleme yok ve **"İptal" turu iptal etmiyor, ikinci şablonu seçiyor**. Operatör bu noktada vazgeçemiyor. Gerçek bir seçici (küçük modal + önizleme + gerçek iptal) arayüz tasarımı işi; ayrı dilim. Üçüncü bir şablon eklendiği gün nöbetçi zaten durduracak.
+
 ### K-1/B çoklu proje hızı — açılan borç (2026-08-06, toplu aktarım gerekçesi paketi)
 
 - [ ] **Toplu aktarım sonucu TOAST'ta gösteriliyor (ölçüldü, açık).** `2026-08-06-toplu-aktarim-gerekcesi` paketi düşen/engelli kalemin **gerekçesini üretiyor** (önceden yutuluyordu) ama sunum tek bir toast. 3 sorunlu kalemde okunur; 15'te metin duvarına döner ve muhtemelen kırpılır — `2026-08-06-hata-mesaji-siniri` paketinin ölçtüğü sınıfın aynısı. Kalıcı bir sonuç paneli (üretilen dosyalar listesinin yanında, satır satır durum) arayüz tasarımı işidir; ayrı dilim.

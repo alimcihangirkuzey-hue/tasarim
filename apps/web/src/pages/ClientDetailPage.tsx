@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
 import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
 import { topluBaslat } from "../lib/topluTasarim";
+import { sablonSec, sablonSecimSorusu } from "../lib/sablonSorusu";
 import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
@@ -84,8 +85,8 @@ export function ClientDetailPage() {
       if (!proje) return null; // proje okunamadı: kalemler durur, aşağıda raporlanır
       /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); metin ve OK/İptal anlamı
          Sipariş Defteri'ndeki düğmeyle birebir aynı. */
-      return topluBaslat(id, proje.items, (_tur, secenekler) =>
-        window.confirm(t("orders.menu_template_q")) ? secenekler[0]! : secenekler[1]!,
+      return topluBaslat(id, proje.items, (tur, secenekler) =>
+        sablonSec(secenekler, window.confirm(sablonSecimSorusu(t(`orders.type_${tur}`), secenekler))),
       );
     },
     onSuccess: (r) => {
