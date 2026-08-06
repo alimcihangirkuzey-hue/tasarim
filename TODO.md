@@ -176,6 +176,15 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 - [ ] **Müşteri kaydı hijyeni — gerçek/test işaretleme (KULLANICI CEVABI BEKLENİYOR).** Kayıtlı müşterilerden `ARAS Grill Lyon`, `Basel Kebap Haus`, `Antalya Kebab — Lyon` gerçek mi test mi belirsiz; kullanıcıya sorulacak, test olanlar temizlenecek/etiketlenecek. (Gerçek pilot müşteriler: Aras Restaurant, Arriva Restaurant; klon: Arriva Native N1.) **CILA1/5 eki:** QA-2 turunda `intake_commit`'in `new_client` yoluyla **iki yeni test müşterisi** daha oluştu — `"fert"` ve `"seyrantepe"` (isimler açıkça placeholder/test; "seyrantepe" F7-A'daki Aras'ın eski placeholder-adres semtiyle aynı) — bunlar da bu kaydın kapsamına girer. **Silme UI'da MEVCUT** (`ClientDetailPage` → `client.delete` butonu, `api.deleteClient`) — mimara ayrıca bildirilecek bir eksiklik yok; kullanıcı bu iki test kaydını (ve karar verildiğinde diğerlerini) doğrudan UI'dan silebilir.
 
 ## SaaS Vizyon Defteri (UYGULAMA YOK, yalnız kayıt)
+
+> **K-1 ŞERHİ (2026-08-06, ürün sahibi kararı — `docs/URUN_SAHIBI_KARARLARI.md`):**
+> bu defterdeki iki kalem artık "vizyon" sınıfında DEĞİLDİR, ticari yolun
+> üzerindedir: **paket şablonları** (K-1'in "tıklayarak bitir" yarısının ana
+> kaldıracı) ve **Faz S** (modülün ozalitçiye kiralanabilmesinin teknik ön
+> koşulu — çok kiracılık + lisans kapısı). Sıralamayı yönetişim keser;
+> burada yalnız sınıf değişikliği kayıtlıdır. Kiralama mı satış mı, fiyat ve
+> lisans metni HÂLÂ ürün sahibindedir (K-1 "karara dahil olmayan" bölümü).
+
 - [ ] **QR dijital menü:** katalogdan üretilen mobil menü sayfası. v1: statik HTML export (Faz 5 adayı). Faz S: barındırılan sürüm, fiyat değişince basılı PDF ile birlikte otomatik güncellenir — temel abonelik gelir kalemi.
 - [ ] **Grid şablonuna çok sayfalı akış (flow) modu:** 80-100 kalemlik kataloglar için (Faz 4).
 - [ ] **İsimden foto önerisi:** ürün adı → ortak havuzdaki etiketli stok foto önerisi; havuz varlıklarına etiket alanı (Faz 4/5).

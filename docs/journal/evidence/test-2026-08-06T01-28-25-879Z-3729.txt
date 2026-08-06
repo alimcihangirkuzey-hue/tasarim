@@ -1,0 +1,43 @@
+gate: test
+runner: linux/node22.22.2/npm10.9.7
+cwd: /home/user/tasarim
+
+$ npm test -w apps/server -- --reporter=json --outputFile="/tmp/tezgah-gate-CVdyeH/vitest-apps-server.json"
+exit: 0  duration_ms: 7678
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-CVdyeH/vitest-apps-server.json
+
+--- stderr ---
+
+
+$ npm test -w apps/web -- --reporter=json --outputFile="/tmp/tezgah-gate-CVdyeH/vitest-apps-web.json"
+exit: 0  duration_ms: 8332
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-CVdyeH/vitest-apps-web.json
+
+--- stderr ---
+
+
+$ npm test -w packages/journal -- --reporter=json --outputFile="/tmp/tezgah-gate-CVdyeH/vitest-packages-journal.json"
+exit: 1  duration_ms: 51424
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-CVdyeH/vitest-packages-journal.json
+
+--- stderr ---
+
+
+$ npm test -w packages/shared -- --reporter=json --outputFile="/tmp/tezgah-gate-CVdyeH/vitest-packages-shared.json"
+exit: 0  duration_ms: 5533
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-CVdyeH/vitest-packages-shared.json
+
+--- stderr ---
+
+
+$ npm test -w packages/templates -- --reporter=json --outputFile="/tmp/tezgah-gate-CVdyeH/vitest-packages-templates.json"
+exit: 0  duration_ms: 15435
+--- stdout ---
+JSON report written to /tmp/tezgah-gate-CVdyeH/vitest-packages-templates.json
+
+--- stderr ---
+
