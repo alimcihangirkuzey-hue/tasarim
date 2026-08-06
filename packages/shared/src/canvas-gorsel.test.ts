@@ -20,6 +20,7 @@ import {
   GORSEL_UZUN_KENAR,
   canvasReduce,
   gorselBaslangicKutusu,
+  oraniKoru,
   type CanvasState,
 } from "./canvas.js";
 
@@ -135,5 +136,71 @@ describe("doğal orana göre başlangıç kutusu", () => {
   it("EKLEME doğal oranı KULLANIR — kare foto kare kutuda doğar", () => {
     const s = ekle({ dogalOlcu: { w: 800, h: 800 } }).layers[0]!.shapes[0]!;
     expect(s.w).toBe(s.h);
+  });
+});
+
+describe("en-boy oranı korunur (K-3 dilim 2)", () => {
+  it("ÖN-KOŞUL: eklenen görsel doğal oranını SAKLAR", () => {
+    /* Bu satır olmadan aşağıdaki koruma testleri, oranı hiç bilmeyen bir
+       şekille "koruyor" diyerek yanlış sebepten yeşil kalırdı. */
+    const s = ekle({ dogalOlcu: { w: 640, h: 360 } }).layers[0]!.shapes[0]!;
+    expect(s.oran).toBeCloseTo(640 / 360, 6);
+  });
+
+  it("SIĞDIRIR, TAŞIRMAZ — kullanıcının kutusundan büyümez", () => {
+    expect(oraniKoru(200, 50, 2)).toEqual({ w: 100, h: 50 });
+    expect(oraniKoru(100, 200, 2)).toEqual({ w: 100, h: 50 });
+  });
+
+  it("GEÇERSİZ oranda dokunmaz", () => {
+    expect(oraniKoru(100, 40, 0)).toEqual({ w: 100, h: 40 });
+    expect(oraniKoru(100, 40, Number.NaN)).toEqual({ w: 100, h: 40 });
+  });
+
+  it("BOYUTLANDIRMA oranı BOZMAZ", () => {
+    const st = ekle({ dogalOlcu: { w: 640, h: 360 } });
+    const s = st.layers[0]!.shapes[0]!;
+    const n = canvasReduce(st, { type: "resize", id: s.id, x: s.x, y: s.y, w: 400, h: 400 })
+      .layers[0]!.shapes[0]!;
+    expect(n.w / n.h).toBeCloseTo(640 / 360, 6);
+  });
+
+  it("ORAN BİRİKEREK KAYMAZ — altı boyutlandırma sonunda hâlâ aynı", () => {
+    /* ÖLÇÜLEN YARA (ilk uygulamamda): yükseklik de ızgaraya yapıştırılınca
+       oran her seferinde biraz kayıyordu ve kayma BİRİKİYORDU —
+       1.7778 → 1.8750. Yükseklik artık doğal orandan TÜRETİLİR. */
+    let st = ekle({ dogalOlcu: { w: 640, h: 360 } });
+    for (let i = 0; i < 6; i++) {
+      const s = st.layers[0]!.shapes[0]!;
+      st = canvasReduce(st, { type: "resize", id: s.id, x: s.x, y: s.y, w: s.w + 37, h: s.h + 11 });
+    }
+    const son = st.layers[0]!.shapes[0]!;
+    expect(son.w / son.h).toBeCloseTo(640 / 360, 6);
+  });
+
+  it("DİĞER türlerde serbest boyutlandırma SÜRÜYOR — kural yalnız görsele", () => {
+    const st = canvasReduce(EMPTY_CANVAS, { type: "add", id: "r1", kind: "rect", at: AT });
+    const n = canvasReduce(st, { type: "resize", id: "r1", x: 0, y: 0, w: 300, h: 40 })
+      .layers[0]!.shapes[0]!;
+    expect({ w: n.w, h: n.h }).toEqual({ w: 300, h: 40 });
+  });
+
+  it("ASGARİ BOYUTUN altına düşmez", () => {
+    const st = ekle({ dogalOlcu: { w: 640, h: 360 } });
+    const s = st.layers[0]!.shapes[0]!;
+    const n = canvasReduce(st, { type: "resize", id: s.id, x: s.x, y: s.y, w: 1, h: 1 })
+      .layers[0]!.shapes[0]!;
+    expect(n.w).toBeGreaterThanOrEqual(CANVAS_MIN_SIZE);
+    expect(n.h).toBeGreaterThanOrEqual(CANVAS_MIN_SIZE);
+  });
+
+  it("ORANI OLMAYAN görsel (ölçüsüz eklenmiş) serbest boyutlanır — sessiz varsayım yok", () => {
+    /* Doğal ölçü bilinmiyorsa oran UYDURULMAZ; koruma da uygulanmaz. */
+    const st = ekle({ dogalOlcu: undefined });
+    const s = st.layers[0]!.shapes[0]!;
+    expect(s.oran).toBeUndefined();
+    const n = canvasReduce(st, { type: "resize", id: s.id, x: s.x, y: s.y, w: 300, h: 40 })
+      .layers[0]!.shapes[0]!;
+    expect({ w: n.w, h: n.h }).toEqual({ w: 300, h: 40 });
   });
 });

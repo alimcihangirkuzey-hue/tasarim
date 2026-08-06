@@ -54,13 +54,19 @@ const btnStyle = (active: boolean, danger = false): React.CSSProperties => ({
 /* GÖRSEL ŞEKLİ — kaynak yüklenene dek YER TUTUCU çizer.
    Yer tutucu SESSİZ DEĞİLDİR: operatör "yükleniyor" ile "bozuk"u ayırt
    edebilmeli; yüklenemeyen kaynak KIRMIZI çerçeveyle durur, gri değil. */
+/** Kaynağın üç ayrı hâli — ikisini aynı göstermek yaranın kendisiydi. */
+export type GorselDurumu = "yukleniyor" | "kayip" | "hazir";
+
 function GorselSekli({
   s,
   url,
+  kayip,
   props,
 }: {
   s: CanvasShape;
   url: string | null;
+  /** Varlık listesi YÜKLENDİ ve bu kimlik listede YOK (silinmiş/başka müşteri). */
+  kayip: boolean;
   props: Record<string, unknown>;
 }) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -81,18 +87,32 @@ function GorselSekli({
   }, [url]);
 
   if (!img) {
+    /* ÖLÇÜLEN YARA: kaynağı BULUNAMAYAN görsel (silinmiş varlık, başka
+       müşterinin kimliği) "yükleniyor" ile AYNI gri kesikli kutuyu
+       çiziyordu — operatör sonsuza dek bekleyebilirdi. Üç hâl ayrı: */
+    const durum: GorselDurumu = hata || kayip ? "kayip" : "yukleniyor";
+    const sorunlu = durum === "kayip";
     return (
-      <Rect
-        {...props}
-        x={s.x}
-        y={s.y}
-        width={s.w}
-        height={s.h}
-        fill={hata ? "#C8102E14" : "#1A1A1A0A"}
-        stroke={hata ? "#C8102E" : "#8a8378"}
-        strokeWidth={1.5}
-        dash={[6, 4]}
-      />
+      <Group {...props} x={s.x} y={s.y}>
+        <Rect
+          width={s.w}
+          height={s.h}
+          fill={sorunlu ? "#C8102E14" : "#1A1A1A0A"}
+          stroke={sorunlu ? "#C8102E" : "#8a8378"}
+          strokeWidth={1.5}
+          dash={[6, 4]}
+        />
+        <Text
+          x={6}
+          y={Math.max(4, s.h / 2 - 8)}
+          width={Math.max(10, s.w - 12)}
+          text={sorunlu ? "görsel bulunamadı" : "yükleniyor…"}
+          fontSize={11}
+          fontFamily="system-ui, sans-serif"
+          fill={sorunlu ? "#C8102E" : "#8a8378"}
+          listening={false}
+        />
+      </Group>
     );
   }
   return <KonvaImage {...props} image={img} x={s.x} y={s.y} width={s.w} height={s.h} />;
@@ -121,6 +141,7 @@ export default function AtolyePage() {
 
   /* GÖRSEL ARACI (K-1/A, ürün sahibi yönlendirmesi 2026-08-06). */
   const [varliklar, setVarliklar] = useState<AssetDTO[]>([]);
+  const [varliklarYuklendi, setVarliklarYuklendi] = useState(false);
   const [secilenVarlik, setSecilenVarlik] = useState<AssetDTO | null>(null);
 
   const stageRef = useRef<Konva.Stage>(null);
@@ -157,7 +178,11 @@ export default function AtolyePage() {
            değilken (oyun alanı) varlık listesi BOŞ kalır ve araç kaynak
            sunamaz — uydurma bir havuz göstermeyiz. */
         void api.client(doc.client_id).then(
-          (c) => { if (!cancelled) setVarliklar(c.assets.filter((a) => a.kind !== "other")); },
+          (c) => {
+            if (cancelled) return;
+            setVarliklar(c.assets.filter((a) => a.kind !== "other"));
+            setVarliklarYuklendi(true);
+          },
           () => { /* varlık listesi alınamadı — araç kaynaksız kalır, sessiz değil: şerit "varlık yok" der */ },
         );
       },
@@ -301,7 +326,13 @@ export default function AtolyePage() {
 
   const renderShape = (s: CanvasShape, interactive: boolean) =>
     s.kind === "image" ? (
-      <GorselSekli key={s.id} s={s} url={varlikUrl(s.asset)} props={shapeProps(s, interactive)} />
+      <GorselSekli
+        key={s.id}
+        s={s}
+        url={varlikUrl(s.asset)}
+        kayip={varliklarYuklendi && !!s.asset && !varliklar.some((a) => a.id === s.asset)}
+        props={shapeProps(s, interactive)}
+      />
     ) : s.kind === "rect" ? (
       <Rect
         key={s.id}

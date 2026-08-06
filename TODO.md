@@ -21,9 +21,9 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 ### K-3 sürükle-bırak — açılan borç (2026-08-06, canvas görsel aracı paketi)
 
 - [ ] **Canvas BASKIYA girmiyor (ölçüldü, açık — K-3'ün asıl talebi).** `canvas_json` DB'ye yazılıyor (bu turda gözle görüldü: `kind:"image", x:530, y:390, asset:ast_…`) ama render hattı onu **hiç okumuyor** — `templates/engine` ve `Template.tsx`'lerde `canvas` geçen sıfır satır. Operatör sürükleyip bırakıyor, kaydediyor, **PDF'e çıkmıyor**. Bu köprü **ADR-005'in "print/preview hattı dokunulmaz" hükmüne değer**; ayrı ve dikkatli bir paket olmalı.
-- [ ] **En-boy oranı kilidi yok.** Görsel doğal oranında doğuyor (640×360 → 180×101, canlıda doğrulandı) ama Transformer serbest esnetiyor; operatör fotoğrafı ezebilir ve bunu söyleyen bir şey yok. Fotoğraf için serbest esnetme neredeyse her zaman yanlıştır.
-- [ ] **Belgeden atölyeye giriş yok.** `/atolye?doc=` çalışıyor (bu turda kullanıldı) ama hiçbir ekranda bağlantı yok; operatör URL'i elle yazmadan ulaşamıyor.
-- [ ] **Görsel kırpma/maskeleme yok.** Gösterilen örneklerdeki hücre düzeni (kare fotoğraf ızgarası) kırpma ister; bugün görsel kutusuna sığdırılıyor.
+- [x] ~~**En-boy oranı kilidi yok.**~~ **KAPANDI** (journal `2026-08-06-gorsel-oran-kilidi`): varlığın doğal oranı şekle yazılıyor, yükseklik her boyutlandırmada ondan türetiliyor (ızgara yalnız genişliğe). Canlı doğrulama: köşe tutamacı sertçe dikey çekildi → 420×236.25, oran tam 1.7778. **Ölçümle düzelen ilk uygulama:** oranı şeklin kendi w/h'sinden almak, ızgara yüzünden birikimli kayma üretiyordu (1.7778→1.8750, altı boyutlandırma).
+- [ ] **Belgeden atölyeye giriş yok — ve BİLEREK eklenmedi.** `/atolye?doc=` çalışıyor ama hiçbir ekranda bağlantı yok. Eklemek kolay; **bugün eklemek zararlı**: canvas baskıya girmediği sürece operatörü sürükle-bırak yüzeyine davet etmek, onu **çıktısı olmayan** bir yola sokar (sürükler, kaydeder, PDF'te hiçbir şey görmez). Bağlantı, köprü geldiği gün eklenmeli.
+- [ ] **Görsel kırpma/maskeleme yok — artık daha görünür.** Oran kilitlendiği için kasıtlı oran değişikliğinin (örneklerdeki kare hücre ızgarası) **tek doğru yolu** kırpmadır ve o yok.
 
 ### K-1/A tek tık akışı — açılan borç (2026-08-06, şablon seçim sorusu paketi)
 
