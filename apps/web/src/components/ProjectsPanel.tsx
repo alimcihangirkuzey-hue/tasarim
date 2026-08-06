@@ -31,6 +31,7 @@ import {
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { aktarimSonucVerisi, topluAktar } from "../lib/topluAktarim";
+import { cmykSonucVerisi, topluCmyk } from "../lib/topluCmyk";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { baslatmaSonucVerisi, belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
@@ -43,6 +44,11 @@ import { t, tf } from "../i18n";
 /* TOPLU BAŞLATMA GEREKÇELERİ — TEK KOPYA, iki tüketici (Sipariş Defteri
    düğmesi ve Açılış Takımı) aynı metinleri kullanır. Kütüphane i18n bilmez;
    metin buradan enjekte edilir. */
+export const CMYK_METINLERI = {
+  kayitsizSablon: t("orders.bulk_export_unregistered"),
+  hata: (e: unknown) => (e as Error).message,
+};
+
 export const BASLATMA_METINLERI = {
   tasarlanamaz: t("orders.no_template_warn"),
   vazgecildi: t("orders.result_cancelled_reason"),
@@ -606,32 +612,40 @@ function ProjectBlock({ project, client, showToast }: {
          print taşımıyor (exportRouteOf). Hata saymak operatöre olmayan bir
          sorun bildirirdi. */
   const cmykQ = useQuery({ queryKey: ["cmyk-status"], queryFn: api.cmykStatus, staleTime: Infinity });
-  const topluCmyk = useMutation({
-    mutationFn: async () => {
-      const belgeliler = project.items.filter((i) => i.document_id);
-      let uretilen = 0;
-      let atlanan = 0;
-      let dusen = 0;
-      for (const it of belgeliler) {
-        try {
-          const doc = await api.document(it.document_id!);
-          const entry = TEMPLATES[doc.template_id];
-          /* Kanal ilanı print taşımıyorsa CMYK'nin kaynağı doğmaz. */
-          if (!entry || exportRouteOf(entry.manifest.production_channels, doc.params["mode"]) !== "pdf") {
-            atlanan += 1;
-            continue;
-          }
-          await api.exportCmyk(doc.id);
-          uretilen += 1;
-        } catch {
-          dusen += 1;
-        }
-      }
-      return { uretilen, atlanan, dusen };
-    },
+  const topluCmykM = useMutation({
+    mutationFn: () =>
+      /* Gövde `lib/topluCmyk.ts`'e taşındı: kardeşlerinin ikisi (topluAktar,
+         topluBaslat) çoktan kütüphaneyken bu ~20 satır bileşenin içindeydi ve
+         TEK BİR TESTİ YOKTU. Adımlar enjekte edilir; kanal ilanı burada,
+         GERÇEK kayıt defterinden okunur. */
+      topluCmyk(
+        project.items,
+        {
+          hazirla: async (documentId) => {
+            const doc = await api.document(documentId);
+            const entry = TEMPLATES[doc.template_id];
+            /* Kayıtsız şablon ile "baskı yolu yok" ARTIK AYRI: ilki ilanın
+               hiç okunamadığı anlamına gelir ve panelde gerekçesiyle
+               görünür; ikincisi tekstil/kesim belgesinin normal hâlidir. */
+            if (!entry) return { kayitli: false, baskiYolu: false, documentId: doc.id };
+            const yol = exportRouteOf(entry.manifest.production_channels, doc.params["mode"]);
+            return { kayitli: true, baskiYolu: yol === "pdf", documentId: doc.id };
+          },
+          uret: (documentId) => api.exportCmyk(documentId),
+        },
+        CMYK_METINLERI,
+      ),
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
-      showToast(tf("orders.bulk_cmyk_done", { uretilen: r.uretilen, atlanan: r.atlanan, dusen: r.dusen }));
+      /* Sonuç toast'ta DEĞİL panelde — kardeş turlarla aynı yer ve aynı
+         gerekçe (tur-sonucu-paneli paketi). */
+      setSonuc(
+        cmykSonucVerisi(
+          r,
+          (o) => tf("orders.bulk_cmyk_done", o),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
+        ),
+      );
     },
     onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
   });
@@ -724,10 +738,10 @@ function ProjectBlock({ project, client, showToast }: {
         {cmykQ.data?.available && project.items.some((i) => i.document_id) && (
           <button
             className="ghost small"
-            onClick={() => topluCmyk.mutate()}
-            disabled={topluCmyk.isPending}
+            onClick={() => topluCmykM.mutate()}
+            disabled={topluCmykM.isPending}
           >
-            {topluCmyk.isPending ? t("editor.exporting") : t("orders.bulk_cmyk_btn")}
+            {topluCmykM.isPending ? t("editor.exporting") : t("orders.bulk_cmyk_btn")}
           </button>
         )}
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>

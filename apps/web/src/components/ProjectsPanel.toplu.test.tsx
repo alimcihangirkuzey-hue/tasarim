@@ -61,6 +61,7 @@ vi.mock("../api", () => ({
     /* Toplu AKTARIM yolunun uçları (tur sonucu paneli testi) */
     document: vi.fn(),
     cmykStatus: vi.fn(),
+    exportCmyk: vi.fn(),
   },
 }));
 
@@ -390,5 +391,44 @@ describe("toplu başlatma sonucu", () => {
     });
     expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(0);
     expect(panel.textContent).toContain("sorunsuz");
+  });
+});
+
+/* ── TOPLU CMYK SONUCU DA PANELDE (üçüncü kardeş) ─────────────────────── */
+
+describe("toplu CMYK sonucu", () => {
+  /* DÜĞMENİN ÖN KOŞULU ÖLÇÜLÜR: Ghostscript yoksa düğme HİÇ çizilmez
+     (cmyk.ts → 503). `kur` varsayılanı `cmykStatus` mock'unu boş bırakır,
+     bu yüzden her testte açıkça verilir — düğmenin varlığı bir tesadüf
+     değil, ölçülen bir koşuldur. */
+  it("GHOSTSCRIPT YOKSA düğme HİÇ ÇİZİLMEZ", async () => {
+    vi.mocked(api.cmykStatus).mockResolvedValue({ available: false } as never);
+    kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
+    await screen.findByText(/1 belgeyi üret/i);
+    expect(screen.queryByText(/CMYK üret/i)).toBeNull();
+  });
+
+  it("KAYITSIZ ŞABLON panelde ADIYLA görünür — 'atlandı' sayısına gömülmez", async () => {
+    /* ÖLÇÜLEN YARA: eski kod `!entry` ile "baskı yolu yok"u aynı kovaya
+       koyuyordu ve ikisi de sessizce `atlanan += 1` oluyordu. */
+    vi.mocked(api.cmykStatus).mockResolvedValue({ available: true } as never);
+    vi.mocked(api.document).mockResolvedValue({
+      id: "doc_a",
+      template_id: "kayitsiz-sablon-xyz",
+      params: {},
+    } as never);
+
+    kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
+    fireEvent.click(await screen.findByText(/CMYK üret/i));
+
+    const panel = await waitFor(() => {
+      const el = document.querySelector(".tur-sonucu");
+      if (!el) throw new Error("tur sonucu paneli çizilmedi");
+      return el;
+    });
+    expect(panel.querySelectorAll(".tur-sonucu-satir")).toHaveLength(1);
+    expect(panel.textContent).toContain("Şablon kayıtlı değil");
+    expect(api.exportCmyk).not.toHaveBeenCalled();
+    expect(document.querySelector(".toast")).toBeNull();
   });
 });
