@@ -20,7 +20,9 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 
 ### Açık risk R-FLAKY-TEST-01 (2026-08-06)
 
-- [ ] **Pano'nun test kapısı düşen testin ADINI yakalayamıyor.** `npm run pano` bir kez test kapısını kırmızı ölçtü (`journal 501/502`); aynı ağaçta 7 koşumda (journal ×4, tam takım ×3) **tekrarlanmadı** ve düşen testin adı çıkarılamadı. Sebep uydurulmadı. **Ön koşul işi:** `scripts/pano.mts:213 testKirilimi` bugün yalnız `Tests N passed (M)` sayısını topluyor; vitest'in json reporter çıktısını saklaması gerekiyor ki bir dahaki kırmızıda ad yakalansın. Küçük, ayrı iş — kararsızlığı kovalamanın ön koşulu.
+- [x] ~~**Pano'nun test kapısı düşen testin ADINI yakalayamıyor.**~~ **KAPANDI** (journal `2026-08-06-dusen-test-adi`): ad artık hem kapı kaydına (vitest json `assertionResults`) hem panoya düşüyor. **İlk kırmızıda doğrulandı** — kararsız test adıyla çıktı: `verify.test.ts > gerçek depo journal'ı > ihlalsiz döner…`
+- [ ] **R-FLAKY-TEST-01 — kök neden HİPOTEZ düzeyinde.** Kararsız test `verifyAllJournals()`i gerçek depo üzerinde koşturuyor; `verify.ts:156 git()` **her** `execFileSync("git")` hatasını `{ok:false}` → **ihlal** sayıyor. Yani geçici bir git hatası (lock çakışması, kaynak baskısı) kalıcı bir "journal ihlali" gibi görünüyor — ve pano bu testi 5 workspace'lik vitest koşumunun içinde, `git push`'un hemen ardından çalıştırıyor. **Sonraki adım:** git katmanında "komut koşturulamadı" (ölçüm başarısızlığı) ile "tarihçe ihlali" ayrıştırılmalı; bugün ikisi aynı görünüyor ve bu, gerçek bir git ihlalini de gizler.
+- [ ] **Eski madde (referans):** `npm run pano` bir kez test kapısını kırmızı ölçtü (`journal 501/502`); aynı ağaçta 7 koşumda (journal ×4, tam takım ×3) **tekrarlanmadı** ve düşen testin adı çıkarılamadı. Sebep uydurulmadı. **Ön koşul işi:** `scripts/pano.mts:213 testKirilimi` bugün yalnız `Tests N passed (M)` sayısını topluyor; vitest'in json reporter çıktısını saklaması gerekiyor ki bir dahaki kırmızıda ad yakalansın. Küçük, ayrı iş — kararsızlığı kovalamanın ön koşulu.
 
 ### K-1/C güvenlik turu — açılan borç (2026-08-06, statik sunum güvenliği paketi)
 
