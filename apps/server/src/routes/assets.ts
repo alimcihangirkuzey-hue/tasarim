@@ -18,8 +18,11 @@ const ALLOWED: Record<string, string> = {
   "image/svg+xml": "svg",
 };
 
-/** Türevleri hesaplar (dosya YAZMAZ); bozuk dosyada fırlatır → çağıran 400 policy-red döner */
-async function processUpload(
+/** Türevleri hesaplar (dosya YAZMAZ); bozuk dosyada fırlatır → çağıran 400 policy-red döner.
+    DIŞA AÇIK: `varlik-turevleri.test.ts` bu hattın ÖLÇÜLEN davranışını çiviler
+    (sharp/libvips sürüm atlamalarında sessiz değişimi yakalamak için). Testin
+    kendi kopyasını taşıması, ÜRETİM kodunu değil kopyayı ölçmek olurdu. */
+export async function processUpload(
   buf: Buffer,
   isSvg: boolean
 ): Promise<{ width: number; height: number; master: Buffer; thumb: Buffer }> {
