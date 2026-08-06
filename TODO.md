@@ -9,6 +9,15 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 >
 > **Ritüel eki (F7-A dersi):** Onaylı plan, koşu başında dala/scratchpad'e kalıcılaştırılır (oturum kaybına dayanıklılık — plan sohbette kalırsa bağlam özetlenince/oturum düşünce kaybolur; F7-A'da plan önceki oturum transkriptinden kurtarıldı).
 
+> **K-2 ŞERHİ (2026-08-06, ürün sahibi kararı — `docs/URUN_SAHIBI_KARARLARI.md`):**
+> ana modül "bitti" sayılmak için beş yeşil kapı YETMEZ; sistem ayağa
+> kaldırılıp o modülün çıktısı **ekran görüntüsüyle** kanıtlanır. Kanıtlanan
+> modül **kapanır** ve sıradaki üst modül tasarlanır; kapalı modüle ürün
+> sahibinin açık geliştirme izni olmadan DÖNÜLMEZ. Kapanış defteri ve kapalı
+> modülde ölçülüp onarılmayan yaralar kararlar defterindedir. Bu defterdeki
+> açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
+> madde, izin gelene kadar seçilemez.
+
 ### C-P1 sonrası açılan borç (2026-07-23, kimlik bağlama paketi)
 - [x] **`@tezgah/templates` manifest-only subpath çıkarımı — KAPANDI (C-P2, 2026-07-23, journal `2026-07-23-c-p2-identity-subpath`).** `./identity` subpath'i kuruldu; `apps/server` artık `@tezgah/templates/identity` import eder, react/jsx-runtime **tamamen** server modül grafiğinin dışında (statik kanıt: esbuild metafile analizi — identity graf'i 12 dosya/0 react/0 .tsx; tam registry kontrastı 152/6/11). `registry-core.ts` invaryantın PAYLAŞILAN çekirdeği (index.ts + identity/index.ts aynı kaynağı kullanır). **Kalan bilinçli sınır (backlog DEĞİL, kayıtlı karar):** fabrika/generated manifest'leri identity kaydına GİRMEDİ — fabrika HEP `type:"menu"` beyan ettiği için (C-P0 C-B-1) iki yönlendirme yardımcısı zaten "menu"yu null'a çözüyor; kayıtlı/kayıtsız fark etmiyor. Bu varsayım `identity/index.test.ts`'teki yüksek sesli nöbetçiyle kilitli — fabrika emit'i bir gün değişirse (ürün sahibi yetkisi ister) o test PATLAR.
 

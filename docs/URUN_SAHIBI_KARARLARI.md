@@ -101,3 +101,87 @@ türüne karşılık gelir? Bugünkü `MaterialType` kümesi
 Karar gelene kadar otomasyon bu alana dokunmaz.
 
 ---
+
+## K-2 — Biten modül KAPANIR; kanıt ekran görüntüsüdür (2026-08-06)
+
+**Karar sınıfı:** çalışma biçimi / iş sırası kararı — ürün sahibinin
+sıralama yetkisi (`00_READ_FIRST.md` §KİMLİK).
+
+**Kullanıcının ifadesi (birebir):**
+> "her finislenen anamodulleri ekran görüntüleri ispatla mesela qr artık hazır
+> ve su halde gibi kanıtla o modulu bitir üst modulu tasarla bu sekilde biten
+> module dönme ben geliştirme izni verince güncelleme için dön"
+
+**Kararın üç hükmü:**
+
+1. **KANIT EKRAN GÖRÜNTÜSÜDÜR.** Bir ana modül "bitti" sayılmak için yeşil
+   kapı yetmez; sistem gerçekten ayağa kaldırılıp o modülün çıktısı
+   **görüntülenmiş** olmalıdır ("qr artık hazır ve şu halde").
+2. **BİTEN MODÜL KAPANIR.** Kanıtlanan modül kapatılır ve sıradaki **üst**
+   modül tasarlanır.
+3. **KAPALI MODÜLE DÖNÜLMEZ.** Ürün sahibi açıkça geliştirme izni verene
+   kadar uygulayıcı kapalı bir modülü güncellemek için geri dönmez.
+
+### Bu ne DEĞİŞTİRİR (uygulayıcı yorumu — karardan ayrı)
+
+- **Kapı sayısı beşten altıya çıkmaz, ama "bitti" tanımı değişir.** Beş kapı
+  (`typecheck·lint·test·build·journal:verify`) *regresyon* kapılarıdır: kodun
+  bozulmadığını ölçerler, işin göründüğünü ölçmezler. K-2, ana modül
+  kapanışına ayrı ve **gözle** bir delil şartı koyar.
+- **Kapanış defteri:** hangi ana modülün kapalı olduğu ve neyle kanıtlandığı
+  aşağıdaki tabloda tutulur. Tablo tek doğruluk kaynağıdır; kapalı satıra
+  dokunan bir paket açılmaz.
+- **K-2, K-1'in dört başlığını iptal etmez.** A/B/C/D başlıkları hâlâ açıktır;
+  K-2 yalnız hangi sırayla ve hangi delille kapandıklarını belirler.
+- **Çelişki notu:** kapalı bir modülde *yara* ölçülürse (ör. aşağıdaki
+  `footnote_fr` sızıntısı) uygulayıcı onu **onarmaz**, buraya yazar ve izin
+  bekler. Sessizce düzeltmek K-2'nin 3. hükmünü çiğnerdi.
+
+### Kapanış defteri (2026-08-06 · gerçek sistem, gerçek müşteri kaydıyla)
+
+Kanıt ortamı: sunucu `:3001` + arayüz `:5173`, tohumlanmış müşteri
+**"Kuzey Ozalit & Reklam"** (tabela/baskı katalogu, TL fiyatlar, `menu_language=tr`).
+12 ekran görüntüsü Playwright ile alındı.
+
+| # | Ana modül | Kanıt (ölçülen) | Durum |
+|---|---|---|---|
+| A1 | **QR** | A4 baskı yüzeyinin sağ altında **vektör** QR; `menu_url`'den kodlanmış | Kapalı |
+| A2 | Editör + şablon motoru | Premium yazılı menü, marka kitinden tema, slot/uyarı panelleri | Kapalı |
+| A3 | Tabela / geniş format | Tek panel tabela şablonu, ölçü parametreleri ilandan | Kapalı |
+| A4 | Dijital menü | Tek dosya çıktı, `lang="tr"`, başlık "Kuzey Ozalit & Reklam — Menü" | Kapalı |
+| B1 | Sipariş defteri | 4 kalemli proje, termin, eksik alan rozeti, toplu başlatma | Kapalı |
+| B2 | Sipariş alma (saha) | Beş adımlı mobil öncelikli akış | Kapalı |
+| B3 | Müşteri + belge yönetimi | Müşteri listesi, yaklaşan terminler şeridi | Kapalı |
+| C1 | Marka kiti | 5 renk rolü, 2 font rolü, iletişim + QR kaynak alanları | Kapalı |
+| C2 | Katalog | Kategori/ürün/fiyat varyantı, m² ve adet birimleri | Kapalı |
+| D1 | Kiracı iş kolu daraltması | `TEZGAH_IS_KOLLARI=tabelaci` → şablon 11→2, ürün türü 9→2 | Kapalı |
+| D2 | Yapılandırma kapısı | Yanlış iş kolu adında sunucu açılışta durur; boş değerde bugünkü davranış | Kapalı¹ |
+
+¹ **D2'nin görsel delili kısmidir ve bu saklanmıyor:** 12 numaralı görüntü
+daraltmanın *sipariş* tarafını gösterir; "yanlış iş kolu adıyla sunucu
+açılmaz" hükmünün delili ekran görüntüsü değil, `kurulum-dogrulama` testleri
+ve önceki turda ölçülmüş fail-loud davranışıdır. Diğer on satırın deliline
+gözle bakılabilir; bunun bir yarısına bakılamaz.
+
+### Kapalı modülde ÖLÇÜLEN ama ONARILMAYAN yara (izin bekliyor)
+
+**`catalog.footnote_fr` — Türkçe tabelacı müşterisinde Fransızca dipnot.**
+Kanıt görüntüsü 07'de (A4 baskı yüzeyi) görülüyor: sayfa altında
+*"Prix nets en euros — Liste des allergènes disponible sur demande."*
+Müşteri Türk, para birimi TL, `menu_language=tr`, iş kolu tabela — dipnotun
+üç varsayımı da (Fransızca · euro · alerjen listesi/restoran) yanlış.
+
+**Kod tarafı ölçüldü (görüntüyle yetinilmedi):** metin bir şema
+**varsayılanıdır** — `schemas.ts:85-87`, `CatalogSchema.footnote_fr` alanı
+`.default("Prix nets en euros — …")` taşır. Yani dipnotu kimse yazmaz;
+katalog alanı boş bırakılan **her** müşteriye kendiliğinden gelir. Slot
+bağlaması da aile-genelidir (`parts/chrome-slots.ts`, flyer · trifold ·
+grid · fabrika manifestleri hepsi `bind:"catalog.footnote_fr"`). Alan adının
+kendisi (`_fr`) ikinci bir K-1/D örneğidir.
+
+Bu, K-1/D "sektörsüz dil" başlığının ölçülmüş bir örneğidir ve **A2/A4 kapalı
+modüllerinin içindedir** — K-2'nin 3. hükmü gereği dokunulmadı.
+Onarım izni verilirse tek paketlik iştir (varsayılanı boşaltmak mı, dile
+duyarlı hâle getirmek mi — o da içerik kararıdır).
+
+---
