@@ -306,6 +306,8 @@
     "bulk_btn": "⚡ {n} kalemi tasarıma başlat",
     "bulk_running": "Başlatılıyor…",
     "bulk_done": "{acilan} belge açıldı · {dusen} düştü · {atlanan} tasarlanamaz",
+    "bulk_export_btn": "⬇ {n} belgeyi üret",
+    "bulk_export_done": "{aktarilan} üretildi · {bloklu} engelli (atlandı) · {dusen} düştü",
     "present_mode_last": "Sunum: son mockup",
     "present_mode_multi": "Sunum: çok yüzey",
     "present_note_prompt": "BAT hukuki notu (düzenlenebilir):",

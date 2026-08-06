@@ -20,8 +20,11 @@ import {
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
+import { TEMPLATES, blockersOf } from "@tezgah/templates";
 import { siparisParamlari, siparisSablonlari, siparisSubstratlari } from "@tezgah/templates/identity";
 import { api } from "../api";
+import { analyzeDoc } from "../lib/analyzeDoc";
+import { belgeDisaAktar } from "../lib/disaAktar";
 import { t, tf } from "../i18n";
 
 const TYPES: ProductType[] = [
@@ -516,6 +519,61 @@ function ProjectBlock({ project, client, showToast }: {
     onError: (e) => showToast(`${t("orders.start_design_error")}: ${(e as Error).message}`),
   });
 
+  /* TOPLU DIŞA AKTARIM (K-1/B — çoklu proje hızı). Projedeki BELGELİ kalemleri
+     sırayla üretime verir.
+
+     BLOCKER KAPISI ATLATILMAZ — bu paketin en kritik kararı: sunucunun blocker
+     backstop'u İSTEMCİNİN bildirdiği uyarılara bakar ("sunucu tam analiz
+     KOŞAMAZ: tam registry react taşır", exports.ts) — yani boş uyarı dizisiyle
+     çağırmak bekçiyi sessizce devre dışı bırakır ve eksik zorunlu slotlu belge
+     baskıya giderdi. Bu yüzden her belge için editörün koştuğu ANALİZİN AYNISI
+     (analyzeDoc) burada da koşar; blocker taşıyan belge dışa AKTARILMAZ, sayılır
+     ve operatöre bildirilir. Toplu yol, tekil yoldan daha gevşek olamaz.
+
+     Sıra/hata semantiği toplu tasarıma başlatmayla aynı: sırayla koşar, düşen
+     belge turu durdurmaz ama sayılır (sessiz kısmi başarı yok). */
+  const topluAktar = useMutation({
+    mutationFn: async () => {
+      const belgeliler = project.items.filter((i) => i.document_id);
+      let aktarilan = 0;
+      let bloklu = 0;
+      let dusen = 0;
+      for (const it of belgeliler) {
+        try {
+          const doc = await api.document(it.document_id!);
+          const entry = TEMPLATES[doc.template_id];
+          /* Şablon kayıtlı değilse üretime verilmez: kanal ilanı okunamayan
+             belge için doğru uç bilinemez (kayıtsız profil sunucuda da
+             reddedilir — profile_not_registered). */
+          if (!entry) {
+            dusen += 1;
+            continue;
+          }
+          const analiz = analyzeDoc(client, doc);
+          if (blockersOf(analiz.warnings, entry.manifest.severity_overrides).length > 0) {
+            bloklu += 1;
+            continue;
+          }
+          await belgeDisaAktar(
+            doc.id,
+            entry.manifest.production_channels,
+            doc.params["mode"],
+            analiz.warnings,
+          );
+          aktarilan += 1;
+        } catch {
+          dusen += 1;
+        }
+      }
+      return { aktarilan, bloklu, dusen };
+    },
+    onSuccess: (r) => {
+      invalidate();
+      showToast(tf("orders.bulk_export_done", { aktarilan: r.aktarilan, bloklu: r.bloklu, dusen: r.dusen }));
+    },
+    onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
+  });
+
   const present = useMutation({
     mutationFn: () => {
       const note = window.prompt(
@@ -578,6 +636,18 @@ function ProjectBlock({ project, client, showToast }: {
             </button>
           );
         })()}
+        {/* Belgeli kalem yoksa çizilmez — toplu başlatma düğmesiyle aynı kural. */}
+        {project.items.some((i) => i.document_id) && (
+          <button
+            className="ghost small"
+            onClick={() => topluAktar.mutate()}
+            disabled={topluAktar.isPending}
+          >
+            {topluAktar.isPending
+              ? t("editor.exporting")
+              : tf("orders.bulk_export_btn", { n: project.items.filter((i) => i.document_id).length })}
+          </button>
+        )}
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>
           {present.isPending ? t("editor.exporting") : t("orders.present_btn")}
         </button>

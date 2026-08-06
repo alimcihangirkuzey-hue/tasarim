@@ -31,6 +31,7 @@ import {
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
+import { belgeDisaAktar } from "../lib/disaAktar";
 import { SektorluSablonSecenekleri } from "../components/DocumentsPanel";
 import { SlotPanel } from "../components/SlotPanel";
 import { SelectionPanel } from "../components/SelectionPanel";
@@ -350,19 +351,11 @@ export function EditorPage() {
        exportRouteOf'a referans-kopya eşdeğerliğiyle taşındı — karar artık
        manifest'in production_channels beyanında, sunucu bekçileriyle aynı
        kaynaktan */
-    mutationFn: async (warnings: LayoutWarning[]) => {
-      const rota = entry
-        ? exportRouteOf(entry.manifest.production_channels, doc?.params["mode"])
-        : "pdf";
-      if (rota === "garment") {
-        const res = await api.exportGarment(id);
-        return [res.record];
-      }
-      if (rota === "svg") {
-        return [await api.exportSvg(id)];
-      }
-      return api.exportDocument(id, warnings);
-    },
+    mutationFn: (warnings: LayoutWarning[]) =>
+      /* Üç yollu dallanma lib/disaAktar.ts'te TEK KOPYA — Sipariş Defteri'nin
+         toplu dışa aktarımı da oradan geçer (yeni kanal eklendiğinde iki yer
+         ayrışmasın). entry yoksa eski davranış birebir: pdf yolu. */
+      belgeDisaAktar(id, entry?.manifest.production_channels ?? ["print"], doc?.params["mode"], warnings),
     onSuccess: (records) => {
       showToast(tf("editor.export_done", { n: records[0]?.version ?? "?" }));
       void qc.invalidateQueries({ queryKey: ["exports", id] });
