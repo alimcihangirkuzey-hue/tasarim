@@ -18,6 +18,13 @@ Opus 4.8 devraldığında CONSTITUTION.md ile birlikte bu dosyayı okur.
 > açık maddeler seçilirken önce o tabloya bakılır: kapalı bir modüle dokunan
 > madde, izin gelene kadar seçilemez.
 
+### K-1/C güvenlik turu — açılan borç (2026-08-06, statik sunum güvenliği paketi)
+
+- [ ] **`sharp` 0.33.5 → 0.35.x (libvips CVE'leri, YÜKSEK).** Görüntü işleme yolunun tamamını taşıyor (varlık yükleme, türev üretimi, mockup); majör atlama kendi doğrulamasını ister. Ayrı paket.
+- [ ] **`react-router` 6.30.4 → 7.18.x (open redirect → XSS, ORTA ×2).** 20 ekranın yönlendirme yolları ayrı doğrulama ister. Bugünkü gerçek risk düşük (tek operatörlü yerel kurulum) ama modül dışarıya verilecekse kapanmalı.
+- [ ] **Statik öneklerde route guard YOK — daha büyük boşluğa işaret.** `/assets/`, `/exports/`, `/fonts/` kimlik doğrulamasız servis ediliyor; sunucuda zaten hiç auth yok (Faz S). Advisory'lerin "route guard bypass" başlığı bizde bugün **konusuz, çünkü guard'ın kendisi yok**. Çok kiracılıkta bir kiracının URL'i bilmesi diğerinin dosyasını okumasına yeter. Guard eklemek **yetki modeli** ister (kim neyi görebilir) — ürün kararı.
+- **Ölçülen ilerleme:** `npm audit --omit=dev` 7 zafiyet (2 orta, 5 yüksek) → **3** (2 orta, 1 yüksek).
+
 ### K-3 sürükle-bırak — açılan borç (2026-08-06, canvas görsel aracı paketi)
 
 - [ ] **Canvas BASKIYA girmiyor (ölçüldü, açık — K-3'ün asıl talebi).** `canvas_json` DB'ye yazılıyor (bu turda gözle görüldü: `kind:"image", x:530, y:390, asset:ast_…`) ama render hattı onu **hiç okumuyor** — `templates/engine` ve `Template.tsx`'lerde `canvas` geçen sıfır satır. Operatör sürükleyip bırakıyor, kaydediyor, **PDF'e çıkmıyor**. Bu köprü **ADR-005'in "print/preview hattı dokunulmaz" hükmüne değer**; ayrı ve dikkatli bir paket olmalı.

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.1",
-    "@fastify/static": "^8.0.3",
+    "@fastify/static": "^10.1.3",
     "@tezgah/shared": "*",
     "@tezgah/templates": "*",
     "archiver": "^7.0.1",
