@@ -229,6 +229,29 @@ function testKirilimi(cikti: string): { toplam: number; dosya: number; satirlar:
   return { toplam, dosya, satirlar };
 }
 
+/* DÜŞEN TESTİN ADI — PANO YÜZEYİ (R-FLAKY-TEST-01).
+
+   ÖLÇÜLEN YARA: pano test kapısını bir kez kırmızı ölçtü ve ekranda yalnız
+   `journal 501/502` yazıyordu; HANGİ test olduğu hiçbir yerde yoktu.
+
+   YETKİLİ KAYNAK BURASI DEĞİL: düşen testin kimliği artık kapı kaydına
+   (journal `gate` olayı, `reason` alanı) vitest'in JSON raporundan yazılıyor
+   — sayıyı üreten raporun ta kendisinden. Buradaki ayrıştırma, panonun
+   `npm test` (insan okurlu) çıktısından okuduğu bir GÖSTERİM yardımıdır.
+
+   İKİ ÖLÇÜM YOLU OLMASI BİLİNÇLİ DEĞİL, KAYITLI BİR BORÇTUR: pano kapıyı
+   kendi koşuyor, defter kendi koşuyor. Doğru çözüm panonun defterin kapı
+   koşucusunu ÇAĞIRMASIDIR; o ayrı bir iştir ve açık bulgu olarak yazıldı.
+   Bu satırlar o gün silinecek. */
+function dusenTestSatirlari(cikti: string): string[] {
+  const gorulen = new Set<string>();
+  for (const m of cikti.matchAll(/^\s*FAIL\s+(\S+)\s*>\s*(.+?)\s*$/gm)) {
+    const dosya = (m[1] ?? "").split(/[\\/]/).pop() ?? m[1] ?? "";
+    gorulen.add(`${dosya} > ${m[2] ?? ""}`);
+  }
+  return [...gorulen];
+}
+
 function bundleKb(cikti: string): { ana: number | null; enBuyukChunk: number | null } {
   const gz = [...cikti.matchAll(/gzip:\s*([\d.]+)\s*kB/g)].map((m) => Number(m[1]));
   if (gz.length === 0) return { ana: null, enBuyukChunk: null };
@@ -681,6 +704,16 @@ if (HIZLI) {
     defter.detay.includes("dört katman temiz") ? "<b>dört katman temiz</b>" : "zincir kontrolü",
   ];
   if (tk.satirlar.length) degerler[2] += `<br>${kacir(tk.satirlar.join(" · "))}`;
+  if (!test.gecti) {
+    /* KIRMIZI KAPIDA AD GÖRÜNÜR. Ad çıkmıyorsa bu da SÖYLENİR — boş bir
+       kırmızı, "sebep yok" izlenimi verirdi. */
+    const dusenler = dusenTestSatirlari(test.detay);
+    degerler[2] += dusenler.length
+      ? `<br><b>düşen:</b> ${kacir(dusenler.slice(0, 5).join(" · "))}${
+          dusenler.length > 5 ? ` … +${dusenler.length - 5}` : ""
+        }`
+      : "<br><b>düşen:</b> ad ayrıştırılamadı — kapı kaydına bakın";
+  }
 }
 
 const cikti = html({
