@@ -24,8 +24,19 @@
    ile koşar — gerekçesi yazılı olmayan istisna eklenemez. */
 
 import { describe, expect, it } from "vitest";
-import { OrderStatusSchema, ProductTypeSchema, SceneKindSchema } from "@tezgah/shared";
-import { SEKTORLER, siparisSubstratlari, siparisTeknikleri } from "@tezgah/templates/identity";
+import {
+  BrandKitSchema,
+  OrderStatusSchema,
+  ProductTypeSchema,
+  SceneKindSchema,
+  SurfaceKindSchema,
+} from "@tezgah/shared";
+import {
+  SEKTORLER,
+  URETIM_ROTALARI,
+  siparisSubstratlari,
+  siparisTeknikleri,
+} from "@tezgah/templates/identity";
 import tr from "./i18n/tr.json";
 import { t } from "./i18n";
 import { SIPARIS_YONLERI } from "./lib/siparisSecenekleri";
@@ -49,6 +60,13 @@ interface Aile {
   ilan: readonly string[];
   /** Aynı önek altında yaşayan ELLE YAZILI anahtarlar + GEREKÇESİ. */
   istisna?: Readonly<Record<string, string>>;
+}
+
+/** Marka kiti renk ROLLERİ — şemadan türer, elle yazılmaz.
+    `.default({})` sarmalayıcısı `removeDefault()` ile açılır (aynı desen
+    `MenuLanguageSchema.removeDefault().options`'ta da kullanıldı). */
+function markaRenkRolleri(): readonly string[] {
+  return Object.keys(BrandKitSchema.shape.colors.removeDefault().shape);
 }
 
 const tekilKume = (f: (t: (typeof ProductTypeSchema.options)[number]) => readonly string[]) => [
@@ -85,6 +103,19 @@ const AILELER: readonly Aile[] = [
       q: "boş seçenek yer tutucusu (ProjectsPanel select)",
     },
   },
+  /* AŞAĞIDAKİ ÜÇÜ 2026-08-07'de EKLENDİ ve gerekçesi bir ÖLÇÜMDÜR: defter
+     bunları "ilanı olmayan aileler" diye listeliyordu (TODO, K-1/D). Ölçüldü —
+     üçünün de ilanı VARDI ya da yapılabilirdi:
+       intake.sk_       → SurfaceKindSchema (Zod enum, hazırdı)
+       brandkit.color_  → BrandKitSchema.colors (şema alanları, hazırdı)
+       editor.honesty_  → exportRouteOf'un dönüş kümesi; TİP-DÜZEYİ bir
+                          birleşimdi ve derlemeden sonra okunamıyordu, bu turda
+                          runtime ilana çevrildi (URETIM_ROTALARI).
+     Defterin "ilanı yok" cümlesi yalnız üçüncüsü için doğruydu; o da
+     kapatılabilir çıktı. */
+  { ad: "yüzey türü", dal: "intake", onek: "sk_", ilan: SurfaceKindSchema.options },
+  { ad: "marka rengi", dal: "brandkit", onek: "color_", ilan: markaRenkRolleri() },
+  { ad: "üretim rotası", dal: "editor", onek: "honesty_", ilan: URETIM_ROTALARI },
 ];
 
 describe("ön-koşul — nöbetçi GERÇEKTEN bir şey ölçüyor", () => {

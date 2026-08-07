@@ -32,7 +32,8 @@ export type { SeverityOverrides, WarningSeverity } from "../engine/severity.js";
 
 /* Üretim kanalı katmanı (7.2/8.5): sunucu uçları kanal ilanını ve SVG tür
    önceliğini buradan okur — channels.ts saf/react'sız (type-only import). */
-export { svgKindOf, exportRouteOf, kanalNitelikleriOf, KANAL_NITELIKLERI } from "../engine/channels.js";
+export { svgKindOf, exportRouteOf, kanalNitelikleriOf, KANAL_NITELIKLERI, URETIM_ROTALARI } from "../engine/channels.js";
+export type { UretimRotasi } from "../engine/channels.js";
 export type { KanalNitelikBildirimi } from "../engine/channels.js";
 export { PRODUCTION_CHANNELS } from "../types.js";
 export type { ProductionChannel } from "../types.js";
