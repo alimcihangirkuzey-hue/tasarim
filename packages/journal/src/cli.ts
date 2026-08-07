@@ -32,47 +32,76 @@ import { verifyAllJournals } from "./verify.js";
 const yaz = (s: string): void => void process.stdout.write(`${s}\n`);
 const uyar = (s: string): void => void process.stderr.write(`${s}\n`);
 
-/**
- * Paketin EN SON kapı koşumundan sonra değişmiş dosyalar.
- *
- * Karar `olcum-sirasi.ts`'te SAF olarak yaşar; buradaki iş yalnız iki ölçülmüş
- * değeri toplamaktır: kapının `measured_at`'i ve `git status`un bildirdiği
- * dosyaların disk mtime'ı. Git yoksa/çalışmıyorsa kapı SESSİZCE AÇILMAZ ama
- * DURDURMAZ da — ölçemediği bir şey hakkında yargı üretmek, bu deponun
- * "sayı uydurma" yasağının ta kendisi olurdu.
- */
-function olcumdenSonraDegisenDosyalar(packageId: string): string[] {
+/** Paketin EN SON kapı koşumunun anı — hiç kapı koşulmamışsa `null`. */
+function sonOlcumAni(packageId: string): string | null {
   const rec = foldPackageJournal(readJournal(packageId));
   const anlar = Object.values(rec.gates)
     .map((g) => g?.measured_at)
-    .filter((s): s is string => typeof s === "string");
-  if (anlar.length === 0) return []; /* hiç kapı koşulmamış — söyleyecek şey yok */
-  const sonOlcum = anlar.sort()[anlar.length - 1]!;
+    .filter((s): s is string => typeof s === "string")
+    .sort();
+  return anlar.length === 0 ? null : anlar[anlar.length - 1]!;
+}
 
-  let cikti: string;
+/** Git komutu — çalışmazsa `null` (ölçemediğimiz şey hakkında yargı üretmeyiz). */
+function gitCikti(args: readonly string[]): string | null {
   try {
-    cikti = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT_DIR, encoding: "utf8" });
+    return execFileSync("git", [...args], { cwd: ROOT_DIR, encoding: "utf8" });
   } catch {
-    return [];
+    return null;
   }
+}
 
-  const dosyalar: DegisenDosya[] = [];
+/** Yolların disk mtime'ı — okunamayan (silinmiş) dosya `null` taşır. */
+function mtimeliDosyalar(yollar: readonly string[]): DegisenDosya[] {
+  return yollar.map((yol) => {
+    try {
+      return { yol, mtimeMs: fs.statSync(path.join(ROOT_DIR, yol)).mtimeMs };
+    } catch {
+      return { yol, mtimeMs: null }; /* silinmiş — ölçülemez (olcum-sirasi.ts notu) */
+    }
+  });
+}
+
+/** `git status --porcelain` yolları — yeniden adlandırmada YENİ yol ölçülür. */
+function calismaAgaciYollari(): string[] {
+  const cikti = gitCikti(["status", "--porcelain"]);
+  if (cikti === null) return [];
+  const yollar: string[] = [];
   for (const satir of cikti.split("\n")) {
     if (satir.trim().length === 0) continue;
-    /* Porcelain v1: iki karakter durum + boşluk + yol. Yeniden adlandırmada
-       "eski -> yeni" gelir; ölçülecek olan YENİ yoldur. */
     const ham = satir.slice(3).trim();
     const yol = ham.includes(" -> ") ? ham.slice(ham.indexOf(" -> ") + 4) : ham;
-    const temiz = yol.replace(/^"|"$/g, "");
-    let mtimeMs: number | null = null;
-    try {
-      mtimeMs = fs.statSync(path.join(ROOT_DIR, temiz)).mtimeMs;
-    } catch {
-      mtimeMs = null; /* silinmiş — ölçülemez, sayılmaz (olcum-sirasi.ts notu) */
-    }
-    dosyalar.push({ yol: temiz, mtimeMs });
+    yollar.push(yol.replace(/^"|"$/g, ""));
   }
-  return olcumdenSonraDegisenler(sonOlcum, dosyalar);
+  return yollar;
+}
+
+/** Bir commit'in dokunduğu yollar. */
+function commitYollari(sha: string): string[] {
+  const cikti = gitCikti(["show", "--pretty=format:", "--name-only", sha]);
+  if (cikti === null) return [];
+  return cikti.split("\n").filter((s) => s.trim().length > 0);
+}
+
+/**
+ * Paketin EN SON kapı koşumundan SONRA değişmiş dosyalar.
+ *
+ * Karar `olcum-sirasi.ts`'te SAF olarak yaşar; buradaki iş yalnız iki ölçülmüş
+ * değeri toplamaktır: kapının `measured_at`'i ve dosyaların disk mtime'ı. Git
+ * yoksa/çalışmıyorsa kapı SESSİZCE AÇILMAZ ama DURDURMAZ da — ölçemediği bir
+ * şey hakkında yargı üretmek, bu deponun "sayı uydurma" yasağının ta kendisi
+ * olurdu.
+ *
+ * İKİ ÇAĞRI YERİ, TEK KURAL:
+ *   · `stage --to hazir` → çalışma ağacındaki değişiklikler
+ *   · `git --kind commit` → COMMIT'İN dokunduğu dosyalar. Commit mtime'ları
+ *     DEĞİŞTİRMEZ, yani "hazır olduktan sonra düzenle ve commit et" yolu
+ *     commit'ten sonra bile ölçülebilir kalır (bulgu `K-SIRA-3`).
+ */
+function olcumdenSonraDegisenDosyalar(packageId: string, yollar: readonly string[]): string[] {
+  const sonOlcum = sonOlcumAni(packageId);
+  if (sonOlcum === null) return []; /* hiç kapı koşulmamış — söyleyecek şey yok */
+  return olcumdenSonraDegisenler(sonOlcum, mtimeliDosyalar(yollar));
 }
 
 function main(): void {
@@ -134,7 +163,7 @@ function main(): void {
          depo o hatayı bir kez ödedi (bir tur boyunca defter yanlış söyledi).
          Kural yalnız ileri geçişte işler; geriye dönüş serbesttir. */
       if (komut.to === "hazir") {
-        const gec = olcumdenSonraDegisenDosyalar(komut.packageId);
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, calismaAgaciYollari());
         if (gec.length > 0) {
           uyar(
             `journal: ÖLÇÜM SIRASI — şu dosya(lar) son kapı koşumundan SONRA değişti:\n` +
@@ -195,13 +224,33 @@ function main(): void {
       return;
     }
 
-    case "git":
+    case "git": {
+      /* ÖLÇÜM SIRASININ İKİNCİ YARISI (bulgu `K-SIRA-3`): `hazir` kapısı
+         yalnız o GEÇİŞTE bakar; paket hazır olduktan SONRA dosya değiştirip
+         commit etmek hâlâ mümkündü ve onu tutan tek şey disiplindi. Commit
+         dosya mtime'larını DEĞİŞTİRMEZ, dolayısıyla aynı kural commit'ten
+         sonra da uygulanabilir: commit'in dokunduğu bir dosya son kapı
+         koşumundan yeniyse, kaydedilecek commit ölçülmemiş bir ağaçtır. */
+      if (komut.kind === "commit") {
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, commitYollari(komut.value));
+        if (gec.length > 0) {
+          uyar(
+            `journal: ÖLÇÜM SIRASI — commit ${komut.value} şu dosya(lar)ı taşıyor ` +
+              `ama onlar son kapı koşumundan SONRA değişti:\n` +
+              gec.map((y) => `  · ${y}`).join("\n") +
+              `\nKapıları yeniden koşun ve commit'i ölçülmüş ağaçla yenileyin.`
+          );
+          process.exitCode = 2;
+          return;
+        }
+      }
       olayYaz(
         komut.packageId,
         { type: "git_recorded", payload: { kind: komut.kind, value: komut.value, subject: komut.subject } },
         komut
       );
       return;
+    }
 
     case "agent":
       olayYaz(
