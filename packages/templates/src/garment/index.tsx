@@ -8,6 +8,7 @@ import {
   GarmentParamsSchema,
   KUMAS_RENKLERI,
   areasForKind,
+  basilacakAlanlar,
   type ClientDTO,
   type DocumentState,
   type GarmentAreaId,
@@ -141,10 +142,10 @@ export function analyzeGarment(client: ClientDTO, doc: DocumentState): GarmentAn
     warnings.push({ type: "broderie-info" });
   }
 
-  /* kind'e uymayan alanlar elenir; boşsa kind'in ilk alanı */
-  const valid = areasForKind(params.garment_kind);
-  let areaIds = params.areas.filter((a) => valid.includes(a));
-  if (areaIds.length === 0) areaIds = [valid[0]];
+  /* Kural TEK YERDE: `basilacakAlanlar` (shared). Burada ikinci bir kopya
+     yaşarsa, dışa aktarımın `?page=i` isteği başka bir listeye denk gelir ve
+     yanlış görsel doğru ölçüde basılır — kopya bu turda kaldırıldı. */
+  const areaIds = basilacakAlanlar(params.garment_kind, params.areas);
 
   const primary = assetById(client, client.brandkit.logo_primary);
   const mono = assetById(client, client.brandkit.logo_mono);

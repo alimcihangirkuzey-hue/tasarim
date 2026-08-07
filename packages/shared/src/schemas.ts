@@ -861,6 +861,37 @@ export function areasForKind(kind: GarmentKind): GarmentAreaId[] {
   );
 }
 
+/**
+ * BASILACAK ALANLAR — TEK KARAR NOKTASI.
+ *
+ * ÖLÇÜLEN YARA (2026-08-07): bu kural İKİ YERDE birebir kopyalanmıştı —
+ * `packages/templates/src/garment/index.tsx` (çizici: sayfa üretir) ve
+ * `apps/server/src/routes/garment.ts` (dışa aktarım: alan başına dosya
+ * yazar). İkisi bugün AYNIYDI, o yüzden hiçbir kapı kırmızı değildi.
+ *
+ * AYRIŞMANIN BEDELİ NEDEN AĞIR: dışa aktarım i'nci alan için çiziciden
+ * `?page=i` ister. İki liste bir gün farklı SIRA ya da farklı UZUNLUK
+ * üretirse, i'nci alanın ölçüsüyle (300 dpi, `GARMENT_AREAS` preset'i)
+ * BAŞKA bir alanın görseli basılır — yanlış tasarım, doğru ölçüde, doğrudan
+ * üretime. Kağıtta görülür, testte görülmez.
+ *
+ * DAVRANIŞ BİREBİR KORUNDU, boş-küme geri düşüşü dahil.
+ *
+ * BOŞ-KÜME GERİ DÜŞÜŞÜ BİR ÜRÜN KARARIDIR ve BURADA VERİLMEDİ: hiçbir
+ * geçerli alan seçili değilse bugün türün İLK alanı basılır — yani operatör
+ * seçmediği bir alan için dosya alır. Sessizdir. Doğrusunun ne olduğu
+ * (reddet mi, uyar mı, ilkini bas mı) tasarım/ürün kararıdır; bu işlev
+ * bugünkü davranışı yalnız TEK YERE taşır ve görünür kılar.
+ */
+export function basilacakAlanlar(
+  kind: GarmentKind,
+  secilen: readonly GarmentAreaId[]
+): GarmentAreaId[] {
+  const gecerli = areasForKind(kind);
+  const suzulen = secilen.filter((a) => gecerli.includes(a));
+  return suzulen.length === 0 ? [gecerli[0]!] : [...suzulen];
+}
+
 /** 300 dpi piksel hesabı: cm × 300 / 2.54, yuvarlanır (FAZ3-GOREV §6 export) */
 export function cmToPx300(cm: number): number {
   return Math.round((cm * 300) / 2.54);

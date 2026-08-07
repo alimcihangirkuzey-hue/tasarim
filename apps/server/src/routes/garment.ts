@@ -42,10 +42,10 @@ export function garmentRoutes(app: FastifyInstance): void {
       .get(found.clientId) as { slug: string; name: string };
 
     /* Alan boyutlarını sayfadan değil preset'ten alırız (deterministik) */
-    const { GARMENT_AREAS, areasForKind } = await import("@tezgah/shared");
-    const valid = areasForKind(params.garment_kind);
-    let areaIds = params.areas.filter((a) => valid.includes(a));
-    if (areaIds.length === 0) areaIds = [valid[0]];
+    const { GARMENT_AREAS, basilacakAlanlar } = await import("@tezgah/shared");
+    /* Kural TEK YERDE (shared): çizici de AYNI işlevi çağırır. İki kopya
+       ayrıştığı gün `?page=i` isteği başka bir alana denk gelirdi. */
+    const areaIds = basilacakAlanlar(params.garment_kind, params.areas);
 
     const kind = params.technique === "broderie" ? "broderie" : "png";
     const version =
