@@ -54,7 +54,16 @@ function Alan({
 
 /** Dosya seçiciyi düğme gibi gösterir — acemi kullanıcı input[type=file]'ın
     çıplak halini "bozuk" diye okur. */
-function FotoSec({ etiket, onSec }: { etiket: string; onSec: (url: string) => void }) {
+function FotoSec({
+  etiket,
+  onSec,
+}: {
+  etiket: string;
+  /* Piksel ölçüsü URL ile BİRLİKTE döner: DPI hesabı fiziksel mm ile
+     gerçek piksel sayısını karşılaştırır; birini alıp diğerini bırakmak
+     kaliteyi ölçülemez kılardı. */
+  onSec: (url: string, w: number | null, h: number | null) => void;
+}) {
   return (
     <label
       style={{
@@ -76,7 +85,14 @@ function FotoSec({ etiket, onSec }: { etiket: string; onSec: (url: string) => vo
         style={{ display: "none" }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onSec(URL.createObjectURL(f));
+          if (!f) return;
+          const url = URL.createObjectURL(f);
+          /* Ölçü okunamazsa null geçilir — uydurma bir değer, DPI uyarısını
+             sessizce yanlış tarafa çevirirdi. */
+          const img = new Image();
+          img.onload = () => onSec(url, img.naturalWidth || null, img.naturalHeight || null);
+          img.onerror = () => onSec(url, null, null);
+          img.src = url;
         }}
       />
     </label>
@@ -138,7 +154,7 @@ function UrunSatiri({
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <FotoSec
           etiket={urun.photo_url ? "Fotoğrafı değiştir" : "Fotoğraf seç"}
-          onSec={(url) => onDegis({ ...urun, photo_url: url })}
+          onSec={(url, w, h) => onDegis({ ...urun, photo_url: url, photo_w: w, photo_h: h })}
         />
         {gizli && <span className="pill warn">sığmadı</span>}
         <span style={{ flex: 1 }} />
@@ -291,7 +307,7 @@ export function BlokDenetci({ blok, onProps, yeniId }: BlokDenetciProps) {
                   ipucu="Sucuk, mantar, biber"
                   onChange={(v) => yaz({ ...it, desc: v })}
                 />
-                <FotoSec etiket={it.photo_url ? "Fotoğrafı değiştir" : "Fotoğraf seç"} onSec={(u) => yaz({ ...it, photo_url: u })} />
+                <FotoSec etiket={it.photo_url ? "Fotoğrafı değiştir" : "Fotoğraf seç"} onSec={(u, w, h) => yaz({ ...it, photo_url: u, photo_w: w, photo_h: h })} />
               </>
             );
           })()}
@@ -302,7 +318,7 @@ export function BlokDenetci({ blok, onProps, yeniId }: BlokDenetciProps) {
             return (
               <FotoSec
                 etiket={c.photo_url ? "Görseli değiştir" : "Görsel seç"}
-                onSec={(u) => onProps({ photo_url: u })}
+                onSec={(u, w, h) => onProps({ photo_url: u, photo_w: w, photo_h: h })}
               />
             );
           })()}

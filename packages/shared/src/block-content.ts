@@ -33,8 +33,15 @@ export const MenuItemSchema = z.object({
   name: z.string().default(""),
   price: z.string().default(""),
   desc: z.string().default(""),
-  /** Yerel fotoğraf (object URL / data URI). Varlık deposu paket 5'in işi. */
+  /** Yerel fotoğraf (object URL / data URI). Varlık deposu ayrı paket. */
   photo_url: z.string().nullable().default(null),
+  /* GERÇEK PİKSEL ÖLÇÜSÜ — effective DPI'ın olmazsa olmazı (paket 5).
+     Ekran px'inden hesap YAPILAMAZ: ekran ölçeği zoom'a, cihaz piksel
+     oranına ve tuval ölçeğine bağlıdır; baskı kalitesi ise yalnız
+     "kaç piksel / kaç mm" sorusudur. Bilinmiyorsa null — o zaman DPI
+     ÖLÇÜLEMEZ ve preflight bunu "geçti" diye YUTMAZ, ayrıca söyler. */
+  photo_w: z.number().int().positive().nullable().default(null),
+  photo_h: z.number().int().positive().nullable().default(null),
   /** YARININ KATALOG BAĞI — bugün hep null, okunmaz. Şema kararlılığı için. */
   catalog_item_id: z.string().nullable().default(null),
 });
@@ -62,6 +69,8 @@ export const HeroIcerikSchema = z.object({
 
 export const GorselIcerikSchema = z.object({
   photo_url: z.string().nullable().default(null),
+  photo_w: z.number().int().positive().nullable().default(null),
+  photo_h: z.number().int().positive().nullable().default(null),
 });
 
 export const KampanyaIcerikSchema = z.object({

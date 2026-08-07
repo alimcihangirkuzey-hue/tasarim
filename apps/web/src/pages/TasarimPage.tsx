@@ -38,7 +38,7 @@ import {
   type LayoutDoc,
   type Panel,
 } from "@tezgah/shared";
-import { autoYerlestir, type AutoRapor } from "@tezgah/templates";
+import { autoYerlestir, preflight, preflightOzet, type AutoRapor } from "@tezgah/templates";
 import { BlokDenetci } from "../components/BlokDenetci";
 import { BlokIcerik } from "../components/BlokIcerik";
 import { t } from "../i18n";
@@ -218,6 +218,20 @@ export function TasarimPage() {
     () => foldLines({ format: doc.format, orientation: doc.orientation, fold: doc.fold, fold_style: doc.fold_style, side }),
     [doc.format, doc.orientation, doc.fold, doc.fold_style, side]
   );
+
+  /* PREFLIGHT — saf motordan, her belge değişiminde yeniden. Hesap SAF
+     olduğu için ucuz ve deterministik; kullanıcı bir şey yazdıkça sonuç
+     canlı güncellenir ama BELGEYE DOKUNMAZ (öneri, düzeltme değil). */
+  const onUcus = useMemo(() => preflight(doc), [doc]);
+
+  /** Bulguya tıklanınca: ilgili bloğu seç ve gerekiyorsa O YÜZE geç.
+      Başka yüzdeki bir bloğu seçip kullanıcıyı boş ekrana bakmakta
+      bırakmak, uyarıyı bulunamaz kılardı. */
+  const bulguyaGit = useCallback((blockId?: string, panelId?: string) => {
+    if (!blockId) return;
+    if (panelId) setSide(panelId.startsWith("ic") ? "ic" : "dis");
+    setSecili(blockId);
+  }, []);
 
   const seciliBlok = useMemo(() => doc.blocks.find((b) => b.id === secili) ?? null, [doc.blocks, secili]);
 
@@ -414,7 +428,12 @@ export function TasarimPage() {
           }}
           title={t("tasarim.bleed_ipucu")}
         >
-          <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}>
+          {/* KAĞIT KIRPAR: panele sığmayan blok mutlak konumlu ve yaprağın
+              dışına kaçıp SAYFANIN GERİ KALANINI kapatıyordu — görsel provada
+              preflight panelinin ilk üç bulgusunun üstüne biniyordu. Kâğıt
+              kâğıttır: dışına hiçbir şey basılmaz. Taşma gizlenmiş olmaz —
+              blok kırmızı çerçeveyle işaretli ve preflight bulgusu açık. */}
+          <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", background: "#fff", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}>
             {yuzPanelleri.map((panel) => {
               const alan = contentArea(panel, doc);
               const bloklar = doc.blocks.filter((b) => b.panel_id === panel.id);
@@ -617,6 +636,73 @@ export function TasarimPage() {
           <span style={{ flex: 1 }} />
           <span>{doc.blocks.length} {t("tasarim.blok_sayisi")}</span>
         </div>
+
+        {/* ── BASKI GÜVENLİĞİ ─────────────────────────────────────────
+            Acemi kullanıcı önce TEK CÜMLE görür; ayrıntı sade Türkçe ve
+            tıklanabilir. Hiçbir şey otomatik düzeltilmez (paket kuralı). */}
+        {doc.blocks.length > 0 && (
+          <div
+            className="epanel"
+            aria-label="Baskı güvenliği"
+            style={{ marginTop: 10, padding: 10 }}
+          >
+            <div className="row" style={{ gap: 8, marginBottom: onUcus.bulgular.length ? 8 : 0 }}>
+              <span
+                className={
+                  onUcus.durum === "blocking" ? "pill red" : onUcus.durum === "warning" ? "pill warn" : "pill ok"
+                }
+                role="status"
+                style={{ fontSize: 13, padding: "4px 12px" }}
+              >
+                {preflightOzet(onUcus)}
+              </span>
+              {onUcus.sayilar.blocking > 0 && (
+                <span style={{ fontSize: 12, color: "var(--c-muted)" }}>
+                  {onUcus.sayilar.blocking} engelleyici
+                </span>
+              )}
+              {onUcus.sayilar.warning > 0 && (
+                <span style={{ fontSize: 12, color: "var(--c-muted)" }}>
+                  {onUcus.sayilar.warning} uyarı
+                </span>
+              )}
+            </div>
+            {onUcus.bulgular.length > 0 && (
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
+                {onUcus.bulgular.map((b, i) => (
+                  <li key={`${b.code}-${b.blockId ?? i}-${i}`}>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => bulguyaGit(b.blockId, b.panelId)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        fontSize: 12,
+                        fontWeight: 400,
+                        padding: "5px 8px",
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "baseline",
+                        borderColor: b.severity === "blocking" ? "#DC2626" : "#F59E0B",
+                      }}
+                    >
+                      <span aria-hidden style={{ color: b.severity === "blocking" ? "#DC2626" : "#B45309" }}>
+                        {b.severity === "blocking" ? "✕" : "⚠"}
+                      </span>
+                      <span style={{ flex: 1 }}>{b.message_tr}</span>
+                      {b.olculen !== undefined && b.esik !== undefined && (
+                        <span style={{ color: "var(--c-muted)", whiteSpace: "nowrap" }}>
+                          {b.olculen} / {b.esik}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {rapor && rapor.yerlesmeyen.length > 0 && (
           <div className="pill warn" role="alert" style={{ display: "block", marginTop: 8, padding: "6px 10px" }}>

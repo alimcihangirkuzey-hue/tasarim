@@ -32,6 +32,11 @@ describe("MenuItem — katalog bağı bugün BOŞ ama alan HAZIR", () => {
       price: "",
       desc: "",
       photo_url: null,
+      /* Piksel ölçüsü NULL doğar (paket 5). Sıfır ya da uydurma bir sayı
+         olsaydı DPI hesabı "ölçüldü" sanılıp yanlış tarafa düşerdi;
+         null "bilinmiyor" demektir ve preflight bunu ayrıca söyler. */
+      photo_w: null,
+      photo_h: null,
       catalog_item_id: null,
     });
   });
