@@ -105,11 +105,16 @@ function UrunSatiri({
   gizli,
   onDegis,
   onSil,
+  onTasi,
 }: {
   urun: MenuItem;
   gizli: boolean;
   onDegis: (u: MenuItem) => void;
   onSil: () => void;
+  /* SIRA KULLANICININ (paket 6): otomatik yerleşim semantik sırayı
+     korur, keyfî sıralamaz. Sürükleme yerine ok düğmesi — acemi
+     kullanıcı için daha az kaza, aynı sonuç. */
+  onTasi: (yon: -1 | 1) => void;
 }) {
   return (
     <div
@@ -158,6 +163,12 @@ function UrunSatiri({
         />
         {gizli && <span className="pill warn">sığmadı</span>}
         <span style={{ flex: 1 }} />
+        <button type="button" className="icon" aria-label={`${urun.name || "Ürün"} yukarı`} onClick={() => onTasi(-1)}>
+          ↑
+        </button>
+        <button type="button" className="icon" aria-label={`${urun.name || "Ürün"} aşağı`} onClick={() => onTasi(1)}>
+          ↓
+        </button>
         <button type="button" className="icon" aria-label={`${urun.name || "Ürün"} sil`} onClick={onSil}>
           ×
         </button>
@@ -193,6 +204,13 @@ function UrunListesiEditoru({
           gizli={i >= ilkGizliIndex}
           onDegis={(yeni) => onDegis(items.map((x) => (x.id === u.id ? yeni : x)))}
           onSil={() => onDegis(items.filter((x) => x.id !== u.id))}
+          onTasi={(yon) => {
+            const j = i + yon;
+            if (j < 0 || j >= items.length) return;
+            const yeni = [...items];
+            [yeni[i], yeni[j]] = [yeni[j], yeni[i]];
+            onDegis(yeni);
+          }}
         />
       ))}
       <button

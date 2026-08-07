@@ -169,6 +169,13 @@ export function TasarimPage() {
      bir düğme, acemi kullanıcıyı denemekten alıkoyar. */
   const [gecmis, setGecmis] = useState<LayoutDoc[]>([]);
   const [rapor, setRapor] = useState<AutoRapor | null>(null);
+  /* OTOMATİK MOD (paket 6). Paket 4'ün kuralı "arka planda sessizce yeniden
+     dizme"ydi ve GEÇERLİ: elle kurulmuş düzen habersiz bozulmaz. Ama
+     kullanıcı bir kez "Otomatik Yerleştir"e bastıysa AKIŞI SEÇMİŞTİR —
+     ondan sonra ürün eklemek/silmek/değiştirmek belgeyi yeniden dengeler,
+     yoksa silinen ürünün yeri boşluk olarak kalırdı. Elle bir blok
+     sürüklendiği anda mod KAPANIR: son söz kullanıcınındır. */
+  const [otoMod, setOtoMod] = useState(false);
 
   /* OTOMATİK YERLEŞİM YALNIZ BURADAN ÇAĞRILIR — açık kullanıcı eylemi.
      Arka planda koşan hiçbir yol yoktur (useEffect yok): kullanıcının
@@ -198,6 +205,7 @@ export function TasarimPage() {
       );
       return yeni;
     });
+    setOtoMod(true);
     setSecili(null);
   }, []);
 
@@ -278,6 +286,8 @@ export function TasarimPage() {
         }
 
         if (tasinanId) {
+          /* Elle taşıma = kullanıcı düzeni devraldı; reflow durur */
+          setOtoMod(false);
           return {
             ...d,
             blocks: d.blocks.map((b) => (b.id === tasinanId ? { ...b, panel_id: panel.id, box: r.box } : b)),
@@ -734,10 +744,18 @@ export function TasarimPage() {
         blok={seciliBlok}
         yeniId={yeniId}
         onProps={(props) =>
-          setDoc((d) => ({
-            ...d,
-            blocks: d.blocks.map((b) => (b.id === secili ? { ...b, props } : b)),
-          }))
+          setDoc((d) => {
+            const guncel = {
+              ...d,
+              blocks: d.blocks.map((b) => (b.id === secili ? { ...b, props } : b)),
+            };
+            /* REFLOW: ürün eklendi/silindi/değişti → belge yeniden dengelenir.
+               YALNIZ otomatik modda; elle kurulmuş düzen korunur. */
+            if (!otoMod) return guncel;
+            const { doc: yeni, rapor: r } = autoYerlestir(guncel);
+            setRapor(r);
+            return yeni;
+          })
         }
       />
     </div>

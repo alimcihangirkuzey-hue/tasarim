@@ -18,6 +18,7 @@ import {
   KategoriIcerikSchema,
   TYPO_MM,
   UrunListesiIcerikSchema,
+  blokOlcegi,
   gridKartOlcusu,
   icerikKapasitesi,
   type Block,
@@ -103,6 +104,10 @@ export interface BlokIcerikProps {
 export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
   const p = blok.props;
   const pad = mm(TYPO_MM.pad);
+  /* Otomatik yerleşimin yazdığı tipografi ölçeği — kapasite hesabı da aynı
+     sayıyı okur (blokOlcegi). Çizim burada ayrışırsa "sıkıştırdım" iddiası
+     ekranda karşılıksız kalır. */
+  const olc = blokOlcegi(p);
 
   if (blok.kind === "kategori_basligi") {
     const c = KategoriIcerikSchema.parse(p);
@@ -134,7 +139,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
           <div key={it.id} style={{ marginBottom: mm(0.6) }}>
             <span style={{ display: "flex", alignItems: "baseline", gap: mm(1) }}>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <Satir px={mm(3.2)}>{it.name || "—"}</Satir>
+                <Satir px={mm(3.2) * olc}>{it.name || "—"}</Satir>
               </span>
               <span
                 style={{
@@ -145,7 +150,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
                 }}
               />
               <span style={{ flex: "0 0 auto" }}>
-                <Satir px={mm(3.2)} kalin>
+                <Satir px={mm(3.2) * olc} kalin>
                   {it.price}
                 </Satir>
               </span>
@@ -165,7 +170,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
     const c = GridIcerikSchema.parse(p);
     const { fits } = icerikKapasitesi(blok.kind, blok.box, p);
     const aciklamaVar = c.items.some((i) => i.desc.trim() !== "");
-    const { photo_h_mm } = gridKartOlcusu(blok.box.w_mm, c.columns, aciklamaVar);
+    const { photo_h_mm } = gridKartOlcusu(blok.box.w_mm, c.columns, aciklamaVar, olc);
     if (c.items.length === 0) return <BosIpucu metin="Ürün grid'i — sağdan ürün ekle" px={mm(3)} />;
     return (
       <div
@@ -180,7 +185,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
         {c.items.slice(0, fits).map((it) => (
           <span key={it.id} style={{ display: "block", minWidth: 0 }}>
             <FotoYeri url={it.photo_url} h={mm(photo_h_mm)} />
-            <Satir px={mm(2.9)} kalin>
+            <Satir px={mm(2.9) * olc} kalin>
               {it.name || "—"}
             </Satir>
             {aciklamaVar && (
@@ -188,7 +193,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
                 {it.desc}
               </Satir>
             )}
-            <Satir px={mm(2.9)}>{it.price}</Satir>
+            <Satir px={mm(2.9) * olc}>{it.price}</Satir>
           </span>
         ))}
       </div>

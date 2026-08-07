@@ -124,12 +124,19 @@ const kalan = (v: number): number => (v > 0 ? v : 0);
  * toplanır, "yükseklik / sabit satır" gibi bir kestirme kullanılmaz
  * (kestirme, açıklamalı listede sessizce taşardı).
  */
-export function listeKapasitesi(h_mm: number, items: readonly MenuItem[]): Kapasite {
+export function listeKapasitesi(
+  h_mm: number,
+  items: readonly MenuItem[],
+  /* TİPOGRAFİ ÖLÇEĞİ (paket 6). Yoğun içerikte satırlar sıkışır; kapasite
+     bunu BİLMEK zorundadır — arayüz küçük çizip kapasite büyük satır
+     varsayarsa "sıkıştırdım" iddiası ölçüye yansımaz ve blok yine taşar. */
+  olcek = 1
+): Kapasite {
   const alan = kalan(h_mm - TYPO_MM.pad * 2);
   let kullanilan = 0;
   let fits = 0;
   for (const it of items) {
-    const satir = TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0);
+    const satir = (TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0)) * olcek;
     if (kullanilan + satir > alan) break;
     kullanilan += satir;
     fits += 1;
@@ -141,13 +148,16 @@ export function listeKapasitesi(h_mm: number, items: readonly MenuItem[]): Kapas
 export function gridKartOlcusu(
   w_mm: number,
   columns: number,
-  aciklamaVar: boolean
+  aciklamaVar: boolean,
+  olcek = 1
 ): { card_w_mm: number; card_h_mm: number; photo_h_mm: number } {
   const ic = kalan(w_mm - TYPO_MM.pad * 2);
   const card_w_mm = kalan((ic - TYPO_MM.grid_gap * (columns - 1)) / columns);
+  /* FOTOĞRAF ORANI SABİT — ölçek yalnız METİN bloğunu sıkıştırır. Oranı
+     ölçekle bozmak, ürün sahibinin açık yasağı ("fotoğraf oranını bozma"). */
   const photo_h_mm = card_w_mm * TYPO_MM.card_photo_ratio;
   const card_h_mm =
-    photo_h_mm + TYPO_MM.card_text + (aciklamaVar ? TYPO_MM.card_desc : 0);
+    photo_h_mm + (TYPO_MM.card_text + (aciklamaVar ? TYPO_MM.card_desc : 0)) * olcek;
   return { card_w_mm, card_h_mm, photo_h_mm };
 }
 
@@ -162,10 +172,11 @@ export function gridKapasitesi(
   w_mm: number,
   h_mm: number,
   columns: number,
-  items: readonly MenuItem[]
+  items: readonly MenuItem[],
+  olcek = 1
 ): Kapasite {
   const aciklamaVar = items.some((i) => i.desc.trim() !== "");
-  const { card_h_mm } = gridKartOlcusu(w_mm, columns, aciklamaVar);
+  const { card_h_mm } = gridKartOlcusu(w_mm, columns, aciklamaVar, olcek);
   if (card_h_mm <= 0) return { fits: 0, hidden: items.length };
   const alan = kalan(h_mm - TYPO_MM.pad * 2);
   /* n satır için gereken yükseklik: n*kart + (n-1)*boşluk */
@@ -184,13 +195,18 @@ export function icerikKapasitesi(
   box: { w_mm: number; h_mm: number },
   props: Record<string, unknown>
 ): Kapasite {
+  /* TİPOGRAFİ ÖLÇEĞİ BLOĞUN ÜSTÜNDE TAŞINIR (paket 6). Otomatik yerleşim
+     yoğunluğa göre sıkıştırıyorsa kapasite ve çizim AYNI sayıyı görmek
+     zorundadır — biri 0.8, diğeri 1 varsayarsa blok bölünmüş ama "gizli
+     ürün" diye raporlanmış olur (ölçüldü: 300 kalemlik belgede hidden=9). */
+  const olcek = blokOlcegi(props);
   if (kind === "fiyat_listesi") {
     const c = UrunListesiIcerikSchema.parse(props);
-    return listeKapasitesi(box.h_mm, c.items);
+    return listeKapasitesi(box.h_mm, c.items, olcek);
   }
   if (kind === "urun_gridi") {
     const c = GridIcerikSchema.parse(props);
-    return gridKapasitesi(box.w_mm, box.h_mm, c.columns, c.items);
+    return gridKapasitesi(box.w_mm, box.h_mm, c.columns, c.items, olcek);
   }
   if (kind === "kategori_basligi") {
     /* Alt başlık İSTEĞE BAĞLI bir kalemdir: sığmazsa çizilmez ve SAYILIR.
@@ -203,6 +219,12 @@ export function icerikKapasitesi(
   }
   /* Diğer bloklar tek/sabit içerik taşır — kalem kapasitesi kavramı yoktur */
   return { fits: 0, hidden: 0 };
+}
+
+/** Bloğun taşıdığı tipografi ölçeği; yoksa 1 (eski blok / manuel yerleşim). */
+export function blokOlcegi(props: Record<string, unknown>): number {
+  const v = props["olcek"];
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 1;
 }
 
 /** Boş ürün — form açılışında kullanılır. */

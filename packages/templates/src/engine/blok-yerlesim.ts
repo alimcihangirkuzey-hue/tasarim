@@ -42,6 +42,7 @@ import {
   type Panel,
 } from "@tezgah/shared";
 import { composeColumns, type CompositionBlock } from "./composition.js";
+import { adaptifKarar, enIyiKolon, type AdaptifKarar } from "./adaptif-tema.js";
 
 /* ── Panel eğilimi ────────────────────────────────────────────────────── */
 
@@ -73,18 +74,18 @@ const yukariIzgara = (v: number, g: number): number => Math.ceil(v / g) * g;
 /* ── Doğal yükseklik ──────────────────────────────────────────────────── */
 
 /** Ürün taşıyan blokta N kalemin gerektirdiği yükseklik (mm). */
-function listeYuksekligi(items: readonly MenuItem[]): number {
+function listeYuksekligi(items: readonly MenuItem[], olcek = 1): number {
   let h = TYPO_MM.pad * 2;
   for (const it of items) {
-    h += TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0);
+    h += (TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0)) * olcek;
   }
   return h;
 }
 
-function gridYuksekligi(items: readonly MenuItem[], columns: number, w_mm: number): number {
+function gridYuksekligi(items: readonly MenuItem[], columns: number, w_mm: number, olcek = 1): number {
   if (items.length === 0) return TYPO_MM.pad * 2;
   const aciklamaVar = items.some((i) => i.desc.trim() !== "");
-  const { card_h_mm } = gridKartOlcusu(w_mm, columns, aciklamaVar);
+  const { card_h_mm } = gridKartOlcusu(w_mm, columns, aciklamaVar, olcek);
   const satir = Math.ceil(items.length / columns);
   return TYPO_MM.pad * 2 + satir * card_h_mm + (satir - 1) * TYPO_MM.grid_gap;
 }
@@ -94,16 +95,16 @@ function gridYuksekligi(items: readonly MenuItem[], columns: number, w_mm: numbe
  * kuralı buradan doğar: 3 ürünlü liste kısa, 12 ürünlü liste uzun olur —
  * sabit varsayılan yükseklik ikisine de yanlış davranırdı.
  */
-export function dogalYukseklik(blok: Block, w_mm: number, grid_mm: number): number {
+export function dogalYukseklik(blok: Block, w_mm: number, grid_mm: number, olcek = 1): number {
   const varsayilan = BLOCK_DEFAULT_SIZE_MM[blok.kind].h_mm;
   let h = varsayilan;
 
   if (blok.kind === "fiyat_listesi") {
     const c = UrunListesiIcerikSchema.parse(blok.props);
-    h = c.items.length === 0 ? varsayilan : listeYuksekligi(c.items);
+    h = c.items.length === 0 ? varsayilan : listeYuksekligi(c.items, olcek);
   } else if (blok.kind === "urun_gridi") {
     const c = GridIcerikSchema.parse(blok.props);
-    h = c.items.length === 0 ? varsayilan : gridYuksekligi(c.items, c.columns, w_mm);
+    h = c.items.length === 0 ? varsayilan : gridYuksekligi(c.items, c.columns, w_mm, olcek);
   } else if (blok.kind === "kategori_basligi") {
     /* Alt başlıksız başlık daha kısadır — boşluğu boşuna yemesin */
     const c = KategoriIcerikSchema.parse(blok.props);
@@ -117,12 +118,12 @@ export function dogalYukseklik(blok: Block, w_mm: number, grid_mm: number): numb
 /* ── Bölme (devam blokları) ───────────────────────────────────────────── */
 
 /** Verilen yüksekliğe kaç kalem sığar — bölme noktasını bulur. */
-function kacKalemSigar(blok: Block, h_mm: number, w_mm: number, items: readonly MenuItem[]): number {
+function kacKalemSigar(blok: Block, h_mm: number, w_mm: number, items: readonly MenuItem[], olcek = 1): number {
   if (blok.kind === "fiyat_listesi") {
     let kullanilan = TYPO_MM.pad * 2;
     let n = 0;
     for (const it of items) {
-      const satir = TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0);
+      const satir = (TYPO_MM.list_row + (it.desc.trim() !== "" ? TYPO_MM.list_desc : 0)) * olcek;
       if (kullanilan + satir > h_mm) break;
       kullanilan += satir;
       n += 1;
@@ -131,7 +132,7 @@ function kacKalemSigar(blok: Block, h_mm: number, w_mm: number, items: readonly 
   }
   const c = GridIcerikSchema.parse(blok.props);
   const aciklamaVar = items.some((i) => i.desc.trim() !== "");
-  const { card_h_mm } = gridKartOlcusu(w_mm, c.columns, aciklamaVar);
+  const { card_h_mm } = gridKartOlcusu(w_mm, c.columns, aciklamaVar, olcek);
   if (card_h_mm <= 0) return 0;
   const alan = h_mm - TYPO_MM.pad * 2;
   const satir = Math.floor((alan + TYPO_MM.grid_gap) / (card_h_mm + TYPO_MM.grid_gap));
@@ -165,18 +166,19 @@ export function parcala(
      payı düşülür. Bu olmadan uzun bir liste tam-sütun parçalara bölünür ve
      başlık ile ilk parça hiçbir zaman birlikte sığamaz — başlık sütun sonunda
      yalnız kalır (ölçüldü: "Pizzalar" ürünlerinden koparılmıştı). */
-  ilkDilim_mm: number = colH_mm
+  ilkDilim_mm: number = colH_mm,
+  olcek = 1
 ): Block[] {
   const items = kalemleriOku(blok);
   if (items.length === 0) return [blok];
-  if (dogalYukseklik(blok, w_mm, grid_mm) <= ilkDilim_mm) return [blok];
+  if (dogalYukseklik(blok, w_mm, grid_mm, olcek) <= ilkDilim_mm) return [blok];
 
   const parcalar: Block[] = [];
   let kalan = items;
   let sira = 1;
   while (kalan.length > 0) {
     const butce = sira === 1 ? ilkDilim_mm : colH_mm;
-    const n = kacKalemSigar(blok, butce, w_mm, kalan);
+    const n = kacKalemSigar(blok, butce, w_mm, kalan, olcek);
     /* SONSUZ DÖNGÜ KORKULUĞU: tek kalem bile sığmıyorsa (aşırı dar sütun)
        zorla bir kalem alırız — parça yine de taşar ama AKIŞ İLERLER ve
        taşma çağıranın raporuna düşer. Sessizce sonsuza dönmek, sayfayı
@@ -223,6 +225,8 @@ export interface AutoRapor {
   urunToplam: number;
   /** Yaprağa yerleşen ürün sayısı */
   urunYerlesen: number;
+  /** PAKET 6: hangi yoğunluk/varyant/ölçekle yerleştirildi */
+  adaptif: AdaptifKarar;
 }
 
 function blokBasligi(b: Block): string {
@@ -241,7 +245,8 @@ function blokBasligi(b: Block): string {
  * Blokları panellere deterministik olarak dağıtır.
  * SAF: girdi doc'u DEĞİŞTİRMEZ, yeni doc döndürür.
  */
-export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapor } {
+export function autoYerlestir(girisDoc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapor } {
+  let doc = girisDoc;
   const paneller = panelsOf(doc);
   const alanlar = new Map(paneller.map((p) => [p.id, contentArea(p, doc)]));
 
@@ -262,6 +267,32 @@ export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapo
     ...paneller.filter((p) => p.side === "dis" && p.role === "kanat"),
     ...paneller.filter((p) => p.side === "dis" && p.role !== "kanat"),
   ];
+
+
+
+  /* 0) DEVAM ZİNCİRİNİ BİRLEŞTİR (paket 6 — REFLOW'un kalbi).
+     Bir önceki yerleşim uzun bloğu `id~2`, `id~3` parçalarına ayırmıştı ve
+     bunlar belgede AYRI bloklar olarak yaşıyor. Yeniden dengelerken önce
+     ana bloğa GERİ TOPLANIRLAR; yoksa ilk parçadan üç ürün silindiğinde o
+     parça kısalır, arkadaki parça yerinde kalır ve ortada BOŞLUK açılır —
+     ürün sahibinin açıkça yasakladığı davranış (ölçüldü: boşluk %2'den
+     %10'a çıkmıştı). Birleştirme sırayı korur: `~2` ana bloğun ardına,
+     `~3` onun ardına. */
+  const birlesik: Block[] = [];
+  const anaIndex = new Map<string, number>();
+  for (const b of doc.blocks) {
+    const m = /^(.*)~(\d+)$/.exec(b.id);
+    const anaId = m ? m[1] : b.id;
+    const mevcut = anaIndex.get(anaId);
+    if (m && mevcut !== undefined) {
+      const ana = birlesik[mevcut];
+      birlesik[mevcut] = kalemleriYaz(ana, [...kalemleriOku(ana), ...kalemleriOku(b)]);
+      continue;
+    }
+    anaIndex.set(anaId, birlesik.length);
+    birlesik.push(m ? { ...b, id: anaId } : b);
+  }
+  doc = { ...doc, blocks: birlesik };
 
   const girisUrun = doc.blocks.reduce((s, b) => s + kalemleriOku(b).length, 0);
 
@@ -323,19 +354,41 @@ export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapo
      bir miktar boşluk kalır — sessiz gizlemeye tercih edilir. */
   const colW = Math.min(...sutunPanelleri.map((p) => alanlar.get(p.id)!.w_mm));
 
+  /* 2·0) ADAPTİF KARAR (paket 6). Önce KAPASİTE tahmini: ölçek 1 ile
+     panellerin taşıyabileceği kaba kalem sayısı. Yoğunluk oradan doğar ve
+     ölçeği belirler. Ölçek MIN_OLCEK'in altına İNMEZ — sığmıyorsa çare
+     kolon/sayfa, font değil (ürün sahibi kuralı, mekanik olarak zorlanır). */
+  const kabaKapasite = Math.max(
+    1,
+    Math.round((colH / 5.5) * Math.max(1, icerikPanelleri.length))
+  );
+  const adaptif = adaptifKarar(girisUrun, kabaKapasite);
+  const olcek = adaptif.olcek;
+
+  /* 2·0b) KOLON ADAY-SKOR (paket 6): grid blokları sabit kolonla değil,
+     gerçek panel ölçüsüne göre SKORLANMIŞ adayla yerleşir. Kullanıcı elle
+     kolon seçtiyse ona dokunulmaz — manuel karar korunur. */
+  const icerikAdaptif = icerik.map((b) => {
+    if (b.kind !== "urun_gridi") return b;
+    const c = GridIcerikSchema.parse(b.props);
+    if (c.items.length === 0) return b;
+    const kolon = enIyiKolon(colW, colH, c.items, olcek, adaptif.varyant.kolonAdaylari);
+    return kolon === c.columns ? b : { ...b, props: { ...b.props, columns: kolon } };
+  });
+
   /* 2a) BÖL — sütuna sığmayan ürün bloğu devam bloklarına ayrılır */
   const parcalar: Parca[] = [];
   let bolunen = 0;
   /* Bir önceki bloğun başlık yüksekliği — sonraki bloğun İLK dilimi bu kadar
      daraltılır ki başlık ile ürünleri aynı sütunda buluşsun. */
   let oncekiBaslikH = 0;
-  for (const b of icerik) {
+  for (const b of icerikAdaptif) {
     const ilkDilim = Math.max(1, colH - oncekiBaslikH);
-    const p = parcala(b, colH, colW, doc.grid_mm, ilkDilim);
+    const p = parcala(b, colH, colW, doc.grid_mm, ilkDilim, olcek);
     bolunen += p.length - 1;
     for (const x of p) parcalar.push({ blok: x, basliktir: x.kind === "kategori_basligi" });
     oncekiBaslikH =
-      b.kind === "kategori_basligi" ? dogalYukseklik(b, colW, doc.grid_mm) : 0;
+      b.kind === "kategori_basligi" ? dogalYukseklik(b, colW, doc.grid_mm, olcek) : 0;
   }
 
   /* 2b) AKIT — ortak besteci. strategy "flow": ilanı "Ürün DÜŞMEZ";
@@ -346,7 +399,7 @@ export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapo
       build: () =>
         parcalar.map<CompositionBlock<Parca>>((p) => ({
           entry: p,
-          h_mm: dogalYukseklik(p.blok, colW, doc.grid_mm),
+          h_mm: dogalYukseklik(p.blok, colW, doc.grid_mm, olcek),
         })),
       typography: { min: 1, max: 1 }, // font ölçeklemesi BU pakette yok
       columns: { kind: "fixed", count: Math.max(1, sutunPanelleri.length) },
@@ -366,6 +419,8 @@ export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapo
     for (const yerlesik of sutun) {
       yeniBloklar.push({
         ...yerlesik.entry.blok,
+        /* Ölçeği bloğa YAZ: kapasite ve çizim aynı sayıyı okusun */
+        props: { ...yerlesik.entry.blok.props, olcek },
         panel_id: panel.id,
         box: {
           x_mm: alan.x_mm,
@@ -397,6 +452,7 @@ export function autoYerlestir(doc: LayoutDoc): { doc: LayoutDoc; rapor: AutoRapo
       yerlesmeyen,
       urunToplam: girisUrun,
       urunYerlesen,
+      adaptif,
     },
   };
 }
