@@ -268,7 +268,14 @@ export function TasarimPage() {
                 gap: 6,
                 padding: 8,
                 cursor: "grab",
-                background: "var(--c-surface,#fff)",
+                background: "var(--c-card,#fff)",
+                /* RENK AÇIKÇA VERİLİR: global `button` kuralı (styles.css:43)
+                   color:#fff dayatıyor — açık zeminli bu düğmede etiket beyaz
+                   üstüne beyaz kalıyordu. Görsel provada yakalandı: blok
+                   isimleri DOM'da vardı, ekranda yoktu. jsdom testleri bunu
+                   yakalayamaz (styles.css yüklenmez) — kanıt görüntünün
+                   kendisidir. */
+                color: "var(--c-ink,#1a1a1a)",
                 border: "1px solid var(--c-line,#DDD6C8)",
                 borderRadius: 8,
                 textAlign: "left",
@@ -470,10 +477,12 @@ export function TasarimPage() {
                   pointerEvents: "none",
                 }}
               >
+                {/* Etiket ALTTA: üstte panel adıyla çakışıyordu (görsel provada
+                    görüldü — "kat" yazısı "ARKA"nın üstüne biniyordu). */}
                 <span
                   style={{
                     position: "absolute",
-                    top: -1,
+                    bottom: 2,
                     left: 3,
                     fontSize: 9,
                     color: "#9C8C4E",
