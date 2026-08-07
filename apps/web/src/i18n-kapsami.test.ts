@@ -37,6 +37,8 @@ import {
   siparisSubstratlari,
   siparisTeknikleri,
 } from "@tezgah/templates/identity";
+import * as shared from "@tezgah/shared";
+import * as identity from "@tezgah/templates/identity";
 import tr from "./i18n/tr.json";
 import { t } from "./i18n";
 import { SIPARIS_YONLERI } from "./lib/siparisSecenekleri";
@@ -180,5 +182,105 @@ describe("istisna tablosu — gerekçesiz istisna olamaz", () => {
         ).toBe("string");
       }
     }
+  });
+});
+
+
+describe("KAPSAM NÖBETÇİSİ — ilanı olan bir aile tablodan DÜŞEMEZ", () => {
+  /* NİYE VAR (önceki paketin açık bulgusu `K1D-AILE-1`): nöbetçinin kapsamı
+     KENDİ TABLOSUDUR. Bir negatif kontrolde üç aile `AILELER`'den çıkarıldı ve
+     takım YEŞİL kaldı — testler kırılmadı, YOK OLDU. Yani "kapsam büyüdü"
+     kazanımı kalıcı değildi; kimse geri almayı fark etmezdi.
+
+     ARAÇ SEÇİMİ ÖLÇÜMLE YAPILDI, İKİ KEZ: önce "her önek ailesi ya tabloda ya
+     gerekçeli istisnada" denendi ve REDDEDİLDİ — `tr.json`'da 2+ üyeli 79 önek
+     ailesi var, ilan destekli olan 10; istisna tablosu ~70 satır "bu yalnızca
+     bir adlandırma alışkanlığı" olur ve gerçek olanları gömerdi. İkinci araç
+     ölçüldü ve KESKİN çıktı: `@tezgah/shared` + `identity`'den okunan 47 aday
+     ilan × 79 aile karşılaştırıldığında ÜYE KÜMESİ BİREBİR ÖRTÜŞEN yalnızca
+     7 aile var — ve yedisi de bugün tabloda. Yani kural gürültüsüz.
+
+     KURAL: bir ilanın üye kümesiyle BİREBİR aynı anahtar kümesine sahip bir
+     metin ailesi varsa, o aile `AILELER`'de OLMAK ZORUNDADIR. Örtüşme
+     tesadüf değildir: sözlük o ilanı gölgeliyor demektir. */
+
+  interface AdayIlan {
+    kaynak: string;
+    ad: string;
+    uyeler: readonly string[];
+  }
+
+  /** Zod enum (`.options`) ya da düz dize dizisi olan her dışa aktarım. */
+  function adayIlanlar(): AdayIlan[] {
+    const bulunan: AdayIlan[] = [];
+    const topla = (kaynak: string, mod: Record<string, unknown>): void => {
+      for (const [ad, v] of Object.entries(mod)) {
+        const opts = (v as { options?: unknown } | null)?.options;
+        if (Array.isArray(opts) && opts.every((x) => typeof x === "string")) {
+          bulunan.push({ kaynak, ad, uyeler: opts as string[] });
+        } else if (Array.isArray(v) && v.length > 1 && v.every((x) => typeof x === "string")) {
+          bulunan.push({ kaynak, ad, uyeler: v as string[] });
+        }
+      }
+    };
+    topla("shared", shared as unknown as Record<string, unknown>);
+    topla("identity", identity as unknown as Record<string, unknown>);
+    return bulunan;
+  }
+
+  /** tr.json'daki her `onek_` ailesi: yol ("orders.st_") + üye adları. */
+  function onekAileleri(): Array<{ yol: string; uyeler: string[] }> {
+    const cikan: Array<{ yol: string; uyeler: string[] }> = [];
+    const bak = (dal: string, nesne: Record<string, unknown>): void => {
+      const grup = new Map<string, string[]>();
+      for (const [k, v] of Object.entries(nesne)) {
+        if (v && typeof v === "object") {
+          bak(dal ? `${dal}.${k}` : k, v as Record<string, unknown>);
+          continue;
+        }
+        const m = /^([a-z]+_)(.+)$/.exec(k);
+        if (m) grup.set(m[1]!, [...(grup.get(m[1]!) ?? []), m[2]!]);
+      }
+      for (const [onek, uyeler] of grup) cikan.push({ yol: `${dal}.${onek}`, uyeler });
+    };
+    bak("", KOK);
+    return cikan;
+  }
+
+  const ayniKume = (a: readonly string[], b: readonly string[]): boolean =>
+    a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+
+  /** İlanı bir metin ailesiyle birebir örtüşen çiftler. */
+  function ortusenler(): Array<{ yol: string; ilan: string }> {
+    const aileler = onekAileleri();
+    return adayIlanlar().flatMap((i) =>
+      aileler
+        .filter((a) => ayniKume(a.uyeler, i.uyeler))
+        .map((a) => ({ yol: a.yol, ilan: `${i.kaynak}.${i.ad}` })),
+    );
+  }
+
+  it("ÖN-KOŞUL: tarama GERÇEKTEN ilan ve aile buluyor", () => {
+    /* İkisi de olmadan "kaçak yok" iddiası, hiçbir şey bulamayan bozuk bir
+       tarayıcıyla da yeşil kalırdı — bu deponun defalarca ödediği kör nokta. */
+    expect(adayIlanlar().length, "hiç aday ilan bulunamadı").toBeGreaterThan(10);
+    expect(onekAileleri().length, "hiç önek ailesi bulunamadı").toBeGreaterThan(10);
+  });
+
+  it("ÖN-KOŞUL: BİREBİR ÖRTÜŞEN en az bir çift var", () => {
+    /* Örtüşme hiç olmasaydı aşağıdaki kural KONUSUZ olurdu ve sessizce
+       "kaçak yok" derdi. */
+    expect(ortusenler().length, "hiçbir ilan bir aileyle örtüşmüyor").toBeGreaterThan(0);
+  });
+
+  it("örtüşen HER aile AILELER tablosunda", () => {
+    const tablodaki = new Set(AILELER.map((a) => `${a.dal}.${a.onek}`));
+    const kacan = [...new Set(ortusenler().filter((o) => !tablodaki.has(o.yol)).map((o) => `${o.yol} (${o.ilan})`))];
+    expect(
+      kacan,
+      "Bu metin ailesi bir İLANIN üye kümesiyle BİREBİR örtüşüyor ama nöbetçi " +
+        "tablosunda YOK: ilan büyüdüğü gün eksik anahtar sessizce ham anahtar " +
+        "olarak basılır (`t()` bulunamayanı aynen döndürür). AILELER'e ekleyin.",
+    ).toEqual([]);
   });
 });
