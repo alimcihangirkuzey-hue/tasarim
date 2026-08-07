@@ -11,7 +11,8 @@ export * from "./parse.js";
 export * from "./homography.js";
 export * from "./mockup.js";
 export * from "./canvas.js";
-export * from "./block-layout.js"; // acemi tasarım builder: blok yerleşim çekirdeği (saf)
+export * from "./block-layout.js";
+export * from "./block-content.js"; // paket 3: blok içerik modeli + kapasite // acemi tasarım builder: blok yerleşim çekirdeği (saf)
 export * from "./intake-ux.js";
 export * from "./bulk-price.js";
 export * from "./photo-suggest.js";

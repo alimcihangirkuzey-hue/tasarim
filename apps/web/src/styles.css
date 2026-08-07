@@ -303,3 +303,18 @@ button.icon { padding: 4px 8px; font-size: 13px; background: transparent; color:
 .intake-catgroup summary { min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 14px; cursor: pointer; font-size: 15px; }
 .intake-catgroup[open] summary { border-bottom: 1px solid var(--c-line); }
 .intake-catgroup > .intake-list { padding: 10px; }
+
+/* Blok tuvali üç sütunludur (palet + tuval + denetçi) ve .container'ın
+   1100px'ine SIĞMAZ — denetçi sağdan kırpılıyordu (görsel provada ölçüldü).
+   Tam genişliğe taşar; dar ekranda yatay kaydırma açılır, kırpma olmaz. */
+.tasarim-alan {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100vw - 48px);
+  max-width: 1600px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+/* Uzun ürün listesi sayfayı uzatmasın — denetçi kendi içinde kayar. */
+.tasarim-alan .epanel { max-height: calc(100vh - 140px); overflow-y: auto; }

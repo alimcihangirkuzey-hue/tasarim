@@ -63,7 +63,9 @@ export const BlockKindSchema = z.enum(BLOCK_KINDS);
    alanına sıkıştırır (taşma sessiz kalmaz, bildirilir).
    Yeniden boyutlandırma kullanıcının elindedir — bunlar yalnız TOHUM. */
 export const BLOCK_DEFAULT_SIZE_MM: Record<BlockKind, { w_mm: number; h_mm: number }> = {
-  kategori_basligi: { w_mm: 85, h_mm: 12 },
+  /* 18mm: pad + başlık + ayraç + ALT BAŞLIK. 12mm idi ve alt başlık
+     sessizce kırpılıyordu — görsel provada ölçüldü (26px kutuya 38px içerik). */
+  kategori_basligi: { w_mm: 85, h_mm: 18 },
   urun_karti: { w_mm: 40, h_mm: 45 },
   urun_gridi: { w_mm: 85, h_mm: 70 },
   fiyat_listesi: { w_mm: 85, h_mm: 60 },

@@ -1,0 +1,10 @@
+gate: lint
+runner: linux/node22.22.2/npm10.9.7
+cwd: /home/user/tasarim
+
+$ npx eslint . --format json -o "/tmp/tezgah-gate-uOanfI/eslint.json"
+exit: 1  duration_ms: 10067
+--- stdout ---
+
+--- stderr ---
+

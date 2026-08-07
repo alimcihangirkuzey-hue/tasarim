@@ -14,10 +14,12 @@
    paneller adlarıyla etiketli (Ön kapak / Arka / İç 1) · kat çizgileri
    kesikli ve adlandırılmış · bırakılabilir alan sürükleme sırasında vurgulanır.
 
-   BİLİNÇLİ DAR KAPSAM: bloklar İÇERİK taşımaz — ürün formu ve katalog bağı
-   paket 3'tür. Buradaki blok bir YER TUTUCUDUR; ekranda tipini ve ölçüsünü
-   gösterir. Kalıcılık da yok: durum sayfa yerelinde yaşar (sunucu evi ayrı
-   karar — CD v1'e additive alan açmak ürün yönü netleşmeden yapılmaz). */
+   PAKET 3 EKİ: bloklar artık GERÇEK İÇERİK taşır (BlokIcerik çizer, BlokDenetci
+   düzenler). İçerik kapasitesi de çekirdekten gelir — bloğa sığmayan ürün
+   SİLİNMEZ, gizlenir ve hem tuvalde hem denetçide sayılarak bildirilir.
+   Hâlâ kapsam DIŞI: katalog entegrasyonu · DB kalıcılığı · zoom · yeniden
+   boyutlandırma tutamağı · tam auto-layout. Durum sayfa yerelinde yaşar
+   (sunucu evi ürün yönü netleşmeden açılmaz). */
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -29,11 +31,15 @@ import {
   overflowingBlocks,
   panelsOf,
   placeBlock,
+  icerikKapasitesi,
+  varsayilanIcerik,
   type Block,
   type BlockKind,
   type LayoutDoc,
   type Panel,
 } from "@tezgah/shared";
+import { BlokDenetci } from "../components/BlokDenetci";
+import { BlokIcerik } from "../components/BlokIcerik";
 import { t } from "../i18n";
 
 /* Ekran ölçeği: 1mm kaç piksel. A4 yatay 297mm → ~2.3 px/mm ≈ 683px, tipik
@@ -165,6 +171,20 @@ export function TasarimPage() {
     [doc.format, doc.orientation, doc.fold, doc.fold_style, side]
   );
 
+  const seciliBlok = useMemo(() => doc.blocks.find((b) => b.id === secili) ?? null, [doc.blocks, secili]);
+
+  /* İÇERİK taşması — blok kutusunun PANEL taşmasından ayrı bir kavram.
+     Blok panele sığabilir ama içindeki 12 üründen 3'ü görünmüyor olabilir;
+     ikisi de sessiz kalmamalı, ikisi ayrı işaretlenmeli. */
+  const icerikTasanlar = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const b of doc.blocks) {
+      const { hidden } = icerikKapasitesi(b.kind, b.box, b.props);
+      if (hidden > 0) m.set(b.id, hidden);
+    }
+    return m;
+  }, [doc.blocks]);
+
   const tasanlar = useMemo(
     () => new Set(yuzPanelleri.flatMap((p) => overflowingBlocks(doc, p.id))),
     [doc, yuzPanelleri]
@@ -201,7 +221,8 @@ export function TasarimPage() {
             blocks: d.blocks.map((b) => (b.id === tasinanId ? { ...b, panel_id: panel.id, box: r.box } : b)),
           };
         }
-        const yeni: Block = { id: yeniId(), kind, panel_id: panel.id, box: r.box, props: {} };
+        /* Blok TIPLI icerikle dogar (paket 3): props artik serbest kayit degil */
+        const yeni: Block = { id: yeniId(), kind, panel_id: panel.id, box: r.box, props: varsayilanIcerik(kind) };
         setSecili(yeni.id);
         return { ...d, blocks: [...d.blocks, yeni] };
       });
@@ -245,7 +266,7 @@ export function TasarimPage() {
   };
 
   return (
-    <div className="row" style={{ alignItems: "flex-start", gap: 16 }}>
+    <div className="tasarim-alan row" style={{ alignItems: "flex-start", gap: 16 }}>
       {/* ── PALET ─────────────────────────────────────────────────────── */}
       <aside className="epanel" style={{ width: 190, flex: "0 0 auto" }} aria-label={t("tasarim.palet")}>
         <h3>{t("tasarim.palet")}</h3>
@@ -413,9 +434,10 @@ export function TasarimPage() {
                           width: mm(b.box.w_mm),
                           height: mm(b.box.h_mm),
                           boxSizing: "border-box",
-                          padding: 4,
                           cursor: "grab",
-                          overflow: "hidden",
+                          /* Seçilide görünür: silme düğmesi kutunun DIŞINDA.
+                             Seçili değilken hidden — içerik komşu bloğa taşmaz. */
+                          overflow: secili === b.id ? "visible" : "hidden",
                           background: tasti ? "rgba(220,80,60,0.10)" : "rgba(255,255,255,0.92)",
                           border: tasti
                             ? "1.5px solid #DC5038"
@@ -426,10 +448,27 @@ export function TasarimPage() {
                         }}
                         title={BLOCK_LABEL[b.kind]}
                       >
-                        <span style={{ fontSize: 9, color: "#6B6459", display: "block", marginBottom: 3 }}>
-                          {BLOCK_LABEL[b.kind]}
-                        </span>
-                        <BlockFace kind={b.kind} />
+                        <BlokIcerik blok={b} mm={mm} />
+                        {icerikTasanlar.has(b.id) && (
+                          <span
+                            aria-label={`${BLOCK_LABEL[b.kind]}: ${icerikTasanlar.get(b.id)} ürün sığmadı`}
+                            title={`${icerikTasanlar.get(b.id)} ürün sığmadı`}
+                            style={{
+                              position: "absolute",
+                              left: 2,
+                              bottom: 2,
+                              fontSize: 9,
+                              lineHeight: "12px",
+                              padding: "0 4px",
+                              borderRadius: 3,
+                              background: "#FEF3C7",
+                              border: "1px solid #F59E0B",
+                              color: "#92400E",
+                            }}
+                          >
+                            +{icerikTasanlar.get(b.id)}
+                          </span>
+                        )}
                         {secili === b.id && (
                           <button
                             type="button"
@@ -438,10 +477,13 @@ export function TasarimPage() {
                               e.stopPropagation();
                               sil(b.id);
                             }}
+                            /* Bloğun DIŞINA taşar: içeride dururken metnin
+                               üstünü kapatıyordu — görsel provada "75 ₺"
+                               ekranda "7" görünüyordu. */
                             style={{
                               position: "absolute",
-                              right: 2,
-                              top: 2,
+                              right: -8,
+                              top: -8,
                               width: 16,
                               height: 16,
                               lineHeight: "14px",
@@ -522,6 +564,17 @@ export function TasarimPage() {
           </div>
         )}
       </section>
+
+      <BlokDenetci
+        blok={seciliBlok}
+        yeniId={yeniId}
+        onProps={(props) =>
+          setDoc((d) => ({
+            ...d,
+            blocks: d.blocks.map((b) => (b.id === secili ? { ...b, props } : b)),
+          }))
+        }
+      />
     </div>
   );
 }

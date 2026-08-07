@@ -16,6 +16,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
+import { BLOCK_DEFAULT_SIZE_MM } from "@tezgah/shared";
 import { PX_PER_MM_TEST, TasarimPage } from "./TasarimPage";
 
 afterEach(cleanup);
@@ -111,23 +112,25 @@ describe("Blok tuvali — blok ekleme", () => {
   it("TIKLA-EKLE: palete tıklayınca blok ilk panele düşer", () => {
     render(<TasarimPage />);
     fireEvent.click(within(screen.getByLabelText("Bloklar")).getByText("Hero Ürün"));
-    expect(within(panel("dis-0")).getByText("Hero Ürün")).toBeDefined();
+    /* Tuvaldeki blok artık tip adını METİN olarak basmaz — GERÇEK İÇERİK
+       basar (paket 3). Kimlik title niteliğinden okunur. */
+    expect(within(panel("dis-0")).getByTitle("Hero Ürün")).toBeDefined();
   });
 
   it("SÜRÜKLE-BIRAK: paletten bırakılan blok HEDEF panele düşer (ilkine değil)", () => {
     render(<TasarimPage />);
     birak(panel("dis-2"), "yeni:logo");
-    expect(within(panel("dis-2")).getByText("Logo")).toBeDefined();
-    expect(within(panel("dis-0")).queryByText("Logo")).toBeNull();
+    expect(within(panel("dis-2")).getByTitle("Logo")).toBeDefined();
+    expect(within(panel("dis-0")).queryByTitle("Logo")).toBeNull();
   });
 
   it("her panel kendi bloklarını tutar — paneller bağımsız uzaylar", () => {
     render(<TasarimPage />);
     birak(panel("dis-0"), "yeni:fiyat_listesi");
     birak(panel("dis-1"), "yeni:urun_gridi");
-    expect(within(panel("dis-0")).getByText("Fiyat Listesi")).toBeDefined();
-    expect(within(panel("dis-1")).getByText("Ürün Grid'i")).toBeDefined();
-    expect(within(panel("dis-1")).queryByText("Fiyat Listesi")).toBeNull();
+    expect(within(panel("dis-0")).getByTitle("Fiyat Listesi")).toBeDefined();
+    expect(within(panel("dis-1")).getByTitle("Ürün Grid'i")).toBeDefined();
+    expect(within(panel("dis-1")).queryByTitle("Fiyat Listesi")).toBeNull();
   });
 
   it("KARIŞIK YERLEŞİM: aynı panelde grid + fiyat listesi + hero yan yana yaşar", () => {
@@ -137,9 +140,9 @@ describe("Blok tuvali — blok ekleme", () => {
     birak(panel("dis-1"), "yeni:fiyat_listesi");
     birak(panel("dis-1"), "yeni:hero_urun");
     const p = panel("dis-1");
-    expect(within(p).getByText("Ürün Grid'i")).toBeDefined();
-    expect(within(p).getByText("Fiyat Listesi")).toBeDefined();
-    expect(within(p).getByText("Hero Ürün")).toBeDefined();
+    expect(within(p).getByTitle("Ürün Grid'i")).toBeDefined();
+    expect(within(p).getByTitle("Fiyat Listesi")).toBeDefined();
+    expect(within(p).getByTitle("Hero Ürün")).toBeDefined();
   });
 });
 
@@ -162,10 +165,15 @@ describe("Blok tuvali — saf çekirdeğin sonucu EKRANA ulaşıyor", () => {
 
   it("ÇARPIŞMA: dolu yere bırakılan ikinci blok AŞAĞI iner, üst üste binmez", () => {
     render(<TasarimPage />);
-    birak(panel("dis-1"), "yeni:kategori_basligi", 5, 5); // 5..17 (h=12)
+    birak(panel("dis-1"), "yeni:kategori_basligi", 5, 5);
     birak(panel("dis-1"), "yeni:logo", 5, 5); // aynı yere
     const logo = within(panel("dis-1")).getByTitle("Logo");
-    expect(logo.style.top).toBe(`${17 * PX_PER_MM_TEST}px`); // başlığın altı
+    /* Beklenen değer SABİTTEN türetilir, elle yazılmaz: varsayılan blok
+       yüksekliği değiştiği gün (paket 3'te 12→18 oldu) sihirli sayı sessizce
+       yanlış bir şey ölçmeye başlardı. Ölçülen ilişki: ikinci blok birincinin
+       ALTINA iner. */
+    const basligiAlti = 5 + BLOCK_DEFAULT_SIZE_MM.kategori_basligi.h_mm;
+    expect(logo.style.top).toBe(`${basligiAlti * PX_PER_MM_TEST}px`);
     expect(screen.getByText("Yer açıldı — blok aşağı kaydı")).toBeDefined();
   });
 
