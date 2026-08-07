@@ -12,6 +12,8 @@ import { MenuItemSchema, gridKartOlcusu, type MenuItem } from "@tezgah/shared";
 import {
   MIN_KART_MM,
   MIN_OLCEK,
+  OLCEK_ADAYLARI,
+  hedefDoluluk,
   TEMA_AILESI,
   YOGUNLUK_OLCEGI,
   adaptifKarar,
@@ -161,6 +163,119 @@ describe("Ölçek KAPASİTEYE yansır — 'sıkıştırdım' iddiası ölçülü
     const sikisik = gridKartOlcusu(85, 3, false, MIN_OLCEK);
     expect(sikisik.photo_h_mm).toBeCloseTo(sade.photo_h_mm, 6); // ORAN SABİT
     expect(sikisik.card_h_mm).toBeLessThan(sade.card_h_mm); // METİN sıkıştı
+  });
+});
+
+/* ── DOLULUK TABANLI KARAR (paket 6.6) ────────────────────────────────── */
+
+describe("Ölçek DOLULUKTAN doğar, ürün SAYISINDAN değil", () => {
+  /* PAKET 6.6'NIN ÇEKİRDEK DÜZELTMESİ. Ölçüldü (gerçek Chromium): 100
+     ürünlük belgede son panelin %36'sı BOŞken metin 0.9'a küçültülüyordu,
+     çünkü ölçek `temaVaryanti(100).olcek` ile tavanlanıyordu. Ürün sayısı
+     bir yoğunluk ölçüsü DEĞİL: 100 kalem A4 üç panelde ferah, kartvizitte
+     imkânsız. Yoğunluğu KALEM/ALAN oranı belirler. */
+  it("AYNI ürün sayısı, iki farklı alan → İKİ FARKLI ölçek", () => {
+    const bol = adaptifKarar(100, 270); // gerçek A4 iki kırım kapasitesi
+    const dar = adaptifKarar(100, 110);
+    expect(bol.olcek).toBeGreaterThan(dar.olcek);
+  });
+
+  it("100 ÜRÜN + BOL ALAN → küçültme YOK (paket 6.6 regresyon çivisi)", () => {
+    /* Ölçülen gerçek durum: 100 kalem, yaprak kapasitesi ~270. Eski motor
+       burada 0.9 veriyordu; yeni motor küçültmemeli. */
+    const k = adaptifKarar(100, 270);
+    expect(k.olcek).toBeGreaterThanOrEqual(1);
+    expect(k.ekSayfaOner).toBe(false);
+  });
+
+  it("OKUNABİLİRLİK ÖNCE: her şey sığıyorsa en KÜÇÜK ölçek seçilmez", () => {
+    /* Skorda okunabilirlik pozitif terim olmasa motor "hepsi sığıyor" diye
+       tabanı seçerdi — sığmak okunmak değildir. */
+    const k = adaptifKarar(20, 300);
+    expect(k.olcek).toBeGreaterThan(MIN_OLCEK);
+    expect(k.olcek).toBeGreaterThan(1);
+  });
+
+  it("TABAN AŞILAMAZ: taban bile yetmiyorsa ölçek tabanda durur ve SAYFA ÖNERİLİR", () => {
+    const k = adaptifKarar(5000, 100);
+    expect(k.olcek).toBe(MIN_OLCEK);
+    expect(k.olcek).toBeGreaterThanOrEqual(0.75);
+    /* Sessizce daha da küçültmek yasak — çözüm SÖYLENİR */
+    expect(k.ekSayfaOner).toBe(true);
+  });
+
+  it("sığan belgede sayfa ÖNERİLMEZ", () => {
+    expect(adaptifKarar(50, 300).ekSayfaOner).toBe(false);
+  });
+
+  it("adaylar SKORLU ve SIRALI döner — karar denetlenebilir", () => {
+    const k = adaptifKarar(100, 270);
+    expect(k.adaylar).toHaveLength(OLCEK_ADAYLARI.length);
+    for (let i = 1; i < k.adaylar.length; i++) {
+      expect(k.adaylar[i - 1].skor).toBeGreaterThanOrEqual(k.adaylar[i].skor);
+    }
+    /* Hiçbir aday tabanın altında olamaz */
+    for (const a of k.adaylar) expect(a.olcek).toBeGreaterThanOrEqual(MIN_OLCEK);
+  });
+
+  it("İKİ DOLULUK ayrı şey: girdi (ölçek 1) ile seçilen ölçekteki", () => {
+    const k = adaptifKarar(60, 120);
+    expect(k.doluluk).toBeCloseTo(0.5, 6); // ölçek 1'de — GİRDİ sinyali
+    expect(k.secilenDoluluk).not.toBeCloseTo(k.doluluk, 6); // ferah ölçek seçildi
+    expect(k.secilenDoluluk).toBeGreaterThan(k.doluluk);
+  });
+});
+
+describe("İçerik BİÇİMİ karara girer", () => {
+  it("AÇIKLAMALI içerik daha çok nefes ister — hedef doluluk DÜŞER", () => {
+    expect(hedefDoluluk({ aciklamaOrani: 1 })).toBeLessThan(hedefDoluluk({}));
+  });
+
+  it("FOTOĞRAFLI içerik de hedefi düşürür", () => {
+    expect(hedefDoluluk({ fotoOrani: 1 })).toBeLessThan(hedefDoluluk({}));
+  });
+
+  it("ikisi birlikte en düşük hedefi verir ama MAKUL kalır", () => {
+    const h = hedefDoluluk({ aciklamaOrani: 1, fotoOrani: 1 });
+    expect(h).toBeLessThan(hedefDoluluk({ aciklamaOrani: 1 }));
+    expect(h).toBeGreaterThan(0.4); // hedef sıfıra gitmez: sayfa israfı da kusurdur
+  });
+
+  it("bozuk oranlar çökmez ve aralık dışına taşmaz", () => {
+    expect(hedefDoluluk({ aciklamaOrani: -5, fotoOrani: 99 })).toBeLessThanOrEqual(0.88);
+    expect(hedefDoluluk({ aciklamaOrani: Number.NaN })).toBeGreaterThan(0);
+  });
+
+  /* PROFİLİN GÖREVİ NE DEĞİL, NE. Bu iddianın ilk hâli "profil ÖLÇEĞİ
+     değiştirir" diyordu ve kızardı; hesabı elle yürütünce anladım ki
+     değiştirmemesi DOĞRU. Kapasite ölçekle ters orantılı olduğu için
+     "daha ferah olsun" isteğini ölçeğe bağlamak "fontu küçült" demeye
+     çıkıyor — ürün sahibinin yasağı. Profilin işi SAYFA ÖNERMEK. */
+  it("profil ÖLÇEĞİ değiştirmez — ferahlık fontu küçültmekle kazanılmaz", () => {
+    const sade = adaptifKarar(140, 250);
+    const zengin = adaptifKarar(140, 250, { aciklamaOrani: 1, fotoOrani: 1 });
+    expect(zengin.olcek).toBe(sade.olcek);
+    expect(zengin.olcek).toBeGreaterThanOrEqual(MIN_OLCEK);
+  });
+
+  it("profil SAYFA ÖNERİSİNİ değiştirir (süs parametre değil)", () => {
+    /* Aynı kalem ve alan; doluluk %70. Sade içerik için bu rahat (hedef
+       %88), açıklamalı+fotoğraflı içerik için sıkışık (hedef %58) →
+       ikincisinde bir sayfa daha açmak okunabilirliği artırır. */
+    const sade = adaptifKarar(140, 250);
+    const zengin = adaptifKarar(140, 250, { aciklamaOrani: 1, fotoOrani: 1 });
+    expect(sade.secilenDoluluk).toBeCloseTo(zengin.secilenDoluluk, 6); // aynı yerleşim
+    expect(sade.ferahSayfaOner).toBe(false);
+    expect(zengin.ferahSayfaOner).toBe(true);
+    expect(zengin.hedefDoluluk).toBeLessThan(sade.hedefDoluluk);
+  });
+
+  it("SIĞMAMA ile FERAHLIK önerisi ayrı şeyler", () => {
+    /* Sığmıyorsa sayfa ZORUNLU; sığıyor ama sıkışıksa sayfa ÖNERİ. İkisini
+       tek bayrakta toplamak "zorunlu" ile "iyi olur"u karıştırırdı. */
+    const tasan = adaptifKarar(5000, 100);
+    expect(tasan.ekSayfaOner).toBe(true);
+    expect(tasan.ferahSayfaOner).toBe(false); // zorunlu hâlde öneri tekrar edilmez
   });
 });
 

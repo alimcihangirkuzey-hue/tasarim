@@ -436,7 +436,19 @@ export function autoYerlestir(girisDoc: LayoutDoc): { doc: LayoutDoc; rapor: Aut
     1,
     Math.round((colH / 5.5) * Math.max(1, icerikPanelleri.length))
   );
-  const adaptif = adaptifKarar(girisUrun, kabaKapasite);
+  /* İÇERİK PROFİLİ (paket 6.6): ölçek kararı yalnız SAYIYA değil içeriğin
+     BİÇİMİNE de bakar. Açıklamalı ve fotoğraflı kalemler aynı doluluğa
+     geldiğinde daha çabuk boğulur, o yüzden hedef doluluk aşağı çekilir.
+     Oranlar gerçek kalemlerden sayılır — varsayılmaz. */
+  const tumKalemler = doc.blocks.flatMap((b) => kalemleriOku(b));
+  const profil =
+    tumKalemler.length > 0
+      ? {
+          aciklamaOrani: tumKalemler.filter((i) => i.desc.trim() !== "").length / tumKalemler.length,
+          fotoOrani: tumKalemler.filter((i) => i.photo_url !== null).length / tumKalemler.length,
+        }
+      : {};
+  const adaptif = adaptifKarar(girisUrun, kabaKapasite, profil);
   const olcek = adaptif.olcek;
 
   /* 2·0b) KOLON ADAY-SKOR (paket 6): grid blokları sabit kolonla değil,

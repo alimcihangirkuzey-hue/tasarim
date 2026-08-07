@@ -139,7 +139,22 @@ describe("SIRA KULLANICININ", () => {
 });
 
 describe("Adaptif ölçek belgeye YAZILIR", () => {
-  it("yoğun belgede bloklar ölçek taşır — kapasite ve çizim aynı sayıyı okur", () => {
+  /* PAKET 6.6'DA BEKLENTİ YÖN DEĞİŞTİRDİ — kod testi değil, ÜRÜN KARARI
+     değişti. Paket 6.5'te bu iddia "100 ürün → font KÜÇÜLÜR" diyordu ve
+     ölçeğin belgeye yazıldığını böyle kanıtlıyordu. Paket 6.6'nın amacı tam
+     olarak bunu düzeltmek: ölçek artık ürün SAYISINDAN değil DOLULUKTAN
+     doğuyor ve 100 ürün A4 iki kırım yaprağa (kapasite ~270) rahat sığdığı
+     için küçültme YOK, tersine FERAH ölçek seçiliyor.
+
+     İDDİANIN ÖZÜ AYNI KALDI: ölçek belgeye yazılıyor mu ve çizim onu
+     okuyor mu. Yön değişti, kanıt gücü değişmedi — hâlâ ölçeksiz değerden
+     FARKLI olmak zorunda, üstelik tavanı da çivili.
+
+     "Yoğun belgede küçülme" yönü SAF testlerde ölçülüyor
+     (adaptifKarar(5000, 100) → MIN_OLCEK); onu burada 320 ürün girerek
+     tekrar ölçmek jsdom'da dakikalar sürer ve aynı şeyi iki kez ölçmüş
+     olurduk. Bileşen testinin işi KABLOLAMA. */
+  it("ferah belgede bloklar ölçek taşır — kapasite ve çizim aynı sayıyı okur", () => {
     render(<TasarimPage />);
     blokEkle("Fiyat Listesi");
     /* 100 ÜRÜN — 60 DEĞİL. Bu test önce 60 ürünle koşuyordu ve "yoğun belge"
@@ -158,14 +173,17 @@ describe("Adaptif ölçek belgeye YAZILIR", () => {
     /* 2) ÇİZİM tarafı — buranın eski hâli `safeParse({items: []})` idi:
           şemanın boş listeyi kabul ettiğini ölçüyordu, yani bu testin
           konusuyla ilgisi yoktu ve HİÇBİR koşulda kızamazdı. Süs iddia,
-          iddia değildir. Gerçek ölçüm şu: satır punto'su tuvalde ölçeksiz
-          değerin ALTINDA mı? Kapasite küçük ölçek varsayarken çizim 1
-          varsaymışsa "sıkıştırdım" iddiası ekranda karşılıksız kalır. */
+          iddia değildir. Gerçek ölçüm satır punto'sudur: belgeye yazılan
+          ölçek çizime geçmemişse "ferahlattım" iddiası ekranda karşılıksız
+          kalır. */
     const olceksiz_px = TYPO_MM.list_font * PX_PER_MM_TEST;
     const satir = document.querySelector('[data-testid^="blok-"] span[style*="font-size"]');
     expect(satir, "tuvalde çizilmiş satır bulunamadı").not.toBeNull();
     const cizilen_px = Number.parseFloat((satir as HTMLElement).style.fontSize);
     expect(cizilen_px).toBeGreaterThan(0);
-    expect(cizilen_px).toBeLessThan(olceksiz_px);
+    /* FERAH: ölçeksiz değerin ÜSTÜNDE — 100 ürün bu yaprağa rahat sığıyor */
+    expect(cizilen_px).toBeGreaterThan(olceksiz_px);
+    /* TAVAN ÇİVİLİ: ölçek merdiveninin en üstü 1.25; sınırsız büyüme yok */
+    expect(cizilen_px).toBeLessThanOrEqual(olceksiz_px * 1.25 + 0.001);
   });
 });

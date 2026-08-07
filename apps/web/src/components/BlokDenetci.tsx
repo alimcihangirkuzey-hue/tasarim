@@ -22,6 +22,7 @@ import {
   type Block,
   type MenuItem,
 } from "@tezgah/shared";
+import { perfArtir } from "../perf";
 
 const kutuStil: React.CSSProperties = {
   width: "100%",
@@ -116,6 +117,10 @@ function UrunSatiri({
      kullanıcı için daha az kaza, aynı sonuç. */
   onTasi: (yon: -1 | 1) => void;
 }) {
+  /* ÖLÇÜM (paket 6.6): her SATIR çizimi sayılır. "Denetçi her tuşta tüm
+     satırları yeniden çiziyor, maliyet kareyle büyüyor" iddiası ancak bu
+     sayaçla doğrulanabilir — süre tek başına nedeni söylemez. */
+  perfArtir("denetciRender");
   return (
     <div
       style={{
@@ -227,9 +232,15 @@ export interface BlokDenetciProps {
   blok: Block | null;
   onProps: (props: Record<string, unknown>) => void;
   yeniId: () => string;
+  /* COMMIT SINIRI (paket 6.6): kullanıcı bir alanı BİTİRDİĞİNDE haber verir
+     (odaktan çıkma ya da Enter). Sayfa bunu alınca bekleyen belge akışını
+     hemen koşturur; debounce'ı beklemez. Ertelenen şey yalnız YENİDEN DİZME
+     olduğu için burada kaydedilmemiş veri YOKTUR — her tuş zaten onProps ile
+     belgeye yazıldı. Bu yüzden commit "kaydet" değil "şimdi diz" demektir. */
+  onCommit?: () => void;
 }
 
-export function BlokDenetci({ blok, onProps, yeniId }: BlokDenetciProps) {
+export function BlokDenetci({ blok, onProps, yeniId, onCommit }: BlokDenetciProps) {
   if (!blok) {
     return (
       <aside className="epanel" style={{ width: 260, flex: "0 0 auto" }} aria-label="Blok ayarları">
@@ -245,7 +256,18 @@ export function BlokDenetci({ blok, onProps, yeniId }: BlokDenetciProps) {
   const { hidden } = icerikKapasitesi(blok.kind, blok.box, p);
 
   return (
-    <aside className="epanel" style={{ width: 260, flex: "0 0 auto" }} aria-label="Blok ayarları">
+    <aside
+      className="epanel"
+      style={{ width: 260, flex: "0 0 auto" }}
+      aria-label="Blok ayarları"
+      /* TEK YERDE: React'te blur olayı focusout üzerinden KABARIR, bu yüzden
+         her input'a ayrı ayrı takmak gerekmez — alan sayısı arttıkça
+         unutulacak bir yer de kalmaz. Enter da aynı mantıkla burada. */
+      onBlur={() => onCommit?.()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onCommit?.();
+      }}
+    >
       <h3>{BASLIK[blok.kind] ?? "Blok"}</h3>
       <div style={{ display: "grid", gap: 10 }}>
         {blok.kind === "kategori_basligi" &&

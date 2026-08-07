@@ -21,7 +21,7 @@
    boyutlandırma tutamağı · tam auto-layout. Durum sayfa yerelinde yaşar
    (sunucu evi ürün yönü netleşmeden açılmaz). */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BLOCK_DEFAULT_SIZE_MM,
   LayoutDocSchema,
@@ -42,6 +42,34 @@ import { globalReflow, preflight, preflightOzet, type ReflowRapor } from "@tezga
 import { BlokDenetci } from "../components/BlokDenetci";
 import { BlokIcerik } from "../components/BlokIcerik";
 import { t } from "../i18n";
+import { perfArtir } from "../perf";
+
+/* AKIŞ GECİKMESİ (paket 6.6) — EMNİYET AĞI, birincil mekanizma DEĞİL.
+
+   ÖLÇÜLDÜ (üretim build'i, gerçek Chromium, 320 ürün, 19 karakter). İLK
+   ÖLÇÜMÜM YANILTICIYDI: Puppeteer'ın `delay: 0` ile yazması hiçbir insanın
+   yazmadığı hızdır (tuş arası ~10 ms) ve TÜM adaylar orada 0 reflow verip
+   EŞİT görünüyordu. Gerçek insan tuş aralığıyla ölçtüğümde adaylar ayrıştı —
+   YAZMA SIRASINDAKİ reflow sayısı:
+
+     gecikme    tuş arası 120ms   250ms   400ms
+      80 ms           16           16       —
+     250 ms            3           16       —
+     600 ms            0            0       —
+     900 ms            —            0       0
+
+   Yani 250 ms, ORTALAMA hızda yazan biri için neredeyse hiç kazanç vermiyor
+   (16 reflow). Zamana dayalı debounce insan ritmiyle yarışır: birleştirmek
+   için gecikmenin tuş aralığını AŞMASI gerekir.
+
+   BU YÜZDEN TASARIM TERS ÇEVRİLDİ: birincil commit sınırı BLUR/ENTER'dır
+   (ölçüldü: her ayarda blur anında tam 1 akıtma). Debounce yalnız
+   "kullanıcı alanı hiç terk etmiyor" hâlini yakalayan emniyet ağıdır.
+   900 ms seçildi çünkü 400 ms'lik tuş aralığında bile birleştiriyor, yani
+   yavaş yazanı cezalandırmıyor. Kullanıcı bu süreyi zaten nadiren yaşar:
+   alandan çıktığı an akıtılır. Yazdığı METİN hiç beklemez — bekleyen tek
+   şey yeniden dizmedir. */
+const REFLOW_GECIKME_MS = 900;
 
 /* Ekran ölçeği: 1mm kaç piksel. A4 yatay 297mm → ~2.3 px/mm ≈ 683px, tipik
    dizüstü ekranında palet + tuval yan yana sığar. Zoom paket 4'ün işi. */
@@ -175,6 +203,8 @@ function doluYuz(y: LayoutDoc, mevcut: "dis" | "ic"): "dis" | "ic" {
 }
 
 export function TasarimPage() {
+  /* ÖLÇÜM: bu gövde her koştuğunda sayılır (paket 6.6 baseline'ı). */
+  perfArtir("render");
   /* BELGE = YAPRAK DİZİSİ (paket 6.5). Tek yapraklı belge bir belgedir;
      `doc` yalnız AKTİF yaprağın kısayoludur. Sayfa sayısı kullanıcının
      yöneteceği bir ayar değil, akışın SONUCUDUR. */
@@ -220,6 +250,7 @@ export function TasarimPage() {
      yerleşimini habersiz yeniden dizmek, ürün sahibinin açıkça yasakladığı
      davranıştır. */
   const otomatikYerlestir = useCallback(() => {
+    akisiIptalEt(); // kendisi akıtıyor; bekleyen zamanlayıcı gereksiz ikinci tur olurdu
     setBelge((b) => {
       setGecmis((g) => [...g, b]);
       /* GLOBAL REFLOW: belgenin TAMAMI baştan akar. Yerel düzeltme sayfa
@@ -231,6 +262,7 @@ export function TasarimPage() {
          anlatıyordu — belgenin raporu değildi, yani çok sayfalı belgede
          "sığmadı" satırı yanlış sayfayı gösterebilirdi. globalReflow zaten
          belge düzeyinde rapor veriyor; ikinci koşu KALDIRILDI. */
+      perfArtir("reflow");
       const { belge: yeniBelge, rapor: r } = globalReflow(b);
       const yeni = yeniBelge[0];
       setRapor(r);
@@ -255,11 +287,61 @@ export function TasarimPage() {
     setSecili(null);
   }, []);
 
+  /* ── YAZMA ≠ BELGE AKITMA (paket 6.6) ──────────────────────────────────
+
+     ÖLÇÜLDÜ (gerçek Chromium, üretim build'i): 19 karakter yazmak 19 TAM
+     BELGE REFLOW'U üretiyordu ve yazma sonrası reflow sayısı 0'dı — yani
+     bütün sayfalama işi tuşların arasına sıkışıyordu.
+
+     ÇÖZÜMÜN ÇEKİRDEĞİ: ERTELENEN ŞEY VERİ DEĞİL, AKIŞTIR. Kullanıcının
+     yazdığı metin HER tuşta belgeye yazılır; yalnız sayfalama (globalReflow)
+     bir commit sınırına kayar. Bu ayrım veri kaybını YAPISAL olarak imkânsız
+     kılar: bekleyen bir "kaydedilmemiş metin" hiç yok, bekleyen tek şey
+     yeniden dizmedir. Debounce'ın klasik tuzağı (son karakteri yutmak) bu
+     tasarımda oluşamaz — çünkü karakter hiçbir zaman beklemede tutulmaz.
+
+     GECİKME DEĞERİ ÖLÇÜLEREK SEÇİLDİ (aşağıdaki sabitin şerhine bakın). */
+  const bekleyenAkis = useRef<number | null>(null);
+  const akisiIptalEt = useCallback(() => {
+    if (bekleyenAkis.current !== null) {
+      clearTimeout(bekleyenAkis.current);
+      bekleyenAkis.current = null;
+    }
+  }, []);
+
+  /** Belgeyi ŞİMDİ akıtır (commit sınırı: blur · Enter · sayfa değişimi). */
+  const akitSimdi = useCallback(() => {
+    akisiIptalEt();
+    perfArtir("commit");
+    setBelge((b) => {
+      perfArtir("reflow");
+      const { belge: yeniBelge, rapor: r } = globalReflow(b);
+      setRapor(r);
+      setAktif((a) => Math.min(a, yeniBelge.length - 1));
+      return yeniBelge;
+    });
+  }, [akisiIptalEt]);
+
+  /** Akışı ERTELER; art arda gelen tuşlar tek akıtmada birleşir. */
+  const akisiPlanla = useCallback(() => {
+    akisiIptalEt();
+    bekleyenAkis.current = window.setTimeout(akitSimdi, REFLOW_GECIKME_MS);
+  }, [akisiIptalEt, akitSimdi]);
+
+  /* Bileşen kalkarsa bekleyen zamanlayıcı kalmasın. Veri kaybı riski YOK:
+     metin çoktan belgeye yazıldı, bekleyen tek şey yeniden dizmeydi. */
+  useEffect(() => akisiIptalEt, [akisiIptalEt]);
+
   /* SAYFA DEĞİŞTİR. Ölçüldü (jsdom, 300 ürün): 1. sayfanın içeriği dış yüzde,
      2. sayfanın içeriği İÇ yüzde toplanıyor; kullanıcı dış yüze bakarken 2.
      sayfaya geçince ekranda SIFIR blok kalıyordu. doluYuz o boşluğu kapatır. */
   const sayfaya = useCallback(
     (i: number) => {
+      /* COMMIT SINIRI: sayfa değiştirmeden önce bekleyen akış BİTİRİLİR.
+         Yoksa kullanıcı 2. sayfaya geçtikten sonra zamanlayıcı ateşlenir,
+         belge altından yeniden dizilir ve baktığı sayfa kayabilir. Veri
+         kaybı riski yok (metin zaten yazılmış), ama şaşırtma riski var. */
+      if (bekleyenAkis.current !== null) akitSimdi();
       const hedef = Math.max(0, Math.min(i, belge.length - 1));
       setAktif(hedef);
       setSide((m) => doluYuz(belge[hedef], m));
@@ -269,6 +351,10 @@ export function TasarimPage() {
   );
 
   const geriAl = useCallback(() => {
+    /* BEKLEYEN AKIŞ İPTAL EDİLİR, çalıştırılmaz: geri alma belirli bir anlık
+       görüntüyü geri getirir; ardından ateşlenecek bir akıtma o görüntüyü
+       hemen yeniden dizip kullanıcının geri aldığı şeyi geri getirirdi. */
+    akisiIptalEt();
     setGecmis((g) => {
       if (g.length === 0) return g;
       const onceki = g[g.length - 1];
@@ -826,6 +912,15 @@ export function TasarimPage() {
             — panel ekle ya da ürün azalt
           </div>
         )}
+        {/* FERAHLIK ÖNERİSİ (paket 6.6): belge SIĞIYOR ama hedef doluluğun
+            üstünde. Sessizce sayfa eklemiyoruz — baskı sayfası paradır ve
+            habersiz maliyet yüklemek paket 5'in kuralını bozardı. Öneri
+            söylenir, karar kullanıcının. */}
+        {rapor && rapor.ferahSayfaOner && rapor.yerlesmeyen.length === 0 && (
+          <div className="pill" role="status" style={{ display: "inline-block", marginTop: 8 }}>
+            Sayfalar sıkışık görünüyor — bir sayfa daha eklemek okunaklılığı artırır
+          </div>
+        )}
         {rapor && rapor.bolunen > 0 && (
           <div className="pill" role="status" style={{ display: "inline-block", marginTop: 8 }}>
             {rapor.bolunen} blok devam bloğuna bölündü — ürün kaybı yok
@@ -846,32 +941,30 @@ export function TasarimPage() {
       <BlokDenetci
         blok={seciliBlok}
         yeniId={yeniId}
-        onProps={(props) =>
-          /* TEK GÜNCELLEYİCİ. Bir tur burada `setDoc` içinden `setBelge`
-             çağrılıyordu: bir state güncelleyicisinin GÖVDESİNDE başka bir
-             güncelleyici kuyruğa alınıyordu. React güncelleyicileri saf kabul
-             eder ve (StrictMode'da) İKİ KEZ çağırır — yani reflow iki kez
-             kuyruğa giriyor, üstelik setDoc'un dönüş değeri kuyruğa alınan
-             setBelge ile YARIŞIYORDU. Sonuç deterministik olduğu için ekranda
-             görünmüyordu; yine de yanlış. Artık tek bir setBelge hem prop
-             değişikliğini uygular hem gerekiyorsa akıtır. */
+        onProps={(props) => {
+          perfArtir("yazma");
+          /* VERİ HEMEN YAZILIR — burada reflow YOK. Tek güncelleyici (bir tur
+             `setDoc` içinden `setBelge` çağrılıyordu: bir güncelleyicinin
+             gövdesinde başka bir güncelleyici kuyruğa alınıyordu ve React
+             güncelleyicileri saf kabul edip StrictMode'da iki kez çağırdığı
+             için reflow iki kez kuyruğa giriyordu). */
           setBelge((b) => {
             const i = Math.min(aktif, b.length - 1);
-            const guncelBelge = b.map((y, j) =>
+            return b.map((y, j) =>
               j === i ? { ...y, blocks: y.blocks.map((x) => (x.id === secili ? { ...x, props } : x)) } : y
             );
-            /* REFLOW: ürün eklendi/silindi/değişti → belge yeniden dengelenir.
-               YALNIZ otomatik modda; elle kurulmuş düzen korunur. */
-            if (!otoMod) return guncelBelge;
-            const { belge: yeniBelge, rapor: r } = globalReflow(guncelBelge);
-            /* Rapor da TAZELENİR: reflow taşmayı çözdüyse eski "sığmadı"
-               uyarısı ekranda kalmamalı — çözülmüş bir sorunu bildiren uyarı,
-               bildirmeyen uyarı kadar yanlıştır. */
-            setRapor(r);
-            setAktif((a) => Math.min(a, yeniBelge.length - 1));
-            return yeniBelge;
-          })
-        }
+          });
+          /* AKIŞ ERTELENİR: otomatik modda belge yeniden dizilir ama TUŞ
+             BAŞINA değil, commit sınırında. Art arda gelen tuşlar tek
+             akıtmada birleşir. Elle kurulmuş düzen (otoMod kapalı) hiç
+             akıtılmaz — paket 4 kuralı yerinde. */
+          if (otoMod) akisiPlanla();
+        }}
+        /* COMMIT SINIRI: alandan çıkma ya da Enter. Debounce'ı beklemeden
+           akıtır — kullanıcı "bitirdim" dediyse sonucu hemen görmeli. */
+        onCommit={() => {
+          if (otoMod) akitSimdi();
+        }}
       />
     </div>
   );

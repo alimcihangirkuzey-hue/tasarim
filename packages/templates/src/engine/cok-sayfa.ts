@@ -46,6 +46,12 @@ export interface ReflowRapor {
   bolunen: number;
   /** Yaprak başına adaptif karar — her sayfa kendi yoğunluğunu yaşar */
   sayfaKararlari: AutoRapor["adaptif"][];
+  /* FERAHLIK ÖNERİSİ (paket 6.6): en az bir yaprak hedef doluluğun üstünde.
+     Belge SIĞIYOR — bu bir hata değil, okunabilirlik önerisidir. SESSİZCE
+     sayfa EKLEMİYORUZ: baskı sayfası paraya eşittir ve kullanıcının habersiz
+     maliyet üstlenmesi paket 5'in "habersiz düzeltme yok" kuralını bozardı.
+     Öneri arayüzde söylenir, kararı kullanıcı verir. */
+  ferahSayfaOner: boolean;
 }
 
 /** Yaprak iskeleti: geometri KOPYALANIR, içerik boş başlar. */
@@ -140,6 +146,7 @@ export function globalReflow(belge: CokSayfaliBelge): {
           : (sonRapor?.yerlesmeyen ?? []).filter(() => false),
       bolunen,
       sayfaKararlari,
+      ferahSayfaOner: sayfaKararlari.some((k) => k.ferahSayfaOner),
     },
   };
 }
