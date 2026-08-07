@@ -586,6 +586,35 @@ export interface ClientSurfaceDTO {
   updated_at: string;
 }
 
+/** intake_records satırı DTO'su — Sipariş Modu commit'inin DENETİM İZİ (K1,
+    migration v9). Yazım YALNIZ POST /api/intake'te (intake.ts adım 7); bu DTO
+    okuma ucunun (GET /api/clients/:id/intake-records) dışa dönen biçimidir.
+
+    answers/checklist NEDEN `Record<string, unknown>` — VE NEDEN OKUMADA
+    IntakeAnswersSchema'DAN GEÇMEZ (emsalden bilinçli ayrılık):
+      · IntakeAnswersSchema VARSAYILAN uygular (items:[] · variants:[] · chips:[]
+        · extras:[] · hide_content:false). Okumada uygulansaydı DTO, satırda HİÇ
+        BULUNMAYAN bir alan için değer ilan ederdi — ör. alanı olmayan eski bir
+        kayıt "hide_content: false" diye okunurdu. Denetim izinin tek değeri
+        YAZILANA SADAKATTİR; normalize edilmiş yeniden-kurulum, kaydın kendisi
+        değildir.
+      · IntegrationEventDTO okumada Zod'dan GEÇER ama gerekçesi KAPALI KÜME
+        korumasıdır (channel/outcome `string`e sessizce genişlemesin). Burada
+        kapalı küme YOKTUR: IntakeAnswersSchema bilerek `.passthrough()`'dur
+        ("bilinmeyen intake anahtarları korunur — veri kaybetmeme"). Gerekçe
+        taşınmadığı için kural da taşınmaz.
+      · Fırlatan bir parse, bozuk TEK bir satırın tüm izi okunmaz kılmasına yol
+        açardı — render.ts'in kendi savunmalı çözüm şerhinin yasakladığı şey. */
+export interface IntakeRecordDTO {
+  id: string;
+  client_id: string;
+  /** Yazıldığı hâliyle IntakeAnswers gövdesi (normalize EDİLMEZ — üstteki şerh) */
+  answers: Record<string, unknown>;
+  /** Doneler/şartlar çeklisti; surfaces[] dahil (F8-A) */
+  checklist: Record<string, unknown>;
+  created_at: string;
+}
+
 /* Web intake taslağı v2→v3 additive migrasyonu (F8-A/D4 — SCHEMA_VERSION 2→3):
    checklist'e surfaces:[] ekler, KALAN HER ŞEY AYNEN kalır. Web'de vitest yok —
    bu SAF, şekil-agnostik transform burada test edilir; store migrate() çağırır.

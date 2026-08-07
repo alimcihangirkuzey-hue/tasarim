@@ -92,8 +92,21 @@ export const JOURNAL_GATES = {
     command: "npm test",
     human: false,
     produces_values: true,
+    /* BAYAT İLAN DÜZELTMESİ (2026-08-07): bu şerh "apps/web'in test script'i
+       YOK — o workspace ölçüm dışıdır" diyordu. Üç ölçüm karşı çıktı:
+       apps/web/package.json'da `"test": "vitest run"` VAR · gates.ts'teki
+       TEST_WORKSPACES apps/web'i İÇERİR · M8 kapı kaydı beş workspace'i adıyla
+       sayar. Şerh, web test altyapısı paketinden (2026-07-27) önceki gerçeği
+       anlatıyordu ve kapsam büyürken güncellenmemişti.
+       NEDEN NÖBETÇİ YAKALAMADI: kapi-kapsami.test.ts ilan-gerçek eşitliğini
+       TEST_WORKSPACES LİSTESİ üzerinden ölçer, bu ŞERH DİZESİ üzerinden değil.
+       Yani kapsamın kendisinde nöbet var, kapsamın ANLATISINDA yoktu.
+       NEDEN ÖNEMLİ: README kuralınca kapı sayısı şerhiyle birlikte gösterilir;
+       "test 1844" sayısının yanında o sayının apps/web'i ölçmediğini söyleyen
+       bir cümle duruyordu. Sayı doğru, anlatı yanlıştı — ve yanlış yön kapsamı
+       olduğundan DAR gösteriyordu (güvenli yön, ama yine de yanlış). */
     scope:
-      "koşucu workspace başına AYRI koşar (referans komutun kök fan-out'u apps/web'i sessizce atlardı); apps/web'in test script'i YOK — o workspace ölçüm dışıdır",
+      "koşucu workspace başına AYRI koşar (referans komutun kök fan-out'u apps/web'i sessizce atlardı); kapsam TEST_WORKSPACES İLANIDIR (bugün 5: apps/server · apps/web · packages/journal · packages/shared · packages/templates) — diskten türetilmez, kapi-kapsami.test.ts nöbetçisi ilanı gerçekle karşılaştırır. İlanda OLMAYAN bir workspace sessizce ölçüm dışı kalır",
   },
   build: {
     command: "npm run build -w apps/web",

@@ -21,6 +21,7 @@ import {
   projectIntake,
   type Catalog,
   type IngredientLibraryRow,
+  type IntakeRecordDTO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
 import { uniqueSlug } from "./clients.js";
@@ -47,6 +48,47 @@ const IntakeCommitSchema = z
 type ClientRow = { id: string; menu_language: string; currency: string; catalog_json: string };
 
 const SEED_IDS = new Set(INGREDIENT_SEED.map((c) => c.id));
+
+/* Uca özgü olan YALNIZ DB satır biçimidir; dışa dönen DTO tek kaynaktan
+   (@tezgah/shared IntakeRecordDTO) gelir — render.ts'in ExportRow/toDTO kuralı:
+   kolon adı ≠ API alanı sürüklenmesi tek yerde yakalanır. */
+type IntakeRecordRow = {
+  id: string;
+  client_id: string;
+  answers_json: string;
+  checklist_json: string;
+  created_at: string;
+};
+
+/* GÖRÜNÜR/SABİT TAVAN (render.ts:410-412 emsali): sınırsız gövde yerine belgeli
+   bir kesim. Sayfalama borcu doğarsa additive açılır — sessiz kırpma DEĞİL. */
+const INTAKE_RECORDS_LIMIT = 100;
+
+/* SAVUNMALI ÇÖZÜM (render.ts toIntegrationEventDTO emsali): bu iki sütunu yazan
+   tek yol yukarıdaki commit'tir ve JSON.stringify eder — ama bozuk TEK bir satır
+   denetim izinin TAMAMINI okunmaz kılmamalıdır (izin değeri sürekliliğindedir).
+   Bozuk/dizi/skaler gövde {} olur, satırın geri kalanı görünür kalır. */
+function parseJsonObject(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    /* düşülür — aşağıdaki boş nesne döner */
+  }
+  return {};
+}
+
+function toIntakeRecordDTO(r: IntakeRecordRow): IntakeRecordDTO {
+  return {
+    id: r.id,
+    client_id: r.client_id,
+    answers: parseJsonObject(r.answers_json),
+    checklist: parseJsonObject(r.checklist_json),
+    created_at: r.created_at,
+  };
+}
 
 export function intakeRoutes(app: FastifyInstance): void {
   app.post("/api/intake", async (req, reply) => {
@@ -167,5 +209,40 @@ export function intakeRoutes(app: FastifyInstance): void {
 
     reply.code(201);
     return result;
+  });
+
+  /* DENETİM İZİ OKUMA UCU — KAYITLI KUSURUN KAPANIŞI.
+     intake_records bugüne kadar YALNIZ yazıldı. Bu, depoda ADIYLA kayıtlı bir
+     kusurdu: render.ts:407-409 ve render-channel.test.ts:289-291, yeni tabloya
+     okuma ucu açarken bunu emsal DEĞİL kusur diye işaretler — *"Bu bir DESEN
+     değil, kayıtlı bir KUSURDUR; yeni tablo onu tekrarlamaz — 'orada da yok'
+     bir gerekçe olamaz."* Aynı gerekçe kendi tablosuna da uygulanır: yazılıp
+     hiç okunmayan tablo denetim izi değil, ölü depodur (9.1/665 — denetim izi
+     değişmezdir; değişmezlik OKUNABİLİRLİK olmadan denetlenemez).
+
+     404 client_not_found: surfaces.ts:12-13 (müşteri-alt-kaynağı) deseni. Boş
+     dizi dönmek "bilinmeyen müşteri" ile "hiç intake'i olmayan müşteri"yi
+     birbirine karıştırırdı — denetimde bu iki cevap aynı şey değildir.
+     Sıra created_at DESC: denetim önce "az önce ne oldu" diye sorar. İkincil
+     anahtar rowid DESC — nowISO milisaniye çözünürlüğündedir ve aynı saniyede
+     iki commit created_at'te EŞİTLENEBİLİR; eşitlikte SQLite'ın döndüreceği
+     sıra tanımsız kalırdı. rowid ekleme sırası hakkında yalan söylemez
+     (render-channel.test.ts:64-66'nın `sonIz` şerhiyle aynı gerekçe).
+
+     SALT OKUMA: bu uç yazma/güncelleme/silme yolu AÇMAZ — intake_records
+     append-only bir izdir (düzenleme TODO:168'in ayrı işi). */
+  app.get<{ Params: { id: string } }>("/api/clients/:id/intake-records", async (req, reply) => {
+    const client = db.prepare("SELECT id FROM clients WHERE id = ?").get(req.params.id);
+    if (!client) return reply.code(404).send({ error: "client_not_found" });
+    const rows = db
+      .prepare(
+        `SELECT id, client_id, answers_json, checklist_json, created_at
+           FROM intake_records
+          WHERE client_id = ?
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT ?`
+      )
+      .all(req.params.id, INTAKE_RECORDS_LIMIT) as IntakeRecordRow[];
+    return rows.map(toIntakeRecordDTO);
   });
 }
