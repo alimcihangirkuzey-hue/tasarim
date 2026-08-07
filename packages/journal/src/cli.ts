@@ -10,7 +10,10 @@
    Bu dosya index.ts barrel'ından BİLEREK dışarıdadır: export edilseydi
    @tezgah/journal'ı import eden her yerde CLI gövdesi çalışırdı. */
 
+import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
+import { execFileSync } from "node:child_process";
 
 import {
   foldPackageJournal,
@@ -21,11 +24,56 @@ import {
 
 import { parseJournalArgv, type ParsedJournalCommand } from "./argv.js";
 import { runGate } from "./gates.js";
+import { olcumdenSonraDegisenler, type DegisenDosya } from "./olcum-sirasi.js";
+import { ROOT_DIR } from "./paths.js";
 import { appendEvent, readJournal } from "./store.js";
 import { verifyAllJournals } from "./verify.js";
 
 const yaz = (s: string): void => void process.stdout.write(`${s}\n`);
 const uyar = (s: string): void => void process.stderr.write(`${s}\n`);
+
+/**
+ * Paketin EN SON kapı koşumundan sonra değişmiş dosyalar.
+ *
+ * Karar `olcum-sirasi.ts`'te SAF olarak yaşar; buradaki iş yalnız iki ölçülmüş
+ * değeri toplamaktır: kapının `measured_at`'i ve `git status`un bildirdiği
+ * dosyaların disk mtime'ı. Git yoksa/çalışmıyorsa kapı SESSİZCE AÇILMAZ ama
+ * DURDURMAZ da — ölçemediği bir şey hakkında yargı üretmek, bu deponun
+ * "sayı uydurma" yasağının ta kendisi olurdu.
+ */
+function olcumdenSonraDegisenDosyalar(packageId: string): string[] {
+  const rec = foldPackageJournal(readJournal(packageId));
+  const anlar = Object.values(rec.gates)
+    .map((g) => g?.measured_at)
+    .filter((s): s is string => typeof s === "string");
+  if (anlar.length === 0) return []; /* hiç kapı koşulmamış — söyleyecek şey yok */
+  const sonOlcum = anlar.sort()[anlar.length - 1]!;
+
+  let cikti: string;
+  try {
+    cikti = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT_DIR, encoding: "utf8" });
+  } catch {
+    return [];
+  }
+
+  const dosyalar: DegisenDosya[] = [];
+  for (const satir of cikti.split("\n")) {
+    if (satir.trim().length === 0) continue;
+    /* Porcelain v1: iki karakter durum + boşluk + yol. Yeniden adlandırmada
+       "eski -> yeni" gelir; ölçülecek olan YENİ yoldur. */
+    const ham = satir.slice(3).trim();
+    const yol = ham.includes(" -> ") ? ham.slice(ham.indexOf(" -> ") + 4) : ham;
+    const temiz = yol.replace(/^"|"$/g, "");
+    let mtimeMs: number | null = null;
+    try {
+      mtimeMs = fs.statSync(path.join(ROOT_DIR, temiz)).mtimeMs;
+    } catch {
+      mtimeMs = null; /* silinmiş — ölçülemez, sayılmaz (olcum-sirasi.ts notu) */
+    }
+    dosyalar.push({ yol: temiz, mtimeMs });
+  }
+  return olcumdenSonraDegisenler(sonOlcum, dosyalar);
+}
 
 function main(): void {
   const komut = parseJournalArgv(process.argv.slice(2));
@@ -79,6 +127,23 @@ function main(): void {
         );
         process.exitCode = 2;
         return;
+      }
+      /* ÖLÇÜM SIRASI KAPISI (bulgu `K-SIRA-1`): "hazir" paketin ölçülmüş
+         sayıldığı aşamadır. Kapı koştuktan SONRA değiştirilmiş bir dosya
+         varsa, kayıtlı kapı sonucu commit edilecek ağacı TARİF ETMEZ — bu
+         depo o hatayı bir kez ödedi (bir tur boyunca defter yanlış söyledi).
+         Kural yalnız ileri geçişte işler; geriye dönüş serbesttir. */
+      if (komut.to === "hazir") {
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId);
+        if (gec.length > 0) {
+          uyar(
+            `journal: ÖLÇÜM SIRASI — şu dosya(lar) son kapı koşumundan SONRA değişti:\n` +
+              gec.map((y) => `  · ${y}`).join("\n") +
+              `\nKapıları YENİDEN koşun; kayıtlı sonuç commit edilecek ağacı tarif etmiyor.`
+          );
+          process.exitCode = 2;
+          return;
+        }
       }
       olayYaz(komut.packageId, { type: "stage_changed", payload: { from, to: komut.to } }, komut);
       return;

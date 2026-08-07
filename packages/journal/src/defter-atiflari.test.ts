@@ -75,9 +75,22 @@ function dosyaAtiflari(dosya: string): string[] {
   return [...new Set([...govdeOku(dosya).matchAll(DOSYA_ATFI)].map((m) => m[1]!))];
 }
 
-/** Deponun İZLENEN dosyaları — çalışma ağacındaki artıklar sayılmaz. */
+/**
+ * Deponun bilinen dosyaları: İZLENENLER + henüz commit edilmemiş YENİLER.
+ *
+ * `--others --exclude-standard` ÖLÇÜMLE eklendi: yalnız `ls-files` okuyan ilk
+ * hâl, aynı turda doğan bir dosyayı adlandıran defter satırını KIRMIZI
+ * yapıyordu — dosya diskte duruyor, okuyucu onu bulabiliyor, ama henüz
+ * izlenmiyor. Nöbetçinin sorusu "okuyucu gerçek bir yere gidiyor mu"dur;
+ * "commit edilmiş mi" başka bir sorudur ve onu git katmanı sorar. Yok sayılan
+ * tek küme gitignore'lananlardır (ör. `docs/pano/`) — onlar zaten depoda
+ * yaşamaz.
+ */
 function izlenenDosyalar(): string[] {
-  return execFileSync("git", ["ls-files"], { cwd: ROOT_DIR, encoding: "utf8" })
+  return execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
+    cwd: ROOT_DIR,
+    encoding: "utf8",
+  })
     .split("\n")
     .filter((s) => s.length > 0);
 }

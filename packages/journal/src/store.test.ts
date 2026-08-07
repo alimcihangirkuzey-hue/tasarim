@@ -331,6 +331,12 @@ describe("kaynak taraması — append-only'yi delen fs çağrısı YOK", () => {
     "openSync",
     "closeSync",
     "unlinkSync",
+    /* statSync — SALT OKUNUR ÜST VERİ (2026-08-07, ölçüm sırası kapısı).
+       Listeye eklenmesi bir gevşetme DEĞİLDİR: bu çağrı hiçbir baytı
+       yazamaz, dolayısıyla append-only sözleşmesine dokunamaz — `existsSync`
+       ve `readdirSync` ile aynı sınıftadır. Nöbetçi işini yaptı: yeni bir fs
+       yüzeyi sessizce giremedi, gerekçe yazılmadan da geçemedi. */
+    "statSync",
   ]);
 
   function sourceFiles(dir: string): string[] {
