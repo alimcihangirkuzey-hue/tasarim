@@ -16,6 +16,7 @@ const { migrate, db } = await import("../db.js");
 const { buildApp } = await import("../app.js");
 const { newId, nowISO, OPENING_KIT } = await import("@tezgah/shared");
 const { IS_KOLLARI_ENV } = await import("../is-kollari.js");
+const { ACILIS_TAKIMI_ENV } = await import("../acilis-takimi.js");
 
 let app: FastifyInstance;
 let clientId: string;
@@ -34,6 +35,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   delete process.env[IS_KOLLARI_ENV];
+  delete process.env[ACILIS_TAKIMI_ENV];
   db.prepare("DELETE FROM projects WHERE client_id = ?").run(clientId);
 });
 
@@ -85,6 +87,35 @@ describe("açılış takımı ucu — iş kolu kapsamı", () => {
     /* Gerekçe gövdede: arayüz "hangi iş kolları" diyebilsin. */
     expect(body.is_kollari).toEqual(["tabelaci"]);
     expect(projeSayisi(), "409 döndü ama proje kabuğu bırakıldı").toBe(0);
+  });
+
+  it("TAKIM İLAN EDİLİNCE tabelacı kurulumu 409'dan ÇIKAR — dilimin asıl kazancı", async () => {
+    /* ASIL ÖLÇÜM: bir üstteki test, tabelacı kurulumunda düğmenin HİÇ
+       çalışmadığını çiviliyor. Takım ilanı açıldıktan sonra AYNI kurulum
+       çalışan bir takım üretir. Ürün kararı hâlâ uydurulmadı — içeriği
+       kurulumu yapan YAZDI. */
+    process.env[IS_KOLLARI_ENV] = "tabelaci";
+    process.env[ACILIS_TAKIMI_ENV] = "tabela,tabela";
+    const { statusCode, body } = await takimKur();
+    expect(statusCode).toBe(201);
+    expect(body.items).toBe(2);
+    expect(kalemTurleri(body.project_id as string)).toEqual(["tabela", "tabela"]);
+  });
+
+  it("İLAN EDİLEN takım YAPILANDIRMA YOKKEN de geçerlidir", async () => {
+    process.env[ACILIS_TAKIMI_ENV] = "tisort,flyer";
+    const { statusCode, body } = await takimKur();
+    expect(statusCode).toBe(201);
+    /* Sıra YAZILDIĞI gibi: tisort şema sırasında flyer'dan SONRA gelir, yani
+       bu iddia yeniden dizilmediğini gerçekten ölçer. */
+    expect(kalemTurleri(body.project_id as string)).toEqual(["tisort", "flyer"]);
+  });
+
+  it("TAKIM İLANI da her istekte YENİDEN okunur", async () => {
+    process.env[ACILIS_TAKIMI_ENV] = "tabela";
+    expect((await takimKur()).body.items).toBe(1);
+    delete process.env[ACILIS_TAKIMI_ENV];
+    expect((await takimKur()).body.items).toBe(OPENING_KIT.items.length);
   });
 
   it("ORTAM DEĞİŞKENİ her istekte YENİDEN okunur (uç donmuş değil)", async () => {

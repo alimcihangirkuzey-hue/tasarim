@@ -33,6 +33,7 @@
    başlatmaya zorlardı ve iki uç testi bunun tersini çiviliyor. */
 
 import path from "node:path";
+import { ACILIS_TAKIMI_ENV, dogrulaTakimKapsami } from "./acilis-takimi.js";
 import { IS_KOLLARI_ENV, isKollariIlani } from "./is-kollari.js";
 import { KUNYE_ENV, kurulumKunyesi } from "./kurulum-kunyesi.js";
 import { ROOT_DIR } from "./paths.js";
@@ -67,6 +68,13 @@ export const KURULUM_ILANLARI: ReadonlyArray<KurulumIlani> = [
      yapılandırır ve birlikte okunur (biri bozuksa diğerinin geçerli olması
      kurulumu "yarı doğru" yapardı). */
   { ad: "dogus-varsayilanlari", env: [PARA_BIRIMI_ENV, CIKTI_DILI_ENV], oku: dogusVarsayilanlari },
+  /* Takım ilanı İKİ AŞAMADA doğrulanır ve ikisi de açılışta koşar: önce kendi
+     biçimi (tanınmayan/tasarlanamaz/boş tür), sonra İŞ KOLU İLANIYLA ÇELİŞKİ.
+     İkincisi olmadan süzgeç, kurulumcunun yazdığı kalemi sessizce düşürürdü —
+     yazdığı takım ile aldığı takım farklı olur ve bunu söyleyen hiçbir şey
+     olmazdı. `env` yalnız kendi değişkenini beyan eder: iş kolu değişkeni
+     zaten kendi ilanıyla denetimdedir. */
+  { ad: "acilis-takimi", env: [ACILIS_TAKIMI_ENV], oku: () => { dogrulaTakimKapsami(); } },
 ];
 
 /**

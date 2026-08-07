@@ -31,6 +31,7 @@ const { SEKTORLER } = await import("@tezgah/templates/identity");
 const GECERLI_KOL = SEKTORLER[0]!;
 const { KUNYE_ENV, KUNYE_AZAMI } = await import("./kurulum-kunyesi.js");
 const { VERI_DIZINI_ENV } = await import("./veri-dizini.js");
+const { ACILIS_TAKIMI_ENV } = await import("./acilis-takimi.js");
 
 const SERVER_SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -40,6 +41,7 @@ afterEach(() => {
   delete process.env[IS_KOLLARI_ENV];
   delete process.env[KUNYE_ENV];
   delete process.env[VERI_DIZINI_ENV];
+  delete process.env[ACILIS_TAKIMI_ENV];
 });
 
 describe("açılışta kurulum doğrulaması", () => {
@@ -90,6 +92,47 @@ describe("açılışta kurulum doğrulaması", () => {
 
   it("GEÇERLİ MUTLAK veri diziniyle ayağa kalkar", async () => {
     process.env[VERI_DIZINI_ENV] = path.join(SERVER_SRC, "..", "..", "..", "data");
+    const app = await buildApp({ logger: false });
+    await app.ready();
+    await app.close();
+  });
+
+  it("TANINMAYAN açılış takımı kalemi: sunucu AYAĞA KALKMAZ", async () => {
+    /* GEREKÇE DE ÖLÇÜLÜR, yalnız "fırlattı" değil. Bu bir negatif kontrolün
+       ürünü: tanınmayan-tür kapısı kapatıldığında bu test YEŞİL KALIYORDU —
+       çünkü "tabelaa" bir sonraki kapıya (tasarlanamaz) düşüp yine
+       fırlatıyordu. Yani iddia "ilan reddedildi"ydi, "BU sebeple reddedildi"
+       değil; iki kapıdan hangisinin çalıştığı ölçülmüyordu. */
+    process.env[ACILIS_TAKIMI_ENV] = "tabelaa";
+    await expect(buildApp({ logger: false })).rejects.toThrow(
+      /kurulum ilanı geçersiz \(acilis-takimi\).*tanınmayan ürün türü/,
+    );
+  });
+
+  it("TASARLANAMAZ açılış takımı kalemi: sunucu AYAĞA KALKMAZ — AYRI gerekçeyle", async () => {
+    /* Kardeş kapı ayrıca ölçülür: geçerli ama şablonsuz bir tür yazan
+       kurulumcu, "yanlış mı yazdım" diye aramamalıdır. */
+    process.env[ACILIS_TAKIMI_ENV] = "diger";
+    await expect(buildApp({ logger: false })).rejects.toThrow(
+      /kurulum ilanı geçersiz \(acilis-takimi\).*tasarlanamaz/,
+    );
+  });
+
+  it("İŞ KOLUYLA ÇELİŞEN takım: sunucu AYAĞA KALKMAZ", async () => {
+    /* Çelişki açılışta söylenmezse süzgeç kalemi SESSİZCE düşürür: kurulumcu
+       iki kalem yazar, birini alır ve bunu söyleyen hiçbir şey olmaz. */
+    process.env[IS_KOLLARI_ENV] = "tabelaci";
+    process.env[ACILIS_TAKIMI_ENV] = "tabela,menu";
+    await expect(buildApp({ logger: false })).rejects.toThrow(
+      /kurulum ilanı geçersiz \(acilis-takimi\)/,
+    );
+  });
+
+  it("TUTARLI takım + iş kolu ile AYAĞA KALKAR", async () => {
+    /* Ön-koşulun kardeşi: her takım ilanında fırlatan bozuk bir denetim
+       yukarıdaki iki testte de yeşil kalırdı. */
+    process.env[IS_KOLLARI_ENV] = "tabelaci";
+    process.env[ACILIS_TAKIMI_ENV] = "tabela";
     const app = await buildApp({ logger: false });
     await app.ready();
     await app.close();

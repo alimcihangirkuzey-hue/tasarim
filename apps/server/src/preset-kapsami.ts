@@ -25,23 +25,32 @@
    YENİ PRESET İCAT EDİLMEZ: "bir tabelacının açılış takımında ne olmalı"
    sorusunun cevabı ÜRÜN KARARIDIR (K-1'de takım içerikleri açık bırakılmadı,
    hiç sorulmadı bile). Bu katman yalnız DARALTIR; boş kalan kurulumda uç
-   sessizce boş proje açmaz, gerekçesiyle reddeder (rota). */
+   sessizce boş proje açmaz, gerekçesiyle reddeder (rota).
 
-import { OPENING_KIT, type PresetItem } from "@tezgah/shared";
+   TAKIMIN KENDİSİ ARTIK İLAN EDİLEBİLİR (2026-08-07, `acilis-takimi.ts`):
+   yukarıdaki "ürün kararı" sınırı DEĞİŞMEDİ — cevap hâlâ uydurulmuyor; yalnız
+   kurulumu yapanın onu YAZABİLECEĞİ yer açıldı (`TEZGAH_ACILIS_TAKIMI`, değer
+   boş → `OPENING_KIT` birebir). Süzgeç sonra da uygulanır; ilan edilmiş bir
+   takım iş koluyla çelişirse kurulum AÇILIŞTA durur, çünkü burada sessizce
+   düşürmek kurulumcuya yazdığından farklı bir takım vermek olurdu. */
+
+import type { PresetItem } from "@tezgah/shared";
 import { siparisSektoru } from "@tezgah/templates/identity";
+import { acilisTakimiIlani } from "./acilis-takimi.js";
 import { isKollariIlani, type IsKollariIlani } from "./is-kollari.js";
 
 /**
  * Bu kurulumda üretilecek açılış takımı kalemleri — ilan sırasıyla.
  *
  * @param ilan kurulumun iş kolu ilanı (varsayılan: ortamdan okunur)
- * @param kalemler preset kalemleri (varsayılan: OPENING_KIT) — enjekte
- *   edilebilir olması `isKollariIlani(ham)` ile aynı gerekçedir: kural,
- *   bugünkü takımın içeriğinden BAĞIMSIZ sınanabilmelidir.
+ * @param kalemler preset kalemleri (varsayılan: kurulumun takım ilanı —
+ *   yapılandırma yoksa `OPENING_KIT`) — enjekte edilebilir olması
+ *   `isKollariIlani(ham)` ile aynı gerekçedir: kural, bugünkü takımın
+ *   içeriğinden BAĞIMSIZ sınanabilmelidir.
  */
 export function acilisTakimiKalemleri(
   ilan: IsKollariIlani = isKollariIlani(),
-  kalemler: readonly PresetItem[] = OPENING_KIT.items
+  kalemler: readonly PresetItem[] = acilisTakimiIlani().kalemler
 ): PresetItem[] {
   if (ilan.kaynak === "varsayilan") return [...kalemler];
   return kalemler.filter((k) => {
