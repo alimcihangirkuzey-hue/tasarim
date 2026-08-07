@@ -19,6 +19,7 @@ export * from "./engine/binding.js";
 export * from "./engine/layout.js";
 export * from "./engine/blok-yerlesim.js";
 export * from "./engine/adaptif-tema.js"; // paket 6: adaptif tema + yoğunluk
+export * from "./engine/cok-sayfa.js"; // paket 6.5: çok sayfalı belge
 export * from "./engine/preflight.js"; // paket 5: baskı güvenliği / preflight // paket 4: otomatik blok yerleşimi
 export * from "./engine/severity.js";
 export * from "./engine/channels.js";

@@ -136,10 +136,18 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
     return (
       <div style={{ padding: pad }}>
         {c.items.slice(0, fits).map((it) => (
-          <div key={it.id} style={{ marginBottom: mm(0.6) }}>
+          /* data-testid: ÇİZİLMİŞ ürünün kimliği. Panel ve blok zaten aynı
+             sözleşmeyi kullanıyor. Buna ihtiyaç var çünkü "veri kaybı 0"
+             iddiası ancak BELGENİN TAMAMINDAKİ ürünler sayılarak ölçülebilir:
+             denetçi tek bloğu gösterir ve reflow o bloğu sonraki parçadan
+             yeniden doldurduğu için denetçideki sayı belgenin sayısı DEĞİLDİR
+             (gerçek tarayıcı provasında ölçüldü: blok 36'da kalırken belge
+             3 ürün eksilmişti). Kimlikler tek tek sayılabildiği için
+             hem KAYIP hem TEKRAR aynı ölçümle yakalanır. */
+          <div key={it.id} data-testid={`urun-${it.id}`} style={{ marginBottom: mm(0.6) }}>
             <span style={{ display: "flex", alignItems: "baseline", gap: mm(1) }}>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <Satir px={mm(3.2) * olc}>{it.name || "—"}</Satir>
+                <Satir px={mm(TYPO_MM.list_font) * olc}>{it.name || "—"}</Satir>
               </span>
               <span
                 style={{
@@ -150,7 +158,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
                 }}
               />
               <span style={{ flex: "0 0 auto" }}>
-                <Satir px={mm(3.2) * olc} kalin>
+                <Satir px={mm(TYPO_MM.list_font) * olc} kalin>
                   {it.price}
                 </Satir>
               </span>
@@ -183,7 +191,7 @@ export function BlokIcerik({ blok, mm }: BlokIcerikProps) {
         }}
       >
         {c.items.slice(0, fits).map((it) => (
-          <span key={it.id} style={{ display: "block", minWidth: 0 }}>
+          <span key={it.id} data-testid={`urun-${it.id}`} style={{ display: "block", minWidth: 0 }}>
             <FotoYeri url={it.photo_url} h={mm(photo_h_mm)} />
             <Satir px={mm(2.9) * olc} kalin>
               {it.name || "—"}

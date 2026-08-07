@@ -92,6 +92,11 @@ export const TYPO_MM = {
   pad: 2.5,
   /** Fiyat listesi: ad+fiyat satırının yüksekliği */
   list_row: 5.5,
+  /* Fiyat listesi: ad ve fiyatın PUNTO'su. Çizim katmanında 3.2 olarak
+     gömülüydü; buraya alındı çünkü "kapasite ile çizim tek kaynaktan okur"
+     kuralını ölçen test aksi hâlde aynı sayıyı İKİNCİ kez yazmak zorunda
+     kalırdı — view değişince testin taban değeri sessizce bayatlardı. */
+  list_font: 3.2,
   /** Fiyat listesi: açıklama alt satırının EK yüksekliği */
   list_desc: 3.4,
   /** Grid: kartlar arası boşluk */

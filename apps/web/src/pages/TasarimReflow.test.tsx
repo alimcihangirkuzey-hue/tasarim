@@ -9,8 +9,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { UrunListesiIcerikSchema } from "@tezgah/shared";
-import { TasarimPage } from "./TasarimPage";
+import { TYPO_MM } from "@tezgah/shared";
+import { PX_PER_MM_TEST, TasarimPage } from "./TasarimPage";
 
 afterEach(cleanup);
 
@@ -28,6 +28,22 @@ function urunDoldur(n: number, on = "U"): void {
     const adlar = within(denetci()).getAllByLabelText("Ürün adı");
     fireEvent.change(adlar[adlar.length - 1], { target: { value: `${on}${i}` } });
   }
+}
+/* SADECE SAYI GEREKTİĞİNDE: ad yazmadan ürün ekler.
+   NEDEN AYRI HELPER (ölçüldü, kestirme değil): urunDoldur her kalem için bir
+   `getAllByLabelText` taraması + bir change olayı üretiyor; denetçi de her
+   tuş vuruşunda TÜM satırları yeniden çiziyor. Bileşim O(n²): 60 kalemde
+   4542 ms ölçüldü, vitest'in 5000 ms tabanına o kadar yakın ki dosyalar
+   paralel koşarken 5206 ms'ye çıkıp KIZARDI — aynı test tek başına
+   yeşildi. Bu, kodun değil testin kusuruydu: sıra/ad denetlemeyen bir
+   iddiaya 60 ad yazdırmak gereksiz maliyettir. Ad üretmeyen yol aynı
+   kullanıcı eylemini (düğmeye basmak) kullanır, iddiayı zayıflatmaz.
+   NOT — GİZLENMEYEN BULGU: denetçinin O(n²) yeniden çizimi gerçek bir UX
+   bulgusudur (100+ ürün hedefi için) ve testi hızlandırmak onu ortadan
+   kaldırmaz; ayrıca kayda geçti. */
+function urunEkle(n: number): void {
+  const dugme = within(denetci()).getByText("+ Ürün Ekle");
+  for (let i = 0; i < n; i++) fireEvent.click(dugme);
 }
 const adSirasi = (): string[] =>
   within(denetci())
@@ -126,11 +142,30 @@ describe("Adaptif ölçek belgeye YAZILIR", () => {
   it("yoğun belgede bloklar ölçek taşır — kapasite ve çizim aynı sayıyı okur", () => {
     render(<TasarimPage />);
     blokEkle("Fiyat Listesi");
-    urunDoldur(60, "Y");
+    /* 100 ÜRÜN — 60 DEĞİL. Bu test önce 60 ürünle koşuyordu ve "yoğun belge"
+       diyordu; ölçtüm: adaptifKarar(60) → varyant `normal`, ölçek TAM 1.0.
+       Yani belge hiç sıkışmıyordu, test kendi öncülünü yanlış kuruyordu ve
+       yalnız süs iddia sayesinde yeşil kalıyordu. Yoğun bant `normal`ın
+       tavanı olan 80'in ÜSTÜNDE başlıyor (ölçüldü: 81 → `yogun`, ölçek 0.9). */
+    urunEkle(100); // ad gerekmez: iddia SAYIYA bağlı, sıraya değil
     otomatik();
-    /* Ölçek bloğa yazıldıysa gizli ürün kalmaz; yazılmasaydı kapasite 1
-       varsayar ve "+N sığmadı" rozeti çıkardı (paket 6'da ölçüldü). */
+
+    /* 1) KAPASİTE tarafı: ölçek bloğa yazıldıysa gizli ürün kalmaz;
+          yazılmasaydı kapasite 1 varsayar ve "+N sığmadı" rozeti çıkardı
+          (paket 6'da ölçüldü). */
     expect(screen.queryByLabelText(/ürün sığmadı/)).toBeNull();
-    expect(UrunListesiIcerikSchema.safeParse({ items: [] }).success).toBe(true);
+
+    /* 2) ÇİZİM tarafı — buranın eski hâli `safeParse({items: []})` idi:
+          şemanın boş listeyi kabul ettiğini ölçüyordu, yani bu testin
+          konusuyla ilgisi yoktu ve HİÇBİR koşulda kızamazdı. Süs iddia,
+          iddia değildir. Gerçek ölçüm şu: satır punto'su tuvalde ölçeksiz
+          değerin ALTINDA mı? Kapasite küçük ölçek varsayarken çizim 1
+          varsaymışsa "sıkıştırdım" iddiası ekranda karşılıksız kalır. */
+    const olceksiz_px = TYPO_MM.list_font * PX_PER_MM_TEST;
+    const satir = document.querySelector('[data-testid^="blok-"] span[style*="font-size"]');
+    expect(satir, "tuvalde çizilmiş satır bulunamadı").not.toBeNull();
+    const cizilen_px = Number.parseFloat((satir as HTMLElement).style.fontSize);
+    expect(cizilen_px).toBeGreaterThan(0);
+    expect(cizilen_px).toBeLessThan(olceksiz_px);
   });
 });

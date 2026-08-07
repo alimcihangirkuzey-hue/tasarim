@@ -197,6 +197,98 @@ export function parcala(
   return parcalar;
 }
 
+/* ── Devam zinciri ────────────────────────────────────────────────────── */
+
+/**
+ * Devam zincirinin KÖK kimliği: ardışık TÜM `~N` ekleri soyulur.
+ *
+ * Tek ek soymak yetmez, çünkü bir devam bloğu yeniden bölünebilir ve
+ * `blk_1~5~2` gibi iç içe zincirler doğar. Yalnız son eki soyan bir kök
+ * hesabı bunu `blk_1~5`'e bağlar, `blk_1`'e bağlamaz; zincir o zaman tek
+ * turda birleşmez ve ortada boşluk kalır.
+ */
+export function kokId(id: string): string {
+  return id.replace(/(?:~\d+)+$/, "");
+}
+
+/** Zincirdeki YER: kök [1], `~2` [2], `blk_1~5~2` [5,2]. Sıralama için. */
+function zincirSirasi(id: string): number[] {
+  const ekler = id.match(/~\d+/g);
+  return ekler ? ekler.map((e) => Number(e.slice(1))) : [1];
+}
+
+/** İki zincir sırasını karşılaştırır (sözlük sırası: 1 < 2 < 5 < 5~2). */
+function siraKarsilastir(a: number[], b: number[]): number {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
+/**
+ * DEVAM ZİNCİRİNİ BİRLEŞTİR (paket 6 — REFLOW'un kalbi).
+ *
+ * Bir önceki yerleşim uzun bloğu `id~2`, `id~3` parçalarına ayırmıştı ve
+ * bunlar belgede AYRI bloklar olarak yaşıyor. Yeniden dengelerken kök bloğa
+ * GERİ TOPLANIRLAR; yoksa ilk parçadan üç ürün silindiğinde o parça kısalır,
+ * arkadaki parça yerinde kalır ve ortada BOŞLUK açılır — ürün sahibinin
+ * açıkça yasakladığı davranış (ölçüldü: boşluk %2'den %10'a çıkmıştı).
+ *
+ * İKİ KURAL, İKİSİ DE GERÇEK TARAYICI PROVASINDA ÖLÇÜLEREK KONDU:
+ *
+ * 1. SIRA ZİNCİRDEN OKUNUR, dizi sırasından değil. Yerleşim parçaları panel
+ *    doldurma sırasına göre yazıyor ve bu sıra zincir sırası DEĞİL (ölçüldü:
+ *    bir yaprakta `~4, ~5, ~6, kök, ~2, ~3` sırasıyla duruyordu). Dizi
+ *    sırasına güvenen birleştirme ürünleri karışık sırada geri yazardı.
+ *
+ * 2. TEK BAŞINA KALAN PARÇA KÖK ADINI ALMAZ. Eskiden alıyordu ve çok
+ *    sayfalı belgede VERİ ÇOĞALMASINA yol açıyordu: globalReflow her yaprak
+ *    için autoYerlestir'i ayrı çağırdığı için 2. yaprağın artan parçası
+ *    (`blk_1~7`) kendi alt kümesinde köksüz kalıyor, kök adına çevriliyor ve
+ *    1. yaprakta DURAN `blk_1` ile ÇAKIŞIYORDU. Ölçüldü: iki yaprakta
+ *    6 tekil kimlik 8 blok olarak görünüyordu, React "aynı anahtar" uyarısı
+ *    42 kez düşüyordu ve 146 ürün eklemek belgeyi 174'ten 383'e çıkarıyordu.
+ *    Artık tek başına kalan parça KENDİ kimliğini korur; sonraki bölünmeler
+ *    ondan türer (`blk_1~7~2`) ve kimlikler belge boyunca tekil kalır.
+ *    Kökü olan gruplar yine tek bloğa iner, yani birleşme kaybolmaz.
+ */
+export function zinciriBirlestir(bloklar: readonly Block[]): Block[] {
+  const gruplar = new Map<string, Block[]>();
+  const kokSirasi: string[] = [];
+  for (const b of bloklar) {
+    const k = kokId(b.id);
+    if (!gruplar.has(k)) {
+      gruplar.set(k, []);
+      kokSirasi.push(k);
+    }
+    gruplar.get(k)!.push(b);
+  }
+
+  const birlesik: Block[] = [];
+  for (const k of kokSirasi) {
+    const grup = gruplar.get(k)!;
+    /* TEK ÜYE: kimlik DOKUNULMAZ (kural 2) */
+    if (grup.length === 1) {
+      birlesik.push(grup[0]);
+      continue;
+    }
+    const sirali = [...grup].sort((a, b) => siraKarsilastir(zincirSirasi(a.id), zincirSirasi(b.id)));
+    const kalemler = sirali.flatMap((b) => kalemleriOku(b));
+    /* KÖK ADI ANCAK KÖK BURADAYSA ALINIR (kural 2'nin tam hâli). Alt küme
+       yalnız ORTA parçaları taşıyorsa (`~4, ~5, ~6` — 2. yaprağın artanı)
+       birleşmiş bloğa kök adını vermek, kökün DURDUĞU 1. yapraktaki blokla
+       çakışmak demektir. Ölçüldü: bu hâlde 11 blok 7 tekil kimliğe
+       düşüyordu. Kök yoksa grubun EN BAŞTAKİ parçası kendi adını korur;
+       sonraki bölünmeler ondan türer ve kimlikler tekil kalır. Belge
+       ölçeğindeki birleştirmede kök zaten bulunur, orada tam birleşme olur. */
+    const kokVar = sirali.some((b) => b.id === k);
+    birlesik.push(kalemleriYaz({ ...sirali[0], id: kokVar ? k : sirali[0].id }, kalemler));
+  }
+  return birlesik;
+}
+
 /* ── Gruplama ─────────────────────────────────────────────────────────── */
 
 interface Parca {
@@ -221,6 +313,10 @@ export interface AutoRapor {
   bolunen: number;
   /** Yer kalmadığı için yaprağa girmeyenler — GİZLİ DEĞİL, RAPORLU */
   yerlesmeyen: YerlesmeyenKalem[];
+  /** Artan bloklarin KENDİSİ (paket 6.5). Çok sayfalı akışta bir sonraki
+      yaprağa AKITILACAK olan içerik budur; özet sayıları taşımak yetmez,
+      blokların kendisi lazım. */
+  yerlesmeyenBloklar: Block[];
   /** Girişteki toplam ürün sayısı */
   urunToplam: number;
   /** Yaprağa yerleşen ürün sayısı */
@@ -270,29 +366,7 @@ export function autoYerlestir(girisDoc: LayoutDoc): { doc: LayoutDoc; rapor: Aut
 
 
 
-  /* 0) DEVAM ZİNCİRİNİ BİRLEŞTİR (paket 6 — REFLOW'un kalbi).
-     Bir önceki yerleşim uzun bloğu `id~2`, `id~3` parçalarına ayırmıştı ve
-     bunlar belgede AYRI bloklar olarak yaşıyor. Yeniden dengelerken önce
-     ana bloğa GERİ TOPLANIRLAR; yoksa ilk parçadan üç ürün silindiğinde o
-     parça kısalır, arkadaki parça yerinde kalır ve ortada BOŞLUK açılır —
-     ürün sahibinin açıkça yasakladığı davranış (ölçüldü: boşluk %2'den
-     %10'a çıkmıştı). Birleştirme sırayı korur: `~2` ana bloğun ardına,
-     `~3` onun ardına. */
-  const birlesik: Block[] = [];
-  const anaIndex = new Map<string, number>();
-  for (const b of doc.blocks) {
-    const m = /^(.*)~(\d+)$/.exec(b.id);
-    const anaId = m ? m[1] : b.id;
-    const mevcut = anaIndex.get(anaId);
-    if (m && mevcut !== undefined) {
-      const ana = birlesik[mevcut];
-      birlesik[mevcut] = kalemleriYaz(ana, [...kalemleriOku(ana), ...kalemleriOku(b)]);
-      continue;
-    }
-    anaIndex.set(anaId, birlesik.length);
-    birlesik.push(m ? { ...b, id: anaId } : b);
-  }
-  doc = { ...doc, blocks: birlesik };
+  doc = { ...doc, blocks: zinciriBirlestir(doc.blocks) };
 
   const girisUrun = doc.blocks.reduce((s, b) => s + kalemleriOku(b).length, 0);
 
@@ -438,9 +512,12 @@ export function autoYerlestir(girisDoc: LayoutDoc): { doc: LayoutDoc; rapor: Aut
     .flatMap((s) => s.columns.flat().map((b) => b.entry.blok))
     .concat(compose.overflow.map((p) => p.blok));
 
-  const yerlesmeyen: YerlesmeyenKalem[] = [...kapakArtan, ...arkaArtan, ...artanParcalar].map(
-    (b) => ({ kind: b.kind, baslik: blokBasligi(b), urun: kalemleriOku(b).length })
-  );
+  const artanHepsi = [...kapakArtan, ...arkaArtan, ...artanParcalar];
+  const yerlesmeyen: YerlesmeyenKalem[] = artanHepsi.map((b) => ({
+    kind: b.kind,
+    baslik: blokBasligi(b),
+    urun: kalemleriOku(b).length,
+  }));
 
   const urunYerlesen = yeniBloklar.reduce((s, b) => s + kalemleriOku(b).length, 0);
 
@@ -450,6 +527,7 @@ export function autoYerlestir(girisDoc: LayoutDoc): { doc: LayoutDoc; rapor: Aut
       yerlesen: yeniBloklar.length,
       bolunen,
       yerlesmeyen,
+      yerlesmeyenBloklar: artanHepsi,
       urunToplam: girisUrun,
       urunYerlesen,
       adaptif,

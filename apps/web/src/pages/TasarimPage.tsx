@@ -38,7 +38,7 @@ import {
   type LayoutDoc,
   type Panel,
 } from "@tezgah/shared";
-import { autoYerlestir, preflight, preflightOzet, type AutoRapor } from "@tezgah/templates";
+import { globalReflow, preflight, preflightOzet, type ReflowRapor } from "@tezgah/templates";
 import { BlokDenetci } from "../components/BlokDenetci";
 import { BlokIcerik } from "../components/BlokIcerik";
 import { t } from "../i18n";
@@ -155,9 +155,42 @@ function BlockFace({ kind }: { kind: BlockKind }) {
 let sayac = 0;
 const yeniId = (): string => `blk_${++sayac}`;
 
+/** Bir yaprakta o yüzdeki blok sayısı. */
+const yuzdekiBlok = (y: LayoutDoc, yuz: "dis" | "ic"): number =>
+  y.blocks.filter((b) => b.panel_id.startsWith(yuz)).length;
+
+/* BAKILAN YÜZ BOŞSA DOLU OLANA GEÇ — TEK KAYNAK.
+   Bu korkuluk üç ayrı yerde gerekiyor ve üçünde de aynı olmak zorunda:
+   otomatik yerleşim · sayfa değiştirme · geri alma. Hepsinde belge altından
+   değişiyor ve `side` belge düzeyinde TEK bir durum olduğu için kullanıcı
+   BOMBOŞ bir yaprağa bakıyor kalabiliyordu; acemi kullanıcı için boş yaprak
+   "ürünlerim silindi" demektir. Üçü de ölçülerek bulundu (jsdom): otomatik
+   yerleşimde paket 6'da, sayfa gezinimi ve geri almada paket 6.5'te.
+   Kopyalanmış üç kural birbirinden ayrı bayatlardı; o yüzden tek işlev.
+   YALNIZ BOŞSA geçilir — dolu bir yüzden kullanıcıyı zorla koparmak da
+   şaşırtırdı. */
+function doluYuz(y: LayoutDoc, mevcut: "dis" | "ic"): "dis" | "ic" {
+  const oteki = mevcut === "dis" ? "ic" : "dis";
+  return yuzdekiBlok(y, mevcut) === 0 && yuzdekiBlok(y, oteki) > 0 ? oteki : mevcut;
+}
+
 export function TasarimPage() {
-  const [doc, setDoc] = useState<LayoutDoc>(() =>
-    LayoutDocSchema.parse({ format: "a4", orientation: "yatay", fold: 2, fold_style: "roll" })
+  /* BELGE = YAPRAK DİZİSİ (paket 6.5). Tek yapraklı belge bir belgedir;
+     `doc` yalnız AKTİF yaprağın kısayoludur. Sayfa sayısı kullanıcının
+     yöneteceği bir ayar değil, akışın SONUCUDUR. */
+  const [belge, setBelge] = useState<LayoutDoc[]>(() => [
+    LayoutDocSchema.parse({ format: "a4", orientation: "yatay", fold: 2, fold_style: "roll" }),
+  ]);
+  const [aktif, setAktif] = useState(0);
+  const doc = belge[Math.min(aktif, belge.length - 1)];
+  /** Aktif yaprağı günceller — imza eski setDoc ile aynı, çağıranlar değişmez */
+  const setDoc = useCallback(
+    (f: (d: LayoutDoc) => LayoutDoc) =>
+      setBelge((b) => {
+        const i = Math.min(aktif, b.length - 1);
+        return b.map((y, j) => (j === i ? f(y) : y));
+      }),
+    [aktif]
   );
   const [side, setSide] = useState<"dis" | "ic">("dis");
   const [secili, setSecili] = useState<string | null>(null);
@@ -167,8 +200,13 @@ export function TasarimPage() {
   /* GERİ AL yığını: her yıkıcı işlem öncesi doc'un kopyası. Otomatik yerleşim
      kullanıcının elle kurduğu düzeni tümden değiştirir — geri dönüşü olmayan
      bir düğme, acemi kullanıcıyı denemekten alıkoyar. */
-  const [gecmis, setGecmis] = useState<LayoutDoc[]>([]);
-  const [rapor, setRapor] = useState<AutoRapor | null>(null);
+  /* GEÇMİŞ BELGENİN TAMAMINI TUTAR (yaprak dizisi dizisi). Paket 6.5'te bir
+     tur bunu tek yaprak olarak tutuyordu (`LayoutDoc[]`) ve Geri Al 4
+     sayfalık belgeyi 1 sayfaya indiriyordu: açık kullanıcı eylemiyle veri
+     kaybı. Yaprak sayısı bir SONUÇ olduğu için geçmişin birimi de yaprak
+     değil BELGE olmak zorundadır. */
+  const [gecmis, setGecmis] = useState<LayoutDoc[][]>([]);
+  const [rapor, setRapor] = useState<ReflowRapor | null>(null);
   /* OTOMATİK MOD (paket 6). Paket 4'ün kuralı "arka planda sessizce yeniden
      dizme"ydi ve GEÇERLİ: elle kurulmuş düzen habersiz bozulmaz. Ama
      kullanıcı bir kez "Otomatik Yerleştir"e bastıysa AKIŞI SEÇMİŞTİR —
@@ -182,37 +220,64 @@ export function TasarimPage() {
      yerleşimini habersiz yeniden dizmek, ürün sahibinin açıkça yasakladığı
      davranıştır. */
   const otomatikYerlestir = useCallback(() => {
-    setDoc((d) => {
-      setGecmis((g) => [...g, d]);
-      const { doc: yeni, rapor: r } = autoYerlestir(d);
+    setBelge((b) => {
+      setGecmis((g) => [...g, b]);
+      /* GLOBAL REFLOW: belgenin TAMAMI baştan akar. Yerel düzeltme sayfa
+         3'te delik bırakıp sayfa 4'ü olduğu gibi tutardı.
+         RAPOR BURADAN OKUNUR: bir tur burada yerleşim BİTTİKTEN SONRA
+         `autoYerlestir(yeniBelge[0])` çağrılıyordu, sırf rapor almak için.
+         İki kusuru vardı: (1) motor yerleşmiş içeriğin üstünde İKİNCİ kez
+         koşuyordu, (2) dönen rapor yalnız 1. yaprağın yeniden dizilişini
+         anlatıyordu — belgenin raporu değildi, yani çok sayfalı belgede
+         "sığmadı" satırı yanlış sayfayı gösterebilirdi. globalReflow zaten
+         belge düzeyinde rapor veriyor; ikinci koşu KALDIRILDI. */
+      const { belge: yeniBelge, rapor: r } = globalReflow(b);
+      const yeni = yeniBelge[0];
       setRapor(r);
 
-      /* BAKILAN YÜZ BOŞALDIYSA DOLU OLANA GEÇ. İçerik blokları iç yüze
-         taşınır; kullanıcı dış yüze bakarken düğmeye bastıysa ekran bir anda
-         boşalır ve acemi kullanıcı "sildi" sanar (jsdom turunda yakalandı).
-         Yalnız BOŞALDIYSA geçilir — dolu bir yüzden zorla koparmak da
-         kullanıcıyı şaşırtırdı. */
-      const sayi = (yuz: "dis" | "ic") =>
-        yeni.blocks.filter((b) => b.panel_id.startsWith(yuz)).length;
-      setSide((mevcut) => (sayi(mevcut) === 0 && sayi(mevcut === "dis" ? "ic" : "dis") > 0
-        ? (mevcut === "dis" ? "ic" : "dis")
-        : mevcut));
+      setSide((mevcut) => doluYuz(yeni, mevcut));
 
+      /* Durum çubuğu SAYFA SAYISINI söyler: çok sayfalı belgede yalnız
+         "dış/iç yüz" saymak 1. yaprağı anlatır, kullanıcı ise belgeye bakar. */
+      const sayfaBilgi = yeniBelge.length > 1 ? ` · ${yeniBelge.length} sayfa` : "";
       setDurum(
         r.yerlesmeyen.length > 0
-          ? { tur: "uyari", metin: `${r.yerlesmeyen.length} blok yaprağa sığmadı` }
-          : { tur: "ok", metin: `Yerleştirildi — dış yüz ${sayi("dis")}, iç yüz ${sayi("ic")} blok` }
+          ? { tur: "uyari", metin: `${r.yerlesmeyen.length} blok yaprağa sığmadı${sayfaBilgi}` }
+          : {
+              tur: "ok",
+              metin: `Yerleştirildi — dış yüz ${yuzdekiBlok(yeni, "dis")}, iç yüz ${yuzdekiBlok(yeni, "ic")} blok${sayfaBilgi}`,
+            }
       );
-      return yeni;
+      setAktif(0);
+      return yeniBelge;
     });
     setOtoMod(true);
     setSecili(null);
   }, []);
 
+  /* SAYFA DEĞİŞTİR. Ölçüldü (jsdom, 300 ürün): 1. sayfanın içeriği dış yüzde,
+     2. sayfanın içeriği İÇ yüzde toplanıyor; kullanıcı dış yüze bakarken 2.
+     sayfaya geçince ekranda SIFIR blok kalıyordu. doluYuz o boşluğu kapatır. */
+  const sayfaya = useCallback(
+    (i: number) => {
+      const hedef = Math.max(0, Math.min(i, belge.length - 1));
+      setAktif(hedef);
+      setSide((m) => doluYuz(belge[hedef], m));
+      setSecili(null); // seçili blok başka sayfada kalmasın
+    },
+    [belge]
+  );
+
   const geriAl = useCallback(() => {
     setGecmis((g) => {
       if (g.length === 0) return g;
-      setDoc(g[g.length - 1]);
+      const onceki = g[g.length - 1];
+      setBelge(onceki); // BELGENİN tamamı geri gelir, ilk yaprağı değil
+      setAktif(0);
+      /* Geri alınan belge bakılan yüzü boş bırakabilir (ölçüldü: otomatik
+         yerleşim sonrası iç yüzdeyken Geri Al, içeriği dış yüzde olan tek
+         yapraklı belgeyi geri getiriyordu → ekran bomboş). */
+      setSide((m) => doluYuz(onceki[0], m));
       setRapor(null);
       setDurum({ tur: "ok", metin: "Geri alındı" });
       setSecili(null);
@@ -386,6 +451,44 @@ export function TasarimPage() {
         <div className="row" style={{ marginBottom: 8 }}>
           <b>{t("tasarim.baslik")}</b>
           <span className="pill">A4 yatay · {t("tasarim.iki_kirim")}</span>
+          {belge.length > 1 && (
+            <span className="row" aria-label="Sayfa gezinimi" style={{ gap: 4 }}>
+              <button
+                type="button"
+                className="ghost"
+                aria-label="Önceki sayfa"
+                disabled={aktif === 0}
+                onClick={() => sayfaya(aktif - 1)}
+              >
+                ‹
+              </button>
+              {belge.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={i === aktif ? "" : "ghost"}
+                  aria-label={`Sayfa ${i + 1}`}
+                  aria-current={i === aktif ? "page" : undefined}
+                  style={{ padding: "4px 9px" }}
+                  onClick={() => sayfaya(i)}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="ghost"
+                aria-label="Sonraki sayfa"
+                disabled={aktif >= belge.length - 1}
+                onClick={() => sayfaya(aktif + 1)}
+              >
+                ›
+              </button>
+              <span style={{ fontSize: 12, color: "var(--c-muted)" }}>
+                {aktif + 1} / {belge.length} sayfa
+              </span>
+            </span>
+          )}
           <button type="button" onClick={otomatikYerlestir}>
             Otomatik Yerleştir
           </button>
@@ -744,17 +847,29 @@ export function TasarimPage() {
         blok={seciliBlok}
         yeniId={yeniId}
         onProps={(props) =>
-          setDoc((d) => {
-            const guncel = {
-              ...d,
-              blocks: d.blocks.map((b) => (b.id === secili ? { ...b, props } : b)),
-            };
+          /* TEK GÜNCELLEYİCİ. Bir tur burada `setDoc` içinden `setBelge`
+             çağrılıyordu: bir state güncelleyicisinin GÖVDESİNDE başka bir
+             güncelleyici kuyruğa alınıyordu. React güncelleyicileri saf kabul
+             eder ve (StrictMode'da) İKİ KEZ çağırır — yani reflow iki kez
+             kuyruğa giriyor, üstelik setDoc'un dönüş değeri kuyruğa alınan
+             setBelge ile YARIŞIYORDU. Sonuç deterministik olduğu için ekranda
+             görünmüyordu; yine de yanlış. Artık tek bir setBelge hem prop
+             değişikliğini uygular hem gerekiyorsa akıtır. */
+          setBelge((b) => {
+            const i = Math.min(aktif, b.length - 1);
+            const guncelBelge = b.map((y, j) =>
+              j === i ? { ...y, blocks: y.blocks.map((x) => (x.id === secili ? { ...x, props } : x)) } : y
+            );
             /* REFLOW: ürün eklendi/silindi/değişti → belge yeniden dengelenir.
                YALNIZ otomatik modda; elle kurulmuş düzen korunur. */
-            if (!otoMod) return guncel;
-            const { doc: yeni, rapor: r } = autoYerlestir(guncel);
+            if (!otoMod) return guncelBelge;
+            const { belge: yeniBelge, rapor: r } = globalReflow(guncelBelge);
+            /* Rapor da TAZELENİR: reflow taşmayı çözdüyse eski "sığmadı"
+               uyarısı ekranda kalmamalı — çözülmüş bir sorunu bildiren uyarı,
+               bildirmeyen uyarı kadar yanlıştır. */
             setRapor(r);
-            return yeni;
+            setAktif((a) => Math.min(a, yeniBelge.length - 1));
+            return yeniBelge;
           })
         }
       />
