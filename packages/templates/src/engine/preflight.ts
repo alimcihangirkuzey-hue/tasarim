@@ -53,7 +53,17 @@ export const PRINT_ESIK = {
   dpi_uyari: 250,
   /** Bu DPI'ın altı basılmamalı */
   dpi_kritik: 150,
-  /** Kritik içerik kat çizgisine bundan yakın olmamalı (mm) */
+  /** Kritik içerik kat çizgisine bundan yakın olmamalı (mm).
+      ÖLÇÜLMÜŞ İLİŞKİ — bu sayı safe_mm ile YARIŞIR: kat çizgileri panel
+      SINIRLARINDA durur, dolayısıyla güvenli alana kıstırılmış bir bloğun
+      kata uzaklığı tam olarak safe_mm kadardır. Varsayılan safe_mm=5 bu
+      eşikten (4) BÜYÜK olduğu için kat-yakınlık kuralı varsayılan belgede
+      HİÇ ATEŞLENMEZ; ölçüldü: safe 5→[] · 4→[] · 2→fold_yakin · 0→fold_yakin.
+      Bu bir kusur değil, doğru sıralamadır: GÜVENLİ ALAN ASIL KORUMADIR,
+      kat kuralı onun altına inen belgeler için ARKA DURAKtır. Eşiği safe'in
+      üstüne çıkarmak, tam genişlikteki her içerik bloğunu uyarır ve uyarıyı
+      gürültüye çevirirdi. Erişilebilirliği testle çivilidir — ölü kural
+      bırakılmadı. */
   fold_guvenli_mm: 4,
   /** Kenara bu kadar yaklaşan görsel "edge-to-edge" sayılır (mm) */
   kenar_yakin_mm: 2,

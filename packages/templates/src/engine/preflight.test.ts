@@ -205,6 +205,26 @@ describe("Kat güvenliği — kritik içerik vs dekoratif", () => {
     expect(kod(d)).not.toContain("fold_yakin");
   });
 
+  it("ERİŞİLEBİLİRLİK: kural varsayılan safe'te ateşlenmez, DAR safe'te ateşlenir", () => {
+    /* Kat çizgileri panel SINIRINDA durur; güvenli alana kıstırılmış bloğun
+       kata uzaklığı tam safe_mm kadardır. Varsayılan safe (5) eşikten (4)
+       büyük → kural sessiz. Bu ÖLÜ KOD DEĞİL: safe küçüldüğünde arka durak
+       olarak devreye girer. Ölçülmeden "çalışıyor" demek olmazdı. */
+    const dar = (safe: number): string[] => {
+      const w = 100 - 2 * Math.max(safe, 0.1);
+      const d = LayoutDocSchema.parse({
+        format: "a4", orientation: "yatay", fold: 2, safe_mm: safe,
+        blocks: [{ id: "f1", kind: "kategori_basligi", panel_id: "ic-0",
+          box: { x_mm: Math.max(safe, 0.1), y_mm: 20, w_mm: w, h_mm: 15 },
+          props: { title: "Pizzalar", subtitle: "" } }],
+      });
+      return preflight(d).bulgular.map((b) => b.code);
+    };
+    expect(dar(5), "varsayılan safe: kural sessiz").not.toContain("fold_yakin");
+    expect(dar(2), "dar safe: arka durak devrede").toContain("fold_yakin");
+    expect(dar(0), "safe yok: kat kuralı tek koruma").toContain("fold_yakin");
+  });
+
   it("kattan UZAK kritik içerik temiz", () => {
     sayac = 0;
     const d = belge([blok("kategori_basligi", { title: "X" }, { x_mm: 10, y_mm: 20, w_mm: 40 }, "ic-0")]);
