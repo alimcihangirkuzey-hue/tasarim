@@ -1,6 +1,15 @@
 # GOAL QUEUE — TEZGÂH (Repo C) görünümü
 *(Kaynak: PROGRAM_COCKPIT v14 §2 — master styva'da; bu türetilmiş görünüm PART-B adım-0 anındaki durumdur.)*
 
+> ## ⚠ TARİHSEL GÖRÜNÜM — GÜNCEL GERÇEK DEĞİL
+> Kendi alt başlığının söylediği gibi, bu tablo **PART-B adım-0 ANINDAKİ**
+> durumdur (cockpit v14, 2026-07-14). Durum sütunları o günden beri
+> güncellenmemiştir. İçeriği **değiştirilmedi**: MULTI_REPO v1.2 §6 bu dosyayı
+> cockpit §2'ye bağlar; türetilmiş görünümü elle doldurmak yasaktır.
+>
+> **TASARIM-BUILDER HATTI BU KUYRUKTA YOKTUR** (T/GOAL kalemleri onu kapsamaz).
+> Kanonik kayıt: **[BUILDER_ROADMAP.md](./BUILDER_ROADMAP.md)**
+
 | # | Goal | Durum | Kapı/Bağımlılık |
 |---|---|---|---|
 | T1 | TEZGAH-TUR-FIX | **COMPLETED** — main=origin=`4f84980`, 366/366, dal silindi | — |

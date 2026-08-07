@@ -1,6 +1,8 @@
 > **C-repo kopyası (pointer şerhi):** Master kokpit styva reposunda yaşar (direktif v1.2 §6); bu dosya PART-B adım-0 materyalizasyonu anındaki v14 anlık görüntüsüdür. Güncel sürüm için styva /docs esastır.
 >
 > **YEREL EK (2026-07-19, sürüm ATLAMADI):** §3 ADR endeksine ADR-007 satırı eklendi. Sürüm atlanmadı çünkü sürüm atlama yetkisi master kopyadadır (yönetişim hattı); bu yalnız yerel endeks tazelemesidir. Master styva kopyası bu satırı henüz taşımıyor — senkron yönetişimin işidir.
+>
+> **YEREL EK (2026-08-07, sürüm ATLAMADI) — BU KOPYA BAYAT + BUILDER HATTI EKSİK:** Bu anlık görüntü **v14 (2026-07-14)** olduğu için §2 GOAL QUEUE ve §7 NEXT_ACTION repo HEAD'ini YANSITMAZ (§7 hâlâ F8-D merge kutusu + T3 PART-B gösteriyor). Ayrıca bu kopyada **tasarım-builder hattı hiç yoktur**: Paket 1…6.6 commit ve journal'da gerçektir ama hiçbir cockpit bölümünde izlenmez. O hattın kanonik kaydı **[BUILDER_ROADMAP.md](./BUILDER_ROADMAP.md)**'dir (journal `2026-08-07-builder-roadmap-otoritesi`). Bu kopyanın metni DEĞİŞTİRİLMEDİ — sürüm atlama ve içerik güncellemesi master kopyanın (yönetişim) yetkisindedir; senkron yönetişimin işidir. UYARI: repodaki "P7" ibaresi F1 brief yaşam döngüsü fazıdır, builder hattının Paket 7'si DEĞİLDİR.
 
 # STYVA PROGRAM COCKPIT v14 — 2026-07-14 (F8-D AUDIT PASS — MERGE KUTUSU + T3 PAKETİ VERİLDİ)
 **Programın yaşayan hafızası. Her yönetişim (Fable) oturumu bununla açılır; her kayda

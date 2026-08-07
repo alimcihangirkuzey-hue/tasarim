@@ -1,6 +1,21 @@
 # ROADMAP — TEZGÂH (Repo C) hattı
 *(PROGRAM_COCKPIT v14 §2'den türetilmiş sıra görünümü; master styva'da.)*
 
+> ## ⚠ TARİHSEL GÖRÜNÜM — GÜNCEL GERÇEK DEĞİL
+> Bu dosya **T-hattını** (T1…T4 + GOAL-* program kuyruğu) anlatır ve cockpit
+> **v14 (2026-07-14)** kopyasından türetilmiştir. "T3 PART-B ◀ şimdi" ibaresi o
+> ANIN durumudur; repo HEAD'i çok ötededir. İçeriği **değiştirilmedi** — MULTI_REPO
+> v1.2 §6 bu dosyayı cockpit §2'ye bağlar, türetilmiş bir görünümü elle doldurmak
+> türetme sözleşmesini bozar. Güncellenmesi için kaynak cockpit'in yeni sürümü
+> gelmelidir (yönetişim işi).
+>
+> **TASARIM-BUILDER HATTI BU DOSYADA YOKTUR.** Paket 1…6.6 (blok yerleşim → blok
+> tuvali → içerik blokları → otomatik yerleşim → preflight → adaptif tema → çok
+> sayfa → performans/adaptif yoğunluk) için kanonik kayıt:
+> **[BUILDER_ROADMAP.md](./BUILDER_ROADMAP.md)**
+>
+> Çelişki kuralı (§6 son satırı): repo gerçeği ≠ doküman ise **repo gerçeği esastır**.
+
 ## C-hattı sırası (T-lane)
 1. **T1 TUR-FIX** ✅ (main `4f84980`) — görsel tur kırıkları (DELETE başlık + dil-duyarlı A4 başlığı)
 2. **T1b HOTFIX** ✅ (main `6f18cf1`) — tekrar-intake mükerrer kategori (FIX-3 birleşme)

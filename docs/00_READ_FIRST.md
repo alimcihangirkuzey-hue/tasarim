@@ -23,6 +23,26 @@ geri döndürülemez veri.
 4. Güncel paketi bekle/uygula — paket Kurye'yle yönetişimden gelir; paketsiz
    inisiyatif yok.
 
+## REPO-YEREL EK — TEZGÂH (bu blok üç-repo çekirdeğine AİT DEĞİL)
+> **Bu blok yalnız TEZGÂH kopyasındadır** ve dosyanın "üç repoda birebir kopya"
+> çekirdeğinin parçası değildir. Bilerek buraya kondu, çünkü 3. adımdaki keşif
+> yolu bu repoda EKSİK ölçüldü: tasarım-builder hattı (Paket 1…6.6) commit ve
+> journal'da gerçek, ama PROGRAM_COCKPIT (v14 kopyası) ve ondan türetilen
+> GOAL_QUEUE/ROADMAP görünümlerinde **hiç görünmüyor**. Bu blok olmadan açılış
+> sırası okuyucuyu bayat T-hattı görünümüne bırakıp builder hattını gizliyordu.
+> Diğer iki repoya taşınıp taşınmayacağı **yönetişim kararıdır**; buradaki tek
+> iddia, sapmanın sessiz değil işaretli olmasıdır.
+>
+> **3. adımın TEZGÂH eki:** `/docs/BUILDER_ROADMAP.md` — builder hattının kanonik
+> kaydı (Paket 1…6.6 ledger'ı = ölçüm sınıfı, journal'a birebir bağlı · değişmez
+> sözleşmeler · DEFERRED/DEBT · sonraki paket adayları = **plan sınıfı, işaretli**).
+> Canonical 11.3 + 11.4. Kuruluş: journal `2026-08-07-builder-roadmap-otoritesi`.
+>
+> İki uyarı: **(1)** ROADMAP.md ve GOAL_QUEUE.md **tarihsel** görünümlerdir
+> (başlarındaki uyarıya bakın) — güncel gerçek sanılmamalı. **(2)** Repoda geçen
+> **"P7"** ibaresi F1 brief yaşam döngüsü fazıdır, builder hattının Paket 7'si
+> **değildir**.
+
 ## STEP-2 KURALI (doküman ≠ kod)
 3. adımdaki dosyalar henüz YOKSA (materyalizasyon öncesi): yokluğu açılış raporunda
 AÇIKÇA belirt; içerik UYDURMA; materyalizasyon ilgili adım-0 commit'iyle yapılır.
