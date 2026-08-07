@@ -1,0 +1,23 @@
+gate: build
+runner: linux/node22.22.2/npm10.9.7
+cwd: /home/user/tasarim
+
+$ npm run build -w apps/web
+exit: 2  duration_ms: 10982
+--- stdout ---
+
+> @tezgah/web@0.1.0 build
+> tsc --noEmit && vite build
+
+src/pages/TasarimOtomatik.test.tsx(19,3): error TS2322: Type 'boolean' is not assignable to type 'void'.
+src/pages/TasarimOtomatik.test.tsx(20,30): error TS2322: Type 'boolean' is not assignable to type 'void'.
+
+--- stderr ---
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path /home/user/tasarim/apps/web
+npm error workspace @tezgah/web@0.1.0
+npm error location /home/user/tasarim/apps/web
+npm error command failed
+npm error command sh -c tsc --noEmit && vite build
+

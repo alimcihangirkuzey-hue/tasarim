@@ -38,6 +38,7 @@ import {
   type LayoutDoc,
   type Panel,
 } from "@tezgah/shared";
+import { autoYerlestir, type AutoRapor } from "@tezgah/templates";
 import { BlokDenetci } from "../components/BlokDenetci";
 import { BlokIcerik } from "../components/BlokIcerik";
 import { t } from "../i18n";
@@ -163,6 +164,53 @@ export function TasarimPage() {
   const [hedefPanel, setHedefPanel] = useState<string | null>(null);
   /** Son işlemin kullanıcıya dönük sonucu (snap/itme/taşma) — sessiz kalmaz */
   const [durum, setDurum] = useState<{ tur: "ok" | "uyari"; metin: string } | null>(null);
+  /* GERİ AL yığını: her yıkıcı işlem öncesi doc'un kopyası. Otomatik yerleşim
+     kullanıcının elle kurduğu düzeni tümden değiştirir — geri dönüşü olmayan
+     bir düğme, acemi kullanıcıyı denemekten alıkoyar. */
+  const [gecmis, setGecmis] = useState<LayoutDoc[]>([]);
+  const [rapor, setRapor] = useState<AutoRapor | null>(null);
+
+  /* OTOMATİK YERLEŞİM YALNIZ BURADAN ÇAĞRILIR — açık kullanıcı eylemi.
+     Arka planda koşan hiçbir yol yoktur (useEffect yok): kullanıcının
+     yerleşimini habersiz yeniden dizmek, ürün sahibinin açıkça yasakladığı
+     davranıştır. */
+  const otomatikYerlestir = useCallback(() => {
+    setDoc((d) => {
+      setGecmis((g) => [...g, d]);
+      const { doc: yeni, rapor: r } = autoYerlestir(d);
+      setRapor(r);
+
+      /* BAKILAN YÜZ BOŞALDIYSA DOLU OLANA GEÇ. İçerik blokları iç yüze
+         taşınır; kullanıcı dış yüze bakarken düğmeye bastıysa ekran bir anda
+         boşalır ve acemi kullanıcı "sildi" sanar (jsdom turunda yakalandı).
+         Yalnız BOŞALDIYSA geçilir — dolu bir yüzden zorla koparmak da
+         kullanıcıyı şaşırtırdı. */
+      const sayi = (yuz: "dis" | "ic") =>
+        yeni.blocks.filter((b) => b.panel_id.startsWith(yuz)).length;
+      setSide((mevcut) => (sayi(mevcut) === 0 && sayi(mevcut === "dis" ? "ic" : "dis") > 0
+        ? (mevcut === "dis" ? "ic" : "dis")
+        : mevcut));
+
+      setDurum(
+        r.yerlesmeyen.length > 0
+          ? { tur: "uyari", metin: `${r.yerlesmeyen.length} blok yaprağa sığmadı` }
+          : { tur: "ok", metin: `Yerleştirildi — dış yüz ${sayi("dis")}, iç yüz ${sayi("ic")} blok` }
+      );
+      return yeni;
+    });
+    setSecili(null);
+  }, []);
+
+  const geriAl = useCallback(() => {
+    setGecmis((g) => {
+      if (g.length === 0) return g;
+      setDoc(g[g.length - 1]);
+      setRapor(null);
+      setDurum({ tur: "ok", metin: "Geri alındı" });
+      setSecili(null);
+      return g.slice(0, -1);
+    });
+  }, []);
 
   const panels = useMemo(() => panelsOf(doc), [doc]);
   const yuzPanelleri = panels.filter((p) => p.side === side);
@@ -314,6 +362,12 @@ export function TasarimPage() {
         <div className="row" style={{ marginBottom: 8 }}>
           <b>{t("tasarim.baslik")}</b>
           <span className="pill">A4 yatay · {t("tasarim.iki_kirim")}</span>
+          <button type="button" onClick={otomatikYerlestir}>
+            Otomatik Yerleştir
+          </button>
+          <button type="button" className="ghost" onClick={geriAl} disabled={gecmis.length === 0}>
+            Geri Al
+          </button>
           <span style={{ flex: 1 }} />
           {(["dis", "ic"] as const).map((s) => (
             <button
@@ -372,7 +426,18 @@ export function TasarimPage() {
                   aria-label={panel.label_tr}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    e.dataTransfer.dropEffect = "copy";
+                    /* dropEffect KAYNAĞA UYMAK ZORUNDA. Palet "copy" ilan
+                       eder (yeni blok doğar), tuvaldeki blok "move" (aynı
+                       blok taşınır). Burada sabit "copy" yazılıydı ve
+                       tarayıcı uyuşmayan pazarlığı İPTAL ediyordu: gerçek
+                       Chromium'da dragstart ve dragover ateşleniyor ama DROP
+                       HİÇ GELMİYORDU — yani otomatik yerleşimden sonra blok
+                       elle taşınamıyordu. jsdom bu pazarlığı uygulamadığı
+                       için bileşen testleri yeşil kalıyordu; kusuru görsel
+                       prova yakaladı. */
+                    e.dataTransfer.dropEffect = surukleVeri.current.startsWith("tasi:")
+                      ? "move"
+                      : "copy";
                     setHedefPanel(panel.id);
                   }}
                   onDragLeave={() => setHedefPanel((h) => (h === panel.id ? null : h))}
@@ -553,6 +618,20 @@ export function TasarimPage() {
           <span>{doc.blocks.length} {t("tasarim.blok_sayisi")}</span>
         </div>
 
+        {rapor && rapor.yerlesmeyen.length > 0 && (
+          <div className="pill warn" role="alert" style={{ display: "block", marginTop: 8, padding: "6px 10px" }}>
+            <b>Yaprağa sığmadı:</b>{" "}
+            {rapor.yerlesmeyen
+              .map((y) => (y.urun > 0 ? `${y.baslik} (${y.urun} ürün)` : y.baslik))
+              .join(" · ")}{" "}
+            — panel ekle ya da ürün azalt
+          </div>
+        )}
+        {rapor && rapor.bolunen > 0 && (
+          <div className="pill" role="status" style={{ display: "inline-block", marginTop: 8 }}>
+            {rapor.bolunen} blok devam bloğuna bölündü — ürün kaybı yok
+          </div>
+        )}
         {tasanlar.size > 0 && (
           <div className="pill warn" role="alert" style={{ display: "inline-block", marginTop: 8 }}>
             {tasanlar.size} {t("tasarim.tasan_blok")}

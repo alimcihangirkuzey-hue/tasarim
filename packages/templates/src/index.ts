@@ -17,6 +17,7 @@ export * from "./types.js";
 export * from "./themes.js";
 export * from "./engine/binding.js";
 export * from "./engine/layout.js";
+export * from "./engine/blok-yerlesim.js"; // paket 4: otomatik blok yerleşimi
 export * from "./engine/severity.js";
 export * from "./engine/channels.js";
 export * from "./engine/mockup-tercihi.js";
