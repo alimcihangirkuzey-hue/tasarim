@@ -24,6 +24,10 @@
    ve defterin KENDİ olay dosyaları — onları bu sürecin kendisi yazar, kendi
    yazdığı satır yüzünden durmak anlamsız olurdu. */
 
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+
 /** Kapının ölçüm anı ile karşılaştırılacak tek dosya. */
 export interface DegisenDosya {
   /** Repo köküne göre yol (git status çıktısındaki hâli). */
@@ -64,4 +68,66 @@ export function olcumdenSonraDegisenler(
     .filter((d) => d.mtimeMs !== null && d.mtimeMs > olcumMs)
     .map((d) => d.yol)
     .sort();
+}
+
+/* ── TOPLAMA KATMANI ──────────────────────────────────────────────────────
+   BURAYA TAŞINDI, VE BU BİR DÜZELTMEDİR: bu iş önce `cli.ts` içinde yazıldı.
+   O dosyanın kendi başlığı "İNCE kabuk: karar mantığı YOKTUR" der — git
+   çıktısı ayrıştırmak orada YAŞAMAMALIYDI ve test edilemez hâldeydi (bulgu
+   `K-SIRA-5`, CIDDI). Kök ADRESİ parametre olduğu için artık gerçek ama
+   GEÇİCİ bir depoyla sınanabiliyor. */
+
+/** Git komutu — çalışmazsa `null`. Ölçemediğimiz şey hakkında yargı üretmeyiz. */
+function gitCikti(kok: string, args: readonly string[]): string | null {
+  try {
+    return execFileSync("git", [...args], { cwd: kok, encoding: "utf8" });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `git status --porcelain` çıktısını yollara çevirir.
+ *
+ * Porcelain v1: iki karakter durum + boşluk + yol. Yeniden adlandırmada
+ * `eski -> yeni` gelir ve ölçülecek olan YENİ yoldur; boşluk taşıyan yollar
+ * tırnak içinde gelir.
+ */
+export function porcelainYollari(cikti: string): string[] {
+  const yollar: string[] = [];
+  for (const satir of cikti.split("\n")) {
+    if (satir.trim().length === 0) continue;
+    const ham = satir.slice(3).trim();
+    const yol = ham.includes(" -> ") ? ham.slice(ham.indexOf(" -> ") + 4) : ham;
+    yollar.push(yol.replace(/^"|"$/g, ""));
+  }
+  return yollar;
+}
+
+/** `git show --name-only` çıktısını yollara çevirir (boş satırlar atılır). */
+export function commitYollariAyristir(cikti: string): string[] {
+  return cikti.split("\n").filter((s) => s.trim().length > 0);
+}
+
+/** Çalışma ağacındaki değişmiş/izlenmeyen yollar. */
+export function calismaAgaciYollari(kok: string): string[] {
+  const cikti = gitCikti(kok, ["status", "--porcelain"]);
+  return cikti === null ? [] : porcelainYollari(cikti);
+}
+
+/** Bir commit'in dokunduğu yollar. */
+export function commitYollari(kok: string, sha: string): string[] {
+  const cikti = gitCikti(kok, ["show", "--pretty=format:", "--name-only", sha]);
+  return cikti === null ? [] : commitYollariAyristir(cikti);
+}
+
+/** Yolların disk mtime'ı — okunamayan (silinmiş) dosya `null` taşır. */
+export function mtimeliDosyalar(kok: string, yollar: readonly string[]): DegisenDosya[] {
+  return yollar.map((yol) => {
+    try {
+      return { yol, mtimeMs: fs.statSync(path.join(kok, yol)).mtimeMs };
+    } catch {
+      return { yol, mtimeMs: null }; /* silinmiş — ölçülemez (yukarıdaki not) */
+    }
+  });
 }

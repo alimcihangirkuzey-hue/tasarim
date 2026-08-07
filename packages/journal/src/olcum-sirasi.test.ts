@@ -13,8 +13,20 @@
    kural burada yaşar. Böylece kural gerçek bir depo durumu kurgulamadan —
    yani sahte commit/checkout yapmadan — doğrudan sınanabilir. */
 
-import { describe, expect, it } from "vitest";
-import { defterinKendiYolu, olcumdenSonraDegisenler } from "./olcum-sirasi.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { afterAll, describe, expect, it } from "vitest";
+import {
+  calismaAgaciYollari,
+  commitYollari,
+  commitYollariAyristir,
+  defterinKendiYolu,
+  mtimeliDosyalar,
+  olcumdenSonraDegisenler,
+  porcelainYollari,
+} from "./olcum-sirasi.js";
 
 const OLCUM = "2026-08-07T10:00:00.000Z";
 const ONCE = Date.parse(OLCUM) - 60_000;
@@ -84,5 +96,113 @@ describe("SIRALAMA ve ÇOKLUK", () => {
     expect(
       olcumdenSonraDegisenler(OLCUM, [{ yol: "a.ts", mtimeMs: Date.parse(OLCUM) }])
     ).toEqual([]);
+  });
+});
+
+/* ── TOPLAMA KATMANI: GERÇEK GİT DEPOSUYLA ────────────────────────────────
+   NEREDEN GELDİ: bulgu `K-SIRA-5` (CIDDI) — "kararın saf çekirdeği çivili
+   ama CLI KABLOLAMASI hiçbir depo testinde koşulmuyor; kabloyu koparan bir
+   düzenleme hiçbir kapıyı kırmızıya döndürmez."
+
+   KÖK NEDEN BİR TASARIM SAPMASIYDI: git okuma işi `cli.ts` içine yazılmıştı,
+   oysa o dosyanın kendi başlığı "İNCE kabuk: karar mantığı YOKTUR" der.
+   Taşındı ve kök adresi PARAMETRE oldu; artık gerçek ama geçici bir depoyla
+   sınanabiliyor (`verify.test.ts` emsali). */
+
+const temizlenecek: string[] = [];
+afterAll(() => {
+  for (const d of temizlenecek) fs.rmSync(d, { recursive: true, force: true });
+});
+
+function gecici(): string {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "tezgah-sira-"));
+  temizlenecek.push(d);
+  return d;
+}
+
+function git(kok: string, args: readonly string[]): void {
+  execFileSync("git", [...args], { cwd: kok, stdio: "ignore" });
+}
+
+/** Tek kullanımlık depo: bir dosya commit'lenmiş, biri çalışma ağacında. */
+function depoKur(): { kok: string; sha: string } {
+  const kok = gecici();
+  git(kok, ["init", "-q", "."]);
+  git(kok, ["config", "user.email", "olcum@test.local"]);
+  git(kok, ["config", "user.name", "olcum"]);
+  fs.writeFileSync(path.join(kok, "commitli.md"), "# commitli\n", "utf8");
+  git(kok, ["add", "-A"]);
+  git(kok, ["commit", "-qm", "ilk"]);
+  const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: kok, encoding: "utf8" }).trim();
+  fs.writeFileSync(path.join(kok, "calismada.md"), "# calismada\n", "utf8");
+  return { kok, sha };
+}
+
+describe("AYRIŞTIRMA — saf, git çağırmadan", () => {
+  it("porcelain: durum ön ekini atar, YENİDEN ADLANDIRMADA yeni yolu alır", () => {
+    const cikti = [
+      " M apps/server/src/db.ts",
+      "?? yeni/dosya.ts",
+      'R  eski.ts -> "yeni ad.ts"',
+      "",
+    ].join("\n");
+    expect(porcelainYollari(cikti)).toEqual([
+      "apps/server/src/db.ts",
+      "yeni/dosya.ts",
+      "yeni ad.ts",
+    ]);
+  });
+
+  it("commit çıktısı: boş satırlar atılır", () => {
+    expect(commitYollariAyristir("\na.ts\n\nb/c.md\n")).toEqual(["a.ts", "b/c.md"]);
+  });
+
+  it("ÖN KOŞUL — desenler boş girdide boş döner, uydurma yol üretmez", () => {
+    expect(porcelainYollari("")).toEqual([]);
+    expect(commitYollariAyristir("")).toEqual([]);
+  });
+});
+
+describe("TOPLAMA — gerçek geçici depo", () => {
+  it("çalışma ağacı yolları OKUNUYOR (commit'li dosya listede DEĞİL)", () => {
+    /* Ayrım önemli: kapının konusu HEAD'den farklı olan dosyalardır. */
+    const { kok } = depoKur();
+    expect(calismaAgaciYollari(kok)).toEqual(["calismada.md"]);
+  });
+
+  it("commit yolları OKUNUYOR (çalışma ağacındaki dosya listede DEĞİL)", () => {
+    const { kok, sha } = depoKur();
+    expect(commitYollari(kok, sha)).toEqual(["commitli.md"]);
+  });
+
+  it("GİT YOKSA/BOZUKSA sessizce boş döner — durdurmaz, uydurmaz", () => {
+    /* Ölçemediği bir şey hakkında yargı üretmek bu deponun "sayı uydurma"
+       yasağının ta kendisi olurdu; git'siz dizin o yolu icra eder. */
+    const bos = gecici();
+    expect(calismaAgaciYollari(bos)).toEqual([]);
+    expect(commitYollari(bos, "HEAD")).toEqual([]);
+  });
+
+  it("mtime OKUNUYOR: var olan dosya sayı, olmayan NULL taşır", () => {
+    const { kok } = depoKur();
+    const olculen = mtimeliDosyalar(kok, ["commitli.md", "hicyok.md"]);
+    expect(olculen[0]!.mtimeMs, "var olan dosyanın mtime'ı okunamadı").toBeGreaterThan(0);
+    expect(olculen[1]!.mtimeMs, "olmayan dosya için sayı uyduruldu").toBeNull();
+  });
+
+  it("UÇTAN UCA: kapıdan SONRA yazılan dosya yakalanır, ÖNCEKİ yakalanmaz", () => {
+    /* Zincirin tamamı: gerçek git → gerçek mtime → saf kural. Kablo koparsa
+       bu satır kırmızıya döner; `K-SIRA-5`in kapatılması budur. */
+    const { kok } = depoKur();
+    const olcumAni = new Date().toISOString();
+    /* mtime çözünürlüğü için ölçüm anından SONRA yazılan ikinci bir dosya */
+    const sonraki = path.join(kok, "sonradan.md");
+    fs.writeFileSync(sonraki, "# sonradan\n", "utf8");
+    fs.utimesSync(sonraki, new Date(Date.parse(olcumAni) + 5_000), new Date(Date.parse(olcumAni) + 5_000));
+    const onceki = path.join(kok, "calismada.md");
+    fs.utimesSync(onceki, new Date(Date.parse(olcumAni) - 5_000), new Date(Date.parse(olcumAni) - 5_000));
+
+    const gec = olcumdenSonraDegisenler(olcumAni, mtimeliDosyalar(kok, calismaAgaciYollari(kok)));
+    expect(gec).toEqual(["sonradan.md"]);
   });
 });

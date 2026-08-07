@@ -10,10 +10,7 @@
    Bu dosya index.ts barrel'ından BİLEREK dışarıdadır: export edilseydi
    @tezgah/journal'ı import eden her yerde CLI gövdesi çalışırdı. */
 
-import fs from "node:fs";
-import path from "node:path";
 import process from "node:process";
-import { execFileSync } from "node:child_process";
 
 import {
   foldPackageJournal,
@@ -24,7 +21,12 @@ import {
 
 import { parseJournalArgv, type ParsedJournalCommand } from "./argv.js";
 import { runGate } from "./gates.js";
-import { olcumdenSonraDegisenler, type DegisenDosya } from "./olcum-sirasi.js";
+import {
+  calismaAgaciYollari,
+  commitYollari,
+  mtimeliDosyalar,
+  olcumdenSonraDegisenler,
+} from "./olcum-sirasi.js";
 import { ROOT_DIR } from "./paths.js";
 import { appendEvent, readJournal } from "./store.js";
 import { verifyAllJournals } from "./verify.js";
@@ -40,47 +42,6 @@ function sonOlcumAni(packageId: string): string | null {
     .filter((s): s is string => typeof s === "string")
     .sort();
   return anlar.length === 0 ? null : anlar[anlar.length - 1]!;
-}
-
-/** Git komutu — çalışmazsa `null` (ölçemediğimiz şey hakkında yargı üretmeyiz). */
-function gitCikti(args: readonly string[]): string | null {
-  try {
-    return execFileSync("git", [...args], { cwd: ROOT_DIR, encoding: "utf8" });
-  } catch {
-    return null;
-  }
-}
-
-/** Yolların disk mtime'ı — okunamayan (silinmiş) dosya `null` taşır. */
-function mtimeliDosyalar(yollar: readonly string[]): DegisenDosya[] {
-  return yollar.map((yol) => {
-    try {
-      return { yol, mtimeMs: fs.statSync(path.join(ROOT_DIR, yol)).mtimeMs };
-    } catch {
-      return { yol, mtimeMs: null }; /* silinmiş — ölçülemez (olcum-sirasi.ts notu) */
-    }
-  });
-}
-
-/** `git status --porcelain` yolları — yeniden adlandırmada YENİ yol ölçülür. */
-function calismaAgaciYollari(): string[] {
-  const cikti = gitCikti(["status", "--porcelain"]);
-  if (cikti === null) return [];
-  const yollar: string[] = [];
-  for (const satir of cikti.split("\n")) {
-    if (satir.trim().length === 0) continue;
-    const ham = satir.slice(3).trim();
-    const yol = ham.includes(" -> ") ? ham.slice(ham.indexOf(" -> ") + 4) : ham;
-    yollar.push(yol.replace(/^"|"$/g, ""));
-  }
-  return yollar;
-}
-
-/** Bir commit'in dokunduğu yollar. */
-function commitYollari(sha: string): string[] {
-  const cikti = gitCikti(["show", "--pretty=format:", "--name-only", sha]);
-  if (cikti === null) return [];
-  return cikti.split("\n").filter((s) => s.trim().length > 0);
 }
 
 /**
@@ -101,7 +62,7 @@ function commitYollari(sha: string): string[] {
 function olcumdenSonraDegisenDosyalar(packageId: string, yollar: readonly string[]): string[] {
   const sonOlcum = sonOlcumAni(packageId);
   if (sonOlcum === null) return []; /* hiç kapı koşulmamış — söyleyecek şey yok */
-  return olcumdenSonraDegisenler(sonOlcum, mtimeliDosyalar(yollar));
+  return olcumdenSonraDegisenler(sonOlcum, mtimeliDosyalar(ROOT_DIR, yollar));
 }
 
 function main(): void {
@@ -163,7 +124,7 @@ function main(): void {
          depo o hatayı bir kez ödedi (bir tur boyunca defter yanlış söyledi).
          Kural yalnız ileri geçişte işler; geriye dönüş serbesttir. */
       if (komut.to === "hazir") {
-        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, calismaAgaciYollari());
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, calismaAgaciYollari(ROOT_DIR));
         if (gec.length > 0) {
           uyar(
             `journal: ÖLÇÜM SIRASI — şu dosya(lar) son kapı koşumundan SONRA değişti:\n` +
@@ -232,7 +193,7 @@ function main(): void {
          sonra da uygulanabilir: commit'in dokunduğu bir dosya son kapı
          koşumundan yeniyse, kaydedilecek commit ölçülmemiş bir ağaçtır. */
       if (komut.kind === "commit") {
-        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, commitYollari(komut.value));
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, commitYollari(ROOT_DIR, komut.value));
         if (gec.length > 0) {
           uyar(
             `journal: ÖLÇÜM SIRASI — commit ${komut.value} şu dosya(lar)ı taşıyor ` +
