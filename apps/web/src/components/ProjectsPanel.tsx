@@ -40,6 +40,7 @@ import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
 import { useSablonSecici } from "./SablonSecici";
 import { TurSonucu, type TurSonucuVerisi } from "./TurSonucu";
 import { t, tf } from "../i18n";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 /* TOPLU BAŞLATMA GEREKÇELERİ — TEK KOPYA, iki tüketici (Sipariş Defteri
    düğmesi ve Açılış Takımı) aynı metinleri kullanır. Kütüphane i18n bilmez;
@@ -429,9 +430,7 @@ function ProjectBlock({ project, client, showToast }: {
      bağlıydı, tabelacıya daraltılmış kurulumda operatör hâlâ tişört/menü
      ekleyebiliyordu. Aynı anahtar (["isKollari"]) DocumentsPanel/EditorPage ile
      paylaşılır: tek istek, tek önbellek. */
-  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const aktifSektorler =
-    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
+  const aktifSektorler = useKurulumDaraltmasi();
   const gorunurTurler = gorunurSiparisTurleri(aktifSektorler);
   /* SEÇİLİ TÜR GÖRÜNMEZ OLABİLİR: varsayılan "menu"dür ve uç yanıt verdiğinde
      liste daralır. Durumu effect ile düzeltmek yerine ETKİN değeri türetiyoruz —

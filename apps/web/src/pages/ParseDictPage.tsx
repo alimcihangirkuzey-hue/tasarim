@@ -9,6 +9,7 @@ import type { ProductType } from "@tezgah/shared";
 import { api } from "../api";
 import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
 import { t } from "../i18n";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 
 export function SettingsTabs({ active }: { active: "themes" | "parse" | "factory" | "fonts" | "ingredients" }) {
@@ -43,10 +44,7 @@ export function ParseDictPage() {
      tür seçicisiyle aynı hükme (7.1/481) bağlanır — iki chooser'ın farklı
      davranması operatöre tutarsız bir sistem gösterirdi. Sözlüğün ÜRETTİĞİ
      eşleşmeler süzülmez (yapıştır-parse kapsam dışı, gerekçe defterde). */
-  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const gorunurTurler = gorunurSiparisTurleri(
-    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined,
-  );
+  const gorunurTurler = gorunurSiparisTurleri(useKurulumDaraltmasi());
   const etkinTur = gorunurTurler.includes(type) ? type : gorunurTurler[0]!;
 
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["parse-synonyms"] });

@@ -22,6 +22,7 @@ import { FetchError, NavBar } from "../components/IntakeNav";
 import { IntakeProductsStep } from "../components/IntakeProductsStep";
 import { IntakeChecklistStep } from "../components/IntakeChecklistStep";
 import { IntakeSummaryStep, type IntakeResultData } from "../components/IntakeSummaryStep";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 /* CILA3: "Sorular" adımı kalktı — ürün ayarları Ürünler adımında YERİNDE
    (tek çalışma yüzeyi). Akış 5 adım. */
@@ -242,9 +243,7 @@ function ClientStep() {
   /* KURULUMUN İŞ KOLLARI — aynı anahtar ProjectsPanel/DocumentsPanel ile
      PAYLAŞILIR (tek istek, tek önbellek). Yanıt gelmeden `undefined` kalır ve
      etiket bugünkü metinde durur (bkz. `menuUretiyorMu` yorumu). */
-  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const aktifSektorler =
-    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
+  const aktifSektorler = useKurulumDaraltmasi();
 
   /* HF3: seçilen mevcut müşterinin TAM DTO'su (menu_language listede yok, yalnız
      ClientDTO'da). Aynı ["client", id] anahtarı IntakeSummaryStep'in existingQ'suyla

@@ -16,6 +16,7 @@ import { api } from "../api";
 import { t } from "../i18n";
 import { AssetPicker } from "./AssetPicker";
 import { gorunurSahneTurleri } from "../lib/gorunurSahneTuru";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 /* Tür listesi ŞEMADAN türetilir (`SAHNE_TURLERI`) ve kurulumun iş koluna
    göre daraltılır — el yazımı liste şemanın ikinci kopyasıydı ve yeni bir
@@ -51,9 +52,7 @@ function QuadEditor(props: {
   /* KURULUMUN İŞ KOLLARI (K-1/C): aynı anahtar diğer panellerle PAYLAŞILIR
      (tek istek, tek önbellek). Yanıt gelmeden `undefined` kalır ve süzme
      YAPILMAZ — bugünkü davranış korunur. */
-  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const aktifSektorler =
-    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
+  const aktifSektorler = useKurulumDaraltmasi();
 
   const [quad, setQuad] = useState<Quad>(scene?.quad ?? defaultQuad(pw, ph));
   const [name, setName] = useState(scene?.name ?? "");

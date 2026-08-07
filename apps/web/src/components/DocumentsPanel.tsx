@@ -9,6 +9,7 @@ import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
 import { gorunurRehberSecenekleri } from "../lib/gorunurRehber";
 import { t, tf } from "../i18n";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -110,9 +111,7 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
 
   /* Kurulumun iş kolu ilanı — yapılandırma yoksa sunucu "varsayilan" der ve
      tüm kolları döndürür; o hâlde süzgeç geçilmez (davranış değişmez). */
-  const isKollari = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const aktifSektorler =
-    isKollari.data?.kaynak === "yapilandirma" ? isKollari.data.aktif : undefined;
+  const aktifSektorler = useKurulumDaraltmasi();
 
   /* REHBER DE DARALTILIR (K-1/C): bu bileşen `aktifSektorler`i zaten hesaplıyor
      ve "doğrudan seç" listesine veriyordu; rehber ona BAKMIYORDU — oysa rehber

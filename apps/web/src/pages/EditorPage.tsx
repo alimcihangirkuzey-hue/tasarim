@@ -38,6 +38,7 @@ import { SelectionPanel } from "../components/SelectionPanel";
 import { DenetimIziPaneli } from "../components/DenetimIziPaneli";
 import { useEditor } from "../store/editorStore";
 import { uyariMetni as warnText } from "../lib/uyariMetni";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 export function EditorPage() {
   const { id = "" } = useParams();
@@ -47,9 +48,7 @@ export function EditorPage() {
 
   const docQ = useQuery({ queryKey: ["document", id], queryFn: () => api.document(id), enabled: !!id });
   /* Kurulum iş kolu ilanı (K-1/C) — yapılandırma yoksa süzgeç geçilmez */
-  const isKollariQ = useQuery({ queryKey: ["isKollari"], queryFn: api.isKollari });
-  const aktifSektorler =
-    isKollariQ.data?.kaynak === "yapilandirma" ? isKollariQ.data.aktif : undefined;
+  const aktifSektorler = useKurulumDaraltmasi();
   const clientId = docQ.data?.client_id;
   const clientQ = useQuery({
     queryKey: ["client", clientId],
