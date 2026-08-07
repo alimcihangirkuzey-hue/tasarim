@@ -9,11 +9,27 @@
    `undefined` alır ve DARALTMA HİÇ UYGULANMAZ — tek harflik hata kiracıya
    BÜTÜN iş kollarını açar.
 
-   BU DOSYA İKİ ŞEYİ ÖLÇER:
-   1. Bozuk ilanla buildApp FIRLATIR (güvence artık kodda).
-   2. NÖBETÇİ: ortam değişkeniyle yapılandırılan HER ilan açılış denetimine
+   BU DOSYA ÜÇ ŞEYİ ÖLÇER:
+   1. Geçerli yapılandırmayla sunucu AYAĞA KALKAR (red testlerinin ön-koşulu).
+   2. HER RED YOLU tek tek koşar ve GEREKÇESİ çivilenir (aşağıdaki KAPILAR
+      tablosu) — artı bir NÖBETÇİ, tabloda karşılığı olmayan bir red yolunu
+      yakalar.
+   3. NÖBETÇİ: ortam değişkeniyle yapılandırılan HER ilan açılış denetimine
       dahildir. Üçüncü bir ilan doğduğu gün denetime eklenmezse, o ilan aynı
-      sessiz-genişleme yarasını yeniden açardı. */
+      sessiz-genişleme yarasını yeniden açardı.
+
+   (2) NİYE BU TURDA DOĞDU (2026-08-07, önceki paketin AÇIK bulgusu K1A-TAKIM-3):
+   red testleri tek tek elle yazılıydı ve hepsi yalnız `kurulum ilanı geçersiz
+   (X)` eşliyordu — yani "ilan REDDEDİLDİ"yi ölçüyor, "BU SEBEPLE reddedildi"yi
+   ölçmüyorlardı. Bir negatif kontrol bunun bedelini gösterdi: `acilis-takimi`nin
+   "tanınmayan tür" kapısı KAPATILDIĞINDA test YEŞİL KALDI, çünkü aynı değer bir
+   sonraki kapıya (tasarlanamaz) düşüp yine fırlatıyordu. İki kapı üst üste
+   durduğunda üstteki sessizce kaybolabilirdi.
+   ÖLÇÜLDÜ (bu turda, komutla): beş ilanın 13 red yolu var ve altısının açılış
+   testi HİÇ YOKTU; `dogus-varsayilanlari` ilanının açılış kapsamı SIFIRDI —
+   listede olduğu için nöbetçi onu "denetimde" sayıyordu, ama boot'un gerçekten
+   durduğu hiç koşulmamıştı. Altısı da tek tek koşuldu ve ALTISI DA reddediyor:
+   mekanizma doğruydu, ÖLÇÜLMEMİŞTİ. */
 
 process.env.TEZGAH_DB_PATH = ":memory:";
 
@@ -32,6 +48,7 @@ const GECERLI_KOL = SEKTORLER[0]!;
 const { KUNYE_ENV, KUNYE_AZAMI } = await import("./kurulum-kunyesi.js");
 const { VERI_DIZINI_ENV } = await import("./veri-dizini.js");
 const { ACILIS_TAKIMI_ENV } = await import("./acilis-takimi.js");
+const { PARA_BIRIMI_ENV, CIKTI_DILI_ENV } = await import("./dogus-varsayilanlari.js");
 
 const SERVER_SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -42,6 +59,8 @@ afterEach(() => {
   delete process.env[KUNYE_ENV];
   delete process.env[VERI_DIZINI_ENV];
   delete process.env[ACILIS_TAKIMI_ENV];
+  delete process.env[PARA_BIRIMI_ENV];
+  delete process.env[CIKTI_DILI_ENV];
 });
 
 describe("açılışta kurulum doğrulaması", () => {
@@ -60,72 +79,11 @@ describe("açılışta kurulum doğrulaması", () => {
     await app.close();
   });
 
-  it("YANLIŞ YAZILMIŞ iş kolu: sunucu AYAĞA KALKMAZ", async () => {
-    process.env[IS_KOLLARI_ENV] = `${GECERLI_KOL}i`; // fazladan bir harf
-    await expect(buildApp({ logger: false })).rejects.toThrow(/kurulum ilanı geçersiz \(is-kollari\)/);
-  });
-
-  it("SIĞMAYAN künye: sunucu AYAĞA KALKMAZ", async () => {
-    process.env[KUNYE_ENV] = "x".repeat(KUNYE_AZAMI + 1);
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(kurulum-kunyesi\)/,
-    );
-  });
-
-  it("GÖRELİ veri dizini: sunucu AYAĞA KALKMAZ", async () => {
-    /* Ölçülen yaranın kapatılabilen yarısı: göreli yol, aynı kurulumun
-       başlatıldığı dizine göre FARKLI veriyi açmasına yol açar. */
-    process.env[VERI_DIZINI_ENV] = "veri";
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(veri-dizini\)/,
-    );
-  });
-
-  it("İLAN EDİLMİŞ AMA BOŞ veri dizini: sunucu AYAĞA KALKMAZ", async () => {
-    /* `?? varsayilan` boş dizeyi nullish saymaz: bugünkü yolda DATA_DIR=""
-       olur ve veritabanı sürecin çalışma dizinine düşerdi. */
-    process.env[VERI_DIZINI_ENV] = "";
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(veri-dizini\)/,
-    );
-  });
-
   it("GEÇERLİ MUTLAK veri diziniyle ayağa kalkar", async () => {
     process.env[VERI_DIZINI_ENV] = path.join(SERVER_SRC, "..", "..", "..", "data");
     const app = await buildApp({ logger: false });
     await app.ready();
     await app.close();
-  });
-
-  it("TANINMAYAN açılış takımı kalemi: sunucu AYAĞA KALKMAZ", async () => {
-    /* GEREKÇE DE ÖLÇÜLÜR, yalnız "fırlattı" değil. Bu bir negatif kontrolün
-       ürünü: tanınmayan-tür kapısı kapatıldığında bu test YEŞİL KALIYORDU —
-       çünkü "tabelaa" bir sonraki kapıya (tasarlanamaz) düşüp yine
-       fırlatıyordu. Yani iddia "ilan reddedildi"ydi, "BU sebeple reddedildi"
-       değil; iki kapıdan hangisinin çalıştığı ölçülmüyordu. */
-    process.env[ACILIS_TAKIMI_ENV] = "tabelaa";
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(acilis-takimi\).*tanınmayan ürün türü/,
-    );
-  });
-
-  it("TASARLANAMAZ açılış takımı kalemi: sunucu AYAĞA KALKMAZ — AYRI gerekçeyle", async () => {
-    /* Kardeş kapı ayrıca ölçülür: geçerli ama şablonsuz bir tür yazan
-       kurulumcu, "yanlış mı yazdım" diye aramamalıdır. */
-    process.env[ACILIS_TAKIMI_ENV] = "diger";
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(acilis-takimi\).*tasarlanamaz/,
-    );
-  });
-
-  it("İŞ KOLUYLA ÇELİŞEN takım: sunucu AYAĞA KALKMAZ", async () => {
-    /* Çelişki açılışta söylenmezse süzgeç kalemi SESSİZCE düşürür: kurulumcu
-       iki kalem yazar, birini alır ve bunu söyleyen hiçbir şey olmaz. */
-    process.env[IS_KOLLARI_ENV] = "tabelaci";
-    process.env[ACILIS_TAKIMI_ENV] = "tabela,menu";
-    await expect(buildApp({ logger: false })).rejects.toThrow(
-      /kurulum ilanı geçersiz \(acilis-takimi\)/,
-    );
   });
 
   it("TUTARLI takım + iş kolu ile AYAĞA KALKAR", async () => {
@@ -162,6 +120,161 @@ describe("açılışta kurulum doğrulaması", () => {
     const once = JSON.stringify(ilkIlan!.oku());
     delete process.env[IS_KOLLARI_ENV];
     expect(JSON.stringify(ilkIlan!.oku())).not.toBe(once);
+  });
+});
+
+describe("HER RED YOLU tek tek: hangi kapının çalıştığı ÇİVİLİ", () => {
+  /* NİYE GEREKÇE DE ÖLÇÜLÜYOR (dosya başlığındaki (2)): yalnız "reddedildi"
+     eşleyen bir test, üst üste duran iki kapıdan üstteki kapatıldığında YEŞİL
+     KALIR — alttaki aynı değeri yine reddeder ve fark görünmez. Bu bir negatif
+     kontrolle ÖLÇÜLDÜ, varsayılmadı.
+
+     TABLO NİYE TEK KAYNAK: her red yolu daha önce ayrı bir `it` bloğuydu ve
+     ilanlar büyüdükçe o bloklar unutuluyordu (ölçüldü: 13 red yolunun 6'sının
+     testi HİÇ YOKTU, bir ilanın açılış kapsamı SIFIRDI). Tablo hem koşulur hem
+     de aşağıdaki nöbetçi tarafından KAYNAĞA KARŞI sayılır. */
+
+  interface Kapi {
+    /** KURULUM_ILANLARI'ndaki ad — hata mesajının parantezi bununla eşleşmeli. */
+    ilan: string;
+    ortam: Readonly<Record<string, string>>;
+    /** Bu kapının KENDİ gerekçesi; başka bir kapı bunu üretemez. */
+    gerekce: RegExp;
+  }
+
+  const KAPILAR: readonly Kapi[] = [
+    /* is-kollari — 2 kapı */
+    { ilan: "is-kollari", ortam: { [IS_KOLLARI_ENV]: `${GECERLI_KOL}i` },
+      gerekce: /tanınmayan iş kolu/ },
+    { ilan: "is-kollari", ortam: { [IS_KOLLARI_ENV]: ",," },
+      gerekce: /hiçbir iş kolu içermiyor/ },
+
+    /* kurulum-kunyesi — 2 kapı */
+    { ilan: "kurulum-kunyesi", ortam: { [KUNYE_ENV]: "üst satır\nalt satır" },
+      gerekce: /TEK SATIR olmalıdır/ },
+    { ilan: "kurulum-kunyesi", ortam: { [KUNYE_ENV]: "x".repeat(KUNYE_AZAMI + 1) },
+      gerekce: /tavan/ },
+
+    /* veri-dizini — 3 kapı */
+    { ilan: "veri-dizini", ortam: { [VERI_DIZINI_ENV]: "" },
+      gerekce: /ilan edilmiş ama boş/ },
+    { ilan: "veri-dizini", ortam: { [VERI_DIZINI_ENV]: "/tmp/veri\nyol" },
+      gerekce: /satır sonu taşıyor/ },
+    { ilan: "veri-dizini", ortam: { [VERI_DIZINI_ENV]: "veri" },
+      gerekce: /mutlak yol olmalı/ },
+
+    /* dogus-varsayilanlari — 2 kapı, İKİ değişkende de koşuluyor. Bu ilanın
+       açılış kapsamı bu turdan önce SIFIRDI: listede olduğu için nöbetçi onu
+       "denetimde" sayıyordu ama boot'un gerçekten durduğu hiç ölçülmemişti. */
+    { ilan: "dogus-varsayilanlari", ortam: { [PARA_BIRIMI_ENV]: "" },
+      gerekce: /ilan edilmiş ama boş/ },
+    { ilan: "dogus-varsayilanlari", ortam: { [PARA_BIRIMI_ENV]: "XXX" },
+      gerekce: /tanınmayan değer/ },
+    { ilan: "dogus-varsayilanlari", ortam: { [CIKTI_DILI_ENV]: "" },
+      gerekce: /ilan edilmiş ama boş/ },
+    { ilan: "dogus-varsayilanlari", ortam: { [CIKTI_DILI_ENV]: "zz" },
+      gerekce: /tanınmayan değer/ },
+
+    /* acilis-takimi — 4 kapı (çelişki kapısı İKİ ilanı birlikte okur) */
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: ",," },
+      gerekce: /hiçbir kalem içermiyor/ },
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "tabelaa" },
+      gerekce: /tanınmayan ürün türü/ },
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "diger" },
+      gerekce: /tasarlanamaz/ },
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "menu", [IS_KOLLARI_ENV]: "tabelaci" },
+      gerekce: /iş kollarında değil/ },
+  ];
+
+  it("ÖN-KOŞUL: tablo BOŞ DEĞİL ve her satır GERÇEK bir ilana bağlı", () => {
+    /* Bu satır olmadan aşağıdaki nöbetçi, hiçbir şey koşmayan boş bir tabloyla
+       da yeşil kalabilirdi (0 === 0 tuzağı aşağıda ayrıca kapatılıyor). */
+    expect(KAPILAR.length).toBeGreaterThan(10);
+    const adlar = new Set(KURULUM_ILANLARI.map((i) => i.ad));
+    for (const k of KAPILAR) expect(adlar, `${k.ilan}: KURULUM_ILANLARI'nda yok`).toContain(k.ilan);
+  });
+
+  /* Koşulan her kapının GERÇEK mesajı — aşağıdaki ayırt-etme testi bunu okur.
+     Mesajları elle yazmak, tam da ölçülmek istenen şeyi (kapının gerçekte ne
+     dediğini) ikinci kez beyan etmek olurdu. */
+  const MESAJLAR = new Map<Kapi, string>();
+
+  it.each(KAPILAR.map((k) => [`${k.ilan} · ${JSON.stringify(k.ortam)}`, k] as const))(
+    "%s → sunucu AYAĞA KALKMAZ, gerekçe ÇİVİLİ",
+    async (_ad, k) => {
+      for (const [env, deger] of Object.entries(k.ortam)) process.env[env] = deger;
+      const hata = await buildApp({ logger: false }).then(
+        (app) => app.close().then(() => null),
+        (e: Error) => e,
+      );
+      expect(hata, "bozuk yapılandırmayla sunucu AYAĞA KALKTI").not.toBeNull();
+      expect(hata!.message).toMatch(new RegExp(`kurulum ilanı geçersiz \\(${k.ilan}\\)`));
+      expect(hata!.message, "başka bir kapı çalışmış olabilir").toMatch(k.gerekce);
+      MESAJLAR.set(k, hata!.message);
+    },
+  );
+
+  it("GEREKÇELER AYIRT EDİCİ — bir desen KOMŞU kapının mesajını eşleyemez", () => {
+    /* BU TESTİN NEDEN VAR OLDUĞU ÖLÇÜLDÜ, VARSAYILMADI. Bir negatif kontrolde
+       tek bir satırın deseni `/./` yapıldı — yani her mesajı eşleyen tembel bir
+       desen — ve 27/27 YEŞİL KALDI. Sebep: aşağıdaki nöbetçi desenlerin AYRIK
+       olmasını sayar (metin olarak farklı mı), AYIRT EDİCİ olmasını değil.
+       Tembel bir desenle, paketin kapatmak için yazıldığı yara aynen geri
+       gelirdi: üstteki kapı sessizce kaldırılır, alttaki mesajı yine desene
+       uyar ve test farkı göremez.
+
+       ÖN-KOŞUL: her satırın mesajı toplanmış olmalı — eksik toplama, kontrolü
+       sessizce daraltırdı. */
+    expect(MESAJLAR.size, "kapı mesajları toplanmadı").toBe(KAPILAR.length);
+
+    const cakisan: string[] = [];
+    for (const k of KAPILAR) {
+      const komsular = KAPILAR.filter(
+        (o) => o.ilan === k.ilan && o.gerekce.source !== k.gerekce.source,
+      );
+      for (const o of komsular) {
+        if (k.gerekce.test(MESAJLAR.get(o)!)) {
+          cakisan.push(`${k.ilan}: ${k.gerekce} deseni, komşu kapının mesajını da eşliyor (${o.gerekce})`);
+        }
+      }
+    }
+    expect(
+      cakisan,
+      "Desen kendi kapısını AYIRT ETMİYOR: kapı kaldırılsa bile komşusunun " +
+        "mesajı deseni geçer ve test yeşil kalır — paketin kapattığı yaranın " +
+        "ta kendisi. Deseni o kapıya ÖZGÜ bir ifadeye daraltın.",
+    ).toEqual([]);
+  });
+
+  it("NÖBETÇİ: kaynaktaki HER red yolunun tabloda KENDİ gerekçesi var", () => {
+    /* Sayım İLANIN KENDİ BEYANINDAN (`kaynak`) gider — ad→dosya eşlemesini
+       burada kurmak, `env` alanının kaldırdığı hatayı geri getirirdi.
+
+       KURAL: bir ilanın kaynağındaki `throw` sayısı, o ilan için tabloda
+       yazılı AYRIK gerekçe sayısına EŞİT olmalıdır. Aynı gerekçenin ikinci
+       değişkende tekrar koşulması serbesttir (dogus-varsayilanlari); yeni bir
+       KAPI eklenip tabloya yazılmazsa sayı tutmaz ve burası kırmızıya döner. */
+    const eksik: string[] = [];
+    for (const ilan of KURULUM_ILANLARI) {
+      const kaynak = readFileSync(path.join(SERVER_SRC, ilan.kaynak), "utf8");
+      const redYolu = [...kaynak.matchAll(/throw new Error\(/g)].length;
+      const gerekceler = new Set(
+        KAPILAR.filter((k) => k.ilan === ilan.ad).map((k) => k.gerekce.source),
+      );
+      /* ÖN-KOŞUL SATIR İÇİNDE: red yolu olmayan bir ilan, sayımın bozuk
+         olduğunun işaretidir — sessizce "0 === 0" ile geçemez. */
+      if (redYolu === 0) eksik.push(`${ilan.ad}: kaynakta hiç red yolu bulunamadı (${ilan.kaynak})`);
+      else if (gerekceler.size !== redYolu) {
+        eksik.push(`${ilan.ad}: kaynakta ${redYolu} red yolu, tabloda ${gerekceler.size} ayrık gerekçe`);
+      }
+    }
+    expect(
+      eksik,
+      "Bir red yolunun açılış testi yok ya da gerekçesi başka bir kapıyla aynı: " +
+        "üst üste duran kapılardan üstteki kapatılsa bile alttaki aynı sonucu " +
+        "üretir ve test farkı GÖREMEZ (ölçülmüş yara). KAPILAR tablosuna " +
+        "kendi gerekçesiyle bir satır ekleyin.",
+    ).toEqual([]);
   });
 });
 
