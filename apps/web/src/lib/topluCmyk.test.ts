@@ -17,7 +17,16 @@
 
 import { describe, expect, it, vi } from "vitest";
 import type { OrderItemDTO } from "@tezgah/shared";
-import { cmykSonucVerisi, topluCmyk, type CmykAdimlari, type CmykMetinleri } from "./topluCmyk";
+import { SIPARIS_SABLONLARI, exportRouteOf } from "@tezgah/templates/identity";
+import { TEMPLATES } from "@tezgah/templates";
+import {
+  cmykKapsami,
+  cmykSonucVerisi,
+  cmykUretebilir,
+  topluCmyk,
+  type CmykAdimlari,
+  type CmykMetinleri,
+} from "./topluCmyk";
 
 function kalem(id: string, document_id: string | null): OrderItemDTO {
   return {
@@ -188,5 +197,76 @@ describe("cmykSonucVerisi — panel verisi", () => {
   it("BAŞLIK sayıları taşır", async () => {
     const o = await topluCmyk([kalem("a", "doc_a")], adimlar(), METIN);
     expect(cmykSonucVerisi(o, bas, ad).baslik).toBe("1 üretildi · 0 atlandı · 0 düştü");
+  });
+});
+
+describe("KAPSAM — düğme neyi vaat ediyor (K-1/B, cmyk kapsamı)", () => {
+  /* ÖLÇÜLEN YARA: düğme "🎨 CMYK üret" diyordu, hiçbir sayı taşımıyordu ve
+     koşulu "belgeli kalem var mı"ydı. Kayıt defterinden okunan gerçek:
+
+       tisort · onluk  → garment[png+broderie] → exportRouteOf = "garment"
+       vitrophanie     → mode="decoupe" iken "svg"
+       diğer türler    → "pdf"
+
+     Yani TEKSTİL-ONLY bir projede düğme çiziliyor, tur N belgeyi tek tek
+     çekiyor, sonuç "0 üretildi · N atlandı" oluyor ve panel listesi BOŞ
+     kalıyordu (`yol-yok` LİSTELENMEZ — doğru karar, ama o zaman düğmenin hiç
+     çizilmemesi gerekirdi). Kardeş düğmelerin ikisi de kapsamını SAYIYLA
+     ilan ediyor. */
+
+  const tur = (id: string, product_type: OrderItemDTO["product_type"], details = {}): OrderItemDTO =>
+    ({ ...kalem(id, `doc_${id}`), product_type, details }) as OrderItemDTO;
+
+  describe("ön-koşul — türetim GERÇEKTEN kayıt defterinden okuyor", () => {
+    it("EN AZ BİR tür print DIŞINA çıkar, EN AZ BİRİ pdf'e çıkar", () => {
+      /* Bu satır olmadan aşağıdaki bütün iddialar, hiçbir şeyi ayırt etmeyen
+         bozuk bir türetimle de yeşil kalırdı: ya hepsi kapsamda ya hiçbiri. */
+      const rotalar = Object.entries(SIPARIS_SABLONLARI).flatMap(([, ids]) =>
+        (ids as readonly string[]).map((id) =>
+          exportRouteOf(TEMPLATES[id]?.manifest.production_channels ?? [], undefined),
+        ),
+      );
+      expect(rotalar).toContain("pdf");
+      expect(rotalar.some((r) => r !== "pdf"), "print dışına çıkan tür yok").toBe(true);
+    });
+  });
+
+  it("TEKSTİL türleri kapsam DIŞI — kanal ilanı garment", () => {
+    expect(cmykUretebilir(tur("a", "tisort"))).toBe(false);
+    expect(cmykUretebilir(tur("b", "onluk"))).toBe(false);
+  });
+
+  it("BASKI türleri kapsam İÇİ", () => {
+    for (const t of ["menu", "flyer", "fidelite", "tabela"] as const) {
+      expect(cmykUretebilir(tur("x", t)), t).toBe(true);
+    }
+  });
+
+  it("MOD KALEMDEN OKUNUR: vitrophanie decoupe modunda kapsam DIŞI", () => {
+    /* Aynı tür, aynı şablon — tek fark kalemin kendi `details.mode`'u. Bu,
+       kapsamın türden değil KALEMDEN türediğini ölçer. */
+    expect(cmykUretebilir(tur("v1", "vitrophanie"))).toBe(true);
+    expect(cmykUretebilir(tur("v2", "vitrophanie", { mode: "decoupe" }))).toBe(false);
+  });
+
+  it("BELGESİZ kalem kapsamda DEĞİL — turun konusu değil", () => {
+    expect(cmykKapsami([kalem("k1", null)])).toEqual([]);
+  });
+
+  it("KAPSAM belgeli + üretebilir kalemleri döndürür, SIRAYI korur", () => {
+    const items = [tur("a", "tisort"), tur("b", "flyer"), kalem("c", null), tur("d", "menu")];
+    expect(cmykKapsami(items).map((i) => i.id)).toEqual(["b", "d"]);
+  });
+
+  it("TEKSTİL-ONLY projede kapsam BOŞ — düğme çizilmemeli", () => {
+    /* Yaranın kendisi, tek satırda. */
+    expect(cmykKapsami([tur("a", "tisort"), tur("b", "onluk")])).toEqual([]);
+  });
+
+  it("KUŞKUDA GÖRÜNÜR TARAF: ilanı okunamayan tür kapsamda KALIR", () => {
+    /* Şablonsuz tür (`diger`) belgeli görünüyorsa ilan okunamıyor demektir;
+       gizlemek onu turun gerekçeli satırından da mahrum bırakırdı. Kardeş
+       süzgeçlerle aynı sözleşme. */
+    expect(cmykUretebilir(tur("z", "diger"))).toBe(true);
   });
 });

@@ -31,7 +31,7 @@ import {
 import { api } from "../api";
 import { analyzeDoc } from "../lib/analyzeDoc";
 import { aktarimSonucVerisi, topluAktar } from "../lib/topluAktarim";
-import { cmykSonucVerisi, topluCmyk } from "../lib/topluCmyk";
+import { cmykKapsami, cmykSonucVerisi, topluCmyk } from "../lib/topluCmyk";
 import { uyariMetni } from "../lib/uyariMetni";
 import { belgeDisaAktar } from "../lib/disaAktar";
 import { baslatmaSonucVerisi, belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
@@ -734,16 +734,29 @@ function ProjectBlock({ project, client, showToast }: {
           </button>
         )}
         {/* Ghostscript YOKSA düğme hiç çizilmez — her tık 503'e giderdi.
-            Belgesiz projede de çizilmez (toplu aktarım düğmesiyle aynı kural). */}
-        {cmykQ.data?.available && project.items.some((i) => i.document_id) && (
-          <button
-            className="ghost small"
-            onClick={() => topluCmykM.mutate()}
-            disabled={topluCmykM.isPending}
-          >
-            {topluCmykM.isPending ? t("editor.exporting") : t("orders.bulk_cmyk_btn")}
-          </button>
-        )}
+            KAPSAM DA SAYILIR (2026-08-07, cmyk kapsamı paketi): eskiden koşul
+            "belgeli kalem var mı"ydı ve TEKSTİL-ONLY bir projede düğme
+            çiziliyordu, oysa `tisort`/`onluk` kanal ilanı `garment`tır ve CMYK
+            kaynağı olan `print` çıktısı HİÇ doğmaz — operatör basıyor, tur N
+            belgeyi tek tek çekiyor, sonuç "0 üretildi · N atlandı" oluyor ve
+            panelin listesi BOŞ kalıyordu. Sayı kardeş düğmelerdeki gibi
+            önceden görünür; 0 ise düğme HİÇ ÇİZİLMEZ (bu panelin kendi
+            kuralı: "'0 kalem' yazan bir düğme yapılacak iş varmış gibi
+            görünürdü"). */}
+        {(() => {
+          if (!cmykQ.data?.available) return null;
+          const n = cmykKapsami(project.items).length;
+          if (n === 0) return null;
+          return (
+            <button
+              className="ghost small"
+              onClick={() => topluCmykM.mutate()}
+              disabled={topluCmykM.isPending}
+            >
+              {topluCmykM.isPending ? t("editor.exporting") : tf("orders.bulk_cmyk_btn", { n })}
+            </button>
+          );
+        })()}
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>
           {present.isPending ? t("editor.exporting") : t("orders.present_btn")}
         </button>

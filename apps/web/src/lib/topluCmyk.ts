@@ -30,7 +30,62 @@
    SATIRDA doğar: kayıtsız şablon panelde ADIYLA ve gerekçesiyle görünür. */
 
 import type { OrderItemDTO } from "@tezgah/shared";
+import { exportRouteOf, siparisSablonlari } from "@tezgah/templates/identity";
+import { TEMPLATES } from "@tezgah/templates";
 import type { TurSatirDurumu, TurSonucuVerisi } from "../components/TurSonucu";
+
+/* ── KAPSAM: TUR BAŞLAMADAN ÖNCE, İLANDAN ────────────────────────────────────
+
+   ÖLÇÜLEN YARA (bu turda, kayıt defterinden komutla okundu):
+
+     tisort · onluk  → garment[png+broderie] → exportRouteOf = "garment" (mode
+                       ne olursa olsun) → CMYK kaynağı olan `print` çıktısı
+                       HİÇ doğmaz
+     vitrophanie     → mode="decoupe" iken "svg" → yine print YOK
+     diğer türler    → "pdf"
+
+   Yani TEKSTİL-ONLY bir projede "🎨 CMYK üret" düğmesi çiziliyordu ve
+   üretebileceği hiçbir şey yoktu: operatör basıyor, tur N belgeyi tek tek
+   çekiyor, sonuç "0 üretildi · N atlandı" oluyor ve panelin listesi BOŞ
+   (`yol-yok` LİSTELENMEZ — doğru karar, ama o zaman düğmenin hiç çizilmemesi
+   gerekirdi). Kardeş düğmelerin ikisi de kapsamlarını SAYIYLA ilan ediyor
+   ("{n} kalemi tasarıma başlat", "{n} belgeyi üret"); CMYK düğmesi hiçbir sayı
+   taşımıyordu. ProjectsPanel'in KENDİ yazılı kuralı da bunu söylüyordu:
+   "'0 kalem' yazan bir düğme operatöre yapılacak iş varmış gibi görünürdü."
+
+   BU KATMAN BİR İLANDIR, TURUN YERİNE GEÇMEZ: kalemden yalnız ürün TÜRÜ ve
+   `details.mode` bilinir; belgenin GERÇEK şablonu ancak turda okunur. Bu yüzden
+   kural tek yönlü ve SAĞLAM tarafta kurulur — "kesinlikle üretemez" ancak
+   türün BÜTÜN şablon seçenekleri print dışına çıkıyorsa söylenir. Seçenekler
+   ayrışıyorsa kalem KAPSAMDA sayılır (kuşkuda görünür taraf; kardeş
+   süzgeçlerle aynı sözleşme). Böylece kapsam turu ASLA olduğundan dar
+   göstermez; tur kendi çalışma-zamanı denetimini korur. */
+
+/** Kalemin türü, ilana göre CMYK üretebilir mi (kuşkuda EVET). */
+export function cmykUretebilir(item: OrderItemDTO): boolean {
+  const secenekler = siparisSablonlari(item.product_type);
+  /* Şablonsuz tür (tasarlanamaz) zaten belgesizdir; buraya belgeli kalem
+     gelirse ilan okunamıyor demektir — gizlemeyiz. */
+  if (secenekler.length === 0) return true;
+  return secenekler.some((id) => {
+    const entry = TEMPLATES[id];
+    /* Kayıtsız şablon: ilan OKUNAMADI. Turda gerekçeli bir satır olarak
+       görünür; burada saklamak onu görünmez kılardı. */
+    if (!entry) return true;
+    return exportRouteOf(entry.manifest.production_channels, item.details?.mode) === "pdf";
+  });
+}
+
+/**
+ * Turun DOKUNACAĞI kalemler — belgeli VE ilana göre CMYK üretebilir olanlar.
+ *
+ * Düğme bu sayıyı yazar ve sayı 0 ise HİÇ ÇİZİLMEZ. Sayının turla aynı
+ * kaynaktan gelmesi bilinçli: elle tutulan ikinci bir sayaç, bu deponun tekrar
+ * tekrar ödediği sınıftır (yapıştır önizlemesi, toplu başlatma sayıları).
+ */
+export function cmykKapsami(items: readonly OrderItemDTO[]): OrderItemDTO[] {
+  return items.filter((i) => i.document_id !== null && cmykUretebilir(i));
+}
 
 /** Bir kalemin toplu CMYK sonucu. */
 export type CmykDurumu = "uretildi" | "yol-yok" | "kayitsiz" | "dusen";

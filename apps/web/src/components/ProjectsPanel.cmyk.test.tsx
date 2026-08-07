@@ -83,6 +83,22 @@ function belge(id: string, template_id: string): DocumentDTO {
   };
 }
 
+/* Düğme artık KAPSAM SAYISINI taşıyor ("🎨 {n} belgenin CMYK'sini üret"),
+   yani düz metin eşleşmesi kırılgan olurdu. Düğme rolüyle aranır. */
+const cmykDugmesi = () => screen.findByRole("button", { name: /CMYK/i });
+
+/* YOKLUK İDDİASI SINIRLI BEKLEMEYLE KURULUR — ve bunun gerekçesi ÖLÇÜLDÜ.
+   Önce `queryAllByRole` ile anlık bakılıyordu; bir negatif kontrol (kapsam
+   yerine eski "belgeli kalem sayısı" koşuluna dönmek) testi KIRMIZIYA
+   DÖNDÜRMEDİ. Sebep yarıştı: `cmykStatus` AYRI bir sorgudur ve proje adı
+   göründüğü anda henüz çözülmemiş olabilir — yani düğme "hiç çizilmiyor"
+   değil "HENÜZ çizilmemiş" oluyordu ve iddia bedava yeşil kalıyordu.
+   `findByRole` reddi, testing-library'nin varsayılan penceresi boyunca
+   (1 sn — sahte sorguların çözülmesinden kat kat uzun) BEKLER. */
+const cmykDugmesiCizilmedi = async (): Promise<void> => {
+  await expect(screen.findByRole("button", { name: /CMYK/i })).rejects.toThrow();
+};
+
 function kalem(id: string, document_id: string | null): OrderItemDTO {
   return {
     id,
@@ -144,13 +160,13 @@ describe("toplu CMYK", () => {
   it("GHOSTSCRIPT YOKSA düğme HİÇ ÇİZİLMEZ (her tık 503'e giderdi)", async () => {
     kur([kalem("a", "doc_1")], false);
     await screen.findByText("Açılış Paketi");
-    expect(screen.queryByText(/CMYK üret/i)).toBeNull();
+    await cmykDugmesiCizilmedi();
   });
 
   it("BELGESİZ projede düğme çizilmez", async () => {
     kur([kalem("a", null)], true);
     await screen.findByText("Açılış Paketi");
-    expect(screen.queryByText(/CMYK üret/i)).toBeNull();
+    await cmykDugmesiCizilmedi();
   });
 
   it("BASKI YOLUNDAKİ belgeler için CMYK üretilir", async () => {
@@ -158,7 +174,7 @@ describe("toplu CMYK", () => {
     vi.mocked(api.exportCmyk).mockResolvedValue({ version: 1 } as never);
 
     kur([kalem("a", "doc_1")], true);
-    fireEvent.click(await screen.findByText(/CMYK üret/i));
+    fireEvent.click(await cmykDugmesi());
 
     await waitFor(() => expect(api.exportCmyk).toHaveBeenCalledWith("doc_1"));
     await screen.findByText(/1 CMYK üretildi/i);
@@ -170,7 +186,7 @@ describe("toplu CMYK", () => {
     vi.mocked(api.document).mockResolvedValue(belge("doc_tekstil", "garment"));
 
     kur([kalem("a", "doc_tekstil")], true);
-    fireEvent.click(await screen.findByText(/CMYK üret/i));
+    fireEvent.click(await cmykDugmesi());
 
     await screen.findByText(/0 CMYK üretildi · 1 atlandı/i);
     expect(api.exportCmyk).not.toHaveBeenCalled();
@@ -185,9 +201,31 @@ describe("toplu CMYK", () => {
       .mockResolvedValueOnce({ version: 1 } as never);
 
     kur([kalem("a", "doc_kotu"), kalem("b", "doc_iyi")], true);
-    fireEvent.click(await screen.findByText(/CMYK üret/i));
+    fireEvent.click(await cmykDugmesi());
 
     await waitFor(() => expect(api.exportCmyk).toHaveBeenCalledTimes(2));
     await screen.findByText(/1 CMYK üretildi · 0 atlandı .* · 1 düştü/i);
+  });
+
+  it("TEKSTİL KALEMLERİNDE düğme HİÇ ÇİZİLMEZ — yaranın kendisi", async () => {
+    /* ÖLÇÜLEN YARA: eski koşul "belgeli kalem var mı"ydı; `tisort`/`onluk`
+       kanal ilanı `garment` olduğu için tur hiçbir şey üretemezdi ama düğme
+       çiziliyordu — operatör basıyor, N belge tek tek çekiliyor, sonuç
+       "0 üretildi · N atlandı" ve panel listesi BOŞ (`yol-yok` listelenmez).
+       Artık kapsam İLANDAN türüyor ve 0 ise düğme yok.
+
+       ÜSTTEKİ "TEKSTİL BELGESİ ATLANIR" TESTİYLE KARIŞTIRILMAMALI: orada kalem
+       `flyer` (kapsam İÇİ) ama BELGESİ garment — yani kapsam bir İLANDIR,
+       turun çalışma-zamanı denetiminin yerine geçmez ve geçemez. */
+    kur([{ ...kalem("a", "doc_1"), product_type: "tisort" } as OrderItemDTO], true);
+    await screen.findByText("Açılış Paketi");
+    await cmykDugmesiCizilmedi();
+  });
+
+  it("KAPSAM SAYISI düğmede GÖRÜNÜR — kaç tık kazanıldığı basılmadan bilinsin", async () => {
+    kur([kalem("a", "doc_1"), kalem("b", "doc_2"), kalem("c", null)], true);
+    const d = await cmykDugmesi();
+    /* Belgesiz kalem sayılmaz: 3 kalem, kapsam 2. */
+    expect(d.textContent).toContain("2");
   });
 });

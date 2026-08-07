@@ -405,7 +405,10 @@ describe("toplu CMYK sonucu", () => {
     vi.mocked(api.cmykStatus).mockResolvedValue({ available: false } as never);
     kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
     await screen.findByText(/1 belgeyi üret/i);
-    expect(screen.queryByText(/CMYK üret/i)).toBeNull();
+    /* YOKLUK SINIRLI BEKLEMEYLE: `cmykStatus` AYRI bir sorgudur; anlık bakış
+       "hiç çizilmiyor" ile "HENÜZ çizilmemiş"i ayırt edemez (kardeş dosyada
+       bir negatif kontrolle ölçülmüş yarış). */
+    await expect(screen.findByRole("button", { name: /CMYK/i })).rejects.toThrow();
   });
 
   it("KAYITSIZ ŞABLON panelde ADIYLA görünür — 'atlandı' sayısına gömülmez", async () => {
@@ -419,7 +422,7 @@ describe("toplu CMYK sonucu", () => {
     } as never);
 
     kur([kalem({ id: "a", product_type: "tabela", document_id: "doc_a" })]);
-    fireEvent.click(await screen.findByText(/CMYK üret/i));
+    fireEvent.click(await screen.findByRole("button", { name: /CMYK/i }));
 
     const panel = await waitFor(() => {
       const el = document.querySelector(".tur-sonucu");

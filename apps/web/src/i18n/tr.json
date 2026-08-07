@@ -318,7 +318,7 @@
     "result_dusen": "düştü",
     "result_atlandi": "atlandı",
     "result_cancelled_reason": "Şablon seçiminde vazgeçildi",
-    "bulk_cmyk_btn": "🎨 CMYK üret",
+    "bulk_cmyk_btn": "🎨 {n} belgenin CMYK'sini üret",
     "bulk_cmyk_done": "{uretilen} CMYK üretildi · {atlanan} atlandı (baskı yolu değil) · {dusen} düştü",
     "project_close": "✓ İşi kapat",
     "project_reopen": "↺ Yeniden aç",
