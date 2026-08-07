@@ -184,6 +184,16 @@ describe("HER RED YOLU tek tek: hangi kapının çalıştığı ÇİVİLİ", () 
       gerekce: /tasarlanamaz/ },
     { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "menu", [IS_KOLLARI_ENV]: "tabelaci" },
       gerekce: /iş kollarında değil/ },
+    /* BİÇİM SÖZDİZİMİNİN ÜÇ KAPISI (2026-08-07, açılış takımı biçimi paketi).
+       Bu satırlar NÖBETÇİNİN ÜRÜNÜDÜR: üç kapı kaynağa eklenip tabloya
+       yazılmayınca "kaynakta 7 red yolu, tabloda 4 ayrık gerekçe" diye
+       kırmızıya döndü — yani kapsam beyanı değil ÖLÇÜM. */
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "menu:a3:x" },
+      gerekce: /iki noktadan fazlasını/ },
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "menu:" },
+      gerekce: /biçim taşımıyor/ },
+    { ilan: "acilis-takimi", ortam: { [ACILIS_TAKIMI_ENV]: "tabela:a3" },
+      gerekce: /BİÇİM TAŞIMAZ/ },
   ];
 
   it("ÖN-KOŞUL: tablo BOŞ DEĞİL ve her satır GERÇEK bir ilana bağlı", () => {

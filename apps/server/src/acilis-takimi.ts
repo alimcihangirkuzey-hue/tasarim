@@ -48,7 +48,13 @@
    kasıtlı davranıştır (uç 409 ile gerekçesini söyler). Yazılmamış bir şeyi
    çelişki saymak, bugünkü kurulumları geriye dönük bozardı. */
 
-import { OPENING_KIT, ProductTypeSchema, type PresetItem, type ProductType } from "@tezgah/shared";
+import {
+  OPENING_KIT,
+  ProductTypeSchema,
+  pricingInputsOf,
+  type PresetItem,
+  type ProductType,
+} from "@tezgah/shared";
 import { siparisSablonlari, siparisSektoru } from "@tezgah/templates/identity";
 import { isKollariIlani, type IsKollariIlani } from "./is-kollari.js";
 
@@ -60,6 +66,17 @@ export const TAKIM_TURLERI: readonly ProductType[] = ProductTypeSchema.options;
 /** Takıma konabilecek türler: tasarlanabilir olanlar (şablon seçeneği ≥ 1). */
 export function tasarlanabilirTurler(): ProductType[] {
   return TAKIM_TURLERI.filter((t) => siparisSablonlari(t).length > 0);
+}
+
+/**
+ * Bu türe BİÇİM yazılabilir mi — girdi ilanından okunur.
+ *
+ * Ölçüldü: `format` alanı `menu · flyer · trifold · fidelite` türlerinde var
+ * (ve ZORUNLU); diğerlerinde hiç yok. Elle bir liste yazmak ikinci kopya
+ * olurdu ve ilan büyüdüğü gün sessizce ayrışırdı.
+ */
+export function bicimAlirMi(tur: ProductType): boolean {
+  return pricingInputsOf(tur).some((g) => g.alan === "format");
 }
 
 export interface AcilisTakimiIlani {
@@ -86,6 +103,18 @@ export function acilisTakimiIlani(ham = process.env[ACILIS_TAKIMI_ENV]): AcilisT
     .map((s) => s.trim())
     .filter((s) => s !== "");
 
+  /* `tur:bicim` — iki parçadan fazlası yazım hatasıdır; sessizce kırpmak
+     kurulumcuya yazdığından farklı bir takım verirdi. */
+  const cozulen = yazilan.map((ham) => {
+    const parca = ham.split(":");
+    if (parca.length > 2) {
+      throw new Error(
+        `${ACILIS_TAKIMI_ENV}: "${ham}" iki noktadan fazlasını taşıyor — biçim "tur" ya da "tur:bicim"`,
+      );
+    }
+    return { tur: (parca[0] ?? "").trim(), bicim: parca.length === 2 ? (parca[1] ?? "").trim() : null };
+  });
+
   if (yazilan.length === 0) {
     throw new Error(
       `${ACILIS_TAKIMI_ENV} tanımlı ama hiçbir kalem içermiyor — değişkeni ya kaldırın ya doldurun`,
@@ -93,7 +122,7 @@ export function acilisTakimiIlani(ham = process.env[ACILIS_TAKIMI_ENV]): AcilisT
   }
 
   const tasarlanabilir = tasarlanabilirTurler();
-  const taninmayan = yazilan.filter((s) => !(TAKIM_TURLERI as readonly string[]).includes(s));
+  const taninmayan = cozulen.map((c) => c.tur).filter((s) => !(TAKIM_TURLERI as readonly string[]).includes(s));
   if (taninmayan.length > 0) {
     throw new Error(
       `${ACILIS_TAKIMI_ENV}: tanınmayan ürün türü ${taninmayan.map((s) => `"${s}"`).join(", ")} — ` +
@@ -104,7 +133,9 @@ export function acilisTakimiIlani(ham = process.env[ACILIS_TAKIMI_ENV]): AcilisT
   /* Tanınan ama TASARLANAMAZ tür ayrı bir mesaj hak eder: kurulumcu geçerli bir
      ürün türü yazmıştır, sorun yazımda değil o türün şablonunun olmamasındadır.
      İkisini tek mesajda birleştirmek, "yanlış mı yazdım" diye aratırdı. */
-  const tasarlanamaz = (yazilan as ProductType[]).filter((t) => !tasarlanabilir.includes(t));
+  const tasarlanamaz = cozulen
+    .map((c) => c.tur as ProductType)
+    .filter((t) => !tasarlanabilir.includes(t));
   if (tasarlanamaz.length > 0) {
     throw new Error(
       `${ACILIS_TAKIMI_ENV}: ${tasarlanamaz.map((s) => `"${s}"`).join(", ")} tasarlanamaz ` +
@@ -119,8 +150,29 @@ export function acilisTakimiIlani(ham = process.env[ACILIS_TAKIMI_ENV]): AcilisT
      doğar ve eksik alan rozetiyle görünür. Biçimi de ilana taşımak (ör.
      "menu:a3") ayrı bir dilimdir; buraya sıkıştırmak, doğrulanmamış bir
      ayrıştırma dilini sessizce eklemek olurdu. */
+  /* BİÇİM YAZILABİLİRLİĞİ İLANDAN OKUNUR, UYDURULMAZ: bir türe biçim
+     yazılabilmesi, o türün girdi ilanında `format` alanının bulunmasına
+     bağlıdır. Taşımayan türe biçim yazmak (ör. "tabela:a3") sessizce
+     yutulursa kurulumcu yazdığının işe yaradığını sanır — hiçbir yere
+     gitmeyen bir değerdir. */
+  for (const c of cozulen) {
+    if (c.bicim === null) continue;
+    if (c.bicim === "") {
+      throw new Error(`${ACILIS_TAKIMI_ENV}: "${c.tur}:" biçim taşımıyor — iki noktayı ya doldurun ya kaldırın`);
+    }
+    if (!bicimAlirMi(c.tur as ProductType)) {
+      throw new Error(
+        `${ACILIS_TAKIMI_ENV}: "${c.tur}" türü BİÇİM TAŞIMAZ (girdi ilanında \`format\` yok) — ` +
+          `biçim yazılabilen türler: ${TAKIM_TURLERI.filter(bicimAlirMi).join(", ")}`,
+      );
+    }
+  }
+
   return {
-    kalemler: (yazilan as ProductType[]).map((product_type) => ({ product_type })),
+    kalemler: cozulen.map((c) => ({
+      product_type: c.tur as ProductType,
+      ...(c.bicim === null ? {} : { details: { format: c.bicim } }),
+    })),
     kaynak: "yapilandirma",
   };
 }

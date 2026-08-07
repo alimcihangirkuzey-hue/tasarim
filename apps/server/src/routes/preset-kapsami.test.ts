@@ -111,6 +111,23 @@ describe("açılış takımı ucu — iş kolu kapsamı", () => {
     expect(kalemTurleri(body.project_id as string)).toEqual(["tisort", "flyer"]);
   });
 
+  it("BİÇİMLİ İLAN uçtan uca: kalem `details.format` ile YAZILIR", async () => {
+    /* ASIL KAZANÇ UÇ DÜZEYİNDE: `format` menu/flyer/trifold/fidelite'de
+       ZORUNLU alandır, yani biçimsiz doğan kalem `olcu_bekliyor`dan çıkamaz.
+       Burada DB'ye yazılan satır okunur — yanıt doğru görünüp yanlış satır
+       yazmak tam olarak bu testin var olma sebebidir. */
+    process.env[ACILIS_TAKIMI_ENV] = "menu:a3,tabela";
+    const { statusCode, body } = await takimKur();
+    expect(statusCode).toBe(201);
+    const satirlar = db
+      .prepare("SELECT product_type, details_json FROM order_items WHERE project_id = ? ORDER BY rowid ASC")
+      .all(body.project_id as string) as Array<{ product_type: string; details_json: string }>;
+    expect(satirlar.map((r) => [r.product_type, JSON.parse(r.details_json)])).toEqual([
+      ["menu", { format: "a3" }],
+      ["tabela", {}],
+    ]);
+  });
+
   it("TAKIM İLANI da her istekte YENİDEN okunur", async () => {
     process.env[ACILIS_TAKIMI_ENV] = "tabela";
     expect((await takimKur()).body.items).toBe(1);

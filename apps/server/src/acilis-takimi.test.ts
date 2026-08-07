@@ -15,8 +15,10 @@
 import { describe, expect, it } from "vitest";
 import { OPENING_KIT } from "@tezgah/shared";
 import { SEKTORLER, siparisSektoru } from "@tezgah/templates/identity";
+import { missingFields, pricingInputsOf } from "@tezgah/shared";
 import {
   ACILIS_TAKIMI_ENV,
+  bicimAlirMi,
   TAKIM_TURLERI,
   acilisTakimiIlani,
   dogrulaTakimKapsami,
@@ -86,11 +88,7 @@ describe("İLAN EDİLMİŞ takım", () => {
     expect(acilisTakimiIlani("tabela,tabela").kalemler).toHaveLength(2);
   });
 
-  it("İLAN EDİLEN kalem `details` TAŞIMAZ — yazılı sınır", () => {
-    /* Sonuç, ölçüsüz vitrophanie'nin bugün zaten yaptığı şeydir: kalem
-       `olcu_bekliyor` doğar ve eksik alan rozetiyle görünür. Biçimi de ilana
-       taşımak ("menu:a3") ayrı bir dilim; buraya sıkıştırmak doğrulanmamış
-       bir ayrıştırma dili eklemek olurdu. */
+  it("BİÇİMSİZ yazılan kalem `details` TAŞIMAZ", () => {
     expect(acilisTakimiIlani("menu").kalemler[0]).toEqual({ product_type: "menu" });
   });
 });
@@ -193,3 +191,77 @@ describe("TÜRETİM sağlam — elle ikinci tablo yok", () => {
     }
   });
 });
+
+describe("BİÇİM — `tur:bicim` (K-1/A, açılış takımı biçimi)", () => {
+  /* NİYE GEREKTİĞİ ÖLÇÜLDÜ, VARSAYILMADI: `format` alanı dört türde
+     (menu · flyer · trifold · fidelite) ZORUNLUDUR. Yani biçimsiz ilan edilen
+     bir menü kalemi yalnız "eksik rozet" almaz — `canTransition` gereği
+     `olcu_bekliyor`dan HİÇ ÇIKAMAZ. Varsayılan takımın menü/flyer kalemleri
+     bu yüzden `{format:...}` taşır. */
+
+  it("ÖN-KOŞUL: `format` DÖRT türde ZORUNLU, diğerlerinde HİÇ YOK", () => {
+    /* Bu satır olmadan aşağıdaki bütün iddialar, hiçbir türü ayırt etmeyen
+       bozuk bir okumayla da yeşil kalırdı. */
+    const alan = TAKIM_TURLERI.filter((t) => bicimAlirMi(t));
+    expect(alan).toEqual(["menu", "flyer", "trifold", "fidelite"]);
+    for (const t of alan) {
+      const g = pricingInputsOf(t).find((x) => x.alan === "format")!;
+      expect(g.zorunlu, `${t}: format zorunlu değil`).toBe(true);
+    }
+  });
+
+  it("YARANIN KENDİSİ: biçimsiz menü kalemi `olcu_bekliyor`dan ÇIKAMAZ", () => {
+    const [kalem] = acilisTakimiIlani("menu").kalemler;
+    expect(missingFields(kalemGibi(kalem!))).toEqual(["format"]);
+  });
+
+  it("BİÇİM YAZILINCA kalem TAM doğar", () => {
+    const [kalem] = acilisTakimiIlani("menu:a3").kalemler;
+    expect(kalem).toEqual({ product_type: "menu", details: { format: "a3" } });
+    expect(missingFields(kalemGibi(kalem!))).toEqual([]);
+  });
+
+  it("BİÇİM TAŞIMAYAN türe biçim yazmak FIRLATIR — sessizce yutulmaz", () => {
+    /* Yutulsaydı kurulumcu yazdığının işe yaradığını sanırdı; `tabela`nın
+       girdi ilanında `format` YOKTUR, yani değer hiçbir yere gitmez. */
+    expect(() => acilisTakimiIlani("tabela:a3")).toThrow(/BİÇİM TAŞIMAZ/);
+    expect(() => acilisTakimiIlani("tabela:a3")).toThrow(/menu, flyer, trifold, fidelite/);
+  });
+
+  it("BOŞ biçim FIRLATIR", () => {
+    expect(() => acilisTakimiIlani("menu:")).toThrow(/biçim taşımıyor/);
+  });
+
+  it("İKİ NOKTADAN FAZLASI FIRLATIR — sessizce kırpılmaz", () => {
+    expect(() => acilisTakimiIlani("menu:a3:x")).toThrow(/iki noktadan fazlasını/);
+  });
+
+  it("BİÇİMLİ ve BİÇİMSİZ kalemler AYNI ilanda yaşayabilir", () => {
+    const k = acilisTakimiIlani("menu:a3,tabela,flyer:21x21").kalemler;
+    expect(k).toEqual([
+      { product_type: "menu", details: { format: "a3" } },
+      { product_type: "tabela" },
+      { product_type: "flyer", details: { format: "21x21" } },
+    ]);
+  });
+
+  it("BİÇİMSİZ İLAN SERBEST KALIR — varsayılan takım da öyle doğuyor", () => {
+    /* KAYITLI AKIŞ, HATA DEĞİL: varsayılan takımın `fidelite` kalemi de
+       biçimsizdir ve eksik alan rozetiyle doğar (ölçüldü). Biçimsiz ilanı
+       fail-loud yapmak, deponun kendi kayıtlı desenini kırardı. */
+    const varsayilan = acilisTakimiIlani("").kalemler.find((k) => k.product_type === "fidelite")!;
+    expect(missingFields(kalemGibi(varsayilan))).toEqual(["format"]);
+    expect(() => acilisTakimiIlani("fidelite")).not.toThrow();
+  });
+});
+
+/** PresetItem'i `missingFields`in beklediği kalem biçimine sarar. */
+function kalemGibi(k: { product_type: string; details?: Record<string, unknown> }) {
+  return {
+    product_type: k.product_type,
+    qty: 1,
+    width_cm: null,
+    height_cm: null,
+    details: k.details ?? {},
+  } as never;
+}
