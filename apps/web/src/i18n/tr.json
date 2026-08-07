@@ -6,7 +6,8 @@
     "backup_hint": "data/ klasörünün zip yedeğini indirir (app.db + görseller + exportlar)",
     "themes": "Temalar",
     "settings": "Ayarlar",
-    "siparis": "Sipariş Al"
+    "siparis": "Sipariş Al",
+    "tasarim": "Tasarım"
   },
   "intake": {
     "step_client": "Müşteri",
@@ -591,5 +592,26 @@
     "uretildi": "üretildi",
     "pages": "{n} sayfa",
     "tavan": "Son 100 kayıt gösteriliyor (uç tavanı) — öncesi veritabanında duruyor."
+  },
+  "tasarim": {
+    "baslik": "Blok Tuvali",
+    "palet": "Bloklar",
+    "palet_ipucu": "Tut ve panele bırak — ya da tıkla, ilk panele düşsün.",
+    "blok_ipucu": "Sürükleyip panele bırak veya tıkla",
+    "iki_kirim": "iki kırım · üç panel",
+    "dis_yuz": "Dış yüz",
+    "ic_yuz": "İç yüz",
+    "kat": "kat",
+    "sil": "sil",
+    "hizalandi": "Hizaya oturdu",
+    "itildi": "Yer açıldı — blok aşağı kaydı",
+    "panel_doldu": "bu panel doldu, blok sığmadı",
+    "tasan_blok": "blok panelin dışına taşıyor",
+    "cakisma": "Bloklar üst üste bindi",
+    "blok_sayisi": "blok",
+    "bleed_ipucu": "Taralı alan baskıdan sonra kesilir",
+    "lejant_kat": "kat yeri",
+    "lejant_safe": "güvenli alan",
+    "lejant_bleed": "kesim payı"
   }
 }

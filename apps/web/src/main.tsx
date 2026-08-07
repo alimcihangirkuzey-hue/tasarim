@@ -14,6 +14,7 @@ import { ThemesPage } from "./pages/ThemesPage";
 import { FontsPage } from "./pages/FontsPage";
 import { ParseDictPage } from "./pages/ParseDictPage";
 import { IngredientsPage } from "./pages/IngredientsPage";
+import { TasarimPage } from "./pages/TasarimPage";
 import { FactoryPage } from "./pages/FactoryPage";
 import { FactoryGuidePage } from "./pages/FactoryGuidePage";
 import { SiparisPage } from "./pages/SiparisPage";
@@ -72,6 +73,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         <span className="sub">{t("app.subtitle")}</span>
         <span style={{ flex: 1 }} />
         <Link className="ghost-link siparis-link" to="/siparis">{t("app.siparis")}</Link>
+        <Link className="ghost-link" to="/tasarim">{t("app.tasarim")}</Link>
         <Link className="ghost-link" to="/settings/themes">{t("app.settings")}</Link>
         {/* FAZ4 §6: data/ zip yedeği tarayıcıdan iner (M7) */}
         <a className="ghost-link" href="/api/backup" title={t("app.backup_hint")}>
@@ -110,6 +112,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Routes>
                     <Route path="/" element={<ClientListPage />} />
                     <Route path="/siparis" element={<SiparisPage />} />
+                    {/* Paket 2: blok tuvali — acemi tasarım builder'ın ilk yüzeyi */}
+                    <Route path="/tasarim" element={<TasarimPage />} />
                     {/* F1 P4: menü brief akışı (ayrı yaşam döngüsü — /siparis'e dokunulmadı) */}
                     <Route path="/brief" element={<BriefPage />} />
                     <Route path="/clients/:id" element={<ClientDetailPage />} />

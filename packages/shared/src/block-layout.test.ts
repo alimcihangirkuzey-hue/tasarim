@@ -7,7 +7,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  BLOCK_DEFAULT_SIZE_MM,
   BLOCK_KINDS,
+  BlockBoxSchema,
   DEFAULT_GRID_MM,
   LayoutDocSchema,
   SNAP_TOLERANCE_MM,
@@ -283,6 +285,29 @@ describe("placeBlock — taşma dürüstçe bildirilir", () => {
     expect(placeBlock(d, panel, kutu(5, 5, 60, 40)).overflow).toBe(false);
   });
 
+  it("GEÇERSİZ SAYI: NaN koordinat NaN kutu ÜRETMEZ — içerik başına düşer", () => {
+    /* Sürükleme bırakma noktası DOM'dan gelir; zincir tanımsız dönerse NaN
+       olur ve o kutu belgeye yazılırdı. Paket 2'nin jsdom turunda gerçekten
+       yaşandı — bu pin o açığın kapağıdır. */
+    const d = doc({ safe_mm: 5 });
+    const panel = panelsOf(d)[1];
+    const r = placeBlock(d, panel, { x_mm: NaN, y_mm: NaN, w_mm: 40, h_mm: 20 });
+    expect(Number.isFinite(r.box.x_mm)).toBe(true);
+    expect(Number.isFinite(r.box.y_mm)).toBe(true);
+    expect(r.box.x_mm).toBe(5);
+    expect(r.box.y_mm).toBe(5);
+  });
+
+  it("GEÇERSİZ ÖLÇÜ: NaN/sıfır genişlik ızgara adımına iner (şema pozitif ister)", () => {
+    const d = doc({ grid_mm: 5 });
+    const panel = panelsOf(d)[1];
+    const r = placeBlock(d, panel, { x_mm: 10, y_mm: 10, w_mm: NaN, h_mm: 0 });
+    expect(r.box.w_mm).toBe(5);
+    expect(r.box.h_mm).toBe(5);
+    /* Sonuç ŞEMADAN geçebilmeli — geçersiz kutu belgeye giremez */
+    expect(() => BlockBoxSchema.parse(r.box)).not.toThrow();
+  });
+
   it("SAF: placeBlock doc'u DEĞİŞTİRMEZ", () => {
     const d = doc();
     d.blocks = [blok("a", "dis-1", kutu(10, 10, 60, 40))];
@@ -374,6 +399,24 @@ describe("LayoutDocSchema — korkuluklar", () => {
         blocks: [{ id: "x", kind: "logo", panel_id: "dis-0", box: kutu(0, 0, 0, 10) }],
       })
     ).toThrow();
+  });
+});
+
+describe("BLOCK_DEFAULT_SIZE_MM — paletin tohum ölçüleri", () => {
+  it("HER blok tipi bir başlangıç ölçüsü ilan eder (eksik tip = boyutsuz blok)", () => {
+    for (const k of BLOCK_KINDS) {
+      expect(BLOCK_DEFAULT_SIZE_MM[k], k).toBeDefined();
+      expect(BLOCK_DEFAULT_SIZE_MM[k].w_mm, k).toBeGreaterThan(0);
+      expect(BLOCK_DEFAULT_SIZE_MM[k].h_mm, k).toBeGreaterThan(0);
+    }
+  });
+
+  it("A4 üç-panel içerik GENİŞLİĞİNE sığar (87mm) — bırakılır bırakılmaz taşmaz", () => {
+    const d = doc({ safe_mm: 5 }); // dis-0 = 97mm → içerik 87mm
+    const area = contentArea(panelsOf(d)[0], d);
+    for (const k of BLOCK_KINDS) {
+      expect(BLOCK_DEFAULT_SIZE_MM[k].w_mm, k).toBeLessThanOrEqual(area.w_mm);
+    }
   });
 });
 

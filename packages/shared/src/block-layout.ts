@@ -56,6 +56,27 @@ export const BLOCK_KINDS = [
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 export const BlockKindSchema = z.enum(BLOCK_KINDS);
 
+/* Paletten bırakılan bloğun BAŞLANGIÇ ölçüsü (mm). Bu bir yerleşim bilgisidir,
+   UI süsü değil: acemi kullanıcı boyut girmez — bloğu bırakır ve makul bir
+   şeyle karşılaşır. Genişlikler A4 üç-panel (≈97mm, safe sonrası ≈87mm)
+   ölçeğine göre seçildi; daha dar bir panele bırakılırsa placeBlock içerik
+   alanına sıkıştırır (taşma sessiz kalmaz, bildirilir).
+   Yeniden boyutlandırma kullanıcının elindedir — bunlar yalnız TOHUM. */
+export const BLOCK_DEFAULT_SIZE_MM: Record<BlockKind, { w_mm: number; h_mm: number }> = {
+  kategori_basligi: { w_mm: 85, h_mm: 12 },
+  urun_karti: { w_mm: 40, h_mm: 45 },
+  urun_gridi: { w_mm: 85, h_mm: 70 },
+  fiyat_listesi: { w_mm: 85, h_mm: 60 },
+  hero_urun: { w_mm: 85, h_mm: 75 },
+  gorsel: { w_mm: 85, h_mm: 55 },
+  logo: { w_mm: 45, h_mm: 25 },
+  iletisim: { w_mm: 85, h_mm: 25 },
+  kampanya: { w_mm: 85, h_mm: 30 },
+  qr: { w_mm: 25, h_mm: 25 },
+  bilgi: { w_mm: 85, h_mm: 20 },
+  ayrac: { w_mm: 85, h_mm: 5 },
+};
+
 /* ── Sayfa geometrisi ─────────────────────────────────────────────────── */
 
 /** ISO 216 kısa/uzun kenar (mm) — dikey yönde w=kısa, h=uzun */
@@ -344,12 +365,26 @@ export function placeBlock(
     (b) => b.panel_id === panel.id && b.id !== opts?.ignoreBlockId
   );
 
+  /* 0. GEÇERSİZ SAYI KORKULUĞU. Koordinat DOM'dan gelir (sürükleme bırakma
+     noktası: clientX - rect.left) ve o zincirin herhangi bir halkası tanımsız
+     dönerse sonuç NaN olur. NaN sessizce geçseydi kutu NaN olarak BELGEYE
+     yazılırdı — geçersiz kayıt üretmek bu depoda yasaktır (intake'in "sessiz
+     yarım kayıt YASAK" kuralıyla aynı ilke). Karşılığı: geçersiz konum içerik
+     alanının başına düşer, geçersiz ölçü ızgara adımına iner. Sessiz DÜZELTME
+     değil sessiz BOZULMA engelleniyor; kullanıcı bloğu yine görür ve taşır.
+     (Bu açık paket 2'nin jsdom turunda gerçek bir NaN uyarısıyla yakalandı —
+     spekülatif değil, ölçülmüş.) */
+  const sayi = (v: number, yedek: number): number => (Number.isFinite(v) ? v : yedek);
+  const olcu = (v: number): number => (Number.isFinite(v) && v > 0 ? v : doc.grid_mm);
+  const istekX = sayi(candidate.x_mm, area.x_mm);
+  const istekY = sayi(candidate.y_mm, area.y_mm);
+
   /* 1. Izgaraya snap */
-  let x = snapTo(candidate.x_mm, doc.grid_mm);
-  let y = snapTo(candidate.y_mm, doc.grid_mm);
-  const w = round3(candidate.w_mm);
-  const h = round3(candidate.h_mm);
-  let snapped = x !== round3(candidate.x_mm) || y !== round3(candidate.y_mm);
+  let x = snapTo(istekX, doc.grid_mm);
+  let y = snapTo(istekY, doc.grid_mm);
+  const w = round3(olcu(candidate.w_mm));
+  const h = round3(olcu(candidate.h_mm));
+  let snapped = x !== round3(istekX) || y !== round3(istekY);
 
   /* 2. İçerik alanına sıkıştır — safe payının DIŞINA blok konmaz */
   x = Math.min(Math.max(x, area.x_mm), Math.max(area.x_mm, area.x_mm + area.w_mm - w));
