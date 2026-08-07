@@ -66,6 +66,12 @@ const ISTISNALAR: Readonly<Record<string, string>> = {
     "madde `decoupe`/`png` değerlerinin contract enum'unda olmadığını " +
     "söylüyor; dosya adı yalnızca kanıt bağı olarak geçiyor, yokluk " +
     "iddiasının öznesi DEĞİL",
+  "EditorPage.test.tsx":
+    "madde (sahte zaman altında yokluk iddiası sayımı) dosyayı TEK VAKANIN " +
+    "YERİ olarak gösteriyor — 'burada var' diyor, 'yok' değil. Maddedeki " +
+    "yokluk sözcüklerinin öznesi başka: yazılmayan ORTAK YARDIMCI ve " +
+    "sağlamlığı tutan NÖBETÇİ. `render-channel.test.ts` emsalinin aynısı: " +
+    "dosya adı kanıt bağıdır, yokluk iddiasının öznesi değil",
 };
 
 describe("ön-koşul — denetim GERÇEKTEN okuyor", () => {
