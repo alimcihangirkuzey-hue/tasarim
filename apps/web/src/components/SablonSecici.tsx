@@ -16,30 +16,19 @@
    her seçenek KENDİ düğmesidir ve "Vazgeç" gerçekten vazgeçer — çağıran `null`
    alır, hiçbir belge açılmaz.
 
-   NEDEN SÖZ (PROMISE) TABANLI: çağıran yerler `useMutation` gövdeleridir ve
-   akış `await`'lidir (`topluBaslat` türe göre sırayla sorar). Bir modal'ı
-   olay-geri-çağırma biçiminde bağlamak, o akışı ikiye bölmeyi ve turun
-   durumunu bileşende elle taşımayı gerektirirdi. `sor()` bir söz döndürür;
-   akış olduğu gibi kalır.
+   ARTIK İNCE BİR SARMALAYICIDIR (2026-08-06, klon vazgeçmesi paketi): modal
+   makinesi (söz · çözülme temizliği · Escape · zemin) `SecimSorusu`'na taşındı,
+   çünkü aynı yaranın İKİNCİ yeri ölçüldü (müşteri klonlama). Burada kalan tek
+   şey ŞABLONA ÖZEL olan: soru metni, ad çözümü ve kimliğin ikinci satırda
+   görünmesi. Bu dosyanın testleri taşımadan sonra DEĞİŞMEDEN yeşil kaldı —
+   davranışın birebir korunduğunun kanıtı odur. */
 
-   ASILI KALMA RİSKİ KAPATILDI — bu bileşenin en önemli güvencesi: söz
-   tabanlı bir modal, bileşen çözülürse (operatör başka sayfaya geçerse)
-   asla çözülmeyen bir söz bırakır ve `topluBaslat` SONSUZA DEK bekler —
-   düğme "Başlatılıyor…" hâlinde kilitli kalırdı. Çözülme anında bekleyen
-   soru VAZGEÇ olarak çözülür: tur temiz kapanır, sayı raporda görünür. */
-
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { t } from "../i18n";
 import { sablonAdi } from "../lib/sablonSorusu";
+import { ASGARI_SECENEK, useSecimSorusu } from "./SecimSorusu";
 
-/** Seçicinin çalışması için gereken en az seçenek. */
-export const ASGARI_SECENEK = 2;
-
-interface AcikSoru {
-  turAdi: string;
-  secenekler: readonly string[];
-  cevapla: (secim: string | null) => void;
-}
+export { ASGARI_SECENEK };
 
 export interface SablonSecici {
   /**
@@ -55,97 +44,28 @@ export interface SablonSecici {
 }
 
 export function useSablonSecici(): SablonSecici {
-  const [soru, setSoru] = useState<AcikSoru | null>(null);
-  /* Bekleyen sorunun kendisi ref'te de tutulur: çözülme (unmount) temizliği
-     state'i OKUYAMAZ (efekt kapanışı ilk render'ın state'ini görürdü). */
-  const bekleyen = useRef<AcikSoru | null>(null);
-
-  useEffect(
-    () => () => {
-      /* ÇÖZÜLME = VAZGEÇME. Bkz. dosya başlığı: çözülmeyen söz turu kilitler. */
-      bekleyen.current?.cevapla(null);
-      bekleyen.current = null;
-    },
-    [],
-  );
+  const soru = useSecimSorusu();
 
   const sor = useCallback(
-    (turAdi: string, secenekler: readonly string[]): Promise<string | null> => {
-      /* AZ SEÇENEKTE FIRLATIR, SESSİZCE SEÇMEZ: tek seçenekli türde soru
-         sormak çağıranın hatasıdır (`topluPlan` onları `hazir` kovasına
-         ayırır). Burada sessizce ilkini döndürmek, o hatayı operatöre
-         "soru sorulmadı" diye gösterirdi — hangi kovanın kaydığı görünmezdi. */
-      if (secenekler.length < ASGARI_SECENEK) {
-        throw new Error(
-          `şablon seçici en az ${ASGARI_SECENEK} seçenek bekler, ${secenekler.length} geldi ` +
-            `(${secenekler.join(", ")}) — tek seçenekli tür sorusuz koşar`,
-        );
-      }
-      return new Promise<string | null>((resolve) => {
-        const acik: AcikSoru = {
-          turAdi,
-          secenekler,
-          cevapla: (secim) => {
-            bekleyen.current = null;
-            setSoru(null);
-            resolve(secim);
-          },
-        };
-        bekleyen.current = acik;
-        setSoru(acik);
-      });
-    },
-    [],
+    (turAdi: string, secenekler: readonly string[]): Promise<string | null> =>
+      /* SENKRON FIRLATMA KORUNUR: `sor` az seçenekte fırlatır ve bu çağrı
+         zincirinde de senkron kalmalıdır — `async` yapmak hatayı reddedilen
+         bir söze çevirir ve çağıranın `try/catch`i onu göremezdi. */
+      soru.sor({
+        baslik: `${turAdi} — ${t("orders.template_pick_title")}`,
+        ipucu: t("orders.template_pick_hint"),
+        secenekler: secenekler.map((tid) => ({
+          deger: tid,
+          ad: sablonAdi(tid),
+          /* KİMLİK DE GÖRÜNÜR: kayıtsız bir şablonda `sablonAdi` kimliğin
+             kendisini döndürür ve iki satır aynı olur — operatör "bu ne" diye
+             sorabilir. Uydurma ad üretmiyoruz, gizlemiyoruz da. */
+          aciklama: tid,
+        })),
+        vazgecEtiketi: t("orders.template_pick_cancel"),
+      }),
+    [soru],
   );
 
-  return {
-    sor,
-    eleman: soru === null ? null : <SablonSeciciModal soru={soru} />,
-  };
-}
-
-function SablonSeciciModal({ soru }: { soru: AcikSoru }): JSX.Element {
-  /* ESC = VAZGEÇ. Klavyeyle açılan bir kutunun klavyeyle kapanmaması,
-     `window.confirm`'den geriye gitmek olurdu. */
-  useEffect(() => {
-    const esc = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") soru.cevapla(null);
-    };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [soru]);
-
-  return (
-    <div
-      className="modal-back"
-      /* Zemine tıklamak vazgeçmektir; kutunun İÇİNE tıklamak kapatmaz
-         (yoksa seçeneğe uzanan el kutuyu kapatabilirdi). */
-      onClick={() => soru.cevapla(null)}
-    >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ margin: 0 }}>{soru.turAdi} — {t("orders.template_pick_title")}</h3>
-        <div className="muted" style={{ fontSize: 13 }}>{t("orders.template_pick_hint")}</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {soru.secenekler.map((tid) => (
-            <button
-              key={tid}
-              onClick={() => soru.cevapla(tid)}
-              style={{ textAlign: "left", padding: "10px 12px" }}
-            >
-              <strong>{sablonAdi(tid)}</strong>
-              {/* KİMLİK DE GÖRÜNÜR: kayıtsız bir şablonda `sablonAdi` kimliğin
-                  kendisini döndürür ve iki satır aynı olur — operatör "bu ne"
-                  diye sorabilir. Uydurma ad üretmiyoruz, gizlemiyoruz da. */}
-              <div className="muted" style={{ fontSize: 11 }}>{tid}</div>
-            </button>
-          ))}
-        </div>
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <button className="ghost" onClick={() => soru.cevapla(null)}>
-            {t("orders.template_pick_cancel")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return { sor, eleman: soru.eleman };
 }

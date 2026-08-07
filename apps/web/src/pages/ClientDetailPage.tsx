@@ -12,6 +12,7 @@ import { ProjectsPanel } from "../components/ProjectsPanel";
 import { ScenesPanel } from "../components/ScenesPanel";
 import { ClientSurfacesPanel } from "../components/ClientSurfacesPanel";
 import { useSablonSecici } from "../components/SablonSecici";
+import { useSecimSorusu } from "../components/SecimSorusu";
 import { TurSonucu, type TurSonucuVerisi } from "../components/TurSonucu";
 import { BASLATMA_METINLERI } from "../components/ProjectsPanel";
 
@@ -23,6 +24,10 @@ export function ClientDetailPage() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
   const secici = useSablonSecici();
+  /* Klon sorusu AYRI bir seçicidir: ikisi aynı anda açık olamaz ama tek
+     seçiciyi paylaşmak, birinin metinlerini diğerinin akışına sokma riskini
+     bedava getirirdi — iki soru, iki istem. */
+  const klonSecimi = useSecimSorusu();
   const initialTab = (sp.get("tab") as Tab) || "general";
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -127,6 +132,73 @@ export function ClientDetailPage() {
     },
   });
 
+  /* MÜŞTERİ KLONLAMA — GERÇEK VAZGEÇME + YUTULMAYAN HATA (K-1/A).
+
+     ÖLÇÜLEN İKİ YARA, İKİSİ DE BU DOSYADA CANLIYDI:
+
+     1. VAZGEÇİLEMİYORDU. Belge sorusu bir `window.confirm`'dü ve "İptal"
+        klonu iptal etmiyor, "BELGESİZ KLONLA" demek oluyordu. Yani "yanlış
+        düğmeye bastım" diyen operatörün önündeki tek çıkış, istemediği bir
+        müşteri kopyası yaratmaktı. Bu, `2026-08-06-sablon-secici` paketinin
+        kapattığı yaranın KARDEŞİ — aynı sınıf, aynı sayfa, hâlâ canlı.
+     2. HATA YUTULUYORDU. Akış bir `useMutation` DEĞİLDİ ve `try/catch` de
+        yoktu: `await api.cloneClient(...)` reddedilirse söz sahipsiz kalıyor,
+        ekranda HİÇBİR ŞEY olmuyordu. Bu yol gerçekten reddedilebiliyor —
+        sunucu klonu tek işlemde yazar ve bozuk paramlı bir belgede
+        `paramlariDogrula` fırlatır, işlem geri sarar (routes/clone.ts).
+        Operatör düğmeye basıyor, hiçbir şey olmuyor, sebebini öğrenemiyordu.
+        Aynı dosyada `deleteAsset` için kapatılan sınıfın birebir aynısı.
+
+     BELGE YOKSA SORU SORULMAZ: sorulacak bir şey olmadığında soru sormak,
+     operatöre olmayan bir seçim yaptırmak olurdu (seçici zaten tek seçenekli
+     soruda FIRLATIR). O kurulumda klon doğrudan belgesiz koşar.
+
+     ADI SORAN `window.prompt` DURUYOR VE BU BİLİNÇLİ: orada "İptal" gerçekten
+     iptal ediyor — yaranın sınıfı "iptal başka bir şey seçiyor"du, "işletim
+     sistemi kutusu"nun kendisi değil. Metin girdisini modal'a taşımak ayrı
+     bir arayüz işidir ve bu dilime sıkıştırılmadı. */
+  const KLON_BELGELERLE = "belgelerle";
+  const [klonSonuc, setKlonSonuc] = useState<TurSonucuVerisi | null>(null);
+  const klon = useMutation({
+    mutationFn: async (): Promise<{ id: string } | null> => {
+      const ad = window.prompt(t("clone.name_prompt"), `${client.data?.name ?? ""} 2`);
+      if (!ad) return null;
+      const belgeler = await api.documents(id);
+      let docIds: string[] = [];
+      if (belgeler.length > 0) {
+        const cevap = await klonSecimi.sor({
+          baslik: t("clone.docs_question"),
+          ipucu: t("clone.docs_hint"),
+          secenekler: [
+            {
+              deger: KLON_BELGELERLE,
+              ad: t("clone.with_docs"),
+              aciklama: tf("clone.with_docs_note", { n: belgeler.length }),
+            },
+            {
+              deger: "belgesiz",
+              ad: t("clone.without_docs"),
+              aciklama: t("clone.without_docs_note"),
+            },
+          ],
+          vazgecEtiketi: t("clone.cancel"),
+        });
+        /* GERÇEK VAZGEÇME: hiçbir istek gitmez. Eski yolda bu tıklama
+           belgesiz bir klon yaratıyordu. */
+        if (cevap === null) return null;
+        if (cevap === KLON_BELGELERLE) docIds = belgeler.map((d) => d.id);
+      }
+      return api.cloneClient(id, { name: ad, document_ids: docIds });
+    },
+    onSuccess: (res) => {
+      if (!res) return; // vazgeçildi — sessiz ve doğru: hiçbir şey olmadı
+      void qc.invalidateQueries({ queryKey: ["clients"] });
+      navigate(`/clients/${res.id}`);
+    },
+    onError: (e) =>
+      setKlonSonuc({ baslik: `${t("clone.error")}: ${(e as Error).message}`, satirlar: [] }),
+  });
+
   /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster.
 
      ÖLÇÜLEN YARA (bu turda): burası ham `fetch` kullanıyordu ve `res.ok` DE
@@ -176,25 +248,16 @@ export function ClientDetailPage() {
     ["assets", t("client.tab_assets")],
   ];
 
-  const cloneClient = async () => {
-    const cname = window.prompt(t("clone.name_prompt"), `${data.name} 2`);
-    if (!cname) return;
-    const withDocs = window.confirm(t("clone.with_docs_confirm"));
-    const docIds = withDocs ? (await api.documents(id)).map((d) => d.id) : [];
-    const res = await api.cloneClient(id, { name: cname, document_ids: docIds });
-    void qc.invalidateQueries({ queryKey: ["clients"] });
-    navigate(`/clients/${res.id}`);
-  };
-
   return (
     <>
       {secici.eleman}
+      {klonSecimi.eleman}
       <div className="pagehead">
         <Link to="/" className="muted">
           {t("client.back")}
         </Link>
         <div className="row">
-          <button className="ghost" onClick={() => void cloneClient()}>
+          <button className="ghost" disabled={klon.isPending} onClick={() => klon.mutate()}>
             {t("clone.client_btn")}
           </button>
           <button
@@ -226,6 +289,15 @@ export function ClientDetailPage() {
       {kitSonuc && (
         <div style={{ margin: "8px 0" }}>
           <TurSonucu veri={kitSonuc} onKapat={() => setKitSonuc(null)} />
+        </div>
+      )}
+
+      {/* Klon hatası AYNI kalıcı panelde: başarıda zaten yeni müşteriye
+          gidilir, yani panelin tek işi "olmadı ve şu yüzden olmadı"yı
+          operatör kapatana kadar ekranda tutmaktır. */}
+      {klonSonuc && (
+        <div style={{ margin: "8px 0" }}>
+          <TurSonucu veri={klonSonuc} onKapat={() => setKlonSonuc(null)} />
         </div>
       )}
 
