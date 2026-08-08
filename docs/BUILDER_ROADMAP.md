@@ -168,9 +168,83 @@ brief / sipariş / üretim-profili hattına ait; builder hattına değmiyorlar.
 Repodaki tek "P7" de o hattın fazıdır (`briefs.ts` → `501 not_yet_available`,
 "P7 kutusunda açılır") ve **bu hattın Paket 7'si değildir** — karıştırılmamalı.
 
+### KARAR — PAKET 7 = ADAY A · BELGE KALICILIĞI (ürün sahibi, 2026-08-07)
+
+Ürün sahibi Aday A'yı seçti. Paket kaydı: journal
+`2026-08-07-belge-kaliciligi`. **Bu satır artık PLAN değil KARARdır**; paketin
+kendi durumu aşağıdadır ve ölçümü journal'dan okunur.
+
+**DURUM: İNSAN KAPISINDA DURUYOR — kod/şema/migration/DB yazma YOK.**
+Ölçüldü: `app.db` `user_version = 14` (değişmedi) · recon commit'i `79cfe87`
+yalnız journal kaydı taşır.
+
+Recon'un (journal seq 2, 12 madde) belirleyici üç bulgusu:
+
+1. **Kalıcılık katmanı sıfırdan kurulmayacak — zaten var.** `documents` tablosu
+   + `routes/documents.ts` (liste · oluştur · tek · PUT · sil · restore) +
+   `DocumentStateSchema`'nın `cd_version` damgası ve additive-only uyum kuralı.
+   Builder ise sunucuya HİÇ dokunmuyor (`TasarimPage.tsx`'te `fetch`/`api` = 0).
+   `canvas_json` Konva editörünün belgesidir (`CanvasDocSchema`), builder'ın
+   mm-tabanlı `LayoutDoc[]`'ı **değildir** — aynı kolona konamaz.
+2. **AUTH/TENANT YOK.** Sunucuda oturum · API anahtarı · `preHandler`/`onRequest`
+   yetki kancası yoktur; tek imza mekanizması dış `/render` sözleşmesinin
+   HMAC'idir (makine-makine). `clients` atölyenin MÜŞTERİLERİdir, kimliği
+   doğrulanmış bir özne değil. Sonuç: "server authorization zorunlu" ve "başka
+   tenant erişimi reddedilir" bugünkü repoda **karşılanamaz** — reddedilecek özne
+   yok. Karşılanabilen: **müşteri kapsam izolasyonu** (`documents → projects →
+   clients`, fail-closed). Bu bir **yetkilendirme değil kapsam denetimidir** ve
+   öyle adlandırılır.
+3. **Concurrency için yeni kolon gerekmiyor.** `documents.updated_at` mevcut ve
+   PUT her yazmada tazeliyor; beklenen `updated_at` + uyuşmazlıkta 409, "iki
+   sekme sessizce ezmesin" vaadini revision sistemi UYDURMADAN karşılar. Kayıtlı
+   sınır: ms çözünürlüğü.
+
+**ONAY BEKLEYEN TEK ŞEMA DEĞİŞİKLİĞİ** — v15, tek satır, tamamen additive
+(veri dönüşümü yok, eski satırlar NULL = alan yok = eski davranış):
+
+```sql
+ALTER TABLE documents ADD COLUMN builder_json TEXT;
+```
+
+Shared tarafı: `DocumentState`'e `builder: BuilderDocSchema.optional()`
+(`{ v: 1, baslik, yapraklar: LayoutDoc[] }`); `cd_version` **1 kalır** —
+additive-only kuralı tam bu vaka için kurulmuştur. Yeni uç YOK: kaydet mevcut
+`PUT /api/documents/:id` ile, aç `GET /api/documents/:id` ile, liste
+`GET /api/clients/:id/documents` ile.
+
+**NİÇİN İNSAN KAPISI BİR TERCİH DEĞİL, YASA:** bu repoda migration'lar ürün
+sahibi onayına bağlıdır ve onay kayıtta ADLANDIRILIR — v11 "programın İLK
+ONAYLI migration'ı (ürün sahibi…)", v13 "ürün sahibi onayı: `spec-values: 1`;
+programın 3. onaylı migration'ı". Beklenen onay jetonu: **`builder-json: 1`**.
+
+**ONAY DIŞINDA BEKLEYEN İKİ KARAR** (ikisi de goal metninden sapma demek):
+- **Tenant/auth yolu:** müşteri kapsam izolasyonuyla devam + "authorization yok"
+  borç olarak kaydedilsin mi; yoksa auth ayrı paket mi olsun? (Auth,
+  Canonical 10.1 A→B→C→**D** SaaS fazına yakın güvenlik-kritik bir yüzeydir.)
+- **Concurrency token:** `updated_at` (yeni kolon yok) yeterli mi; yoksa aynı
+  migration'da `rev INTEGER` de olsun mu?
+
 ---
 
-## 5. BAYAT DOKÜMAN UYARISI
+## 5. DEVAM — YENİ OTURUM (yerel)
+
+Bu hattın işi 2026-08-07'ye kadar bulut oturumunda yürüdü; **tamamı push
+edildi**, bulutta kalan iş YOK.
+
+- **Dal:** `claude/nerde-kaldik-p39ekf` · **son commit:** `79cfe87` (paket 7
+  recon kaydı) · main'e merge YOK, PR YOK.
+- Yerelde: `git fetch origin claude/nerde-kaldik-p39ekf && git checkout claude/nerde-kaldik-p39ekf && git pull` · sonra `npm ci`.
+- Kurulum/çalıştırma: kök `README.md` "Kurulum ve çalıştırma".
+- Sağlık: `npm run journal:verify` (dört katman) · `npm test` (beklenen
+  **2113/2113**, 123 dosya) · `npm run typecheck` · `npm run lint`.
+- **Sıradaki eylem:** §4'ün sonundaki *KARAR — PAKET 7* bloğu. Paket insan
+  kapısında bekliyor: `builder-json: 1` onayı + iki karar (tenant/auth yolu ·
+  concurrency token). Onay gelmeden migration/DB yazma yapılmaz.
+- Bulut oturumundaki geçici dosyalar (prova script'leri, ekran görüntüleri,
+  ölçüm JSON'ları) scratchpad'de yaşıyordu ve **repoya girmedi**; ölçüm
+  sonuçlarının kalıcı hâli journal kayıtlarındadır (`docs/journal/events/`).
+
+## 6. BAYAT DOKÜMAN UYARISI
 
 | Dosya | Durum | Neden |
 |---|---|---|
