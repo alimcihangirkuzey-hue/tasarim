@@ -14,6 +14,7 @@ import {
   severityOverridesOf,
 } from "@tezgah/templates/identity";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { exportDosyaAdi } from "../dosya-adi.js";
 import { paramlariDogrula } from "../param-kapisi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
@@ -158,7 +159,7 @@ export function exportRoutes(app: FastifyInstance): void {
         try {
           const url = `${PRINT_BASE}/print/${req.params.id}?variant=${variant}`;
           await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-          await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 30_000 });
+          await baskiyaHazirBekle(page, 30_000);
           const size = (await page.evaluate("window.__PAGE_SIZE__")) as {
             w: number;
             h: number;

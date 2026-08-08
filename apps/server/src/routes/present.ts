@@ -21,6 +21,7 @@ import {
   type SceneKind,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { sunumDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { getBrowser, toDTO, type ExportRow } from "./exports.js";
@@ -118,7 +119,7 @@ export function presentRoutes(app: FastifyInstance): void {
     const page = await browser.newPage();
     try {
       await page.goto(url, { waitUntil: "networkidle0", timeout: 60_000 });
-      await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+      await baskiyaHazirBekle(page, 45_000);
       const size = (await page.evaluate("window.__PAGE_SIZE__")) as {
         w: number;
         h: number;
@@ -159,13 +160,33 @@ export function presentRoutes(app: FastifyInstance): void {
     return toDTO(row);
   });
 
-  /* Proje sunum geçmişi */
+  /* Projenin ÜRETİLMİŞ DOSYALARI — sunum + belge çıktıları.
+
+     ÖLÇÜLEN DURUM (2026-08-06): `export_records.project_id` yalnız SUNUM
+     kaydında dolar; BELGE çıktılarının tamamı onu null bırakır — exports.ts:184
+     (pdf/print/preview) · cmyk.ts:95 · garment.ts:143 · mockup.ts:107,187 ·
+     digital-menu.ts:74 · vector.ts. Yani bu uç eskiden yalnız sunumları
+     görebiliyordu ve toplu üretimden çıkan hiçbir dosya burada görünmüyordu
+     (uç istemcide `api.projectExports` olarak da duruyordu — TÜKETİCİSİ SIFIR).
+
+     BAĞ OKUMA ANINDA KURULUR, yazıcılar değiştirilmedi. Gerekçe ölçüldü:
+     yedi ayrı yazıcıya aynı alanı elle eklemek yedi kopya doğururdu ve yeni
+     bir çıktı türü eklendiği gün sekizincisi unutulurdu; oysa belge zaten
+     projesini biliyor (`documents.project_id` NOT NULL) — türetme tek yerde
+     ve bütün çıktı türleri için AYNI ANDA doğrudur. Geçmiş kayıtlar da
+     geri-doldurma (migration) olmadan görünür hâle gelir.
+
+     `er.project_id` dalı KORUNUR: sunum kayıtları document_id taşımaz, onlar
+     yalnız o dalla bulunur. */
   app.get<{ Params: { id: string } }>("/api/projects/:id/exports", async (req) => {
     const rows = db
       .prepare(
-        "SELECT * FROM export_records WHERE project_id = ? ORDER BY version DESC"
+        `SELECT er.* FROM export_records er
+         LEFT JOIN documents d ON d.id = er.document_id
+         WHERE er.project_id = @pid OR d.project_id = @pid
+         ORDER BY er.created_at DESC, er.version DESC`
       )
-      .all(req.params.id) as ExportRow[];
+      .all({ pid: req.params.id }) as ExportRow[];
     return rows.map(toDTO);
   });
 }

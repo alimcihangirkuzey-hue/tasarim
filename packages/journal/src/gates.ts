@@ -128,6 +128,72 @@ export function summarizeVitestReports(reports: unknown[]): VitestTotals {
   return totals;
 }
 
+/** Düşen bir testin KİMLİĞİ — dosya + tam ad (describe zinciri dahil). */
+export interface DusenTest {
+  dosya: string;
+  ad: string;
+}
+
+/** Gerekçeye yazılacak en fazla ad; gerisi sayıyla özetlenir. */
+export const DUSEN_TEST_AZAMI = 5;
+
+/**
+ * vitest json raporlarından DÜŞEN testlerin adlarını çıkarır.
+ *
+ * ÖLÇÜLEN YARA (R-FLAKY-TEST-01, 2026-08-06): kapı kaydı "test: kaldi,
+ * failed: 1" yazıyordu ama HANGİ test olduğunu YAZMIYORDU — oysa okunan
+ * json `assertionResults[]` içinde `fullName` ve dosya adını zaten taşıyor
+ * (ölçüldü: 88 test, her biri status/title/fullName/ancestorTitles ile).
+ * Kararsız bir kapı kırmızı düştüğünde defterde kalan tek iz bir SAYIYDI;
+ * ad, çıktı silindiği an kayboluyordu. Append-only bir denetim defterinde
+ * "bir şey kırıldı ama ne olduğu kayıtlı değil" en pahalı boşluktur.
+ *
+ * BOZUK RAPOR SESSİZCE BOŞ DÖNMEZ: `assertionResults` beklenen biçimde
+ * değilse ATLANMAZ, patlar — "düşen yok" diyen boş bir liste, kapı kırmızıyken
+ * sahte bir sessizlik üretirdi.
+ */
+export function dusenTestler(reports: unknown[]): DusenTest[] {
+  const out: DusenTest[] = [];
+  for (const r of reports) {
+    const tr = (r as Record<string, unknown>).testResults;
+    if (!Array.isArray(tr)) throw new Error("vitest raporu: testResults dizi değil");
+    for (const dosyaSonuc of tr) {
+      const d = dosyaSonuc as Record<string, unknown>;
+      const ar = d.assertionResults;
+      /* Eski/kısıtlı raporlarda alan hiç olmayabilir; VARSA dizi olmalı. */
+      if (ar === undefined) continue;
+      if (!Array.isArray(ar)) throw new Error("vitest raporu: assertionResults dizi değil");
+      for (const a of ar) {
+        const t = a as Record<string, unknown>;
+        if (t.status !== "failed") continue;
+        const ad = typeof t.fullName === "string" && t.fullName !== ""
+          ? t.fullName
+          : typeof t.title === "string"
+            ? t.title
+            : "(adsız test)";
+        out.push({ dosya: typeof d.name === "string" ? d.name : "(dosyasız)", ad });
+      }
+    }
+  }
+  return out;
+}
+
+/** Düşen testleri tek satırlık, SINIRLI bir gerekçeye çevirir. */
+export function dusenTestGerekcesi(
+  dusenler: readonly DusenTest[],
+  azami: number = DUSEN_TEST_AZAMI
+): string | null {
+  if (dusenler.length === 0) return null;
+  const kisa = (d: DusenTest): string => `${d.dosya.split(/[\\/]/).pop() ?? d.dosya} > ${d.ad}`;
+  const gosterilen = dusenler.slice(0, azami).map(kisa);
+  /* KIRPMA GÖRÜNÜR: sessiz kesme "hepsi bu" dedirtir (hata mesajı sınırı
+     paketiyle aynı ders). */
+  const kalan = dusenler.length - gosterilen.length;
+  return kalan > 0
+    ? `düşen test (${dusenler.length}): ${gosterilen.join(" · ")} … +${kalan}`
+    : `düşen test (${dusenler.length}): ${gosterilen.join(" · ")}`;
+}
+
 export interface EslintTotals {
   errors: number;
   warnings: number;
@@ -363,6 +429,8 @@ function baseRun(gate: JournalGateName): JournalGateRun {
 interface Extraction {
   values: Record<string, number> | null;
   method: string | null;
+  /** Sayıların ANLATAMADIĞI şey (ör. düşen testlerin adları). */
+  reason?: string | null;
 }
 
 interface MachineGateOptions {
@@ -415,6 +483,9 @@ export function machineGate(
     const got = opts.extract(runs);
     run.values = got.values;
     run.method = got.method;
+    /* extract bir gerekçe verdiyse KORUNUR: sayı "1 test düştü" der, gerekçe
+       HANGİSİ olduğunu söyler. Başarıda null gelir ve hiçbir şey yazılmaz. */
+    if (got.reason != null) run.reason = got.reason;
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e);
     run.values = null;
@@ -547,6 +618,9 @@ function gateTest(): JournalGateRun {
       const t = summarizeVitestReports(reports);
       return {
         values: { passed: t.passed, failed: t.failed, total: t.total, files: t.files },
+        /* R-FLAKY-TEST-01: kırmızı kapıda ADI da deftere yaz. Kaynak, sayıyı
+           ürettiğimiz RAPORUN KENDİSİDİR — ikinci bir ölçüm yolu açılmaz. */
+        reason: dusenTestGerekcesi(dusenTestler(reports)),
         /* method APPEND-ONLY denetim defterine yazılır ve geçmişe dönük
            düzeltilemez. Buradaki cümle elle yazılırsa bir İDDİA olur ve
            kapsamdan bağımsız yaşar: eski hâli "4 workspace ... apps/web

@@ -17,16 +17,45 @@ import {
   type OrderStatus,
   type ParsedOrder,
   type PricingInputField,
+  PROJE_ACIK,
+  PROJE_KAPALI,
   type ProductType,
   type ProjectDTO,
 } from "@tezgah/shared";
-import { siparisParamlari, siparisSablonlari, siparisSubstratlari } from "@tezgah/templates/identity";
+import { TEMPLATES, blockersOf, exportRouteOf } from "@tezgah/templates";
+import {
+  siparisSablonlari,
+  siparisSubstratlari,
+  siparisTeknikleri,
+} from "@tezgah/templates/identity";
 import { api } from "../api";
+import { analyzeDoc } from "../lib/analyzeDoc";
+import { aktarimSonucVerisi, topluAktar } from "../lib/topluAktarim";
+import { cmykKapsami, cmykSonucVerisi, topluCmyk } from "../lib/topluCmyk";
+import { uyariMetni } from "../lib/uyariMetni";
+import { belgeDisaAktar } from "../lib/disaAktar";
+import { baslatmaSonucVerisi, belgeAc, topluBaslat, topluPlan } from "../lib/topluTasarim";
+import { gorunurSiparisTurleri } from "../lib/gorunurTurler";
+import { SIPARIS_YONLERI } from "../lib/siparisSecenekleri";
+import { useSablonSecici } from "./SablonSecici";
+import { TurSonucu, type TurSonucuVerisi } from "./TurSonucu";
 import { t, tf } from "../i18n";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
-const TYPES: ProductType[] = [
-  "menu", "flyer", "trifold", "fidelite", "vitrophanie", "tabela", "tisort", "onluk", "diger",
-];
+/* TOPLU BAŞLATMA GEREKÇELERİ — TEK KOPYA, iki tüketici (Sipariş Defteri
+   düğmesi ve Açılış Takımı) aynı metinleri kullanır. Kütüphane i18n bilmez;
+   metin buradan enjekte edilir. */
+export const CMYK_METINLERI = {
+  kayitsizSablon: t("orders.bulk_export_unregistered"),
+  hata: (e: unknown) => (e as Error).message,
+};
+
+export const BASLATMA_METINLERI = {
+  tasarlanamaz: t("orders.no_template_warn"),
+  vazgecildi: t("orders.result_cancelled_reason"),
+  hata: (e: unknown) => (e as Error).message,
+};
+
 const STATUSES: OrderStatus[] = ["olcu_bekliyor", "tasarimda", "onayda", "uretimde", "teslim", "iptal"];
 const TYPE_ICON: Record<ProductType, string> = {
   menu: "📋", flyer: "📄", trifold: "🗞", fidelite: "💳",
@@ -38,7 +67,16 @@ const TYPE_ICON: Record<ProductType, string> = {
    ilanıyla YÜK-ZAMANI tutarlılık denetiminden geçer (yanlış aile gösteren
    köprü uygulamayı ayağa kaldırmaz). */
 
-function itemSummary(it: OrderItemDTO): string {
+/* İmza DTO'ya DEĞİL, özetin fiilen okuduğu yapısal alt kümeye bağlıdır:
+   yapıştır önizlemesindeki `ParsedOrderItem` (henüz DTO değil — id/status/
+   document_id taşımaz) da aynı tek kaynaktan geçsin diye. Daraltma, özetin
+   okumadığı bir alana ileride sessizce uzanmasını da engeller. */
+type KalemOzetiGirdisi = Pick<
+  OrderItemDTO,
+  "product_type" | "qty" | "width_cm" | "height_cm" | "details"
+>;
+
+function itemSummary(it: KalemOzetiGirdisi): string {
   const parts: string[] = [];
   if (it.width_cm && it.height_cm) parts.push(`${it.width_cm}×${it.height_cm} cm`);
   if (it.details.format) parts.push(String(it.details.format).toUpperCase());
@@ -62,6 +100,7 @@ function ItemRow({ item, client, showToast }: {
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const secici = useSablonSecici();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
 
   const upd = useMutation({
@@ -80,8 +119,10 @@ function ItemRow({ item, client, showToast }: {
 
   const startDesign = useMutation({
     mutationFn: async () => {
-      /* 0 seçenek → tasarlanamaz; 1 → doğrudan; ≥2 → kullanıcı seçer
-         (bugün yalnız menu: OK=grid, İptal=liste — eski davranış birebir) */
+      /* 0 seçenek → tasarlanamaz; 1 → doğrudan; ≥2 → operatör seçer.
+         VAZGEÇME SESSİZDİR ve hata DEĞİLDİR: modal kapanır, hiçbir belge
+         açılmaz, editöre gidilmez. Eski `window.confirm` yolunda "İptal"
+         ikinci şablonu seçiyordu — operatörün çıkışı yoktu. */
       const secenekler = siparisSablonlari(item.product_type);
       if (secenekler.length === 0) {
         showToast(t("orders.no_template_warn"));
@@ -89,36 +130,12 @@ function ItemRow({ item, client, showToast }: {
       }
       const templateId =
         secenekler.length === 1
-          ? secenekler[0]
-          : window.confirm(t("orders.menu_template_q"))
-            ? secenekler[0]
-            : secenekler[1];
-      const doc = await api.createDocument(client.id, templateId, item.project_id);
-      const params = siparisParamlari(item);
-      if (params) {
-        try {
-          await api.updateDocument(doc.id, { params });
-        } catch (err) {
-          /* YETİM TELAFİSİ (journal 2026-07-27-klon-kapisi-yetim-telafi):
-             sunucu params'ı 400'lerse (ölçülen yol: sipariş width_cm=5000 —
-             OrderItemCreateSchema max taşımıyor, Zod max 2000 reddediyor)
-             create edilmiş belge sahipsiz kalıyordu. Geri sarıyoruz: belgeyi
-             parametresiz bırakıp kaleme BAĞLAMAK reddedildi — sipariş ölçüsü
-             sessizce düşer, belge varsayılan ölçülerle açılır ve operatör
-             yanlış ölçüyle tasarlar; silmek + görünür hata, sipariş verisini
-             düzeltmeye zorlar. Silme BEST-EFFORT: telafinin kendi hatası asıl
-             hatayı örtmemeli — her durumda orijinal hata yeniden fırlar ve
-             onError toast'ı gerekçeyi gösterir. */
-          try {
-            await api.deleteDocument(doc.id);
-          } catch {
-            /* yetim kaldı — asıl hata yine de görünür olacak */
-          }
-          throw err;
-        }
-      }
-      await api.updateOrderItem(item.id, { document_id: doc.id, status: "tasarimda" });
-      return doc.id;
+          ? secenekler[0]!
+          : await secici.sor(t(`orders.type_${item.product_type}`), secenekler);
+      if (templateId === null) return null;
+      /* Zincirin gövdesi belgeAc'ta (TEK KOPYA — toplu düğme de onu çağırır);
+         yetim telafisi ve updateOrderItem telafisizliği oradaki yorumlarda. */
+      return belgeAc(client.id, item, templateId);
     },
     onSuccess: (docId) => {
       invalidate();
@@ -144,6 +161,7 @@ function ItemRow({ item, client, showToast }: {
 
   return (
     <div className="item-card">
+      {secici.eleman}
       <div className="row" style={{ gap: 6 }}>
         <span title={item.product_type}>{TYPE_ICON[item.product_type]}</span>
         <strong>{t(`orders.type_${item.product_type}`)}</strong>
@@ -198,15 +216,29 @@ function ItemRow({ item, client, showToast }: {
           <>
             <select value={item.details.side ?? ""} className={missing.includes("side") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, side: e.target.value || undefined } })}>
-              <option value="">yön?</option>
-              <option value="exterieur">dıştan</option>
-              <option value="interieur">içten</option>
+              {/* YÖN sert kodlu KALIR ve bu ölçülmüş bir sınırdır: uygulama
+                  yönü (dıştan/içten) bir ÜRETİM KANALI değildir, bu yüzden
+                  KANAL_GEREKTIRIR zincirinde karşılığı yoktur — türetecek ilan
+                  yok. İlan doğduğu gün buraya da bağlanır. Etiketler yine de
+                  i18n'e alındı (JSX'te ham Türkçe dize kalmasın).
+                  KÜME ARTIK ADLI (lib/siparisSecenekleri): elle yazılı olması
+                  denetimsiz olmasını gerektirmiyor — nöbetçi, kümeyi şemanın
+                  KABUL ETTİĞİYLE her koşuda eşliyor. */}
+              <option value="">{t("orders.side_q")}</option>
+              {SIPARIS_YONLERI.map((y) => (
+                <option key={y} value={y}>{t(`orders.side_${y}`)}</option>
+              ))}
             </select>
+            {/* Seçenekler İLANDAN (siparisTeknikleri): ürün türü → şablon →
+                production_channels → KANAL_GEREKTIRIR. Ölçüldü: vitrophanie
+                için türetilen küme [decoupe, impression] — eski sert listeyle
+                BİREBİR aynı, davranış değişmedi. */}
             <select value={item.details.mode ?? ""} className={missing.includes("mode") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, mode: e.target.value || undefined } })}>
-              <option value="">mod?</option>
-              <option value="impression">baskı</option>
-              <option value="decoupe">kesim</option>
+              <option value="">{t("orders.mode_q")}</option>
+              {siparisTeknikleri(item.product_type).map((tk) => (
+                <option key={tk} value={tk}>{t(`orders.teknik_${tk}`)}</option>
+              ))}
             </select>
           </>
         )}
@@ -215,11 +247,14 @@ function ItemRow({ item, client, showToast }: {
             <input type="number" min={1} defaultValue={item.qty}
               className={missing.includes("qty") ? "field-missing" : ""}
               onBlur={(e) => upd.mutate({ qty: Number(e.target.value) || 1 })} style={{ width: 70 }} />
+            {/* Aynı ilan kaynağı: tişört/önlük için türetilen küme
+                [broderie, impression] — eski sert listeyle birebir aynı. */}
             <select value={item.details.technique ?? ""} className={missing.includes("technique") ? "field-missing" : ""}
               onChange={(e) => upd.mutate({ details: { ...item.details, technique: e.target.value || undefined } })}>
-              <option value="">teknik?</option>
-              <option value="impression">baskı</option>
-              <option value="broderie">nakış</option>
+              <option value="">{t("orders.teknik_q")}</option>
+              {siparisTeknikleri(item.product_type).map((tk) => (
+                <option key={tk} value={tk}>{t(`orders.teknik_${tk}`)}</option>
+              ))}
             </select>
             <input type="text" placeholder="bedenler (M:2, L:3)" defaultValue={item.details.sizes ?? ""}
               onBlur={(e) => upd.mutate({ details: { ...item.details, sizes: e.target.value || undefined } })}
@@ -345,18 +380,29 @@ function PasteBox({ client, showToast }: { client: ClientDTO; showToast: (m: str
             {parsed.due_date && <span className="pill">{t("orders.due")}: {parsed.due_date}</span>}
             <span className="pill">{tf("orders.items_found", { n: parsed.items.length })}</span>
           </div>
-          {parsed.items.map((it, i) => (
-            <div key={i} className="row" style={{ fontSize: 13, gap: 6 }}>
-              <span>{TYPE_ICON[it.product_type]}</span>
-              <strong>{t(`orders.type_${it.product_type}`)}</strong>
-              {it.width_cm && it.height_cm && <span>{it.width_cm}×{it.height_cm} cm</span>}
-              {it.details.format && <span>{String(it.details.format).toUpperCase()}</span>}
-              {it.qty > 1 && <span>{it.qty} {t("orders.qty")}</span>}
-              {it.details.side && <span className="pill">{it.details.side}</span>}
-              {it.details.mode && <span className="pill">{it.details.mode}</span>}
-              {it.notes && <span className="muted" style={{ fontStyle: "italic" }}>📝 {it.notes.split("\n")[0]}</span>}
-            </div>
-          ))}
+          {parsed.items.map((it, i) => {
+            /* Özet TEK KAYNAKTAN. Önizleme eskiden aynı özeti elle İKİNCİ KEZ
+               yazıyordu ve iki alanı düşürüyordu:
+               · technique — CANLI yara: "Detay: nakis" ayrıştırıcıda
+                 details.technique="broderie" üretir (parse.ts:104) ama
+                 önizlemede görünmezdi; operatör onayladığı siparişin işleme
+                 tekniğini göremiyor, işlenmiş kalem satırında ilk kez
+                 karşılaşıyordu (onay yüzeyi ≠ yaratılan kayıt).
+               · substrat — ilandan türetilen ticari bilgi (3.1/202), yalnız
+                 işlenmiş satırdaydı.
+               print_qty bu yoldan BUGÜN ERİŞİLEMEZ (ayrıştırıcı üretmiyor);
+               tek kaynağa bağlanmakla ürettiği gün kendiliğinden görünür —
+               latent, canlı yara olarak sayılmaz (analyzeDoc dersi). */
+            const ozet = itemSummary(it);
+            return (
+              <div key={i} className="row" style={{ fontSize: 13, gap: 6 }}>
+                <span>{TYPE_ICON[it.product_type]}</span>
+                <strong>{t(`orders.type_${it.product_type}`)}</strong>
+                {ozet && <span className="muted">{ozet}</span>}
+                {it.notes && <span className="muted" style={{ fontStyle: "italic" }}>📝 {it.notes.split("\n")[0]}</span>}
+              </div>
+            );
+          })}
           <button onClick={() => create.mutate()} disabled={create.isPending || parsed.items.length === 0}>
             {t("orders.create_project")}
           </button>
@@ -374,24 +420,235 @@ function ProjectBlock({ project, client, showToast }: {
 }) {
   const qc = useQueryClient();
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["projects", client.id] });
+  const secici = useSablonSecici();
+  /* TUR SONUCU — proje bloğunda KALICI durur; yeni bir tur öncekini değiştirir
+     (iki turun sonucu üst üste birikirse hangisinin güncel olduğu belirsizleşir). */
+  const [sonuc, setSonuc] = useState<TurSonucuVerisi | null>(null);
   const [newType, setNewType] = useState<ProductType>("menu");
+  /* KURULUMUN İŞ KOLLARI (K-1/C): tür seçicisi de 7.1/481'in "kullanıcı yalnızca
+     yaptığı işi görür" hükmüne bağlanır — bugüne dek yalnız ŞABLON seçicisi
+     bağlıydı, tabelacıya daraltılmış kurulumda operatör hâlâ tişört/menü
+     ekleyebiliyordu. Aynı anahtar (["isKollari"]) DocumentsPanel/EditorPage ile
+     paylaşılır: tek istek, tek önbellek. */
+  const aktifSektorler = useKurulumDaraltmasi();
+  const gorunurTurler = gorunurSiparisTurleri(aktifSektorler);
+  /* SEÇİLİ TÜR GÖRÜNMEZ OLABİLİR: varsayılan "menu"dür ve uç yanıt verdiğinde
+     liste daralır. Durumu effect ile düzeltmek yerine ETKİN değeri türetiyoruz —
+     effect yarışı, seçici boş görünürken "Kalem ekle"nin menü kalemi eklemesine
+     yol açardı: sessiz ve yanlış. Liste asla boşalmaz (kaçış kapısı `diger`). */
+  const etkinTur = gorunurTurler.includes(newType) ? newType : gorunurTurler[0]!;
   /* F8-E: sunum mockup modu — "last" = eski davranış (varsayılan) */
   const [presentMode, setPresentMode] = useState<"last" | "per_scene_kind">("last");
   const today = new Date().toISOString().slice(0, 10);
   const level = dueLevel(project.due_date, today);
 
   const updProject = useMutation({
-    mutationFn: (patch: { due_date?: string | null; name?: string }) => api.updateProject(project.id, patch),
-    onSuccess: invalidate,
+    mutationFn: (patch: { due_date?: string | null; name?: string; status?: string }) =>
+      api.updateProject(project.id, patch),
+    onSuccess: () => {
+      invalidate();
+      /* YAKLAŞAN İŞLER ŞERİDİ de tazelenmeli: sunucu sorgusu projenin
+         durumuna bakar (status != PROJE_KAPALI). Tazelenmezse operatör
+         projeyi kapatır ama şeritte durmaya devam eder — kapatma OLMAMIŞ
+         gibi görünür. */
+      void qc.invalidateQueries({ queryKey: ["upcoming"] });
+    },
   });
+
+  /* PROJE KAPATMA (K-1/B). ÖLÇÜLEN YARA: sunucu `status`'ü KABUL ediyordu
+     (ProjectUpdateSchema) ve yaklaşan-işler sorgusu ona BAĞLIYDI
+     (`status != 'done'`), ama 'done' hiçbir yerde YAZILMIYORDU — yetenek
+     arayüzden ERİŞİLEMEZDİ. Sonuç: vadeli her proje, işi bitmiş olsa bile
+     operatörün yaklaşan işler şeridinde SONSUZA DEK kalıyordu. Çoklu proje
+     yürüten bir atölyede o şerit tam da işe yaramaz hâle gelen yerdi. */
+  const kapali = project.status === PROJE_KAPALI;
   const delProject = useMutation({
     mutationFn: () => api.deleteProject(project.id),
     onSuccess: invalidate,
   });
   const addItem = useMutation({
-    mutationFn: () => api.addOrderItem(project.id, { product_type: newType }),
+    mutationFn: () => api.addOrderItem(project.id, { product_type: etkinTur }),
     onSuccess: invalidate,
   });
+  /* TOPLU TASARIMA BAŞLATMA (K-1/A — ürün sahibi kararı 2026-08-06: "tıklayarak
+     bitir"). Açılış Takımı preseti projeyi 4 kalemle kuruyordu ama operatör
+     dördüne TEK TEK "Tasarıma başla" diyordu; bu düğme o dört tıkı bire indirir.
+
+     ŞABLON SEÇİMİ TÜR BAŞINA BİR KEZ sorulur, kalem başına değil: bugün yalnız
+     menu ≥2 seçeneklidir (grid/liste) ve Açılış Takımı'nda bir menü vardır —
+     kalem başına sormak aynı soruyu N kez tekrarlardı. Seçici tekil düğmeyle
+     AYNIDIR (davranış çatallanmasın) ve VAZGEÇME turu durdurmaz: o tür atlanır,
+     kalanlar açılır, vazgeçilen sayısı özette AYRI görünür.
+
+     SIRAYLA koşar, paralel değil: her kalem createDocument + updateDocument +
+     updateOrderItem üçlüsüdür; paralel gönderim sunucuda aynı projeye eşzamanlı
+     yazma yaratırdı ve bir kalemin 400'ü diğerinin telafisiyle karışırdı.
+     Hata YUTULMAZ ama turu DURDURMAZ: düşen kalem sayılır, kalanlar denenir;
+     özet toast'ta hem başarı hem düşen sayısı görünür (sessiz kısmi başarı yok).
+
+     YÖNLENDİRME YOK: N belgeden birine atlamak keyfî olurdu (belgeAc yorumu). */
+  const topluBaslatM = useMutation({
+    mutationFn: () =>
+      /* Gövde lib/topluTasarim.ts'te TEK KOPYA — Açılış Takımı da onu çağırır.
+         Seçici buradan enjekte edilir: tekil düğmeyle AYNI bileşen. */
+      topluBaslat(
+        client.id,
+        project.items,
+        (tur, secenekler) => secici.sor(t(`orders.type_${tur}`), secenekler),
+        BASLATMA_METINLERI,
+      ),
+    onSuccess: (r) => {
+      invalidate();
+      /* SONUÇ TOAST'A DEĞİL PANELE — toplu aktarımla AYNI yer ve AYNI
+         gerekçe (tur-sonucu-paneli paketi): 4,5 saniyede silinen ve satır
+         sonlarını göstermeyen bir kutu, kalem başına gerekçeyi taşıyamaz. */
+      setSonuc(
+        baslatmaSonucVerisi(
+          r,
+          (o) => tf("orders.bulk_done", o),
+          (o) => tf("orders.bulk_cancelled", o),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
+        ),
+      );
+    },
+    onError: (e) => showToast(`${t("orders.start_design_error")}: ${(e as Error).message}`),
+  });
+
+  /* TOPLU DIŞA AKTARIM (K-1/B — çoklu proje hızı). Projedeki BELGELİ kalemleri
+     sırayla üretime verir.
+
+     BLOCKER KAPISI ATLATILMAZ — bu paketin en kritik kararı: sunucunun blocker
+     backstop'u İSTEMCİNİN bildirdiği uyarılara bakar ("sunucu tam analiz
+     KOŞAMAZ: tam registry react taşır", exports.ts) — yani boş uyarı dizisiyle
+     çağırmak bekçiyi sessizce devre dışı bırakır ve eksik zorunlu slotlu belge
+     baskıya giderdi. Bu yüzden her belge için editörün koştuğu ANALİZİN AYNISI
+     (analyzeDoc) burada da koşar; blocker taşıyan belge dışa AKTARILMAZ, sayılır
+     ve operatöre bildirilir. Toplu yol, tekil yoldan daha gevşek olamaz.
+
+     Sıra/hata semantiği toplu tasarıma başlatmayla aynı: sırayla koşar, düşen
+     belge turu durdurmaz ama sayılır (sessiz kısmi başarı yok). */
+  const topluAktarM = useMutation({
+    mutationFn: async () => {
+      /* Gövde `lib/topluAktarim.ts`'e taşındı: kardeşi topluBaslat bir
+         kütüphaneyken bu ~40 satır bileşenin içindeydi ve TEK BİR TESTİ YOKTU.
+         Adımlar enjekte edilir; blocker kapısı burada, GERÇEK analizle koşar. */
+      /* `hazirla` bir sonraki `aktar` için gereken bağlamı bırakır: aynı
+         belgenin manifest'i ve ANALİZİ iki kez hesaplanmasın (ve ikinci
+         hesap birincisinden ayrışmasın). Tur SIRAYLA koştuğu için bu
+         devir güvenlidir — kütüphane paralel çalışmaz. */
+      let baglam: { entry: (typeof TEMPLATES)[string]; analiz: ReturnType<typeof analyzeDoc>; mode: unknown } | null =
+        null;
+      return topluAktar(
+        project.items,
+        {
+          hazirla: async (documentId) => {
+            const doc = await api.document(documentId);
+            const entry = TEMPLATES[doc.template_id];
+            /* Şablon kayıtlı değilse üretime verilmez: kanal ilanı okunamayan
+               belge için doğru uç bilinemez (kayıtsız profil sunucuda da
+               reddedilir — profile_not_registered). */
+            if (!entry) return { kayitli: false, blockerlar: [] };
+            const analiz = analyzeDoc(client, doc);
+            baglam = { entry, analiz, mode: doc.params["mode"] };
+            return {
+              kayitli: true,
+              /* Gerekçe EDİTÖRÜN metniyle aynı — ikinci bir etiketleme yok. */
+              blockerlar: blockersOf(analiz.warnings, entry.manifest.severity_overrides).map(uyariMetni),
+            };
+          },
+          aktar: (documentId) => {
+            const b = baglam!;
+            return belgeDisaAktar(documentId, b.entry.manifest.production_channels, b.mode, b.analiz.warnings);
+          },
+        },
+        {
+          kayitsizSablon: t("orders.bulk_export_unregistered"),
+          bloklu: (gerekceler) => gerekceler.join(" · "),
+          hata: (e) => (e as Error).message,
+        },
+      );
+    },
+    onSuccess: (r) => {
+      invalidate();
+      /* Üretilen dosyalar listesi de tazelenmeli — yoksa operatör az önce
+         ürettiği dosyaları göremez ve üretim olmamış gibi görünür. */
+      void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
+      /* SONUÇ TOAST'A DEĞİL PANELE (K-1/B, tur sonucu paketi): toast 4,5
+         saniyede siliniyordu, satır sonlarını göstermiyordu ve uzun listede
+         duvara dönüyordu. Panel operatör kapatana kadar durur. */
+      setSonuc(
+        aktarimSonucVerisi(
+          r,
+          (o) => tf("orders.bulk_export_done", o),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
+        ),
+      );
+    },
+    onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
+  });
+
+  /* ÜRETİLMİŞ DOSYALAR — `api.projectExports` bu pakete kadar TÜKETİCİSİZDİ
+     (uç sunucuda vardı, istemci fonksiyonu vardı, hiçbir ekran çağırmıyordu).
+     Toplu üretim eklendikten sonra boşluk somutlaştı: operatör tek tıkla N
+     dosya üretiyor ama onları görecek proje düzeyinde bir yer yoktu.
+     Liste toplu aktarımdan sonra tazelenir (aşağıda invalidate). */
+  const ciktilar = useQuery({
+    queryKey: ["projectExports", project.id],
+    queryFn: () => api.projectExports(project.id),
+  });
+
+  /* TOPLU CMYK (K-1/B — çoklu proje hızı). Matbaanın ASIL üretim formatı
+     CMYK'dir; bugüne dek yalnız EDİTÖRDE, BELGE BAŞINA alınabiliyordu.
+     Ölçülen akış: 4 kalemlik bir işte operatör toplu üretimden sonra dört
+     belgeyi tek tek açıp CMYK düğmesine basmak zorundaydı.
+
+     İKİ ÖLÇÜLMÜŞ KISIT — ikisi de sunucudan okundu, varsayılmadı:
+     (1) Ghostscript şart (cmyk.ts:44 → yoksa 503). Bu yüzden düğme YALNIZ
+         cmykStatus.available iken çizilir; yoksa her tık kesin hataya giderdi.
+     (2) Kaynak, belgenin SON `print` çıktısıdır (cmyk.ts:53-59 → yoksa 400
+         no_print_export). Tekstil/kesim yoluna giden belgelerin print çıktısı
+         HİÇ olmaz; onlar HATA değil ATLANAN sayılır — kanal ilanı zaten
+         print taşımıyor (exportRouteOf). Hata saymak operatöre olmayan bir
+         sorun bildirirdi. */
+  const cmykQ = useQuery({ queryKey: ["cmyk-status"], queryFn: api.cmykStatus, staleTime: Infinity });
+  const topluCmykM = useMutation({
+    mutationFn: () =>
+      /* Gövde `lib/topluCmyk.ts`'e taşındı: kardeşlerinin ikisi (topluAktar,
+         topluBaslat) çoktan kütüphaneyken bu ~20 satır bileşenin içindeydi ve
+         TEK BİR TESTİ YOKTU. Adımlar enjekte edilir; kanal ilanı burada,
+         GERÇEK kayıt defterinden okunur. */
+      topluCmyk(
+        project.items,
+        {
+          hazirla: async (documentId) => {
+            const doc = await api.document(documentId);
+            const entry = TEMPLATES[doc.template_id];
+            /* Kayıtsız şablon ile "baskı yolu yok" ARTIK AYRI: ilki ilanın
+               hiç okunamadığı anlamına gelir ve panelde gerekçesiyle
+               görünür; ikincisi tekstil/kesim belgesinin normal hâlidir. */
+            if (!entry) return { kayitli: false, baskiYolu: false, documentId: doc.id };
+            const yol = exportRouteOf(entry.manifest.production_channels, doc.params["mode"]);
+            return { kayitli: true, baskiYolu: yol === "pdf", documentId: doc.id };
+          },
+          uret: (documentId) => api.exportCmyk(documentId),
+        },
+        CMYK_METINLERI,
+      ),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ["projectExports", project.id] });
+      /* Sonuç toast'ta DEĞİL panelde — kardeş turlarla aynı yer ve aynı
+         gerekçe (tur-sonucu-paneli paketi). */
+      setSonuc(
+        cmykSonucVerisi(
+          r,
+          (o) => tf("orders.bulk_cmyk_done", o),
+          (it) => `${t(`orders.type_${it.product_type}`)} · ${itemSummary(it)}`,
+        ),
+      );
+    },
+    onError: (e) => showToast(`${t("editor.export_error")}: ${(e as Error).message}`),
+  });
+
   const present = useMutation({
     mutationFn: () => {
       const note = window.prompt(
@@ -413,8 +670,17 @@ function ProjectBlock({ project, client, showToast }: {
 
   return (
     <div className="cat-block" style={{ borderLeft: level === "red" ? "4px solid #DC2626" : level === "yellow" ? "4px solid #F59E0B" : undefined }}>
+      {secici.eleman}
       <div className="row">
         <strong style={{ fontSize: 15 }}>{project.name}</strong>
+        {kapali && <span className="pill p-ok">{t("orders.project_closed")}</span>}
+        <button
+          className="ghost small"
+          onClick={() => updProject.mutate({ status: kapali ? PROJE_ACIK : PROJE_KAPALI })}
+          disabled={updProject.isPending}
+        >
+          {kapali ? t("orders.project_reopen") : t("orders.project_close")}
+        </button>
         <label className="kbd-hint">{t("orders.due")}</label>
         <input
           type="date"
@@ -436,6 +702,60 @@ function ProjectBlock({ project, client, showToast }: {
           <option value="last">{t("orders.present_mode_last")}</option>
           <option value="per_scene_kind">{t("orders.present_mode_multi")}</option>
         </select>
+        {/* Toplu başlatma — açılacak kalem YOKSA düğme HİÇ ÇIZILMEZ (devre dışı
+            düğme değil): "0 kalem" yazan bir düğme operatöre yapılacak iş varmış
+            gibi görünürdü. Sayı düğmenin üstünde durur ki kaç tık kazanıldığı
+            basılmadan önce bilinsin. */}
+        {(() => {
+          const p = topluPlan(project.items);
+          const n = p.hazir.length + p.secimli.length;
+          if (n === 0) return null;
+          return (
+            <button
+              className="ghost small"
+              onClick={() => topluBaslatM.mutate()}
+              disabled={topluBaslatM.isPending}
+            >
+              {topluBaslatM.isPending ? t("orders.bulk_running") : tf("orders.bulk_btn", { n })}
+            </button>
+          );
+        })()}
+        {/* Belgeli kalem yoksa çizilmez — toplu başlatma düğmesiyle aynı kural. */}
+        {project.items.some((i) => i.document_id) && (
+          <button
+            className="ghost small"
+            onClick={() => topluAktarM.mutate()}
+            disabled={topluAktarM.isPending}
+          >
+            {topluAktarM.isPending
+              ? t("editor.exporting")
+              : tf("orders.bulk_export_btn", { n: project.items.filter((i) => i.document_id).length })}
+          </button>
+        )}
+        {/* Ghostscript YOKSA düğme hiç çizilmez — her tık 503'e giderdi.
+            KAPSAM DA SAYILIR (2026-08-07, cmyk kapsamı paketi): eskiden koşul
+            "belgeli kalem var mı"ydı ve TEKSTİL-ONLY bir projede düğme
+            çiziliyordu, oysa `tisort`/`onluk` kanal ilanı `garment`tır ve CMYK
+            kaynağı olan `print` çıktısı HİÇ doğmaz — operatör basıyor, tur N
+            belgeyi tek tek çekiyor, sonuç "0 üretildi · N atlandı" oluyor ve
+            panelin listesi BOŞ kalıyordu. Sayı kardeş düğmelerdeki gibi
+            önceden görünür; 0 ise düğme HİÇ ÇİZİLMEZ (bu panelin kendi
+            kuralı: "'0 kalem' yazan bir düğme yapılacak iş varmış gibi
+            görünürdü"). */}
+        {(() => {
+          if (!cmykQ.data?.available) return null;
+          const n = cmykKapsami(project.items).length;
+          if (n === 0) return null;
+          return (
+            <button
+              className="ghost small"
+              onClick={() => topluCmykM.mutate()}
+              disabled={topluCmykM.isPending}
+            >
+              {topluCmykM.isPending ? t("editor.exporting") : tf("orders.bulk_cmyk_btn", { n })}
+            </button>
+          );
+        })()}
         <button className="ghost small" onClick={() => present.mutate()} disabled={present.isPending}>
           {present.isPending ? t("editor.exporting") : t("orders.present_btn")}
         </button>
@@ -452,13 +772,38 @@ function ProjectBlock({ project, client, showToast }: {
       ))}
 
       <div className="row">
-        <select value={newType} onChange={(e) => setNewType(e.target.value as ProductType)}>
-          {TYPES.map((tp) => (
+        <select value={etkinTur} onChange={(e) => setNewType(e.target.value as ProductType)}>
+          {gorunurTurler.map((tp) => (
             <option key={tp} value={tp}>{t(`orders.type_${tp}`)}</option>
           ))}
         </select>
         <button className="ghost small" onClick={() => addItem.mutate()}>{t("orders.add_item")}</button>
       </div>
+
+      {/* Üretilmiş dosyalar — çıktı YOKSA bölüm hiç çizilmez (boş başlık,
+          üretim olmuş da dosya kaybolmuş izlenimi verirdi). Sunum kayıtları
+          da bu listede görünür: ikisi de "bu projeden çıkan dosya"dır. */}
+      {sonuc !== null && <TurSonucu veri={sonuc} onKapat={() => setSonuc(null)} />}
+
+      {(ciktilar.data?.length ?? 0) > 0 && (
+        <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {tf("orders.outputs", { n: ciktilar.data!.length })}
+          </span>
+          {ciktilar.data!.map((r) => (
+            <a
+              key={r.id}
+              className="pill"
+              href={`/${r.filepath.replace(/^data\//, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              title={r.filepath}
+            >
+              {t(`orders.out_${r.kind}`)} v{r.version}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -21,11 +21,49 @@ import {
 
 import { parseJournalArgv, type ParsedJournalCommand } from "./argv.js";
 import { runGate } from "./gates.js";
+import {
+  calismaAgaciYollari,
+  commitYollari,
+  mtimeliDosyalar,
+  olcumdenSonraDegisenler,
+} from "./olcum-sirasi.js";
+import { ROOT_DIR } from "./paths.js";
 import { appendEvent, readJournal } from "./store.js";
 import { verifyAllJournals } from "./verify.js";
 
 const yaz = (s: string): void => void process.stdout.write(`${s}\n`);
 const uyar = (s: string): void => void process.stderr.write(`${s}\n`);
+
+/** Paketin EN SON kapı koşumunun anı — hiç kapı koşulmamışsa `null`. */
+function sonOlcumAni(packageId: string): string | null {
+  const rec = foldPackageJournal(readJournal(packageId));
+  const anlar = Object.values(rec.gates)
+    .map((g) => g?.measured_at)
+    .filter((s): s is string => typeof s === "string")
+    .sort();
+  return anlar.length === 0 ? null : anlar[anlar.length - 1]!;
+}
+
+/**
+ * Paketin EN SON kapı koşumundan SONRA değişmiş dosyalar.
+ *
+ * Karar `olcum-sirasi.ts`'te SAF olarak yaşar; buradaki iş yalnız iki ölçülmüş
+ * değeri toplamaktır: kapının `measured_at`'i ve dosyaların disk mtime'ı. Git
+ * yoksa/çalışmıyorsa kapı SESSİZCE AÇILMAZ ama DURDURMAZ da — ölçemediği bir
+ * şey hakkında yargı üretmek, bu deponun "sayı uydurma" yasağının ta kendisi
+ * olurdu.
+ *
+ * İKİ ÇAĞRI YERİ, TEK KURAL:
+ *   · `stage --to hazir` → çalışma ağacındaki değişiklikler
+ *   · `git --kind commit` → COMMIT'İN dokunduğu dosyalar. Commit mtime'ları
+ *     DEĞİŞTİRMEZ, yani "hazır olduktan sonra düzenle ve commit et" yolu
+ *     commit'ten sonra bile ölçülebilir kalır (bulgu `K-SIRA-3`).
+ */
+function olcumdenSonraDegisenDosyalar(packageId: string, yollar: readonly string[]): string[] {
+  const sonOlcum = sonOlcumAni(packageId);
+  if (sonOlcum === null) return []; /* hiç kapı koşulmamış — söyleyecek şey yok */
+  return olcumdenSonraDegisenler(sonOlcum, mtimeliDosyalar(ROOT_DIR, yollar));
+}
 
 function main(): void {
   const komut = parseJournalArgv(process.argv.slice(2));
@@ -42,8 +80,17 @@ function main(): void {
         yaz("journal: dört katman temiz (kaynak · git · yapi · zincir).");
         return;
       }
-      for (const i of ihlaller) yaz(`${i.layer}\t${i.package_id}\t${i.message}`);
-      yaz(`journal: ${ihlaller.length} ihlal.`);
+      /* SINIF GÖRÜNÜR: "ölçülemedi" bir yönetişim kırılması DEĞİLDİR ama
+         YEŞİL de değildir — bilinmezlik bir kapıda geçer not olamaz. Değişen
+         tek şey, kırmızının kendini açıklaması (R-FLAKY-TEST-01). */
+      for (const i of ihlaller) yaz(`${i.sinif}\t${i.layer}\t${i.package_id}\t${i.message}`);
+      const kirilan = ihlaller.filter((i) => i.sinif === "ihlal").length;
+      const olculemeyen = ihlaller.length - kirilan;
+      yaz(
+        olculemeyen === 0
+          ? `journal: ${kirilan} ihlal.`
+          : `journal: ${kirilan} ihlal · ${olculemeyen} ölçülemedi (denetim koşturulamadı — ihlal kanıtı DEĞİL).`,
+      );
       process.exitCode = 1;
       return;
     }
@@ -70,6 +117,23 @@ function main(): void {
         );
         process.exitCode = 2;
         return;
+      }
+      /* ÖLÇÜM SIRASI KAPISI (bulgu `K-SIRA-1`): "hazir" paketin ölçülmüş
+         sayıldığı aşamadır. Kapı koştuktan SONRA değiştirilmiş bir dosya
+         varsa, kayıtlı kapı sonucu commit edilecek ağacı TARİF ETMEZ — bu
+         depo o hatayı bir kez ödedi (bir tur boyunca defter yanlış söyledi).
+         Kural yalnız ileri geçişte işler; geriye dönüş serbesttir. */
+      if (komut.to === "hazir") {
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, calismaAgaciYollari(ROOT_DIR));
+        if (gec.length > 0) {
+          uyar(
+            `journal: ÖLÇÜM SIRASI — şu dosya(lar) son kapı koşumundan SONRA değişti:\n` +
+              gec.map((y) => `  · ${y}`).join("\n") +
+              `\nKapıları YENİDEN koşun; kayıtlı sonuç commit edilecek ağacı tarif etmiyor.`
+          );
+          process.exitCode = 2;
+          return;
+        }
       }
       olayYaz(komut.packageId, { type: "stage_changed", payload: { from, to: komut.to } }, komut);
       return;
@@ -121,13 +185,33 @@ function main(): void {
       return;
     }
 
-    case "git":
+    case "git": {
+      /* ÖLÇÜM SIRASININ İKİNCİ YARISI (bulgu `K-SIRA-3`): `hazir` kapısı
+         yalnız o GEÇİŞTE bakar; paket hazır olduktan SONRA dosya değiştirip
+         commit etmek hâlâ mümkündü ve onu tutan tek şey disiplindi. Commit
+         dosya mtime'larını DEĞİŞTİRMEZ, dolayısıyla aynı kural commit'ten
+         sonra da uygulanabilir: commit'in dokunduğu bir dosya son kapı
+         koşumundan yeniyse, kaydedilecek commit ölçülmemiş bir ağaçtır. */
+      if (komut.kind === "commit") {
+        const gec = olcumdenSonraDegisenDosyalar(komut.packageId, commitYollari(ROOT_DIR, komut.value));
+        if (gec.length > 0) {
+          uyar(
+            `journal: ÖLÇÜM SIRASI — commit ${komut.value} şu dosya(lar)ı taşıyor ` +
+              `ama onlar son kapı koşumundan SONRA değişti:\n` +
+              gec.map((y) => `  · ${y}`).join("\n") +
+              `\nKapıları yeniden koşun ve commit'i ölçülmüş ağaçla yenileyin.`
+          );
+          process.exitCode = 2;
+          return;
+        }
+      }
       olayYaz(
         komut.packageId,
         { type: "git_recorded", payload: { kind: komut.kind, value: komut.value, subject: komut.subject } },
         komut
       );
       return;
+    }
 
     case "agent":
       olayYaz(

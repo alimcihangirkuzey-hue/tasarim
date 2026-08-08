@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Currency } from "@tezgah/shared";
-import { api } from "../api";
-import { t } from "../i18n";
+import { PARA_BIRIMI_SECENEKLERI, type Currency } from "@tezgah/shared";
+import { api, isKollariGerekcesiOku, kullanimlariOku } from "../api";
+import { baslatmaSonucVerisi, topluBaslat } from "../lib/topluTasarim";
+import { t, tf } from "../i18n";
 import { BrandKitPanel } from "../components/BrandKitPanel";
 import { CatalogPanel } from "../components/CatalogPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
 import { ProjectsPanel } from "../components/ProjectsPanel";
 import { ScenesPanel } from "../components/ScenesPanel";
 import { ClientSurfacesPanel } from "../components/ClientSurfacesPanel";
+import { useSablonSecici } from "../components/SablonSecici";
+import { useSecimSorusu } from "../components/SecimSorusu";
+import { TurSonucu, type TurSonucuVerisi } from "../components/TurSonucu";
+import { BASLATMA_METINLERI } from "../components/ProjectsPanel";
 
 type Tab = "general" | "projects" | "brandkit" | "catalog" | "documents" | "scenes" | "assets";
 
@@ -18,6 +23,11 @@ export function ClientDetailPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [sp] = useSearchParams();
+  const secici = useSablonSecici();
+  /* Klon sorusu AYRI bir seçicidir: ikisi aynı anda açık olamaz ama tek
+     seçiciyi paylaşmak, birinin metinlerini diğerinin akışına sokma riskini
+     bedava getirirdi — iki soru, iki istem. */
+  const klonSecimi = useSecimSorusu();
   const initialTab = (sp.get("tab") as Tab) || "general";
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -59,27 +69,161 @@ export function ClientDetailPage() {
     onSuccess: () => navigate("/"),
   });
 
-  /* FAZ4 §11: Açılış Takımı preseti → Projeler sekmesine geç */
+  /* AÇILIŞ TAKIMI — preset + BELGELER, TEK İŞLEMDE (K-1/A: "bir müşteri +
+     preset → N belge tek işlemde, aynı marka kitinden").
+
+     ÖLÇÜLEN BOŞLUK: preset ucu yalnız proje + KALEM üretir ({project_id,
+     items:sayı}); belgeler için operatör Projeler sekmesine geçip toplu düğmeye
+     ayrıca basıyordu. Başlığın sözü "tek işlem"di.
+
+     KALEMLER NEDEN YENİDEN ÇEKİLİYOR: uç kalem SAYISINI döndürür, kalemlerin
+     KENDİLERİNİ değil — belge açmak için id/tür/ölçü gerekir. Sunucu yanıtını
+     genişletmek yerine mevcut okuma yolu kullanıldı (uç sözleşmesi değişmedi;
+     liste zaten tazelenecekti).
+
+     BELGE AÇMA BAŞARISIZSA PRESET GERİ ALINMAZ: proje ve kalemler operatörün
+     gerçek işidir — silmek onları yok ederdi. Kalemler durur, sayılar raporda
+     görünür, operatör Projeler sekmesinden tekrar deneyebilir. */
+  const [kitSonuc, setKitSonuc] = useState<TurSonucuVerisi | null>(null);
   const openingKit = useMutation({
-    mutationFn: () => api.createOpeningKit(id),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const kit = await api.createOpeningKit(id);
+      const projeler = await api.clientProjects(id);
+      const proje = projeler.find((p) => p.id === kit.project_id);
+      if (!proje) return null; // proje okunamadı: kalemler durur, aşağıda raporlanır
+      /* Soru TÜR BAŞINA BİR KEZ (lib sözleşmesi); seçici Sipariş Defteri'ndeki
+         düğmeyle AYNI bileşendir. Vazgeçme turu durdurmaz: o tür atlanır,
+         kalan kalemler açılır ve vazgeçilen sayısı raporda AYRI görünür. */
+      return topluBaslat(
+        id,
+        proje.items,
+        (tur, secenekler) => secici.sor(t(`orders.type_${tur}`), secenekler),
+        BASLATMA_METINLERI,
+      );
+    },
+    onSuccess: (r) => {
       invalidate();
       void qc.invalidateQueries({ queryKey: ["projects", id] });
       setTab("projects");
+      /* SONUÇ ARTIK SATIR SATIR: düz metin yalnız "kalemler oluştu ama belge
+         açılamadı" dalında kalır (o dalda tur hiç koşmadı, satır da yok). */
+      setKitSonuc(
+        r === null
+          ? { baslik: t("preset.opening_items_only"), satirlar: [] }
+          : baslatmaSonucVerisi(
+              r,
+              (o) => tf("preset.opening_done", o),
+              (o) => tf("preset.opening_cancelled", o),
+              (it) => `${t(`orders.type_${it.product_type}`)}`,
+            ),
+      );
+    },
+    /* İŞ KOLU DIŞI 409'U GEREKÇESİYLE SÖYLENİR: sunucu, kurulumun iş kollarına
+       düşen kalem kalmadığında proje AÇMAZ (preset-kapsami). Düz mesaj
+       gösterseydik operatör "409" görür ve düğmenin bozuk olduğunu sanardı —
+       oysa sistem doğru davranıyor, yalnız sebebi söylenmemiş oluyordu. */
+    onError: (e) => {
+      const kollar = isKollariGerekcesiOku(e);
+      setKitSonuc(
+        kollar
+          ? { baslik: tf("preset.opening_out_of_scope", { kollar: kollar.map((k) => t(`sektor_${k}`)).join(", ") }), satirlar: [] }
+          : { baslik: `${t("orders.start_design_error")}: ${(e as Error).message}`, satirlar: [] },
+      );
     },
   });
 
-  /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster */
+  /* MÜŞTERİ KLONLAMA — GERÇEK VAZGEÇME + YUTULMAYAN HATA (K-1/A).
+
+     ÖLÇÜLEN İKİ YARA, İKİSİ DE BU DOSYADA CANLIYDI:
+
+     1. VAZGEÇİLEMİYORDU. Belge sorusu bir `window.confirm`'dü ve "İptal"
+        klonu iptal etmiyor, "BELGESİZ KLONLA" demek oluyordu. Yani "yanlış
+        düğmeye bastım" diyen operatörün önündeki tek çıkış, istemediği bir
+        müşteri kopyası yaratmaktı. Bu, `2026-08-06-sablon-secici` paketinin
+        kapattığı yaranın KARDEŞİ — aynı sınıf, aynı sayfa, hâlâ canlı.
+     2. HATA YUTULUYORDU. Akış bir `useMutation` DEĞİLDİ ve `try/catch` de
+        yoktu: `await api.cloneClient(...)` reddedilirse söz sahipsiz kalıyor,
+        ekranda HİÇBİR ŞEY olmuyordu. Bu yol gerçekten reddedilebiliyor —
+        sunucu klonu tek işlemde yazar ve bozuk paramlı bir belgede
+        `paramlariDogrula` fırlatır, işlem geri sarar (routes/clone.ts).
+        Operatör düğmeye basıyor, hiçbir şey olmuyor, sebebini öğrenemiyordu.
+        Aynı dosyada `deleteAsset` için kapatılan sınıfın birebir aynısı.
+
+     BELGE YOKSA SORU SORULMAZ: sorulacak bir şey olmadığında soru sormak,
+     operatöre olmayan bir seçim yaptırmak olurdu (seçici zaten tek seçenekli
+     soruda FIRLATIR). O kurulumda klon doğrudan belgesiz koşar.
+
+     ADI SORAN `window.prompt` DURUYOR VE BU BİLİNÇLİ: orada "İptal" gerçekten
+     iptal ediyor — yaranın sınıfı "iptal başka bir şey seçiyor"du, "işletim
+     sistemi kutusu"nun kendisi değil. Metin girdisini modal'a taşımak ayrı
+     bir arayüz işidir ve bu dilime sıkıştırılmadı. */
+  const KLON_BELGELERLE = "belgelerle";
+  const [klonSonuc, setKlonSonuc] = useState<TurSonucuVerisi | null>(null);
+  const klon = useMutation({
+    mutationFn: async (): Promise<{ id: string } | null> => {
+      const ad = window.prompt(t("clone.name_prompt"), `${client.data?.name ?? ""} 2`);
+      if (!ad) return null;
+      const belgeler = await api.documents(id);
+      let docIds: string[] = [];
+      if (belgeler.length > 0) {
+        const cevap = await klonSecimi.sor({
+          baslik: t("clone.docs_question"),
+          ipucu: t("clone.docs_hint"),
+          secenekler: [
+            {
+              deger: KLON_BELGELERLE,
+              ad: t("clone.with_docs"),
+              aciklama: tf("clone.with_docs_note", { n: belgeler.length }),
+            },
+            {
+              deger: "belgesiz",
+              ad: t("clone.without_docs"),
+              aciklama: t("clone.without_docs_note"),
+            },
+          ],
+          vazgecEtiketi: t("clone.cancel"),
+        });
+        /* GERÇEK VAZGEÇME: hiçbir istek gitmez. Eski yolda bu tıklama
+           belgesiz bir klon yaratıyordu. */
+        if (cevap === null) return null;
+        if (cevap === KLON_BELGELERLE) docIds = belgeler.map((d) => d.id);
+      }
+      return api.cloneClient(id, { name: ad, document_ids: docIds });
+    },
+    onSuccess: (res) => {
+      if (!res) return; // vazgeçildi — sessiz ve doğru: hiçbir şey olmadı
+      void qc.invalidateQueries({ queryKey: ["clients"] });
+      navigate(`/clients/${res.id}`);
+    },
+    onError: (e) =>
+      setKlonSonuc({ baslik: `${t("clone.error")}: ${(e as Error).message}`, satirlar: [] }),
+  });
+
+  /* FAZ4 §11: kullanım korumalı asset silme — 409'da nerede kullanıldığını göster.
+
+     ÖLÇÜLEN YARA (bu turda): burası ham `fetch` kullanıyordu ve `res.ok` DE
+     409 DA olmayan her durum SESSİZCE YUTULUYORDU — 500'de operatör silme
+     düğmesine basıyor, ekranda HİÇBİR ŞEY olmuyordu. Reponun başka yerde
+     kapattığı sınıfın aynısı (journal 2026-07-27-sunucu-params-dogrulamasi:
+     "onError yokken bu 400 sessizce yutuluyordu").
+
+     Ham fetch'in GEREKÇESİ 409'un yapısal `usages` gövdesiydi; http() artık
+     gövdeyi hataya iliştirdiği için atlamaya gerek kalmadı. */
   const deleteAsset = async (assetId: string) => {
     if (!window.confirm(t("assets.delete_confirm"))) return;
-    const res = await fetch(`/api/assets/${assetId}`, { method: "DELETE" });
-    if (res.status === 409) {
-      const j = (await res.json()) as { usages: Array<{ where: string; label: string }> };
-      window.alert(
-        t("assets.in_use") + "\n" + j.usages.map((u) => `• ${u.where}: ${u.label}`).join("\n")
-      );
-    } else if (res.ok) {
+    try {
+      await api.deleteAsset(assetId);
       invalidate();
+    } catch (e) {
+      const kullanimlar = kullanimlariOku(e);
+      if (kullanimlar) {
+        window.alert(
+          t("assets.in_use") + "\n" + kullanimlar.map((u) => `• ${u.where}: ${u.label}`).join("\n")
+        );
+      } else {
+        /* Artık sessiz değil: gerekçe apiErrorMessage'ın ürettiği okunur metin. */
+        window.alert((e as Error).message);
+      }
     }
   };
 
@@ -104,24 +248,16 @@ export function ClientDetailPage() {
     ["assets", t("client.tab_assets")],
   ];
 
-  const cloneClient = async () => {
-    const cname = window.prompt(t("clone.name_prompt"), `${data.name} 2`);
-    if (!cname) return;
-    const withDocs = window.confirm(t("clone.with_docs_confirm"));
-    const docIds = withDocs ? (await api.documents(id)).map((d) => d.id) : [];
-    const res = await api.cloneClient(id, { name: cname, document_ids: docIds });
-    void qc.invalidateQueries({ queryKey: ["clients"] });
-    navigate(`/clients/${res.id}`);
-  };
-
   return (
     <>
+      {secici.eleman}
+      {klonSecimi.eleman}
       <div className="pagehead">
         <Link to="/" className="muted">
           {t("client.back")}
         </Link>
         <div className="row">
-          <button className="ghost" onClick={() => void cloneClient()}>
+          <button className="ghost" disabled={klon.isPending} onClick={() => klon.mutate()}>
             {t("clone.client_btn")}
           </button>
           <button
@@ -146,6 +282,25 @@ export function ClientDetailPage() {
         ))}
       </div>
 
+      {/* Açılış Takımı sonucu SAYFA DÜZEYİNDE durur, "genel" sekmesinde DEĞİL:
+          akış başarıda "projeler" sekmesine geçer ve mesaj genel sekmede
+          kalsaydı operatör onu HİÇ GÖRMEZDİ (bu kusuru testin kendisi
+          yakaladı — sonuç metni aranınca bulunamadı). */}
+      {kitSonuc && (
+        <div style={{ margin: "8px 0" }}>
+          <TurSonucu veri={kitSonuc} onKapat={() => setKitSonuc(null)} />
+        </div>
+      )}
+
+      {/* Klon hatası AYNI kalıcı panelde: başarıda zaten yeni müşteriye
+          gidilir, yani panelin tek işi "olmadı ve şu yüzden olmadı"yı
+          operatör kapatana kadar ekranda tutmaktır. */}
+      {klonSonuc && (
+        <div style={{ margin: "8px 0" }}>
+          <TurSonucu veri={klonSonuc} onKapat={() => setKlonSonuc(null)} />
+        </div>
+      )}
+
       {tab === "general" && (
         <>
         <div className="panel">
@@ -154,8 +309,11 @@ export function ClientDetailPage() {
           <h2>{t("client.currency")}</h2>
           <div className="row">
             <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} style={{ width: 120 }}>
-              <option value="EUR">EUR (€)</option>
-              <option value="CHF">CHF</option>
+              {PARA_BIRIMI_SECENEKLERI.map((p) => (
+                <option key={p.kod} value={p.kod}>
+                  {p.etiket}
+                </option>
+              ))}
             </select>
             <span className="muted">{t("client.currency_hint")}</span>
           </div>
@@ -178,7 +336,7 @@ export function ClientDetailPage() {
               disabled={openingKit.isPending}
               onClick={() => openingKit.mutate()}
             >
-              📦 {t("preset.opening")}
+              📦 {openingKit.isPending ? t("orders.bulk_running") : t("preset.opening")}
             </button>
           </div>
         </div>

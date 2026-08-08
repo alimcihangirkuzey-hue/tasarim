@@ -74,6 +74,9 @@ export function cloneRoutes(app: FastifyInstance): void {
       | {
           id: string;
           currency: string;
+          /* K-1/D: çıktı dili de KOPYALANIR — aşağıdaki INSERT bu sütunu
+             atladığı için klon şema varsayılanına ('fr') düşüyordu. */
+          menu_language: string;
           brandkit_json: string;
           catalog_json: string;
         }
@@ -89,10 +92,24 @@ export function cloneRoutes(app: FastifyInstance): void {
       const now = nowISO();
 
       /* 1) Müşteri satırı ÖNCE açılır (asset kopyaları FK ile buna bağlanacak) */
+      /* ÖLÇÜLEN YARA (K-1/D, bu turda komutla): sütun listesi `menu_language`
+         taşımıyordu ve şema varsayılanı 'fr'. Ölçüm — kaynak `tr`, klon `fr`:
+         Türk bir müşteriyi klonlayan operatör, çıktı dili sessizce Fransızcaya
+         dönmüş bir müşteri elde ediyordu. Klon KOPYADIR: kaynağın dili taşınır.
+         (Katalog bilerek kaynaktan gelir — doğuş kuralı burada UYGULANMAZ,
+         gerekçe rota başlığında ve nöbetçinin istisna tablosunda yazılı.) */
       db.prepare(
-        `INSERT INTO clients (id, name, slug, notes, currency, brandkit_json, catalog_json, created_at, updated_at)
-         VALUES (?, ?, ?, '', ?, '{}', '{}', ?, ?)`
-      ).run(newClientId, body.name.trim(), uniqueSlugFor(body.name), src.currency, now, now);
+        `INSERT INTO clients (id, name, slug, notes, currency, menu_language, brandkit_json, catalog_json, created_at, updated_at)
+         VALUES (?, ?, ?, '', ?, ?, '{}', '{}', ?, ?)`
+      ).run(
+        newClientId,
+        body.name.trim(),
+        uniqueSlugFor(body.name),
+        src.currency,
+        src.menu_language,
+        now,
+        now,
+      );
 
       const assetMap = new Map<string, string>(); // eski asset id -> yeni
       const remap = (oldId: string | null): string | null => {

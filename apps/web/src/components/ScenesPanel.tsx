@@ -15,8 +15,13 @@ import {
 import { api } from "../api";
 import { t } from "../i18n";
 import { AssetPicker } from "./AssetPicker";
+import { gorunurSahneTurleri } from "../lib/gorunurSahneTuru";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
-const KINDS: SceneKind[] = ["vitrine", "facade", "garment", "generic"];
+/* Tür listesi ŞEMADAN türetilir (`SAHNE_TURLERI`) ve kurulumun iş koluna
+   göre daraltılır — el yazımı liste şemanın ikinci kopyasıydı ve yeni bir
+   sahne türü eklendiği gün seçicide SESSİZCE eksik kalırdı
+   (`SIPARIS_TURLERI` emsali, gorunurTurler paketi). */
 const SAMPLE_W = 400;
 const SAMPLE_H = 300;
 
@@ -43,6 +48,11 @@ function QuadEditor(props: {
   const asset = client.assets.find((a) => a.id === photoAssetId)!;
   const pw = asset.width_px || 1000;
   const ph = asset.height_px || 750;
+
+  /* KURULUMUN İŞ KOLLARI (K-1/C): aynı anahtar diğer panellerle PAYLAŞILIR
+     (tek istek, tek önbellek). Yanıt gelmeden `undefined` kalır ve süzme
+     YAPILMAZ — bugünkü davranış korunur. */
+  const aktifSektorler = useKurulumDaraltmasi();
 
   const [quad, setQuad] = useState<Quad>(scene?.quad ?? defaultQuad(pw, ph));
   const [name, setName] = useState(scene?.name ?? "");
@@ -195,7 +205,10 @@ function QuadEditor(props: {
             <label className="field" style={{ minWidth: 120 }}>
               {t("scenes.kind")}
               <select value={kind} onChange={(e) => setKind(e.target.value as SceneKind)}>
-                {KINDS.map((k) => (
+                {/* SEÇİLİ TÜR KORUNUR: iş kolu kapalı olsa bile listede kalır,
+                    yoksa tarayıcı ilk seçeneği gösterir ve operatör sahnesinin
+                    türünü YANLIŞ görürdü. */}
+                {gorunurSahneTurleri(aktifSektorler, kind).map((k) => (
                   <option key={k} value={k}>{t(`scenes.kind_${k}`)}</option>
                 ))}
               </select>

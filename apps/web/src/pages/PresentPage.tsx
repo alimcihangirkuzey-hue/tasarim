@@ -14,6 +14,7 @@ import { TEMPLATES, currentFormat } from "@tezgah/templates";
 import { surfaceToSceneKind } from "@tezgah/shared";
 import type { ClientDTO, DocumentDTO, SceneKind } from "@tezgah/shared";
 import { api } from "../api";
+import { baskiHatasiBildir, baskiHatasiMetni } from "../lib/baskiSinyali";
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -137,8 +138,31 @@ export function PresentPage() {
       : surfacesQ.data !== undefined);
   const mockupCount = mode === "last" ? docs.filter((d) => mockupOf(d.id)).length : mplan.length;
 
+  /* KURULUM KÜNYESİ (K-1/C): altbilgideki ad artık elle gömülü değil, kurulumdan
+     okunur — modül bir ozalitçiye kiralandığında onay sayfasında SATICININ değil
+     kiracının adı çıksın diye. */
+  const kunyeQ = useQuery({ queryKey: ["kurulumKunyesi"], queryFn: api.kurulumKunyesi });
+
+  /* KÜNYE `ready`'YE DAHİL: bu sayfa __PRINT_READY__ ile yakalanır. Künye
+     beklenmezse yakalama künye GELMEDEN tetiklenir ve PDF'te altbilgi boş
+     çıkar — sessiz, yalnız basılmış kâğıtta görülen bir kayıp. */
   const ready =
-    !!projectQ.data && !!clientQ.data && docs.length === docIds.length && docIds.length > 0 && exportsReady;
+    !!projectQ.data &&
+    !!clientQ.data &&
+    !!kunyeQ.data &&
+    docs.length === docIds.length &&
+    docIds.length > 0 &&
+    exportsReady;
+
+  /* SORGU DÜŞERSE YAKALAYANA SÖYLE (K-1/B): bayrak hiç atanmayınca yakalama
+     45 sn bekleyip zaman aşımına düşüyor ve gerekçe kayboluyordu. */
+  const ilkHata = [projectQ.error, clientQ.error, kunyeQ.error, ...docQs.map((q) => q.error)].find(
+    Boolean,
+  );
+  useEffect(() => {
+    if (!ilkHata) return;
+    baskiHatasiBildir(baskiHatasiMetni([ilkHata]));
+  }, [ilkHata]);
 
   useEffect(() => {
     if (!ready) return;
@@ -280,7 +304,7 @@ export function PresentPage() {
         </div>
 
         <div style={{ position: "absolute", bottom: "10mm", left: "18mm", right: "18mm", fontSize: "2.8mm", color: "#8a8378", display: "flex", justifyContent: "space-between" }}>
-          <span>TEZGÂH — Atelier graphique</span>
+          <span>{kunyeQ.data!.kunye}</span>
           <span>{date}</span>
         </div>
       </div>

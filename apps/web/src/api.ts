@@ -15,6 +15,30 @@ import type {
 } from "@tezgah/shared";
 import { apiErrorMessage } from "@tezgah/shared";
 
+/** http()'nin fırlattığı hatanın taşıdığı yapısal gövde (varsa). */
+export interface ApiHata extends Error {
+  durum?: number;
+  govde?: unknown;
+}
+
+/** Hata gövdesinden "kullanımda" bilgisini okur — 409 in_use yanıtının
+    `usages` alanı. Gövde beklenen şekilde değilse null döner (fırlatmaz):
+    çağıran o zaman düz mesajı gösterir. */
+export function kullanimlariOku(e: unknown): Array<{ where: string; label: string }> | null {
+  const g = (e as ApiHata)?.govde as { error?: string; usages?: unknown } | undefined;
+  if (!g || g.error !== "in_use" || !Array.isArray(g.usages)) return null;
+  return g.usages as Array<{ where: string; label: string }>;
+}
+
+/** Hata gövdesinden "iş kolu dışı" gerekçesini okur — açılış takımı 409'unun
+    `is_kollari` alanı (kurulumda etkin iş kolları). Gövde beklenen şekilde
+    değilse null döner (fırlatmaz): çağıran o zaman düz mesajı gösterir. */
+export function isKollariGerekcesiOku(e: unknown): string[] | null {
+  const g = (e as ApiHata)?.govde as { error?: string; is_kollari?: unknown } | undefined;
+  if (!g || g.error !== "is_kolu_disi" || !Array.isArray(g.is_kollari)) return null;
+  return g.is_kollari as string[];
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   /* TUR-FIX-1: Content-Type YALNIZ gövde varsa (ve FormData değilse). Eski hali
      gövdesiz isteklere de (DELETE/GET) application/json koyuyordu → Fastify boş
@@ -30,12 +54,26 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
        göremiyordu. Artık gerekçe (rejects[].detail_tr · detail · Zod mesajı)
        öne çıkar; biçimlendirme saf+testli (shared/api-error.ts). */
     let msg = `Sunucu hatası (${res.status})`;
+    let govde: unknown = null;
     try {
-      msg = apiErrorMessage(await res.json(), res.status);
+      govde = await res.json();
+      msg = apiErrorMessage(govde, res.status);
     } catch {
       /* gövde json değilse durum kodu yeter */
     }
-    throw new Error(msg);
+    /* YAPISAL GÖVDE HATAYA İLİŞTİRİLİR (durum kodu da).
+
+       NEDEN: bazı uçlar hatayla birlikte KARAR VERDİRİCİ veri döndürür —
+       409 in_use yanıtı `usages` (varlığın nerede kullanıldığı), font yükleme
+       `missing` (eksik glifler). Yalnız düz bir mesaj fırlatmak bu veriyi
+       düşürüyordu; ekranlar da bu yüzden api istemcisini ATLAYIP ham fetch
+       yazmıştı (ölçüldü: ClientDetailPage asset silme, FontsPage üç çağrı).
+       Atlamanın bedeli ağırdı: ham fetch'te `res.ok` de 409 da olmayan her
+       durum SESSİZCE yutuluyordu.
+
+       Ekleme additive: mesaj davranışı aynı kalır, yalnız hata nesnesi
+       taşımaya başlar (mevcut çağıranlar etkilenmez). */
+    throw Object.assign(new Error(msg), { durum: res.status, govde });
   }
   return (await res.json()) as T;
 }
@@ -295,6 +333,15 @@ export const api = {
   },
   deleteFont: (id: string) => http<{ ok: true }>(`/api/fonts/${id}`, { method: "DELETE" }),
 
+  /* Şablon fabrikası — üretim isteği (FactoryPage). Ham fetch'ten buraya
+     taşındı: eski hâli hatayı `detail ?? error ?? durum kodu` diye elle
+     biçimliyordu; http() aynı işi apiErrorMessage ile daha eksiksiz yapar. */
+  factoryGenerate: (govde: Record<string, unknown>) =>
+    http<{ files: string[] }>(`/api/factory/generate`, {
+      method: "POST",
+      body: JSON.stringify(govde),
+    }),
+
   /* Dijital menü (statik HTML) — Faz 5 §9 */
   digitalMenu: (clientId: string) =>
     http<ExportRecordDTO>(`/api/clients/${clientId}/menu-digital`, { method: "POST", body: "{}" }),
@@ -349,6 +396,21 @@ export const api = {
 
   /* Sipariş Modu — Faz 7 (F7-B servis + F7-C intake) */
   sectors: () => http<import("@tezgah/shared").SectorPack[]>("/api/sectors"),
+  /* Kurulumun iş kolu ilanı (K-1/C modül sınırı). SECTOR_PACKS ile KARIŞTIRMA:
+     o müşterinin gastronomi dikeyidir, bu TEZGÂH'ın iş kolu ilanıdır — TODO
+     2026-07-26 (3) bu iki ekseni ayrı tutmayı açıkça şart koşar. */
+  isKollari: () =>
+    http<{
+      aktif: readonly import("@tezgah/templates/identity").Sektor[];
+      tumu: readonly import("@tezgah/templates/identity").Sektor[];
+      kaynak: "varsayilan" | "yapilandirma";
+    }>("/api/is-kollari"),
+  /* Kurulum künyesi (K-1/C modül sınırı) — MÜŞTERİYE GİDEN basılı altbilgi.
+     Basılı yüzeyler bu ucu BEKLER (yerel yedek dize YOK): yedek olsaydı kiracı
+     kurulumunda ağ gecikmesi anında SATICININ adı basılabilirdi ve bunu ancak
+     kâğıtta görürdünüz. Künyesiz basmak yanlış künyeyle basmaktan iyidir. */
+  kurulumKunyesi: () =>
+    http<{ kunye: string; kaynak: "varsayilan" | "yapilandirma" }>("/api/kurulum-kunyesi"),
   ingredients: () => http<import("@tezgah/shared").ResolvedChip[]>("/api/ingredients"),
   createIngredient: (body: { tr: string; fr?: string; de?: string }) =>
     http<{ created: boolean; chip: import("@tezgah/shared").ResolvedChip }>("/api/ingredients", {

@@ -23,6 +23,7 @@ import {
   nowISO,
 } from "@tezgah/shared";
 import { db } from "../db.js";
+import { baskiyaHazirBekle } from "../baski-bekle.js";
 import { mockupDosyaAdi } from "../dosya-adi.js";
 import { EXPORTS_DIR, ROOT_DIR } from "../paths.js";
 import { documentWithClient, rowToDocument } from "./documents.js";
@@ -83,7 +84,7 @@ export function mockupRoutes(app: FastifyInstance): void {
         `${PRINT_BASE}/mockup/${req.params.id}?scene=${encodeURIComponent(body.scene_id)}&shot=1`,
         { waitUntil: "networkidle0", timeout: 60_000 }
       );
-      await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+      await baskiyaHazirBekle(page, 45_000);
       jpg = await page.screenshot({ type: "jpeg", quality: 85 });
     } finally {
       await page.close();
@@ -163,7 +164,7 @@ export function mockupRoutes(app: FastifyInstance): void {
         `${PRINT_BASE}/mockup/${req.params.id}?scene=${encodeURIComponent(body.scene_id)}&hires=1&shot=1`,
         { waitUntil: "networkidle0", timeout: 60_000 }
       );
-      await page.waitForFunction("window.__PRINT_READY__ === true", { timeout: 45_000 });
+      await baskiyaHazirBekle(page, 45_000);
       jpg = await page.screenshot({ type: "jpeg", quality: 85 });
     } finally {
       await page.close();

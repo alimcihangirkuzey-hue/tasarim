@@ -31,44 +31,14 @@ import {
 import { api } from "../api";
 import { t, tf } from "../i18n";
 import { analyzeDoc } from "../lib/analyzeDoc";
+import { belgeDisaAktar } from "../lib/disaAktar";
 import { SektorluSablonSecenekleri } from "../components/DocumentsPanel";
 import { SlotPanel } from "../components/SlotPanel";
 import { SelectionPanel } from "../components/SelectionPanel";
 import { DenetimIziPaneli } from "../components/DenetimIziPaneli";
 import { useEditor } from "../store/editorStore";
-
-function warnText(w: LayoutWarning): string {
-  switch (w.type) {
-    case "overflow-items":
-      return tf("editor.warn_overflow", { n: w.count });
-    case "text-truncated":
-      return `${t("editor.warn_truncated")} (${w.itemId ?? w.slotId})`;
-    case "low-dpi":
-      return `${tf("editor.warn_low_dpi", { dpi: w.effectiveDpi })} (${w.itemId ?? w.slotId})`;
-    case "empty-required":
-      return t("editor.warn_empty_logo");
-    case "mixed-variants":
-      return `${t("editor.warn_mixed")}: ${w.categoryId}`;
-    case "qr-contrast":
-      return t("editor.warn_qr_contrast");
-    case "contrast":
-      return tf("editor.warn_contrast", { ratio: w.ratio });
-    case "mono-suggest":
-      return t("editor.warn_mono_suggest");
-    case "fine-detail":
-      return t("editor.warn_fine_detail");
-    case "broderie-info":
-      return t("editor.warn_broderie_info");
-    case "min-font":
-      return t("editor.warn_min_font");
-    case "empty-price":
-      return `${t("editor.warn_empty_price")} (${w.itemId})`;
-    case "overflow-strategy-violation":
-      /* Şablon "ürün düşmez" ilan etmiş ama yüzey sabit kapasiteli olduğu için
-         ürün düştü. Operatör görsün ki manifest ilanı düzeltilebilsin. */
-      return `${t("editor.warn_strategy_violation")} (${w.declared}, ${w.dropped})`;
-  }
-}
+import { uyariMetni as warnText } from "../lib/uyariMetni";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 export function EditorPage() {
   const { id = "" } = useParams();
@@ -77,6 +47,8 @@ export function EditorPage() {
     useEditor();
 
   const docQ = useQuery({ queryKey: ["document", id], queryFn: () => api.document(id), enabled: !!id });
+  /* Kurulum iş kolu ilanı (K-1/C) — yapılandırma yoksa süzgeç geçilmez */
+  const aktifSektorler = useKurulumDaraltmasi();
   const clientId = docQ.data?.client_id;
   const clientQ = useQuery({
     queryKey: ["client", clientId],
@@ -350,19 +322,11 @@ export function EditorPage() {
        exportRouteOf'a referans-kopya eşdeğerliğiyle taşındı — karar artık
        manifest'in production_channels beyanında, sunucu bekçileriyle aynı
        kaynaktan */
-    mutationFn: async (warnings: LayoutWarning[]) => {
-      const rota = entry
-        ? exportRouteOf(entry.manifest.production_channels, doc?.params["mode"])
-        : "pdf";
-      if (rota === "garment") {
-        const res = await api.exportGarment(id);
-        return [res.record];
-      }
-      if (rota === "svg") {
-        return [await api.exportSvg(id)];
-      }
-      return api.exportDocument(id, warnings);
-    },
+    mutationFn: (warnings: LayoutWarning[]) =>
+      /* Üç yollu dallanma lib/disaAktar.ts'te TEK KOPYA — Sipariş Defteri'nin
+         toplu dışa aktarımı da oradan geçer (yeni kanal eklendiğinde iki yer
+         ayrışmasın). entry yoksa eski davranış birebir: pdf yolu. */
+      belgeDisaAktar(id, entry?.manifest.production_channels ?? ["print"], doc?.params["mode"], warnings),
     onSuccess: (records) => {
       showToast(tf("editor.export_done", { n: records[0]?.version ?? "?" }));
       void qc.invalidateQueries({ queryKey: ["exports", id] });
@@ -430,7 +394,13 @@ export function EditorPage() {
             okunur — desen DocumentsPanel'deki tek kaynaktan gelir; seçili
             değer ve onChange birebir korunur. */}
         <select value={doc.template_id} onChange={(e) => switchTemplate(e.target.value)}>
-          <SektorluSablonSecenekleri entries={Object.values(TEMPLATES)} />
+          <SektorluSablonSecenekleri
+              entries={Object.values(TEMPLATES)}
+              aktifSektorler={aktifSektorler}
+              /* Seçili şablon iş kolu kapalı olsa bile listede kalır —
+                 yoksa select yanlış şablon gösterirdi (gorunurSablonlar). */
+              korunanId={doc?.template_id}
+            />
         </select>
 
         <label className="kbd-hint">{t("editor.theme")}</label>
@@ -744,8 +714,14 @@ export function EditorPage() {
                     <span className="muted">{t("history.snapshot_label")}</span>
                   ) : (
                     <>
+                      {/* ETİKET TÜR SÖZLÜĞÜNDEN (orders.out_*): eski hâl print
+                          DIŞINDAKİ HER TÜRÜ "preview" diye etiketliyordu —
+                          nakış, kesim, PNG, CMYK ve fiş hepsi "preview"
+                          görünüyordu. Sözlük ZATEN on iki türün tamamını
+                          taşıyor ve Projeler sekmesi onu okuyor; iki liste
+                          aynı çıktıya iki farklı ad veriyordu. */}
                       <a href={exportUrl(r)} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-                        {r.kind === "print" ? t("editor.open_print") : t("editor.open_preview")}
+                        {t(`orders.out_${r.kind}`)}
                       </a>
                       <button
                         className="icon"

@@ -22,7 +22,9 @@ import {
   kurVeDogrula,
   listTemplates,
   svgKindOf,
+  URETIM_ROTALARI,
   type ProductionChannel,
+  type UretimRotasi,
   type TemplateEntry,
   type TemplateManifest,
 } from "./index.js";
@@ -134,7 +136,7 @@ describe("bozuk kanal ilanı kayıt defterinden geçemez", () => {
 
 describe("exportRouteOf — eski web doExport mantığının referans kopyasıyla birebir", () => {
   /* EditorPage'den SÖKÜLEN ifadenin referans kopyası (tür-koşullu hâl) */
-  const eskiRota = (m: TemplateManifest, mode: unknown): "garment" | "svg" | "pdf" =>
+  const eskiRota = (m: TemplateManifest, mode: unknown): UretimRotasi =>
     m.type === "tekstil" ? "garment" : m.type === "cam" && mode === "decoupe" ? "svg" : "pdf";
 
   it("kayıtlı TÜM aileler × tüm modlarda aynı karar", () => {
@@ -203,5 +205,25 @@ describe("svgKindOf — eski cam→decoupe / tekstil→broderie türetimiyle bir
     expect(svgKindOf(["decoupe", "broderie"])).toBe("decoupe");
     expect(svgKindOf(["print", "preview"])).toBe(null);
     expect(svgKindOf([])).toBe(null);
+  });
+});
+
+describe("ÜRETİM ROTALARI ilanı — ölü rota giremez", () => {
+  /* NİYE: rota kümesi bu turda tip-düzeyi bir birleşimden RUNTIME ilana
+     çevrildi (`URETIM_ROTALARI`) ve i18n kapsam nöbetçisi artık ona bakıyor —
+     yani ilana eklenen her değer bir arayüz metni ZORUNLU kılar. İlana ölü bir
+     rota girerse, karşılığında yazılan metin de ölü doğar. Bu test, ilanın
+     GERÇEK kayıt defterinden ulaşılabilir olmasını ölçer. */
+  it("her ilan edilen rota, kayıtlı bir şablon × mod bileşiminden ÇIKAR", () => {
+    const modlar: unknown[] = ["impression", "decoupe", undefined];
+    const ulasilan = new Set<UretimRotasi>();
+    for (const e of listTemplates()) {
+      for (const mode of modlar) ulasilan.add(exportRouteOf(e.manifest.production_channels, mode));
+    }
+    /* Ön-koşul: tarama gerçekten bir şeyler buldu — boş küme ile "eksik yok"
+       iddiası bedava yeşil kalırdı. */
+    expect(ulasilan.size).toBeGreaterThan(1);
+    const olu = URETIM_ROTALARI.filter((r) => !ulasilan.has(r));
+    expect(olu, "ilan edilmiş ama hiçbir şablondan çıkmayan rota").toEqual([]);
   });
 });

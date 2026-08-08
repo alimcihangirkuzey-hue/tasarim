@@ -21,6 +21,7 @@ import {
   quadTransform,
 } from "@tezgah/shared";
 import { api } from "../api";
+import { baskiHatasiBildir, baskiHatasiMetni } from "../lib/baskiSinyali";
 
 const MM_PX = 96 / 25.4;
 
@@ -80,6 +81,14 @@ export function MockupPage() {
     }
     return { B, designW, designH, pw, ph, dispW, dispH: Math.round(ph * scale), scale, css };
   }, [doc, entry, scene, client, hires]);
+
+  /* SORGU DÜŞERSE YAKALAYANA SÖYLE (K-1/B): bayrak hiç atanmayınca yakalama
+     45 sn bekleyip zaman aşımına düşüyor ve gerekçe kayboluyordu. */
+  const hataVar = docQ.isError || clientQ.isError || scenesQ.isError;
+  useEffect(() => {
+    if (!hataVar) return;
+    baskiHatasiBildir(baskiHatasiMetni([docQ.error, clientQ.error, scenesQ.error]));
+  }, [hataVar, docQ.error, clientQ.error, scenesQ.error]);
 
   useEffect(() => {
     if (!doc || !client || !scene || !geom?.css) return;

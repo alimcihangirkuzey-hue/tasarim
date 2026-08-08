@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TEMPLATES, listTemplates, type TemplateEntry } from "@tezgah/templates";
-import { SEKTORLER, hedefSektorOf } from "@tezgah/templates/identity";
+import { SEKTORLER, hedefSektorOf, type Sektor } from "@tezgah/templates/identity";
 import type { ClientDTO } from "@tezgah/shared";
 import { api } from "../api";
-import { t } from "../i18n";
+import { gorunurRehberSecenekleri } from "../lib/gorunurRehber";
+import { t, tf } from "../i18n";
+import { useKurulumDaraltmasi } from "../lib/kurulumDaraltmasi";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -31,11 +33,49 @@ const GUIDE_OPTIONS: Array<{ tid: string; titleKey: string; descKey: string }> =
    düşer ve grupsuz listelenir: hiçbir şablon seçilemez hâle gelmez, seçim
    davranışı değişmez. EditorPage'in üst-bar değiştiricisi de BUNU kullanır —
    desen iki yerde ayrı yazılıp sürüklenmez. */
-export function SektorluSablonSecenekleri({ entries }: { entries: TemplateEntry[] }) {
+/* KURULUM İŞ KOLU SÜZGECİ (K-1/C modül sınırı) — saf, ayrı test edilir.
+
+   `aktif` VERİLMEZSE hiçbir şey süzülmez: bugünkü davranış birebir korunur
+   (yapılandırma yoksa sunucu da "varsayilan" der ve tüm kolları döndürür).
+
+   KORUNAN ŞABLON: editörün üst-bar değiştiricisinde SEÇİLİ olan şablon, iş
+   kolu kapalı olsa bile listede KALIR. Kalmasaydı select'in value'su listede
+   olmayan bir id'ye işaret eder, tarayıcı ilk seçeneği gösterir ve operatör
+   belgesinin şablonunu YANLIŞ görürdü — görünürlük daraltması bir veri yanlış
+   göstermesine dönüşemez.
+
+   Sektörsüz şablonlar (fabrika/generated — identity kapsam sınırı) HER ZAMAN
+   kalır: iş kolu bilgileri yoktur, süzgecin onlar hakkında söyleyeceği bir şey
+   de yoktur (sessizce kaybolmaları yanlış olurdu). */
+export function gorunurSablonlar(
+  entries: readonly TemplateEntry[],
+  aktif: readonly Sektor[] | undefined,
+  korunanId?: string,
+): TemplateEntry[] {
+  if (!aktif) return [...entries];
+  return entries.filter((e) => {
+    if (e.manifest.id === korunanId) return true;
+    const s = hedefSektorOf(e.manifest.id);
+    return s === null || aktif.includes(s);
+  });
+}
+
+export function SektorluSablonSecenekleri({
+  entries,
+  aktifSektorler,
+  korunanId,
+}: {
+  entries: TemplateEntry[];
+  /** undefined → süzme yok (bugünkü davranış); dizi → yalnız bu iş kolları */
+  aktifSektorler?: readonly Sektor[];
+  /** iş kolu kapalı olsa bile görünür kalması gereken şablon (seçili olan) */
+  korunanId?: string;
+}) {
+  const gorunur = gorunurSablonlar(entries, aktifSektorler, korunanId);
   return (
     <>
       {SEKTORLER.map((s) => {
-        const uyeler = entries.filter((e) => hedefSektorOf(e.manifest.id) === s);
+        const uyeler = gorunur.filter((e) => hedefSektorOf(e.manifest.id) === s);
         if (uyeler.length === 0) return null;
         return (
           <optgroup key={s} label={t(`sektor_${s}`)}>
@@ -47,7 +87,7 @@ export function SektorluSablonSecenekleri({ entries }: { entries: TemplateEntry[
           </optgroup>
         );
       })}
-      {entries
+      {gorunur
         .filter((e) => hedefSektorOf(e.manifest.id) === null)
         .map((e) => (
           <option key={e.manifest.id} value={e.manifest.id}>
@@ -69,6 +109,21 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     queryFn: () => api.documents(client.id),
   });
 
+  /* Kurulumun iş kolu ilanı — yapılandırma yoksa sunucu "varsayilan" der ve
+     tüm kolları döndürür; o hâlde süzgeç geçilmez (davranış değişmez). */
+  const aktifSektorler = useKurulumDaraltmasi();
+
+  /* REHBER DE DARALTILIR (K-1/C): bu bileşen `aktifSektorler`i zaten hesaplıyor
+     ve "doğrudan seç" listesine veriyordu; rehber ona BAKMIYORDU — oysa rehber
+     AÇILIŞ ekranıdır. Ölçüldü: beş seçeneğin hedefi menu-uretici×3 + matbaa×2;
+     tabelacıya daraltılmış kurulumda operatörün gördüğü ilk ekran, kurulumun
+     hiç yapmadığı beş işi öneriyordu. */
+  const gorunurRehber = gorunurRehberSecenekleri(GUIDE_OPTIONS, aktifSektorler);
+  /* BOŞ IZGARA YERİNE DOĞRUDAN SEÇ: etkin mod TÜRETİLİR (effect değil) —
+     effect yarışı, uç yanıtı gelene dek boş rehber çizerdi. Doğrudan listesi
+     daraltılmıştır ve boşalmaz, o yüzden güvenli düşüş noktasıdır. */
+  const etkinMod = gorunurRehber.length === 0 ? "direct" : mode;
+
   const create = useMutation({
     mutationFn: (tid: string) => api.createDocument(client.id, tid),
     onSuccess: (doc) => {
@@ -82,11 +137,25 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["documents", client.id] }),
   });
 
-  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü */
-  const [digitalUrl, setDigitalUrl] = useState<string | null>(null);
+  /* FAZ5 §9: katalog+kitten tek dosyalık statik HTML menü.
+
+     ÖLÇÜLEN YARA (borç: "api.digitalMenuHistory ölü istemci fonksiyonu",
+     önizleme paketi şerh listesi 2026-07-26): uç `/menu-digital/history`
+     sunucuda VARDI, istemci fonksiyonu VARDI, TÜKETİCİ SIFIRDI. Ekran yalnız
+     O OTURUMDA üretilen menünün linkini React state'inde tutuyordu — operatör
+     sayfayı yenilediğinde ya da başka sekmeye geçip döndüğünde ürettiği dosyaya
+     ULAŞAMIYORDU. Dosya diskte duruyordu, yolu bilinmiyordu.
+
+     TEK KAYNAK: geçici `digitalUrl` state'i KALDIRILDI. Üretilen menü de dahil
+     her sürüm aynı listeden okunur; üretim sonrası liste tazelenir. İki kaynak
+     bırakmak (state + geçmiş) aynı dosyayı iki yerde göstermek olurdu. */
+  const digitalHistory = useQuery({
+    queryKey: ["digitalMenuHistory", client.id],
+    queryFn: () => api.digitalMenuHistory(client.id),
+  });
   const digital = useMutation({
     mutationFn: () => api.digitalMenu(client.id),
-    onSuccess: (rec) => setDigitalUrl(rec.filepath.replace(/^data\//, "/")),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["digitalMenuHistory", client.id] }),
   });
 
   const allClients = useQuery({ queryKey: ["clients"], queryFn: api.clients });
@@ -106,22 +175,32 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
   return (
     <div className="panel">
       <h2>{t("client.tab_documents")}</h2>
-      {mode === "guide" ? (
+      {etkinMod === "guide" ? (
         <div>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
             <strong>{t("guide.q")}</strong>
             <button className="ghost-link" onClick={() => setMode("direct")}>{t("guide.direct")}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 8, marginTop: 8 }}>
-            {GUIDE_OPTIONS.filter((o) => TEMPLATES[o.tid]).map((o) => (
+            {/* ÖLÇÜLEN YARA (2026-08-06, canlı tarayıcı turu): kartlar
+                `background: transparent` ilan ediyor ama RENK ilan etmiyordu;
+                global kural `button { color: #fff }` olduğu için BAŞLIK BEYAZ
+                ZEMİNDE BEYAZ kalıyordu (ölçüm: başlık span'i getComputedStyle
+                → rgb(255,255,255)). Açıklama satırı kendi `.muted` rengiyle
+                göründüğü için ekran YARI görünürdü ve kimse fark etmemişti;
+                operatör "hangisi flyer?" sorusunu ekrandan cevaplayamıyordu.
+                Reponun kendi `.ghost` sınıfı tam bunu yapar — satır içinde
+                yeniden yazılırken rengi düşmüştü. Sınıfa dönüldü. */}
+            {gorunurRehber.filter((o) => TEMPLATES[o.tid]).map((o) => (
               <button
                 key={o.tid}
+                className="ghost"
                 onClick={() => create.mutate(o.tid)}
                 disabled={create.isPending}
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                  textAlign: "left", padding: "10px 12px", border: "1px solid var(--c-line, #e5e0d6)",
-                  borderRadius: 10, background: "transparent", cursor: "pointer", height: "100%",
+                  textAlign: "left", padding: "10px 12px", borderRadius: 10,
+                  cursor: "pointer", height: "100%",
                 }}
               >
                 <span style={{ fontWeight: 700 }}>{t(o.titleKey)}</span>
@@ -134,12 +213,14 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
       ) : (
         <div className="row">
           <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-            <SektorluSablonSecenekleri entries={listTemplates()} />
+            <SektorluSablonSecenekleri entries={listTemplates()} aktifSektorler={aktifSektorler} />
           </select>
           <button onClick={() => create.mutate(templateId)} disabled={create.isPending || !templateId}>
             + {t("documents.new")}
           </button>
-          <button className="ghost-link" onClick={() => setMode("guide")}>{t("guide.back")}</button>
+          {gorunurRehber.length > 0 && (
+            <button className="ghost-link" onClick={() => setMode("guide")}>{t("guide.back")}</button>
+          )}
           {create.isError && <span className="error">{(create.error as Error).message}</span>}
         </div>
       )}
@@ -182,12 +263,28 @@ export function DocumentsPanel({ client }: { client: ClientDTO }) {
         <button onClick={() => digital.mutate()} disabled={digital.isPending}>
           {digital.isPending ? t("digital.generating") : t("digital.btn")}
         </button>
-        {digitalUrl && (
-          <a href={digitalUrl} target="_blank" rel="noreferrer" className="ghost-link">
-            {t("digital.open")}
-          </a>
-        )}
         {digital.isError && <span className="error">{(digital.error as Error).message}</span>}
+        {/* Sürüm YOKSA bölüm hiç çizilmez — boş bir "geçmiş" başlığı, üretim
+            olmuş da dosya kaybolmuş izlenimi verirdi (proje çıktıları emsali). */}
+        {(digitalHistory.data?.length ?? 0) > 0 && (
+          <div className="row" style={{ flexWrap: "wrap", gap: 6, width: "100%" }}>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {tf("digital.history", { n: digitalHistory.data!.length })}
+            </span>
+            {digitalHistory.data!.map((r) => (
+              <a
+                key={r.id}
+                className="pill"
+                href={`/${r.filepath.replace(/^data\//, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                title={r.filepath}
+              >
+                {t("digital.open")} v{r.version}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -70,6 +70,20 @@ export function kanalNitelikleriOf(kind: string): KanalNitelikBildirimi | null {
     : null;
 }
 
+/* ÜRETİM ROTALARI — RUNTIME İLAN (2026-08-07, i18n aile kapsamı paketi).
+
+   NİYE SABİT: küme daha önce YALNIZ bir tip-düzeyi birleşimdi
+   (`"garment" | "svg" | "pdf"`, imzanın içinde yazılı) ve derleme sonrası
+   HİÇBİR YERDE okunamıyordu. İki bedeli ölçüldü:
+   (1) birleşim ELLE İKİNCİ KEZ yazılmıştı (`uretim-kanallari.test.ts`'in gölge
+       kopyası) — bu deponun tekrar tekrar ödediği sınıf;
+   (2) `editor.honesty_*` metin ailesi bu rotalara birebir karşılık geliyor
+       ama İLAN OKUNAMADIĞI için i18n kapsam nöbetçisine ALINAMIYORDU; yeni bir
+       rota eklendiği gün operatör ham anahtar (`editor.honesty_xyz`) görecekti.
+   Dönüş tipi artık BU SABİTTEN türer, yani ikisi ayrışamaz. */
+export const URETIM_ROTALARI = ["garment", "svg", "pdf"] as const;
+export type UretimRotasi = (typeof URETIM_ROTALARI)[number];
+
 /** Editörün export düğmesinin yolu — eski tür-koşullu sıranın birebir taşınmışı:
     (1) tekstil paketi (png/broderie ilanlı, print İLANSIZ — PDF üretmeyen profil),
     (2) kesim SVG'si (decoupe ilanlı VE belge decoupe modunda),
@@ -77,7 +91,7 @@ export function kanalNitelikleriOf(kind: string): KanalNitelikBildirimi | null {
 export function exportRouteOf(
   channels: readonly ProductionChannel[],
   mode: unknown
-): "garment" | "svg" | "pdf" {
+): UretimRotasi {
   const tekstilPaketi =
     (channels.includes("png") || channels.includes("broderie")) && !channels.includes("print");
   if (tekstilPaketi) return "garment";

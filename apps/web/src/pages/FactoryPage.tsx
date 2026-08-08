@@ -279,10 +279,7 @@ export function FactoryPage() {
 
       /* künye (#20): içe alınan (temizlenmiş) SVG'nin parmak izi */
       const svgHash = svgText ? await sha256Hex(svgText) : "";
-      const res = await fetch("/api/factory/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const j = await api.factoryGenerate({
           id: tplId.trim(),
           name_tr: tplName.trim() || tplId.trim(),
           w_mm: wMm, h_mm: hMm,
@@ -296,11 +293,8 @@ export function FactoryPage() {
             missing_assets: analysis?.externalRasters ?? [],
             svg_sha256: svgHash,
           },
-        }),
       });
-      const j = (await res.json()) as { files?: string[]; detail?: string; error?: string };
-      if (!res.ok) throw new Error(j.detail ?? j.error ?? String(res.status));
-      return { files: j.files!, seconds: Math.round((Date.now() - startedAt) / 1000) };
+      return { files: j.files, seconds: Math.round((Date.now() - startedAt) / 1000) };
     },
   });
 

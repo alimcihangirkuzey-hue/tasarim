@@ -9,9 +9,41 @@ export const HexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Geçerli bir hex renk olmalı (#RRGGBB)");
 
-/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri) */
-export const CurrencySchema = z.enum(["EUR", "CHF"]);
+/* Müşteri bazında para birimi — FAZ1-GOREV §2.1 (İsviçre sınırı müşterileri).
+
+   K-1/D (2026-08-06): kümede TÜRK LİRASI YOKTU. K-1'in hedef kesimi ürün
+   sahibi tarafından adıyla sayılmıştır — "ozalit baskıcı matbaa tabelacı
+   menücüler" — ve bu kesim fiyatını TL yazar. Ölçüldü: K-2 kanıt turunda
+   tohumlanan Türk tabelacı müşterinin TL büyüklüğündeki fiyatları (2400,
+   850, 1250) baskı yüzeyine "2 400,00 €" olarak düştü; para birimi alanı
+   TL'yi İFADE EDEMEDİĞİ için sessizce EUR kaldı. Yani sistem, hedef
+   kesiminin fiyatını YANLIŞ para biriminde basıyordu.
+
+   İLAN TABLOSU (7.2 kapalı sözlük deseni): her para biriminin yerel biçimi
+   ve arayüz etiketi BURADA yaşar; seçiciler bunu okur, elle listelemez —
+   eskiden iki ekran ve web'in kendi `Currency` tipi kümeyi ÜÇ KEZ tekrar
+   ediyordu ve enum'a bir üye eklemek onları sessizce eskitirdi. */
+export const CurrencySchema = z.enum(["EUR", "CHF", "TRY"]);
 export type Currency = z.infer<typeof CurrencySchema>;
+
+export interface ParaBirimiIlani {
+  kod: Currency;
+  /** Arayüz seçicisinde görünen etiket */
+  etiket: string;
+  /** Baskıda kullanılan sembol; CHF sembolsüz basar (FAZ1-GOREV §2.2) */
+  sembol: string | null;
+}
+
+/* EXHAUSTIVE Record: yeni para birimi buraya ilan yazmadan DERLENEMEZ. */
+export const PARA_BIRIMLERI: Record<Currency, ParaBirimiIlani> = {
+  EUR: { kod: "EUR", etiket: "EUR (€)", sembol: "€" },
+  CHF: { kod: "CHF", etiket: "CHF", sembol: null },
+  TRY: { kod: "TRY", etiket: "TRY (₺)", sembol: "₺" },
+};
+
+/** Seçicilerin okuduğu sıra — ilan sırasıdır, yazım sırası değil. */
+export const PARA_BIRIMI_SECENEKLERI: readonly ParaBirimiIlani[] =
+  CurrencySchema.options.map((k) => PARA_BIRIMLERI[k]);
 
 /* Menü çıktı dili — Sipariş Modu (F7-A/K2). Client bazında "fr" | "de" | "tr".
    CILA4/EK-1: "tr" eklendi (Türkçe menü) — fallback zinciri tr→fr→de (resolveChip
@@ -19,6 +51,31 @@ export type Currency = z.infer<typeof CurrencySchema>;
    çok-dilli render TODO, K2). */
 export const MenuLanguageSchema = z.enum(["fr", "de", "tr"]).default("fr");
 export type MenuLanguage = z.infer<typeof MenuLanguageSchema>;
+
+export interface CiktiDiliIlani {
+  kod: MenuLanguage;
+  /** Seçicide görünen ad — dilin KENDİ adıyla (endonym). */
+  etiket: string;
+}
+
+/* ÇIKTI DİLİ İLANI — para birimi emsalinin AYNISI (PARA_BIRIMLERI).
+   ÖLÇÜLEN YARA: dil seçeneği listesi arayüzde ELLE yazılıydı ve şemanın
+   ikinci kopyasıydı — üstelik aynı JSX bloğunda para birimi İLANDAN
+   türetiliyordu (`PARA_BIRIMI_SECENEKLERI`). Yani doğru desen bir satır
+   yukarıda duruyordu. Şemaya dördüncü bir dil eklendiği gün seçicide
+   SESSİZCE eksik kalırdı: kullanıcı o dili seçemez, kimse de bir şeyin
+   kırıldığını fark etmezdi.
+   Record TAM: yeni bir dil eklendiği gün DERLENMEZ — etiketi yazılmadan
+   listeye giremez. */
+export const CIKTI_DILLERI: Record<MenuLanguage, CiktiDiliIlani> = {
+  fr: { kod: "fr", etiket: "Français" },
+  de: { kod: "de", etiket: "Deutsch" },
+  tr: { kod: "tr", etiket: "Türkçe" },
+};
+
+/** Seçicilerin okuduğu sıra — İLAN sırasıdır, yazım sırası değil. */
+export const CIKTI_DILI_SECENEKLERI: readonly CiktiDiliIlani[] =
+  MenuLanguageSchema.removeDefault().options.map((k) => CIKTI_DILLERI[k]);
 
 export const PriceVariantSchema = z.object({
   label: z.string().default("seul"), // "seul" | "menu" | "S" | "M" ...
@@ -531,6 +588,23 @@ export const ProjectCreateSchema = z.object({
   items: z.array(OrderItemCreateSchema).default([]),
 });
 
+/* PROJE DURUMU — ilan (7.2 kapalı sözlük deseni, OrderStatusSchema emsali).
+
+   NEDEN İLAN: "done" bugüne dek İKİ yerde ayrı ayrı sabit yazılıydı — sunucunun
+   yaklaşan-işler sorgusu (`status != 'done'`) ve yeni açılan kapatma denetimi.
+   İki kopya, biri değişince ötekinin sessizce eskimesi demekti; bu repo aynı
+   sınıfı defalarca ödedi.
+
+   ŞEMA BİLEREK `z.string()` KALIYOR (aşağıda): enum'a çevirmek, sözlüğün
+   dışında bir değer taşıyan ESKİ satırları okuma anında reddederdi ve elimizde
+   üretim verisi sayımı YOK. Daraltma, o sayım yapıldığı gün ayrı bir karardır.
+   Bugünkü güvence: tek ilan + iki tarafın da onu okuması. */
+export const PROJE_DURUMLARI = ["open", "done"] as const;
+export type ProjeDurumu = (typeof PROJE_DURUMLARI)[number];
+/** Yaklaşan işler listesinden DÜŞÜREN durum — sunucu sorgusu ve UI aynı sabiti okur */
+export const PROJE_KAPALI: ProjeDurumu = "done";
+export const PROJE_ACIK: ProjeDurumu = "open";
+
 export const ProjectUpdateSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   status: z.string().optional(),
@@ -814,6 +888,37 @@ export function areasForKind(kind: GarmentKind): GarmentAreaId[] {
   return (Object.keys(GARMENT_AREAS) as GarmentAreaId[]).filter((a) =>
     GARMENT_AREAS[a].kinds.includes(kind)
   );
+}
+
+/**
+ * BASILACAK ALANLAR — TEK KARAR NOKTASI.
+ *
+ * ÖLÇÜLEN YARA (2026-08-07): bu kural İKİ YERDE birebir kopyalanmıştı —
+ * `packages/templates/src/garment/index.tsx` (çizici: sayfa üretir) ve
+ * `apps/server/src/routes/garment.ts` (dışa aktarım: alan başına dosya
+ * yazar). İkisi bugün AYNIYDI, o yüzden hiçbir kapı kırmızı değildi.
+ *
+ * AYRIŞMANIN BEDELİ NEDEN AĞIR: dışa aktarım i'nci alan için çiziciden
+ * `?page=i` ister. İki liste bir gün farklı SIRA ya da farklı UZUNLUK
+ * üretirse, i'nci alanın ölçüsüyle (300 dpi, `GARMENT_AREAS` preset'i)
+ * BAŞKA bir alanın görseli basılır — yanlış tasarım, doğru ölçüde, doğrudan
+ * üretime. Kağıtta görülür, testte görülmez.
+ *
+ * DAVRANIŞ BİREBİR KORUNDU, boş-küme geri düşüşü dahil.
+ *
+ * BOŞ-KÜME GERİ DÜŞÜŞÜ BİR ÜRÜN KARARIDIR ve BURADA VERİLMEDİ: hiçbir
+ * geçerli alan seçili değilse bugün türün İLK alanı basılır — yani operatör
+ * seçmediği bir alan için dosya alır. Sessizdir. Doğrusunun ne olduğu
+ * (reddet mi, uyar mı, ilkini bas mı) tasarım/ürün kararıdır; bu işlev
+ * bugünkü davranışı yalnız TEK YERE taşır ve görünür kılar.
+ */
+export function basilacakAlanlar(
+  kind: GarmentKind,
+  secilen: readonly GarmentAreaId[]
+): GarmentAreaId[] {
+  const gecerli = areasForKind(kind);
+  const suzulen = secilen.filter((a) => gecerli.includes(a));
+  return suzulen.length === 0 ? [gecerli[0]!] : [...suzulen];
 }
 
 /** 300 dpi piksel hesabı: cm × 300 / 2.54, yuvarlanır (FAZ3-GOREV §6 export) */

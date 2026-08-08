@@ -21,6 +21,9 @@ import { MemoryRouter } from "react-router-dom";
 import { api } from "../api";
 import { useIntake } from "../store/intakeStore";
 import { SiparisPage } from "./SiparisPage";
+import { SEKTORLER } from "@tezgah/templates/identity";
+import { CIKTI_DILI_SECENEKLERI, MenuLanguageSchema } from "@tezgah/shared";
+import { MENU_IS_KOLU } from "../lib/alanEtiketi";
 
 vi.mock("../api", () => ({
   api: {
@@ -34,6 +37,7 @@ vi.mock("../api", () => ({
     documents: vi.fn(),
     createDocument: vi.fn(),
     intakeCommit: vi.fn(),
+    isKollari: vi.fn(),
   },
 }));
 
@@ -42,6 +46,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.clients).mockResolvedValue([]);
   vi.mocked(api.sectors).mockResolvedValue([] as never);
+  /* Varsayılan: yapılandırma YOK → bugünkü davranış (etiket "Menü dili").
+     Her test üstüne yazabilir. */
+  vi.mocked(api.isKollari).mockResolvedValue({
+    aktif: SEKTORLER,
+    tumu: SEKTORLER,
+    kaynak: "varsayilan",
+  } as never);
   localStorage.clear();
   useIntake.getState().reset();
 });
@@ -93,5 +104,68 @@ describe("SiparisPage — taslak sorusu mount-anı sözleşmesi", () => {
     const input = screen.getByPlaceholderText(AD_PLACEHOLDER) as HTMLInputElement;
     expect(input.value).toBe("");
     expect(screen.queryByText(TASLAK_BASLIK)).toBeNull();
+  });
+});
+
+/* ── ÇIKTI DİLİ ALANI (K-1/D — sektörsüz dil) ─────────────────────────── */
+
+describe("çıktı dili alanı", () => {
+  /* Bu blok GERÇEK sayfayı çizer: etiket ve seçenekler, üretimdeki veri
+     yolundan (isKollari sorgusu → alanEtiketi → JSX) gelir. Saf katman
+     `alanEtiketi.test.ts`te ayrıca ölçülür; burada ölçülen şey BAĞLANTI. */
+  const dilSecici = (): HTMLSelectElement => {
+    const s = [...document.querySelectorAll("select")].find((el) =>
+      [...el.options].some((o) => o.value === "fr"),
+    );
+    if (!s) throw new Error("dil seçicisi bulunamadı");
+    return s;
+  };
+
+  it("SEÇENEKLER İLANDAN gelir — elle yazılı liste değil", async () => {
+    /* Eski hâli üç sabit <option> idi ve şemanın ikinci kopyasıydı; üstelik
+       hemen yukarıdaki para birimi seçicisi ZATEN ilandan türüyordu. */
+    sayfa();
+    await screen.findByPlaceholderText(AD_PLACEHOLDER);
+    const secenekler = [...dilSecici().options].map((o) => [o.value, o.textContent]);
+    expect(secenekler).toEqual(CIKTI_DILI_SECENEKLERI.map((d) => [d.kod, d.etiket]));
+    /* SIRA YETKİLİ KAYNAĞA da bağlanır: yalnız türetilmiş listeyle
+       karşılaştırmak TOTOLOJİDİR — ilan sırası değişse iki taraf birlikte
+       değişir ve sözleşme ölçülmemiş olur (bu, bir negatif kontrolle
+       ölçüldü: sırayı ters çevirmek hiçbir testi kırmadı). */
+    expect(secenekler.map((x) => x[0])).toEqual([...MenuLanguageSchema.removeDefault().options]);
+  });
+
+  it("YAPILANDIRMA YOKSA etiket BUGÜNKÜ metin — 'Menü dili'", async () => {
+    sayfa();
+    await screen.findByPlaceholderText(AD_PLACEHOLDER);
+    expect(screen.getByText("Menü dili")).toBeTruthy();
+    expect(screen.queryByText("Çıktı dili")).toBeNull();
+  });
+
+  it("MENÜSÜZ kurulumda etiket SEKTÖRSÜZ ada döner — 'Çıktı dili'", async () => {
+    const menusuz = SEKTORLER.filter((x) => x !== MENU_IS_KOLU);
+    vi.mocked(api.isKollari).mockResolvedValue({
+      aktif: menusuz,
+      tumu: SEKTORLER,
+      kaynak: "yapilandirma",
+    } as never);
+
+    sayfa();
+    await screen.findByPlaceholderText(AD_PLACEHOLDER);
+    /* Sorgu çözülene kadar etiket bugünkü metindedir; bekleyerek ölçülür. */
+    expect(await screen.findByText("Çıktı dili")).toBeTruthy();
+    expect(screen.queryByText("Menü dili")).toBeNull();
+  });
+
+  it("MENÜ ÜRETEN daraltılmış kurulumda etiket DEĞİŞMEZ", async () => {
+    vi.mocked(api.isKollari).mockResolvedValue({
+      aktif: [MENU_IS_KOLU],
+      tumu: SEKTORLER,
+      kaynak: "yapilandirma",
+    } as never);
+
+    sayfa();
+    await screen.findByPlaceholderText(AD_PLACEHOLDER);
+    expect(screen.getByText("Menü dili")).toBeTruthy();
   });
 });

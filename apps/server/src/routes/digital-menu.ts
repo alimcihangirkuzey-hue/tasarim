@@ -9,6 +9,7 @@ import path from "node:path";
 import {
   BrandKitSchema,
   CatalogSchema,
+  MenuLanguageSchema,
   renderDigitalMenu,
   newId,
   nowISO,
@@ -44,7 +45,14 @@ export function digitalMenuRoutes(app: FastifyInstance): void {
       slug: row.slug,
       notes: row.notes,
       currency: row.currency,
-      menu_language: row.menu_language, // dijital menü render'ı tüketmez; DTO tipi için taşınır
+      /* ÇIKTI DİLİ (2026-08-06): render ARTIK bunu TÜKETİR — <html lang>, sekme
+         başlığı ve boş-katalog metni buradan gelir. Eski şerh "tüketmez"
+         diyordu ve bayatlamıştı.
+         `.catch("fr")`: kolon TEXT'tir ve tarihsel bir satır tanınmayan bir
+         değer taşıyabilir. `.parse` FIRLATIR ve dijital menüyü tamamen
+         kaybettirirdi; burada bilinmeyen değer BUGÜNKÜ çıktıya (fr) düşer —
+         çıktı yolu, veri temizliğinin yeri değildir. */
+      menu_language: MenuLanguageSchema.catch("fr").parse(row.menu_language),
       brandkit: BrandKitSchema.parse(JSON.parse(row.brandkit_json)),
       catalog: CatalogSchema.parse(JSON.parse(row.catalog_json)),
       assets: [],

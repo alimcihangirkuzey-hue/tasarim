@@ -463,6 +463,41 @@ describe("git-izlenen journal çalışma ağacında YOKSA", () => {
     expect(gitIhlalleri[0].message).toMatch(/append-only ihlali: journal dosyası SİLİNMİŞ/);
   });
 
+  it("HEAD sürümü çalışma ağacının ÖNEKİ DEĞİLSE → B2 git ihlali (KABLOLAMA)", async () => {
+    /* BU TESTİN NEDEN VAR OLDUĞU ÖLÇÜLDÜ: `baytOneki` saf işlevi bu dosyada
+       zaten çivilenmişti, AMA onun `gitKatmani`ye BAĞLANMASI ölçülmüyordu.
+       Bir negatif kontrol (B2 karşılaştırmasını tamamen devre dışı bırakmak)
+       41/41 YEŞİL bıraktı — yani append-only'nin en sert güvencelerinden
+       biri, kablosu kesilse kimseye bir şey söylemeyecekti.
+
+       KURULUM: sahte depoya GERÇEK bir journal yolu, GERÇEK içerikten
+       FARKLI baytlarla commit'lenir. Diğer gerçek paketler o depoda hiç
+       commit edilmediği için atlanır (yeni paket kuralı) — böylece tam
+       küme iddiası tek bir ihlale indirgenir. */
+    const ortam = await ortamKur(null);
+    const id = ortam.listPackageIds()[0];
+    expect(id, "gerçek depoda journal yok — iddia ölçülemezdi").toBeTruthy();
+
+    const kok = geciciDizin();
+    gitKomut(kok, ["init", "-q", "."]);
+    gitKomut(kok, ["config", "user.email", "dogrulayici@test.local"]);
+    gitKomut(kok, ["config", "user.name", "dogrulayici"]);
+    const yol = path.join(kok, OLAY_YOLU, `${id}.jsonl`);
+    fs.mkdirSync(path.dirname(yol), { recursive: true });
+    /* Gerçek dosya bu baytlarla BAŞLAMAZ → önek tutmaz. */
+    fs.writeFileSync(yol, "BOZUK-HEAD-SURUMU\n", "utf8");
+    gitKomut(kok, ["add", "-A"]);
+    gitKomut(kok, ["commit", "-qm", "bozuk HEAD"]);
+
+    const ihlaller = gitDirIle(path.join(kok, ".git"), ortam.verifyAllJournals);
+    const gitIhlalleri = ihlaller.filter((x) => x.layer === "git");
+
+    expect(gitIhlalleri.map((x) => x.package_id)).toEqual([id]);
+    expect(gitIhlalleri[0].message).toMatch(/bayt öneki DEĞİL/);
+    /* Sınıf da ölçülür: bu bir GERÇEK ihlaldir, "ölçülemedi" değil. */
+    expect(gitIhlalleri[0].sinif).toBe("ihlal");
+  });
+
   it("çalışma ağacında olup git'te olmayan dosya İHLAL DEĞİLDİR (yeni paket)", async () => {
     /* Kural TEK YÖNLÜ: git-izlenen ⊆ çalışma-ağacı. Tersi de ihlal sayılsaydı
        henüz commit edilmemiş her yeni paket doğrulayıcıyı kırmızıya çevirir,
@@ -480,8 +515,34 @@ describe("git-izlenen journal çalışma ağacında YOKSA", () => {
 
 /* ── Gerçek depo ──────────────────────────────────────────────────────── */
 
+/* GERÇEK DEPO DENETİMİNİN ZAMAN BÜTÇESİ — R-FLAKY-TEST-01'İN KÖK NEDENİ.
+   Bu test, deponun TAMAMINI dolaşır: bugün 90 paket, her biri için ayrı git
+   çağrıları. ÖLÇÜLDÜ (bu makinede, boşta, beş koşum): 3772 · 3570 · 3642 ·
+   3693 · 3620 ms — hepsi 0 bulguyla. Vitest'in VARSAYILAN testTimeout'u ise
+   5000 ms'tir ve o varsayılan BİRİM testleri içindir.
+
+   Yani süre zaten sınırın hemen altında yaşıyordu; paralel koşan diğer test
+   dosyaları CPU'yu paylaşınca sınırı aşıyor ve test "Test timed out in
+   5000ms" ile düşüyordu. ÖLÇÜLEN düşüş: 5052 ms.
+
+   ÜÇ TURDUR YAZILI HİPOTEZ BU ÖLÇÜMLE ÇÜRÜDÜ: "geçici git hatası kalıcı bir
+   journal ihlali gibi görünüyor" deniyordu. Yanlıştı — iddia HİÇ KOŞMADI,
+   ortada bulgu da yoktu; zaman aşımı testi iddiaya varmadan kesiyordu. Bu,
+   sınıf ayrımının neden hiç görünmediğini de açıklar: ayrım çalıştı, ama
+   ayrımın ölçtüğü satıra hiç ulaşılmadı.
+
+   NEDEN 60 SANİYE, NEDEN "biraz daha fazla" DEĞİL: bir zaman aşımı, ASILMA
+   yakalamak içindir; başarım polisliği için değil. 6-7 saniyelik bir bütçe,
+   süre paket sayısıyla BÜYÜDÜĞÜ için birkaç tur sonra aynı kararsızlığı geri
+   getirirdi (90 paket bugün, her tur artıyor).
+
+   DÜRÜST SINIR: bu satır kararsızlığı kapatır, YAVAŞLIĞI KAPATMAZ. Denetimin
+   maliyeti paket başına git çağrısıdır ve doğrusal büyür; gerçek çözüm o
+   çağrıları toplu hâle getirmektir — ayrı iş, TODO'ya yazıldı. */
+const GERCEK_DEPO_ZAMAN_ASIMI_MS = 60_000;
+
 describe("gerçek depo journal'ı", () => {
-  it("ihlalsiz döner VE denetlenen üretim kümesi BOŞ DEĞİLDİR", async () => {
+  it("ihlalsiz döner VE denetlenen üretim kümesi BOŞ DEĞİLDİR", { timeout: GERCEK_DEPO_ZAMAN_ASIMI_MS }, async () => {
     /* TEZGAH_JOURNAL_DIR YOK → üretim yolu. Bu iddia, Journal bütünlüğünü
        test kapısının kendisine bağlar: bozuk bir journal main'e merge
        edilemez, çünkü `npm test` kırmızıya döner. */
@@ -501,6 +562,20 @@ describe("gerçek depo journal'ı", () => {
        paket eklendiğinde veya adı değiştiğinde testin bakım borcu doğmaz. */
     expect(ortam.listPackageIds().length).toBeGreaterThan(0);
 
-    expect(ortam.verifyAllJournals()).toEqual([]);
+    /* SINIF AYRIMI (R-FLAKY-TEST-01): iddia İKİ PARÇA ve ikisi de şart.
+       Ayrı ayrı yazılmalarının sebebi ölçülmüş bir olaydır: kırmızı düştüğünde
+       "geçici git hatası mı, gerçek append-only ihlali mi" sorusu ÇIKTIDAN
+       cevaplanamıyordu. Bu ayrım DURUYOR ve gerekli — ama kararsızlığın
+       sebebi O DEĞİLDİ (yukarıdaki zaman bütçesi notu): iddia hiç koşmuyordu.
+       Ayrım bir gün gerçek bir bulgu geldiğinde işini yapacak. */
+    const bulgular = ortam.verifyAllJournals();
+    expect(
+      bulgular.filter((b) => b.sinif === "ihlal"),
+      "GERÇEK yönetişim ihlali",
+    ).toEqual([]);
+    expect(
+      bulgular.filter((b) => b.sinif === "olculemedi"),
+      "denetim koşturulamadı (ihlal kanıtı DEĞİL — ortam/araç sorunu)",
+    ).toEqual([]);
   });
 });

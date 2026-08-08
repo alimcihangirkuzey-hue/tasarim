@@ -34,6 +34,9 @@ import { cmykRoutes } from "./routes/cmyk.js";
 import { fontRoutes } from "./routes/fonts.js";
 import { digitalMenuRoutes } from "./routes/digital-menu.js";
 import { sectorRoutes } from "./routes/sectors.js";
+import { kurulumuDogrula } from "./kurulum-dogrulama.js";
+import { isKollariRoutes } from "./routes/is-kollari.js";
+import { kurulumKunyesiRoutes } from "./routes/kurulum-kunyesi.js";
 import { ingredientRoutes } from "./routes/ingredients.js";
 import { intakeRoutes } from "./routes/intake.js";
 import { surfaceRoutes } from "./routes/surfaces.js";
@@ -44,6 +47,13 @@ import { briefRoutes } from "./routes/briefs.js";
 export async function buildApp(
   opts: { logger?: FastifyServerOptions["logger"] } = {}
 ): Promise<FastifyInstance> {
+  /* KURULUM İLANLARI ÖNCE DOĞRULANIR (K-1/C): yanlış yazılmış bir iş kolu adı
+     ya da sığmayan bir künye, sunucu AYAĞA KALKMADAN durdurur. Ölçüldü: bu
+     denetim yokken tek harflik yazım hatası boot'u geçiyor, /api/health 200
+     dönüyor ve arayüz sorgusu düştüğü için daraltma HİÇ uygulanmıyordu —
+     kiracıya bütün iş kolları açılıyordu (kurulum-dogrulama.ts). */
+  kurulumuDogrula();
+
   const app = Fastify({ logger: opts.logger ?? { level: "info" } });
 
   await app.register(fastifyMultipart, {
@@ -91,6 +101,8 @@ export async function buildApp(
   fontRoutes(app);
   digitalMenuRoutes(app);
   sectorRoutes(app);
+  isKollariRoutes(app);
+  kurulumKunyesiRoutes(app);
   ingredientRoutes(app);
   intakeRoutes(app);
   surfaceRoutes(app);

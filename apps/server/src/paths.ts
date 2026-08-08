@@ -1,14 +1,20 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { veriDiziniIlani } from "./veri-dizini.js";
 
 /* Repo kökü: apps/server/src -> ../../..  (M7: her şey diskte, data/ altında) */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT_DIR = path.resolve(HERE, "..", "..", "..");
 /* P3: veri kökü enjekte edilebilir (P0'ın TEZGAH_DB_PATH deseni) — route
    testleri yüklemeleri geçici dizine yazar, repo data/ KİRLENMEZ. Env yoksa
-   üretim yolu birebir eskisi. */
-export const DATA_DIR = process.env.TEZGAH_DATA_DIR ?? path.join(ROOT_DIR, "data");
+   üretim yolu birebir eskisi.
+
+   K-1/C: değer artık BİÇİM DENETİMİNDEN geçer (`veri-dizini.ts`). Denetim
+   burada, yolun TÜRETİLDİĞİ yerde çağrılır — açılış denetimine bırakılsaydı
+   `ensureDirs()` bozuk yolu çoktan oluşturmuş olurdu (db.ts bu modülü import
+   ederken çalışır). İlan edilmemişse dönen değer bugünküyle birebir. */
+export const DATA_DIR = veriDiziniIlani(path.join(ROOT_DIR, "data"));
 export const DB_PATH = path.join(DATA_DIR, "app.db");
 export const ASSETS_DIR = path.join(DATA_DIR, "assets");
 export const EXPORTS_DIR = path.join(DATA_DIR, "exports");

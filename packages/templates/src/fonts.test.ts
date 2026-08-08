@@ -65,3 +65,58 @@ describe("repo fontları glif kapsam bekçisi kümesini karşılar (mimar #18)",
     });
   }
 });
+
+/* TÜRK LİRASI GLİFİ — ÖLÇÜLEN SINIRIN KAYDI (K-1/D, 2026-08-06).
+
+   Bu paket para birimi kümesine TRY ekledi; TL fiyat basan bir kurulumda
+   sayfaya ₺ (U+20BA) düşer. Yerleşik fontlar ölçüldü ve sonuç TEK TİP DEĞİL:
+   yedi fontta ₺ VAR, `archivo-black-400`'de YOK. Yani bir Türk kurulumunda
+   fiyat başlığı Archivo Black'e bağlanırsa ₺ TOFU basar — sessizce.
+
+   ₺ BEKÇİ KÜMESİNE (`GLYPH_COVERAGE`) EKLENMEDİ ve bu bilinçlidir: eklemek
+   `archivo-black-400`'ü kapsam dışına atardı ve o, bir MARKA KİTİ display
+   yüzüdür — hangi fontun repoda kalacağı/değişeceği içerik-marka kararıdır
+   (ürün sahibi). Bekçiye eklemek, o kararı test dosyasında sessizce vermek
+   olurdu.
+
+   BU TESTLER SINIRI GÖRÜNÜR TUTAR: gerçek bir gün değişirse (font güncellenir,
+   yenisi gelir) burası kırmızıya döner ve karar yeniden önümüze gelir.
+   Bulgu ayrıca `docs/URUN_SAHIBI_KARARLARI.md`'de açık kayıtlıdır. */
+describe("Türk lirası glifi — ölçülen sınır (K-1/D)", () => {
+  const LIRA = 0x20ba;
+  const LIRASIZ = ["archivo-black-400.woff2"];
+
+  it("ÖN-KOŞUL: ölçüm çalışıyor — € tüm fontlarda VAR", () => {
+    /* Bu satır olmadan aşağıdaki "yok" iddiası, her zaman false dönen bozuk
+       bir sorguyla da yeşil kalırdı. */
+    for (const [file] of CASES) {
+      const font = createFont!(readFileSync(FONTS_DIR + file));
+      expect(font.hasGlyphForCodePoint(0x20ac), `${file}: € yok`).toBe(true);
+    }
+  });
+
+  it("₺ TAŞIYAN fontlar — bugünkü ölçüm çivili", () => {
+    const tasiyan = CASES.map(([f]) => f).filter((f) =>
+      createFont!(readFileSync(FONTS_DIR + f)).hasGlyphForCodePoint(LIRA),
+    );
+    expect(tasiyan.sort()).toEqual(
+      CASES.map(([f]) => f)
+        .filter((f) => !LIRASIZ.includes(f))
+        .sort(),
+    );
+  });
+
+  it("₺ TAŞIMAYAN font — TL kurulumunda tofu riski AÇIK", () => {
+    for (const f of LIRASIZ) {
+      const font = createFont!(readFileSync(FONTS_DIR + f));
+      expect(
+        font.hasGlyphForCodePoint(LIRA),
+        `${f} artık ₺ taşıyor — sınır kalkmış olabilir, bekçi kümesi yeniden değerlendirilsin`,
+      ).toBe(false);
+    }
+  });
+
+  it("BEKÇİ KÜMESİ ₺ İSTEMEZ — karar ürün sahibinde, testte değil", () => {
+    expect(GLYPH_COVERAGE).not.toContain("₺");
+  });
+});
